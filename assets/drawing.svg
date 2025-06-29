@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="210mm"
+   height="297mm"
+   viewBox="0 0 210 297"
+   version="1.1"
+   id="svg5"
+   inkscape:export-filename="/home/mhenriquez/Downloads/shape02.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   inkscape:version="1.1.2 (0a00cf5339, 2022-02-04)"
+   sodipodi:docname="drawing.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#505050"
+     bordercolor="#eeeeee"
+     borderopacity="1"
+     inkscape:pageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:document-units="mm"
+     showgrid="false"
+     showguides="true"
+     inkscape:guide-bbox="true"
+     inkscape:zoom="1.4680557"
+     inkscape:cx="186.64141"
+     inkscape:cy="362.72465"
+     inkscape:window-width="1920"
+     inkscape:window-height="1016"
+     inkscape:window-x="0"
+     inkscape:window-y="27"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1">
+    <sodipodi:guide
+       position="-0.12628049,257.73122"
+       orientation="0,-1"
+       id="guide824" />
+    <sodipodi:guide
+       position="121.12025,136.48468"
+       orientation="0,-1"
+       id="guide1326" />
+    <sodipodi:guide
+       position="-0.12628049,257.73123"
+       orientation="1,0"
+       id="guide1544" />
+    <sodipodi:guide
+       position="121.12025,257.73123"
+       orientation="1,0"
+       id="guide1546" />
+    <sodipodi:guide
+       position="60.526065,193.54266"
+       orientation="1,0"
+       id="guide1548" />
+    <sodipodi:guide
+       position="60.526063,193.54266"
+       orientation="0,-1"
+       id="guide1550" />
+    <sodipodi:guide
+       position="52.085612,202.92149"
+       orientation="0,-1"
+       id="guide15026" />
+  </sodipodi:namedview>
+  <defs
+     id="defs2" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
+       id="rect1462"
+       width="121.24654"
+       height="121.24654"
+       x="-0.12628049"
+       y="39.26878" />
+    <path
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:1;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
+       d="M 60.526064,39.268781 V 103.45734"
+       id="path1585" />
+    <path
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="M -0.12628049,160.51532 60.526064,103.45734 121.12025,160.51532"
+       id="path2168" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.175px;fill:#ffffff;stroke:#000000;stroke-width:1"
+       x="11.530033"
+       y="93.206589"
+       id="text2966"><tspan
+         sodipodi:role="line"
+         id="tspan2964"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:52.9167px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke-width:1"
+         x="11.530033"
+         y="93.206589">L</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:3.175px;fill:#ffffff;stroke:#000000;stroke-width:1"
+       x="69.240524"
+       y="93.700287"
+       id="text2966-5"><tspan
+         sodipodi:role="line"
+         id="tspan2964-6"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:52.9167px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke-width:1"
+         x="69.240524"
+         y="93.700287">D</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:3.175px;fill:#ffffff;stroke:#000000;stroke-width:1"
+       x="41.521233"
+       y="156.62555"
+       id="text2966-5-7"><tspan
+         sodipodi:role="line"
+         id="tspan2964-6-7"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:52.9167px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke-width:1"
+         x="41.521233"
+         y="156.62555">S</tspan></text>
+  </g>
+</svg>

@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>D3 Zoomable Circle Packing</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body { margin: 0; background: #fff; }
+    text { font-family: sans-serif; font-size: 10px; }
+  </style>
+</head>
+<body>
+
+
+<script>
+  const width = 932;
+  const height = width;
+
+  const pack = d3.pack()
+    .size([width, height])
+    .padding(3);
+
+  // -------------------------------
+  // Your data: Only worker nodes provide "color" in data.
+  // Parent nodes do NOT have a "color" property.
+  // -------------------------------
+  const data = {
+    "name": "Plant: ACME-MainPlant",
+    "children": [
+      {
+        "name": "Section01",
+        "children": [
+          {
+            "name": "Line01",
+            "children": [
+              {
+                "name": "Station01",
+                "children": [
+                  {
+                    "name": "S001",
+                    "value": 1,
+                    "color": "#ff3333",
+                    "gender": "male",
+                    "meta": {
+                      "fullName": "Carlos Diaz",
+                      "age": 28,
+                      "section": "Section01",
+                      "line": "Line01",
+                      "station": "Station01",
+                      "shift": 1,
+                      "cumulativeDamage": "0.0003%",
+                      "riskProbability": "10.5%"
+                    }
+                  },
+                  {
+                    "name": "S002",
+                    "value": 1,
+                    "color": "#33ff33",
+                    "gender": "female",
+                    "meta": {
+                      "fullName": "Maria Lopez",
+                      "age": 35,
+                      "section": "Section01",
+                      "line": "Line01",
+                      "station": "Station01",
+                      "shift": 2,
+                      "cumulativeDamage": "0.0008%",
+                      "riskProbability": "15.2%"
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "Station02",
+                "children": [
+                  {
+                    "name": "S003",
+                    "value": 1,
+                    "color": "#ff6666",
+                    "gender": "male",
+                    "meta": {
+                      "fullName": "John Smith",
+                      "age": 22,
+                      "section": "Section01",
+                      "line": "Line01",
+                      "station": "Station02",
+                      "shift": 1,
+                      "cumulativeDamage": "0.0002%",
+                      "riskProbability": "5.5%"
+                    }
+                  },
+                  {
+                    "name": "S004",
+                    "value": 1,
+                    "color": "#33ff33",
+                    "gender": "female",
+                    "meta": {
+                      "fullName": "Laura Stein",
+                      "age": 41,
+                      "section": "Section01",
+                      "line": "Line01",
+                      "station": "Station02",
+                      "shift": 3,
+                      "cumulativeDamage": "0.0007%",
+                      "riskProbability": "19.3%"
+                    }
+                  },
+                  {
+                    "name": "S005",
+                    "value": 1,
+                    "color": "#ff3333",
+                    "gender": "male",
+                    "meta": {
+                      "fullName": "Miguel Rojas",
+                      "age": 29,
+                      "section": "Section01",
+                      "line": "Line01",
+                      "station": "Station02",
+                      "shift": 2,
+                      "cumulativeDamage": "0.0009%",
+                      "riskProbability": "13.7%"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Line02",
+            "children": [
+              {
+                "name": "Station01",
+                "children": [
+                  {
+                    "name": "S006",
+                    "value": 1,
+                    "color": "#33ff33",
+                    "gender": "female",
+                    "meta": {
+                      "fullName": "Anna Perez",
+                      "age": 26,
+                      "section": "Section01",
+                      "line": "Line02",
+                      "station": "Station01",
+                      "shift": 1,
+                      "cumulativeDamage": "0.0001%",
+                      "riskProbability": "4.2%"
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "Station02",
+                "children": [
+                  {
+                    "name": "S007",
+                    "value": 1,
+                    "color": "#ff3333",
+                    "gender": "male",
+                    "meta": {
+                      "fullName": "David Brown",
+                      "age": 45,
+                      "section": "Section01",
+                      "line": "Line02",
+                      "station": "Station02",
+                      "shift": 3,
+                      "cumulativeDamage": "0.0006%",
+                      "riskProbability": "12.0%"
+                    }
+                  },
+                  {
+                    "name": "S008",
+                    "value": 1,
+                    "color": "#33ff33",
+                    "gender": "female",
+                    "meta": {
+                      "fullName": "Sophia Gonzalez",
+                      "age": 30,
+                      "section": "Section01",
+                      "line": "Line02",
+                      "station": "Station02",
+                      "shift": 1,
+                      "cumulativeDamage": "0.0003%",
+                      "riskProbability": "7.9%"
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "Station03",
+                "children": [
+                  {
+                    "name": "S009",
+                    "value": 1,
+                    "color": "#33ff33",
+                    "gender": "female",
+                    "meta": {
+                      "fullName": "Patricia Fields",
+                      "age": 54,
+                      "section": "Section01",
+                      "line": "Line02",
+                      "station": "Station03",
+                      "shift": 2,
+                      "cumulativeDamage": "0.0008%",
+                      "riskProbability": "18.0%"
+                    }
+                  },
+                  {
+                    "name": "S010",
+                    "value": 1,
+                    "color": "#ff3333",
+                    "gender": "male",
+                    "meta": {
+                      "fullName": "Kevin Morales",
+                      "age": 39,
+                      "section": "Section01",
+                      "line": "Line02",
+                      "station": "Station03",
+                      "shift": 1,
+                      "cumulativeDamage": "0.0005%",
+                      "riskProbability": "9.4%"
+                    }
+                  },
+                  {
+                    "name": "S011",
+                    "value": 1,
+                    "color": "#33ff33",
+                    "gender": "female",
+                    "meta": {
+                      "fullName": "Elizabeth Turner",
+                      "age": 25,
+                      "section": "Section01",
+                      "line": "Line02",
+                      "station": "Station03",
+                      "shift": 3,
+                      "cumulativeDamage": "0.0004%",
+                      "riskProbability": "14.6%"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Line03",
+            "children": [
+              {
+                "name": "Station01",
+                "children": [
+                  {
+                    "name": "S012",
+                    "value": 1,
+                    "color": "#ff3333",
+                    "gender": "male",
+                    "meta": {
+                      "fullName": "Luke Carter",
+                      "age": 19,
+                      "section": "Section01",
+                      "line": "Line03",
+                      "station": "Station01",
+                      "shift": 2,
+                      "cumulativeDamage": "0.0002%",
+                      "riskProbability": "2.3%"
+                    }
+                  },
+                  {
+                    "name": "S013",
+                    "value": 1,
+                    "color": "#33ff33",
+                    "gender": "female",
+                    "meta": {
+                      "fullName": "Diana Smith",
+                      "age": 34,
+                      "section": "Section01",
+                      "line": "Line03",
+                      "station": "Station01",
+                      "shift": 3,
+                      "cumulativeDamage": "0.0009%",
+                      "riskProbability": "11.8%"
+                    }
+                  },
+                  {
+                    "name": "S014",
+                    "value": 1,
+                    "color": "#ff3333",
+                    "gender": "male",
+                    "meta": {
+                      "fullName": "Oscar Evans",
+                      "age": 38,
+                      "section": "Section01",
+                      "line": "Line03",
+                      "station": "Station01",
+                      "shift": 1,
+                      "cumulativeDamage": "0.0007%",
+                      "riskProbability": "8.1%"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Section02",
+        "children": [
+          {
+            "name": "Line01",
+            "children": [
+              {
+                "name": "Station01",
+                "children": [
+                  {
+                    "name": "S015",
+                    "value": 1,
+                    "color": "#ff3333",
+                    "gender": "male",
+                    "meta": {
+                      "fullName": "Hector Davis",
+                      "age": 27,
+                      "section": "Section02",
+                      "line": "Line01",
+                      "station": "Station01",
+                      "shift": 2,
+                      "cumulativeDamage": "0.0004%",
+                      "riskProbability": "6.2%"
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "Station02",
+                "children": [
+                  {
+                    "name": "S016",
+                    "value": 1,
+                    "color": "#33ff33",
+                    "gender": "female",
+                    "meta": {
+                      "fullName": "Olivia Gray",
+                      "age": 33,
+                      "section": "Section02",
+                      "line": "Line01",
+                      "station": "Station02",
+                      "shift": 3,
+                      "cumulativeDamage": "0.0005%",
+                      "riskProbability": "10.1%"
+                    }
+                  },
+                  {
+                    "name": "S017",
+                    "value": 1,
+                    "color": "#ff3333",
+                    "gender": "male",
+                    "meta": {
+                      "fullName": "Thomas Harris",
+                      "age": 50,
+                      "section": "Section02",
+                      "line": "Line01",
+                      "station": "Station02",
+                      "shift": 1,
+                      "cumulativeDamage": "0.0009%",
+                      "riskProbability": "8.7%"
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "Station03",
+                "children": [
+                  {
+                    "name": "S018",
+                    "value": 1,
+                    "color": "#33ff33",
+                    "gender": "female",
+                    "meta": {
+                      "fullName": "Sophia Barnes",
+                      "age": 29,
+                      "section": "Section02",
+                      "line": "Line01",
+                      "station": "Station03",
+                      "shift": 2,
+                      "cumulativeDamage": "0.0008%",
+                      "riskProbability": "16.5%"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Line02",
+            "children": [
+              {
+                "name": "Station01",
+                "children": [
+                  {
+                    "name": "S019",
+                    "value": 1,
+                    "color": "#33ff33",
+                    "gender": "female",
+                    "meta": {
+                      "fullName": "Brenda Cooper",
+                      "age": 44,
+                      "section": "Section02",
+                      "line": "Line02",
+                      "station": "Station01",
+                      "shift": 3,
+                      "cumulativeDamage": "0.0007%",
+                      "riskProbability": "17.2%"
+                    }
+                  },
+                  {
+                    "name": "S020",
+                    "value": 1,
+                    "color": "#ff3333",
+                    "gender": "male",
+                    "meta": {
+                      "fullName": "Francisco Vega",
+                      "age": 31,
+                      "section": "Section02",
+                      "line": "Line02",
+                      "station": "Station01",
+                      "shift": 1,
+                      "cumulativeDamage": "0.0003%",
+                      "riskProbability": "7.4%"
+                    }
+                  },
+                  {
+                    "name": "S021",
+                    "value": 1,
+                    "color": "#33ff33",
+                    "gender": "female",
+                    "meta": {
+                      "fullName": "Susan Pratt",
+                      "age": 36,
+                      "section": "Section02",
+                      "line": "Line02",
+                      "station": "Station01",
+                      "shift": 2,
+                      "cumulativeDamage": "0.0004%",
+                      "riskProbability": "9.9%"
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "Station02",
+                "children": [
+                  {
+                    "name": "S022",
+                    "value": 1,
+                    "color": "#ff3333",
+                    "gender": "male",
+                    "meta": {
+                      "fullName": "Adrian Kelly",
+                      "age": 21,
+                      "section": "Section02",
+                      "line": "Line02",
+                      "station": "Station02",
+                      "shift": 1,
+                      "cumulativeDamage": "0.0002%",
+                      "riskProbability": "2.9%"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Section03",
+        "children": [
+          {
+            "name": "Line01",
+            "children": [
+              {
+                "name": "Station01",
+                "children": [
+                  {
+                    "name": "S023",
+                    "value": 1,
+                    "color": "#33ff33",
+                    "gender": "female",
+                    "meta": {
+                      "fullName": "Daisy Carter",
+                      "age": 24,
+                      "section": "Section03",
+                      "line": "Line01",
+                      "station": "Station01",
+                      "shift": 2,
+                      "cumulativeDamage": "0.0003%",
+                      "riskProbability": "5.8%"
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "Station02",
+                "children": [
+                  {
+                    "name": "S024",
+                    "value": 1,
+                    "color": "#ff3333",
+                    "gender": "male",
+                    "meta": {
+                      "fullName": "Jacob Hill",
+                      "age": 58,
+                      "section": "Section03",
+                      "line": "Line01",
+                      "station": "Station02",
+                      "shift": 3,
+                      "cumulativeDamage": "0.0008%",
+                      "riskProbability": "14.2%"
+                    }
+                  },
+                  {
+                    "name": "S025",
+                    "value": 1,
+                    "color": "#33ff33",
+                    "gender": "female",
+                    "meta": {
+                      "fullName": "Angela Ford",
+                      "age": 40,
+                      "section": "Section03",
+                      "line": "Line01",
+                      "station": "Station02",
+                      "shift": 1,
+                      "cumulativeDamage": "0.0004%",
+                      "riskProbability": "9.0%"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+
+  // -------------------------------------------------------------------
+  // Build the hierarchy and compute sums for circle packing
+  // -------------------------------------------------------------------
+  const rootHierarchy = d3.hierarchy(data)
+    .sum(d => d.value || 0)
+    .sort((a, b) => b.value - a.value);
+
+  // For parent nodes (non-leaf), compute their color as the average of their children's colors.
+  // We use d3.rgb() to convert hex to RGB, average the r, g, and b components,
+  // then convert back to a hex string.
+  rootHierarchy.eachAfter(d => {
+    if (d.children) {
+      const childColors = d.children
+        .filter(c => c.data.color) // only consider children with color defined
+        .map(c => d3.rgb(c.data.color));
+      if (childColors.length > 0) {
+        const avgR = d3.mean(childColors, c => c.r);
+        const avgG = d3.mean(childColors, c => c.g);
+        const avgB = d3.mean(childColors, c => c.b);
+        d.data.color = d3.rgb(avgR, avgG, avgB).formatHex();
+      }
+    }
+  });
+
+  // -------------------------------------------------------------------
+  // Create packed nodes; sort so parents are drawn behind children
+  // -------------------------------------------------------------------
+  const nodes = pack(rootHierarchy).descendants()
+    .sort((a, b) => a.depth - b.depth);
+
+  // -------------------------------------------------------------------
+  // Create main SVG and group
+  // -------------------------------------------------------------------
+  const svg = d3.select("body")
+    .append("svg")
+    .attr("viewBox", [0, 0, width, height])
+    .style("display", "block")
+    .style("margin", "0 auto");
+
+  const g = svg.append("g");
+
+  // -------------------------------------------------------------------
+  // Shape generators: arc for circles, triangle symbol for male workers
+  // -------------------------------------------------------------------
+  const arcGenerator = d3.arc().innerRadius(0);
+  const triangleSymbol = d3.symbol().type(d3.symbolTriangle);
+
+  // -------------------------------------------------------------------
+  // Create path elements for each node
+  // -------------------------------------------------------------------
+  const path = g.selectAll("path.node")
+    .data(nodes)
+    .join("path")
+    .attr("class", "node")
+    .attr("stroke", "#fff")
+    // Parents are semi-transparent, leaves fully opaque
+    .attr("fill-opacity", d => d.children ? 0.3 : 1)
+    // Use the node's "color" property (computed for parents or provided for workers)
+    .attr("fill", d => d.data.color || "#ccc")
+    // Root node won't block background clicks
+    .attr("pointer-events", d => d.depth === 0 ? "none" : "all");
+
+  // -------------------------------------------------------------------
+  // Create text labels (multi-line for workers, single-line for parents)
+  // Initially, only show children of the root.
+  // -------------------------------------------------------------------
+  const label = g.selectAll("text")
+    .data(nodes)
+    .join("text")
+    .attr("text-anchor", "middle")
+    .attr("font-family", "sans-serif")
+    .attr("font-size", 10)
+    .attr("fill-opacity", d => d.parent === rootHierarchy ? 1 : 0)
+    .attr("display", d => d.parent === rootHierarchy ? "inline" : "none")
+    .each(function(d) {
+      const sel = d3.select(this);
+      sel.selectAll("*").remove();
+      if (d.children) {
+        sel.append("tspan").text(d.data.name);
+      } else {
+        const meta = d.data.meta || {};
+        sel.append("tspan").text(d.data.name);
+        sel.append("tspan").attr("x", 0).attr("dy", "1.2em").text("Name: " + (meta.fullName || ""));
+        sel.append("tspan").attr("x", 0).attr("dy", "1.2em").text("Age: " + (meta.age || ""));
+        sel.append("tspan").attr("x", 0).attr("dy", "1.2em").text("Section: " + (meta.section || ""));
+        sel.append("tspan").attr("x", 0).attr("dy", "1.2em").text("Station: " + (meta.station || ""));
+        sel.append("tspan").attr("x", 0).attr("dy", "1.2em").text("Shift: " + (meta.shift || ""));
+        sel.append("tspan").attr("x", 0).attr("dy", "1.2em").text("Cumul. Damage: " + (meta.cumulativeDamage || ""));
+        sel.append("tspan").attr("x", 0).attr("dy", "1.2em").text("Risk Prob.: " + (meta.riskProbability || ""));
+      }
+    });
+
+  let focus = rootHierarchy, view;
+
+  // -------------------------------------------------------------------
+  // zoomTo() repositions nodes and labels based on view v = [x, y, diameter]
+  // -------------------------------------------------------------------
+  function zoomTo(v) {
+    const k = width / v[2];
+    view = v;
+    path
+      .attr("transform", d => {
+        const tx = width / 2 + (d.x - v[0]) * k;
+        const ty = height / 2 + (d.y - v[1]) * k;
+        return `translate(${tx},${ty})`;
+      })
+      .attr("d", d => {
+        const radius = d.r * k;
+        if (d.children) {
+          return arcGenerator({ outerRadius: radius, startAngle: 0, endAngle: 2 * Math.PI });
+        } else {
+          if (d.data.gender === "male") {
+            // Option B: Inscribed triangle so that it fits inside the circle
+            const eqTriangleArea = (3 * Math.sqrt(3) / 4) * radius * radius;
+            triangleSymbol.size(eqTriangleArea);
+            return triangleSymbol();
+          } else {
+            return arcGenerator({ outerRadius: radius, startAngle: 0, endAngle: 2 * Math.PI });
+          }
+        }
+      });
+
+    label.attr("transform", d => {
+      const tx = width / 2 + (d.x - v[0]) * k;
+      const ty = height / 2 + (d.y - v[1]) * k;
+      return `translate(${tx},${ty})`;
+    });
+  }
+
+  // -------------------------------------------------------------------
+  // zoom() transitions from current view to new focus d
+  // -------------------------------------------------------------------
+  function zoom(event, d) {
+    focus = d;
+    const transition = svg.transition()
+      .duration(event.altKey ? 7500 : 750)
+      .tween("zoom", () => {
+        const i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2]);
+        return t => zoomTo(i(t));
+      });
+
+    transition.selectAll("text")
+      .attr("fill-opacity", d => d.parent === focus ? 1 : 0)
+      .on("end", function(d) {
+        d3.select(this).attr("display", d.parent === focus ? "inline" : "none");
+      });
+  }
+
+  // -------------------------------------------------------------------
+  // Event handling: clicking the background zooms to root;
+  // clicking a node zooms in.
+  // -------------------------------------------------------------------
+  svg.on("click", (event) => {
+    if (focus !== rootHierarchy) zoom(event, rootHierarchy);
+  });
+
+  path.on("click", (event, d) => {
+    event.stopPropagation();
+    if (focus !== d) {
+      zoom(event, d);
+    }
+  });
+
+  // -------------------------------------------------------------------
+  // Initial zoom so everything fits
+  // -------------------------------------------------------------------
+  zoomTo([rootHierarchy.x, rootHierarchy.y, rootHierarchy.r * 2]);
+</script>
+
+
+</body>
+</html>
+

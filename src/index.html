@@ -1,0 +1,1846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>D3 Zoomable Circle Packing</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body { margin: 0; background: #fff; }
+    text { font-family: sans-serif; font-size: 10px; }
+  </style>
+</head>
+<body>
+
+
+<script>
+  const width = 932;
+  const height = width;
+
+  const pack = d3.pack()
+    .size([width, height])
+    .padding(3);
+
+  // -------------------------------
+  // Your data: Only worker nodes provide "color" in data.
+  // Parent nodes do NOT have a "color" property.
+  // -------------------------------
+  const data = {
+  "name": "Plant: Default",
+  "children": [
+    {
+      "name": "Default",
+      "children": [
+        {
+          "name": "Line: Default",
+          "children": [
+            {
+              "name": "Station: Default",
+              "children": [
+                {
+                  "name": "Default",
+                  "value": 1,
+                  "color": "#f2ff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "",
+                    "age": 0,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "Default",
+                    "shift": "1",
+                    "cumulativeDamage": "0.1400%",
+                    "riskProbability": "23.2%"
+                  }
+                },
+                {
+                  "name": "SSN001",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Mauricio Henriquez",
+                    "age": 25,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "Default",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN002",
+                  "value": 1,
+                  "color": "#ff4800",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Ivan Nail",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "Default",
+                    "shift": "1",
+                    "cumulativeDamage": "2.3500%",
+                    "riskProbability": "51.4%"
+                  }
+                },
+                {
+                  "name": "SSN003",
+                  "value": 1,
+                  "color": "#ff4800",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "John Void",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "Default",
+                    "shift": "1",
+                    "cumulativeDamage": "2.3400%",
+                    "riskProbability": "51.3%"
+                  }
+                },
+                {
+                  "name": "SSN004",
+                  "value": 1,
+                  "color": "#ff8800",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Maria Fernandez",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "Default",
+                    "shift": "1",
+                    "cumulativeDamage": "1.5800%",
+                    "riskProbability": "47.0%"
+                  }
+                },
+                {
+                  "name": "SSN005",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Charles Xavier",
+                    "age": 25,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "Default",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN006",
+                  "value": 1,
+                  "color": "#72ff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Jane Smith",
+                    "age": 23,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "Default",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0100%",
+                    "riskProbability": "8.5%"
+                  }
+                },
+                {
+                  "name": "SSN007",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Maria Peralta",
+                    "age": 23,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "Default",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN008",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Sergio Carrera",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "Default",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN009",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Juan Perez",
+                    "age": 20,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "Default",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN010",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Juana Peralta",
+                    "age": 19,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "Default",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN011",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Estefania Zurita",
+                    "age": 18,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "Default",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN012",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Josefa Herrera",
+                    "age": 23,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "Default",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN013",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Antonia Zapata",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "Default",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN014",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Antonio Zapata",
+                    "age": 21,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "Default",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN015",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Sergio Ascencio",
+                    "age": 20,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "Default",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN016",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Sergio Ascencio",
+                    "age": 20,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "Default",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Station: ST02",
+              "children": [
+                {
+                  "name": "Default",
+                  "value": 1,
+                  "color": "#f2ff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "",
+                    "age": 0,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST02",
+                    "shift": "1",
+                    "cumulativeDamage": "0.1400%",
+                    "riskProbability": "23.2%"
+                  }
+                },
+                {
+                  "name": "SSN001",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Mauricio Henriquez",
+                    "age": 25,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST02",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN003",
+                  "value": 1,
+                  "color": "#ff4800",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "John Void",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST02",
+                    "shift": "1",
+                    "cumulativeDamage": "2.3400%",
+                    "riskProbability": "51.3%"
+                  }
+                },
+                {
+                  "name": "SSN004",
+                  "value": 1,
+                  "color": "#ff8800",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Maria Fernandez",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST02",
+                    "shift": "1",
+                    "cumulativeDamage": "1.5800%",
+                    "riskProbability": "47.0%"
+                  }
+                },
+                {
+                  "name": "SSN007",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Maria Peralta",
+                    "age": 23,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST02",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN008",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Sergio Carrera",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST02",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN009",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Juan Perez",
+                    "age": 20,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST02",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN010",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Juana Peralta",
+                    "age": 19,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST02",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN011",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Estefania Zurita",
+                    "age": 18,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST02",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN012",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Josefa Herrera",
+                    "age": 23,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST02",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN013",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Antonia Zapata",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST02",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN014",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Antonio Zapata",
+                    "age": 21,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST02",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN015",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Sergio Ascencio",
+                    "age": 20,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST02",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN016",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Sergio Ascencio",
+                    "age": 20,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST02",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Station: ST03",
+              "children": [
+                {
+                  "name": "Default",
+                  "value": 1,
+                  "color": "#ff4800",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "",
+                    "age": 0,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST03",
+                    "shift": "1",
+                    "cumulativeDamage": "2.3500%",
+                    "riskProbability": "51.4%"
+                  }
+                },
+                {
+                  "name": "SSN002",
+                  "value": 1,
+                  "color": "#ff4800",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Ivan Nail",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST03",
+                    "shift": "1",
+                    "cumulativeDamage": "2.3500%",
+                    "riskProbability": "51.4%"
+                  }
+                },
+                {
+                  "name": "SSN003",
+                  "value": 1,
+                  "color": "#ff4800",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "John Void",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST03",
+                    "shift": "1",
+                    "cumulativeDamage": "2.3400%",
+                    "riskProbability": "51.3%"
+                  }
+                },
+                {
+                  "name": "SSN004",
+                  "value": 1,
+                  "color": "#ff8800",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Maria Fernandez",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST03",
+                    "shift": "1",
+                    "cumulativeDamage": "1.5800%",
+                    "riskProbability": "47.0%"
+                  }
+                },
+                {
+                  "name": "SSN005",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Charles Xavier",
+                    "age": 25,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST03",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN007",
+                  "value": 1,
+                  "color": "#ff8800",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Maria Peralta",
+                    "age": 23,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST03",
+                    "shift": "1",
+                    "cumulativeDamage": "1.5800%",
+                    "riskProbability": "47.0%"
+                  }
+                },
+                {
+                  "name": "SSN008",
+                  "value": 1,
+                  "color": "#ff8800",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Sergio Carrera",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST03",
+                    "shift": "1",
+                    "cumulativeDamage": "1.5800%",
+                    "riskProbability": "47.0%"
+                  }
+                },
+                {
+                  "name": "SSN009",
+                  "value": 1,
+                  "color": "#ff8800",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Juan Perez",
+                    "age": 20,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST03",
+                    "shift": "1",
+                    "cumulativeDamage": "1.5800%",
+                    "riskProbability": "47.0%"
+                  }
+                },
+                {
+                  "name": "SSN011",
+                  "value": 1,
+                  "color": "#ff8800",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Estefania Zurita",
+                    "age": 18,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST03",
+                    "shift": "1",
+                    "cumulativeDamage": "1.5800%",
+                    "riskProbability": "47.0%"
+                  }
+                },
+                {
+                  "name": "SSN016",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Sergio Ascencio",
+                    "age": 20,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST03",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Station: ST04",
+              "children": [
+                {
+                  "name": "Default",
+                  "value": 1,
+                  "color": "#f2ff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "",
+                    "age": 0,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST04",
+                    "shift": "1",
+                    "cumulativeDamage": "0.1400%",
+                    "riskProbability": "23.2%"
+                  }
+                },
+                {
+                  "name": "SSN001",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Mauricio Henriquez",
+                    "age": 25,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST04",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN002",
+                  "value": 1,
+                  "color": "#ff4800",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Ivan Nail",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST04",
+                    "shift": "1",
+                    "cumulativeDamage": "2.3500%",
+                    "riskProbability": "51.4%"
+                  }
+                },
+                {
+                  "name": "SSN003",
+                  "value": 1,
+                  "color": "#ff4800",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "John Void",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST04",
+                    "shift": "1",
+                    "cumulativeDamage": "2.3400%",
+                    "riskProbability": "51.3%"
+                  }
+                },
+                {
+                  "name": "SSN004",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Maria Fernandez",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST04",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN005",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Charles Xavier",
+                    "age": 25,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST04",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN006",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Jane Smith",
+                    "age": 23,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST04",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN007",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Maria Peralta",
+                    "age": 23,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST04",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN009",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Juan Perez",
+                    "age": 20,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST04",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN010",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Juana Peralta",
+                    "age": 19,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST04",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN011",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Estefania Zurita",
+                    "age": 18,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST04",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN012",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Josefa Herrera",
+                    "age": 23,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST04",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN013",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Antonia Zapata",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST04",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN014",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Antonio Zapata",
+                    "age": 21,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST04",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN015",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Sergio Ascencio",
+                    "age": 20,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST04",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Station: ST05",
+              "children": [
+                {
+                  "name": "Default",
+                  "value": 1,
+                  "color": "#f2ff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "",
+                    "age": 0,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST05",
+                    "shift": "1",
+                    "cumulativeDamage": "0.1400%",
+                    "riskProbability": "23.2%"
+                  }
+                },
+                {
+                  "name": "SSN001",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Mauricio Henriquez",
+                    "age": 25,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST05",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN002",
+                  "value": 1,
+                  "color": "#ff4800",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Ivan Nail",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST05",
+                    "shift": "1",
+                    "cumulativeDamage": "2.3500%",
+                    "riskProbability": "51.4%"
+                  }
+                },
+                {
+                  "name": "SSN003",
+                  "value": 1,
+                  "color": "#ff4800",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "John Void",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST05",
+                    "shift": "1",
+                    "cumulativeDamage": "2.3400%",
+                    "riskProbability": "51.3%"
+                  }
+                },
+                {
+                  "name": "SSN004",
+                  "value": 1,
+                  "color": "#ff8800",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Maria Fernandez",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST05",
+                    "shift": "1",
+                    "cumulativeDamage": "1.5800%",
+                    "riskProbability": "47.0%"
+                  }
+                },
+                {
+                  "name": "SSN005",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Charles Xavier",
+                    "age": 25,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST05",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN006",
+                  "value": 1,
+                  "color": "#72ff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Jane Smith",
+                    "age": 23,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST05",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0100%",
+                    "riskProbability": "8.5%"
+                  }
+                },
+                {
+                  "name": "SSN007",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Maria Peralta",
+                    "age": 23,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST05",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN008",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Sergio Carrera",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST05",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN009",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Juan Perez",
+                    "age": 20,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST05",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN010",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Juana Peralta",
+                    "age": 19,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST05",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN011",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Estefania Zurita",
+                    "age": 18,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST05",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN012",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Josefa Herrera",
+                    "age": 23,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST05",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN013",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Antonia Zapata",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST05",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN014",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Antonio Zapata",
+                    "age": 21,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST05",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN015",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Sergio Ascencio",
+                    "age": 20,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST05",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Station: ST06",
+              "children": [
+                {
+                  "name": "Default",
+                  "value": 1,
+                  "color": "#f2ff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "",
+                    "age": 0,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST06",
+                    "shift": "1",
+                    "cumulativeDamage": "0.1400%",
+                    "riskProbability": "23.2%"
+                  }
+                },
+                {
+                  "name": "SSN001",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Mauricio Henriquez",
+                    "age": 25,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST06",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN002",
+                  "value": 1,
+                  "color": "#ff4800",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Ivan Nail",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST06",
+                    "shift": "1",
+                    "cumulativeDamage": "2.3500%",
+                    "riskProbability": "51.4%"
+                  }
+                },
+                {
+                  "name": "SSN003",
+                  "value": 1,
+                  "color": "#ff4800",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "John Void",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST06",
+                    "shift": "1",
+                    "cumulativeDamage": "2.3400%",
+                    "riskProbability": "51.3%"
+                  }
+                },
+                {
+                  "name": "SSN004",
+                  "value": 1,
+                  "color": "#ff8800",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Maria Fernandez",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST06",
+                    "shift": "1",
+                    "cumulativeDamage": "1.5800%",
+                    "riskProbability": "47.0%"
+                  }
+                },
+                {
+                  "name": "SSN005",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Charles Xavier",
+                    "age": 25,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST06",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN006",
+                  "value": 1,
+                  "color": "#72ff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Jane Smith",
+                    "age": 23,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST06",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0100%",
+                    "riskProbability": "8.5%"
+                  }
+                },
+                {
+                  "name": "SSN007",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Maria Peralta",
+                    "age": 23,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST06",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN008",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Sergio Carrera",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST06",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN009",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Juan Perez",
+                    "age": 20,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST06",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN010",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Juana Peralta",
+                    "age": 19,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST06",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN011",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Estefania Zurita",
+                    "age": 18,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST06",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN012",
+                  "value": 1,
+                  "color": "#9dff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Josefa Herrera",
+                    "age": 23,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST06",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0300%",
+                    "riskProbability": "13.2%"
+                  }
+                },
+                {
+                  "name": "SSN013",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "Antonia Zapata",
+                    "age": 22,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST06",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN014",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Antonio Zapata",
+                    "age": 21,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST06",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                },
+                {
+                  "name": "SSN015",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Sergio Ascencio",
+                    "age": 20,
+                    "section": "Default",
+                    "line": "Default",
+                    "station": "ST06",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "SecondSection",
+      "children": [
+        {
+          "name": "Line: SecondLine",
+          "children": [
+            {
+              "name": "Station: SecondStation",
+              "children": [
+                {
+                  "name": "Default",
+                  "value": 1,
+                  "color": "#72ff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "",
+                    "age": 0,
+                    "section": "SecondSection",
+                    "line": "SecondLine",
+                    "station": "SecondStation",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0100%",
+                    "riskProbability": "8.5%"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ThirdSection",
+      "children": [
+        {
+          "name": "Line: ThirdSectionLine1",
+          "children": [
+            {
+              "name": "Station: ThirdSectionLine1St1",
+              "children": [
+                {
+                  "name": "Default",
+                  "value": 1,
+                  "color": "#72ff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "",
+                    "age": 0,
+                    "section": "ThirdSection",
+                    "line": "ThirdSectionLine1",
+                    "station": "ThirdSectionLine1St1",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0100%",
+                    "riskProbability": "8.5%"
+                  }
+                },
+                {
+                  "name": "SSN001",
+                  "value": 1,
+                  "color": "#ffd000",
+                  "gender": "male",
+                  "meta": {
+                    "fullName": "Mauricio Henriquez",
+                    "age": 25,
+                    "section": "ThirdSection",
+                    "line": "ThirdSectionLine1",
+                    "station": "ThirdSectionLine1St1",
+                    "shift": "1",
+                    "cumulativeDamage": "0.9000%",
+                    "riskProbability": "40.8%"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Station: ThirdSectionLine1St2",
+              "children": [
+                {
+                  "name": "Default",
+                  "value": 1,
+                  "color": "#72ff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "",
+                    "age": 0,
+                    "section": "ThirdSection",
+                    "line": "ThirdSectionLine1",
+                    "station": "ThirdSectionLine1St2",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0100%",
+                    "riskProbability": "8.5%"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Station: ThirdSectionLine1St3",
+              "children": [
+                {
+                  "name": "Default",
+                  "value": 1,
+                  "color": "#72ff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "",
+                    "age": 0,
+                    "section": "ThirdSection",
+                    "line": "ThirdSectionLine1",
+                    "station": "ThirdSectionLine1St3",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0100%",
+                    "riskProbability": "8.5%"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Line: ThirdSectionLine2",
+          "children": [
+            {
+              "name": "Station: ThirdSectionLine2St1",
+              "children": [
+                {
+                  "name": "Default",
+                  "value": 1,
+                  "color": "#72ff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "",
+                    "age": 0,
+                    "section": "ThirdSection",
+                    "line": "ThirdSectionLine2",
+                    "station": "ThirdSectionLine2St1",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0100%",
+                    "riskProbability": "8.5%"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Station: ThirdSectionLine2St2",
+              "children": [
+                {
+                  "name": "Default",
+                  "value": 1,
+                  "color": "#72ff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "",
+                    "age": 0,
+                    "section": "ThirdSection",
+                    "line": "ThirdSectionLine2",
+                    "station": "ThirdSectionLine2St2",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0100%",
+                    "riskProbability": "8.5%"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Line: ThirdSectionLine3",
+          "children": [
+            {
+              "name": "Station: ThirdSectionLine3St1",
+              "children": [
+                {
+                  "name": "Default",
+                  "value": 1,
+                  "color": "#72ff00",
+                  "gender": "female",
+                  "meta": {
+                    "fullName": "",
+                    "age": 0,
+                    "section": "ThirdSection",
+                    "line": "ThirdSectionLine3",
+                    "station": "ThirdSectionLine3St1",
+                    "shift": "1",
+                    "cumulativeDamage": "0.0100%",
+                    "riskProbability": "8.5%"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+};
+
+  // -------------------------------------------------------------------
+  // Build the hierarchy and compute sums for circle packing
+  // -------------------------------------------------------------------
+  const rootHierarchy = d3.hierarchy(data)
+    .sum(d => d.value || 0)
+    .sort((a, b) => b.value - a.value);
+
+  // For parent nodes (non-leaf), compute their color as the average of their children's colors.
+  // We use d3.rgb() to convert hex to RGB, average the r, g, and b components,
+  // then convert back to a hex string.
+  rootHierarchy.eachAfter(d => {
+    if (d.children) {
+      const childColors = d.children
+        .filter(c => c.data.color) // only consider children with color defined
+        .map(c => d3.rgb(c.data.color));
+      if (childColors.length > 0) {
+        const avgR = d3.mean(childColors, c => c.r);
+        const avgG = d3.mean(childColors, c => c.g);
+        const avgB = d3.mean(childColors, c => c.b);
+        d.data.color = d3.rgb(avgR, avgG, avgB).formatHex();
+      }
+    }
+  });
+
+  // -------------------------------------------------------------------
+  // Create packed nodes; sort so parents are drawn behind children
+  // -------------------------------------------------------------------
+  const nodes = pack(rootHierarchy).descendants()
+    .sort((a, b) => a.depth - b.depth);
+
+  // -------------------------------------------------------------------
+  // Create main SVG and group
+  // -------------------------------------------------------------------
+  const svg = d3.select("body")
+    .append("svg")
+    .attr("viewBox", [0, 0, width, height])
+    .style("display", "block")
+    .style("margin", "0 auto");
+
+  const g = svg.append("g");
+
+  // -------------------------------------------------------------------
+  // Shape generators: arc for circles, triangle symbol for male workers
+  // -------------------------------------------------------------------
+  const arcGenerator = d3.arc().innerRadius(0);
+  const triangleSymbol = d3.symbol().type(d3.symbolTriangle);
+
+  // -------------------------------------------------------------------
+  // Create path elements for each node
+  // -------------------------------------------------------------------
+  const path = g.selectAll("path.node")
+    .data(nodes)
+    .join("path")
+    .attr("class", "node")
+    .attr("stroke", "#fff")
+    // Parents are semi-transparent, leaves fully opaque
+    .attr("fill-opacity", d => d.children ? 0.3 : 1)
+    // Use the node's "color" property (computed for parents or provided for workers)
+    .attr("fill", d => d.data.color || "#ccc")
+    // Root node won't block background clicks
+    .attr("pointer-events", d => d.depth === 0 ? "none" : "all");
+
+  // -------------------------------------------------------------------
+  // Create text labels (multi-line for workers, single-line for parents)
+  // Initially, only show children of the root.
+  // -------------------------------------------------------------------
+  const label = g.selectAll("text")
+    .data(nodes)
+    .join("text")
+    .attr("text-anchor", "middle")
+    .attr("font-family", "sans-serif")
+    .attr("font-size", 10)
+    .attr("fill-opacity", d => d.parent === rootHierarchy ? 1 : 0)
+    .attr("display", d => d.parent === rootHierarchy ? "inline" : "none")
+    .each(function(d) {
+      const sel = d3.select(this);
+      sel.selectAll("*").remove();
+      if (d.children) {
+        sel.append("tspan").text(d.data.name);
+      } else {
+        const meta = d.data.meta || {};
+        sel.append("tspan").text(d.data.name);
+        sel.append("tspan").attr("x", 0).attr("dy", "1.2em").text("Name: " + (meta.fullName || ""));
+        sel.append("tspan").attr("x", 0).attr("dy", "1.2em").text("Age: " + (meta.age || ""));
+        sel.append("tspan").attr("x", 0).attr("dy", "1.2em").text("Section: " + (meta.section || ""));
+        sel.append("tspan").attr("x", 0).attr("dy", "1.2em").text("Station: " + (meta.station || ""));
+        sel.append("tspan").attr("x", 0).attr("dy", "1.2em").text("Shift: " + (meta.shift || ""));
+        sel.append("tspan").attr("x", 0).attr("dy", "1.2em").text("Cumul. Damage: " + (meta.cumulativeDamage || ""));
+        sel.append("tspan").attr("x", 0).attr("dy", "1.2em").text("Risk Prob.: " + (meta.riskProbability || ""));
+      }
+    });
+
+  let focus = rootHierarchy, view;
+
+  // -------------------------------------------------------------------
+  // zoomTo() repositions nodes and labels based on view v = [x, y, diameter]
+  // -------------------------------------------------------------------
+  function zoomTo(v) {
+    const k = width / v[2];
+    view = v;
+    path
+      .attr("transform", d => {
+        const tx = width / 2 + (d.x - v[0]) * k;
+        const ty = height / 2 + (d.y - v[1]) * k;
+        return `translate(${tx},${ty})`;
+      })
+      .attr("d", d => {
+        const radius = d.r * k;
+        if (d.children) {
+          return arcGenerator({ outerRadius: radius, startAngle: 0, endAngle: 2 * Math.PI });
+        } else {
+          if (d.data.gender === "male") {
+            // Option B: Inscribed triangle so that it fits inside the circle
+            const eqTriangleArea = (3 * Math.sqrt(3) / 4) * radius * radius;
+            triangleSymbol.size(eqTriangleArea);
+            return triangleSymbol();
+          } else {
+            return arcGenerator({ outerRadius: radius, startAngle: 0, endAngle: 2 * Math.PI });
+          }
+        }
+      });
+
+    label.attr("transform", d => {
+      const tx = width / 2 + (d.x - v[0]) * k;
+      const ty = height / 2 + (d.y - v[1]) * k;
+      return `translate(${tx},${ty})`;
+    });
+  }
+
+  // -------------------------------------------------------------------
+  // zoom() transitions from current view to new focus d
+  // -------------------------------------------------------------------
+  function zoom(event, d) {
+    focus = d;
+    const transition = svg.transition()
+      .duration(event.altKey ? 7500 : 750)
+      .tween("zoom", () => {
+        const i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2]);
+        return t => zoomTo(i(t));
+      });
+
+    transition.selectAll("text")
+      .attr("fill-opacity", d => d.parent === focus ? 1 : 0)
+      .on("end", function(d) {
+        d3.select(this).attr("display", d.parent === focus ? "inline" : "none");
+      });
+  }
+
+  // -------------------------------------------------------------------
+  // Event handling: clicking the background zooms to root;
+  // clicking a node zooms in.
+  // -------------------------------------------------------------------
+  svg.on("click", (event) => {
+    if (focus !== rootHierarchy) zoom(event, rootHierarchy);
+  });
+
+  path.on("click", (event, d) => {
+    event.stopPropagation();
+    if (focus !== d) {
+      zoom(event, d);
+    }
+  });
+
+  // -------------------------------------------------------------------
+  // Initial zoom so everything fits
+  // -------------------------------------------------------------------
+  zoomTo([rootHierarchy.x, rootHierarchy.y, rootHierarchy.r * 2]);
+</script>
+
+
+</body>
+</html>
+

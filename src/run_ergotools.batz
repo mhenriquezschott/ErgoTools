@@ -1,0 +1,6 @@
+@echo off
+REM Jump to the folder this BAT file lives in
+cd /d "%~dp0"                    REM %~dp0 = drive+path of this script  :contentReference[oaicite:2]{index=2}
+
+REM Launch GUI version of Python so no console flashes
+start "" "%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe" "main.py" %*
