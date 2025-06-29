@@ -58,6 +58,8 @@ Option A: Download ZIP
 2. Click the green "Code" button and select "Download ZIP".
 3. Extract the ZIP file to a known folder, for example:
    C:\Users\YourName\Documents\ErgoTools
+4. Or download:
+   https://github.com/mhenriquezschott/ErgoTools/archive/refs/heads/main.zip   
 
 Option B: Clone using Git
 
