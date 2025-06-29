@@ -4,16 +4,6 @@ The Job Rotation Optimization Tool (JROT) helps design and analyze job rotation 
 It leverages established fatigue failure tools (LiFFT, DUET, and ST) to quantify exposure and includes optimization features to minimize average and peak risks across rotations. 
 JROT provides detailed visual tables with risk color coding, average calculations, and tailored suggestions to support the creation of more balanced, lower-risk job rotation schemes.
 
-
-# ErgoTools
-
-ErgoTools is a Python-based software suite that includes ergonomic analysis modules:
-
-- PLOT (Plant-Layout Organizational Tool): visualizes ergonomic risk distributions across a plant layout, with filters by gender, area, line, age, and summary statistics.
-- JROT (Job Rotation Optimization Tool): designs and optimizes job rotation schemes to help reduce ergonomic risk by balancing work assignments.
-
-ErgoTools is under active development and aims to support ergonomists and engineers in making data-driven decisions.
-
 ## Installation Guide
 
 ### 1. Install Python 3.10
