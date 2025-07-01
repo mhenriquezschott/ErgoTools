@@ -392,17 +392,35 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.help_menu = self.menu_bar.addMenu('Help')
 
         # User Guide action
-        self.user_guide_action = QAction('User Guide', self)
+        self.user_guide_action = QAction('ErgoTools User Guide', self)
         self.user_guide_action.triggered.connect(self.openHelpPDF)
         self.help_menu.addAction(self.user_guide_action)
 
+        # User Guide action
+        self.jrot_guide_action = QAction('JROT User Guide', self)
+        self.jrot_guide_action.triggered.connect(self.openHelpPDFJrot)
+        self.help_menu.addAction(self.jrot_guide_action)
+        
+        
+        self.help_menu.addSeparator()
+        
         # About action
-        self.about_action = QAction('About', self)
+        self.about_action = QAction('About ErgoTools', self)
         self.authorsDialog = QDialog(self)
         self.authorsDialog.setWindowTitle("Authors")
-        self.authorsLabel = QLabel("Ivan Nail, Ph.D.")
+        self.authorsLabel = QLabel("")
         self.about_action.triggered.connect(self.showAuthorsDialog)
         self.help_menu.addAction(self.about_action)
+        
+        self.aboutjrot_action = QAction('About JROT', self)
+        
+        self.authorsDialogJrot = QDialog(self)
+        self.authorsDialogJrot.setWindowTitle("Authors")
+        self.authorsLabelJrot = QLabel("")
+        self.aboutjrot_action.triggered.connect(self.showAuthorsDialogJrot)
+        
+        self.help_menu.addAction(self.aboutjrot_action)
+
 
     def cut(self):
         QMessageBox.information(self, "Edit Action", "Cut action triggered")
@@ -1989,10 +2007,97 @@ class ErgoTools(QtWidgets.QMainWindow):
                 QMessageBox.critical(self, "Export Error" if self.languageComboBox.currentIndex() == 0 else "Error de Exportación", f"An error occurred while exporting ST to CSV: {e}" if self.languageComboBox.currentIndex() == 0 else f"Ocurrió un error al exportar los datos de ST a CSV: {e}")
 
         
+    def showAuthorsDialogJrot(self):
+        # Set up the dialog window
+        self.authorsDialogJrot = QtWidgets.QDialog(self)
+        self.authorsDialogJrot.setStyleSheet("background-color: white;")
     
+        # Layout for the dialog
+        layout = QtWidgets.QVBoxLayout()
+    
+        # Authors text
+        authorsText = (
+            "<b>Research contributors to Job Rotation Optimization:</b><br><br>"
+            "Henriquez-Schott, M.<br>"
+            "Nail-Ulloa, I.<br>"
+            "Kotowski, S.E.<br>"
+            "Gallagher, S.<br>"
+            "Jorgensen, M.<br>"
+            "Davis, K.G.<br><br>"
+            "Based on research involving comprehensive evaluations of job rotation "
+            "as an administrative ergonomic intervention."
+        )
+    
+        self.authorsLabelJrot = QtWidgets.QLabel(authorsText)
+        self.authorsLabelJrot.setWordWrap(True)
+        self.authorsLabelJrot.setTextFormat(QtCore.Qt.RichText)
+        layout.addWidget(self.authorsLabelJrot)
+
+        # Add logo
+        logo_label = QtWidgets.QLabel()
+        logo_path = '../images/ergologomain01.png'
+        #pixmap = QPixmap(logo_path)
+        #if pixmap.isNull():
+        #    print("Failed to load the image:", logo_path)
+        #else:
+        #    logo_label.setPixmap(pixmap.scaled(500, 500, QtCore.Qt.KeepAspectRatio))
+        #    logo_label.setAlignment(QtCore.Qt.AlignCenter)
+        #    layout.addWidget(logo_label)
+    
+        # Set dialog layout and size
+        self.authorsDialogJrot.setLayout(layout)
+        self.authorsDialogJrot.setFixedSize(600, 700)
+        self.authorsDialogJrot.exec_()
+
     
     # Method to show authors dialog
     def showAuthorsDialog(self):
+        # Set the dialog window background color to white
+        self.authorsDialog.setStyleSheet("background-color: white;")
+
+        # Layout for the dialog
+        layout = QVBoxLayout()
+
+        # Add a label with formatted multiline text
+        authorsText = (
+            "<b>Developed by:</b><br><br>"
+            "Dr. Mauricio Henriquez-Schott & Dr. Ivan Nail-Ulloa<br><br>"
+            "Project funded by INES 52 R+D, through the Office of Research and Innovation of Universidad Austral de Chile, "
+            "and the National Agency of Innovation and Development (ANID).<br><br>"
+            "Based on the Fatigue Failure tools from Auburn University, led by Sean Gallagher, Richard Sesek, "
+            "Mark Schall, Dania Bani Hani and Rong Huangfu.<br><br>"
+            "Original tools can be found here:<br>"
+            "<a href='https://eng.auburn.edu/occupational-safety-ergonomics-injury-prevention/research/research-2.html'>"
+            "https://eng.auburn.edu/occupational-safety-ergonomics-injury-prevention/research/research-2.html</a>"
+        )
+
+        self.authorsLabel = QLabel(authorsText)
+        self.authorsLabel.setWordWrap(True)
+        self.authorsLabel.setTextFormat(Qt.RichText)
+        self.authorsLabel.setOpenExternalLinks(True)  # Makes the link clickable
+        layout.addWidget(self.authorsLabel)
+
+        # Add a central logo
+        logo_label = QLabel()
+        logo_path = '../images/ergologomain01.png'
+        pixmap = QPixmap(logo_path)  # Replace with your logo's path
+        if pixmap.isNull():
+            print("Failed to load the image:", logo_path)
+            return
+
+        # Scale the image and align it to the center
+        logo_label.setPixmap(pixmap.scaled(500, 500, Qt.KeepAspectRatio))
+        logo_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(logo_label)
+
+        # Set the layout and size
+        self.authorsDialog.setLayout(layout)
+        self.authorsDialog.setFixedSize(600, 700)  # Adjust size as needed
+        self.authorsDialog.exec_()
+    
+    
+    # Method to show authors dialog
+    def showAuthorsDialogOld(self):
         # Set the dialog window background color to white
         self.authorsDialog.setStyleSheet("background-color: white;")
 
@@ -2056,6 +2161,27 @@ class ErgoTools(QtWidgets.QMainWindow):
         else:  # Linux variants
             subprocess.run(['xdg-open', help_pdf_path], check=True)
         
+    
+    #TODO: Single function!!!
+    # Method to open help PDF
+    def openHelpPDFJrot(self): # Get the directory of the current script
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        help_pdf_path = os.path.join(dir_path, '../assets', 'jrothelp01.pdf')
+
+        # Check if the file exists
+        if not os.path.exists(help_pdf_path):
+            #QMessageBox.critical(self, "File Not Found", f"Could not find the help file: {help_pdf_path}")
+            QMessageBox.critical(self, "File Not Found" if self.languageComboBox.currentIndex() == 0 else "Archivo No Encontrado", f"Could not find the help file: {help_pdf_path}" if self.languageComboBox.currentIndex() == 0 else f"No se pudo encontrar el archivo de ayuda: {help_pdf_path}")
+            return
+
+        if sys.platform == 'darwin':  # macOS
+            subprocess.run(['open', help_pdf_path], check=True)
+        elif sys.platform == 'win32':  # Windows
+            os.startfile(help_pdf_path)
+        else:  # Linux variants
+            subprocess.run(['xdg-open', help_pdf_path], check=True)
+
+    
     def setupAnimationTimers(self):
         self.animationTimer = QTimer(self)  # Timer for smooth transitions
         self.animationTimer.timeout.connect(self.updateRotation)
