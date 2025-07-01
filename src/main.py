@@ -413,12 +413,10 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.help_menu.addAction(self.about_action)
         
         self.aboutjrot_action = QAction('About JROT', self)
-        
         self.authorsDialogJrot = QDialog(self)
         self.authorsDialogJrot.setWindowTitle("Authors")
         self.authorsLabelJrot = QLabel("")
         self.aboutjrot_action.triggered.connect(self.showAuthorsDialogJrot)
-        
         self.help_menu.addAction(self.aboutjrot_action)
 
 
@@ -2009,7 +2007,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         
     def showAuthorsDialogJrot(self):
         # Set up the dialog window
-        self.authorsDialogJrot = QtWidgets.QDialog(self)
+        #self.authorsDialogJrot = QtWidgets.QDialog(self)
         self.authorsDialogJrot.setStyleSheet("background-color: white;")
     
         # Layout for the dialog
