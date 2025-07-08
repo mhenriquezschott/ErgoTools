@@ -1975,10 +1975,10 @@ class RotationLayoutWindow(QDialog):
 
         
         #TODO: Multi-Op debug prints!!
-        #print_schedule("Original Average Risk per Worker", current_assignments, tool_risk)
-        #print_schedule("Optimized Average Risk per Worker", optimized_schedule, tool_risk)
+        print_schedule("Original Average Risk per Worker", current_assignments, tool_risk)
+        print_schedule("Optimized Average Risk per Worker", optimized_schedule, tool_risk)
     
-        #print("\n=== Optimization Completed ===\n")
+        print("\n=== Optimization Completed ===\n")
     
         self.compare_all_window = CompareOpAllRotationWindow(
             current_assignments=current_assignments,
@@ -2085,22 +2085,11 @@ class RotationLayoutWindow(QDialog):
                     print(f"{w}: {jobs_str} -> Avg: {avgs[tool][w]:.1f}%")
                     
     
-        def print_scheduleOld(title, schedule, tool_risk):
-            print(f"\n=== {title} ===")
-            avgs = average_risk(schedule, tool_risk)
-            for t in tool_risk:
-                print(f"\n[{t}]")
-                for w in sorted(schedule):
-                    #print(f"{w}: {schedule[w]} -> Avg: {avgs[t][w]}%")
-                    jobs_str = annotated(schedule[w], risk_map)
-                    print(f"{w}: {jobs_str} -> Avg: {avgs[t][w]:.1f}%")
-                    
-                    
+                          
         print_schedule("Original Average Risk per Worker", current_assignments, tool_risk)
 
         # Step 3: Run multi-objective optimizer
-        #from myoptimizer import optimise_multi_tool  # or however you organize it
-
+        
         optimized_schedule = self.optimise_multi_tool(
             worker_ids=worker_ids,
             job_list=job_list,
@@ -2183,8 +2172,8 @@ class RotationLayoutWindow(QDialog):
                     s.options["mip_rel_gap"] = mip_gap
         
             # -- suppress HiGHS banner / trace on Windows ----------------------
-            if name.startswith("highs"):
-                s.options["log_to_console"] = "off"   # prevent WinError 1
+            #if name.startswith("highs"):
+            #    s.options["log_to_console"] = "off"   # prevent WinError 1
         
             return s
     
@@ -2249,7 +2238,7 @@ class RotationLayoutWindow(QDialog):
         #res1 = solver.solve(m, tee=verbose)
         solver = _make_solver(solver_name)
         tee_flag = verbose and not solver_name.startswith("highs")
-        tee_flag = False
+        tee_flag = True
         res1 = solver.solve(m, tee=tee_flag)          #  no logfile=
 
         if verbose:
@@ -2270,7 +2259,7 @@ class RotationLayoutWindow(QDialog):
         #res2 = solver.solve(m, tee=tee_flag, logfile="highs_stage2.log" if solver_name.startswith("highs") else None)
         solver = _make_solver(solver_name)
         tee_flag = verbose and not solver_name.startswith("highs")
-        tee_flag = False
+        #tee_flag = False
         res2 = solver.solve(m, tee=tee_flag)          #  no logfile=
 
         if verbose:
@@ -2736,10 +2725,10 @@ class MultiToolOptimizationWorker(QtCore.QObject):
             job_list=job_list,
             num_blocks=self.num_blocks,
             tool_risk=tool_risk,
-            solver_name="glpk",  # or "glpk", "cbc", "highs", etc.
-            time_limit=parent.getTimeLimitInSeconds(for_multitool=True, solver_name="glpk"),
+            solver_name="highs",  # or "glpk", "cbc", "highs", etc.
+            time_limit=parent.getTimeLimitInSeconds(for_multitool=True, solver_name="highs"),
             mip_gap=0.01,
-            verbose=False
+            verbose=True
         )
 
 
