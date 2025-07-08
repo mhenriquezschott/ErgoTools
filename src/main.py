@@ -34,15 +34,11 @@ from section_window import SectionWindow
 from line_window import LineWindow
 from station_window import StationWindow
 from shift_window import ShiftWindow
-from job_window import JobWindow
 
 from tooltransferdialog import ToolTransferDialog
 from workertransferdialog import WorkerTransferDialog
 from tooldatadialog import ToolDataDialog
-
-
-from rotation_layout import RotationLayoutWindow  
- 
+        
 class ErgoTools(QtWidgets.QMainWindow):
     
     def retranslateUI(self):
@@ -342,10 +338,10 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.language_english_action = QAction('English', self, checkable=True)
         self.language_english_action.triggered.connect(self.setLanguageEnglish)
 
-        #self.language_group.addAction(self.language_spanish_action)
+        self.language_group.addAction(self.language_spanish_action)
         self.language_group.addAction(self.language_english_action)
 
-        #self.language_menu.addAction(self.language_spanish_action)
+        self.language_menu.addAction(self.language_spanish_action)
         self.language_menu.addAction(self.language_english_action)
 
         # Set the system language
@@ -354,7 +350,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         else:
             self.language_english_action.setChecked(True)
 
-        
         # Metric System submenu
         self.metric_system_menu = self.preferences_menu.addMenu('Measurement System')
         self.metric_system_group = QActionGroup(self)
@@ -379,46 +374,25 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.tools_menu = self.menu_bar.addMenu('Tools')
 
         # Plant Layout action
-        #self.plant_layout_action = QAction('Plant Layout', self)
-        #self.plant_layout_action.triggered.connect(self.openPlantLayout)
-        #self.tools_menu.addAction(self.plant_layout_action)
+        self.plant_layout_action = QAction('Plant Layout', self)
+        self.plant_layout_action.triggered.connect(self.openPlantLayout)
+        self.tools_menu.addAction(self.plant_layout_action)
 
-        # Rotation Layout action
-        self.rotation_layout_action = QAction('Job Rotation Optimization Tool (JROT)', self)
-        self.rotation_layout_action.triggered.connect(self.openRotationLayout)
-        self.tools_menu.addAction(self.rotation_layout_action)
-        
         # Creating the "Help" menu
         self.help_menu = self.menu_bar.addMenu('Help')
 
         # User Guide action
-        self.user_guide_action = QAction('ErgoTools User Guide', self)
+        self.user_guide_action = QAction('User Guide', self)
         self.user_guide_action.triggered.connect(self.openHelpPDF)
         self.help_menu.addAction(self.user_guide_action)
 
-        # User Guide action
-        self.jrot_guide_action = QAction('JROT User Guide', self)
-        self.jrot_guide_action.triggered.connect(self.openHelpPDFJrot)
-        self.help_menu.addAction(self.jrot_guide_action)
-        
-        
-        self.help_menu.addSeparator()
-        
         # About action
-        self.about_action = QAction('About ErgoTools', self)
+        self.about_action = QAction('About', self)
         self.authorsDialog = QDialog(self)
         self.authorsDialog.setWindowTitle("Authors")
-        self.authorsLabel = QLabel("")
+        self.authorsLabel = QLabel("Ivan Nail, Ph.D.")
         self.about_action.triggered.connect(self.showAuthorsDialog)
         self.help_menu.addAction(self.about_action)
-        
-        self.aboutjrot_action = QAction('About JROT', self)
-        self.authorsDialogJrot = QDialog(self)
-        self.authorsDialogJrot.setWindowTitle("Authors")
-        self.authorsLabelJrot = QLabel("")
-        self.aboutjrot_action.triggered.connect(self.showAuthorsDialogJrot)
-        self.help_menu.addAction(self.aboutjrot_action)
-
 
     def cut(self):
         QMessageBox.information(self, "Edit Action", "Cut action triggered")
@@ -1421,59 +1395,6 @@ class ErgoTools(QtWidgets.QMainWindow):
 
     
     
-    
-    
-    def getJobs(self):
-        """
-        Retrieves all jobs from the database.
-    
-        Returns:
-            list: A list of job IDs.
-        """
-        if not self.projectFileCreated:
-            QMessageBox.warning(self, "Error", "No project file has been created or loaded. Please create or load a project before managing  jobs.")
-            return
-    
-        if not hasattr(self, 'projectdatabasePath') or not self.projectdatabasePath:
-            QMessageBox.critical(self, "Error", "Database path is not set. Unable to retrieve job data.")
-            return
-    
-        try:
-            conn = sqlite3.connect(self.projectdatabasePath)
-            cursor = conn.cursor()
-            query = "SELECT id FROM Job"
-            cursor.execute(query)
-            jobs = cursor.fetchall()
-            conn.close()
-    
-            return [str(row[0]) for row in jobs]
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to retrieve jobs:\n{str(e)}")
-            return []
-
-    
-    
-    def loadJobs(self):
-        """
-        Loads all jobs into the job combo box.
-        """
-        #print("here?")
-        jobs_list = self.getJobs()
-        if jobs_list is not None:
-            self.job_combo.clear()
-            self.job_combo.addItem("")  # Add empty option first
-            self.job_combo.addItems(jobs_list)
-            self.job_combo.setCurrentIndex(-1)  # Set to empty by default
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
     def openFile(self):
         # Open a file dialog to select a project file
         options = QFileDialog.Options()
@@ -1556,9 +1477,6 @@ class ErgoTools(QtWidgets.QMainWindow):
             #self.loadStations()
             self.loadShifts()
             
-            
-            
-            self.loadJobs()
             
             
             self.loadToolsData()
@@ -1824,33 +1742,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.loadToolsData()
         
     
-    def openRotationLayout(self):
-        #self.plant_layout_window = PlantLayoutWindow()
-        #self.plant_layout_window.show()
-        
-        #plant_layout_dialog = PlantLayoutWindow(self)
-        #plant_layout_dialog.exec_()  # Show the dialog as modal
-        
-        
-        #Dialog = QtWidgets.QDialog()
-        #ui = PlantLayoutWindow(self)
-        #ui.setupUi(Dialog)
-        ##Dialog.show()
-        #Dialog.exec_()
-        
-        self.editToolID = ""
-        self.editUnit = ""
-        
-        rotation_layout_dialog = RotationLayoutWindow(self)
-        rotation_layout_dialog.exec_()  # Show the dialog as modal
-        
-        if not self.projectFileCreated:
-            return
-            
-        #self.loadEditVarsToUI()
-        
-        
-        
+
 
     def exportToCSV(self):
         currentTabIndex = self.tabWidget.currentIndex()
@@ -2005,97 +1897,10 @@ class ErgoTools(QtWidgets.QMainWindow):
                 QMessageBox.critical(self, "Export Error" if self.languageComboBox.currentIndex() == 0 else "Error de Exportación", f"An error occurred while exporting ST to CSV: {e}" if self.languageComboBox.currentIndex() == 0 else f"Ocurrió un error al exportar los datos de ST a CSV: {e}")
 
         
-    def showAuthorsDialogJrot(self):
-        # Set up the dialog window
-        #self.authorsDialogJrot = QtWidgets.QDialog(self)
-        self.authorsDialogJrot.setStyleSheet("background-color: white;")
     
-        # Layout for the dialog
-        layout = QtWidgets.QVBoxLayout()
-    
-        # Authors text
-        authorsText = (
-            "<b>Research contributors to Job Rotation Optimization:</b><br><br>"
-            "Henriquez-Schott, M.<br>"
-            "Nail-Ulloa, I.<br>"
-            "Kotowski, S.E.<br>"
-            "Gallagher, S.<br>"
-            "Jorgensen, M.<br>"
-            "Davis, K.G.<br><br>"
-            "Based on research involving comprehensive evaluations of job rotation "
-            "as an administrative ergonomic intervention."
-        )
-    
-        self.authorsLabelJrot = QtWidgets.QLabel(authorsText)
-        self.authorsLabelJrot.setWordWrap(True)
-        self.authorsLabelJrot.setTextFormat(QtCore.Qt.RichText)
-        layout.addWidget(self.authorsLabelJrot)
-
-        # Add logo
-        logo_label = QtWidgets.QLabel()
-        logo_path = '../images/ergologomain01.png'
-        #pixmap = QPixmap(logo_path)
-        #if pixmap.isNull():
-        #    print("Failed to load the image:", logo_path)
-        #else:
-        #    logo_label.setPixmap(pixmap.scaled(500, 500, QtCore.Qt.KeepAspectRatio))
-        #    logo_label.setAlignment(QtCore.Qt.AlignCenter)
-        #    layout.addWidget(logo_label)
-    
-        # Set dialog layout and size
-        self.authorsDialogJrot.setLayout(layout)
-        self.authorsDialogJrot.setFixedSize(600, 700)
-        self.authorsDialogJrot.exec_()
-
     
     # Method to show authors dialog
     def showAuthorsDialog(self):
-        # Set the dialog window background color to white
-        self.authorsDialog.setStyleSheet("background-color: white;")
-
-        # Layout for the dialog
-        layout = QVBoxLayout()
-
-        # Add a label with formatted multiline text
-        authorsText = (
-            "<b>Developed by:</b><br><br>"
-            "Dr. Mauricio Henriquez-Schott & Dr. Ivan Nail-Ulloa<br><br>"
-            "Project funded by INES 52 R+D, through the Office of Research and Innovation of Universidad Austral de Chile, "
-            "and the National Agency of Innovation and Development (ANID).<br><br>"
-            "Based on the Fatigue Failure tools from Auburn University, led by Sean Gallagher, Richard Sesek, "
-            "Mark Schall, Dania Bani Hani and Rong Huangfu.<br><br>"
-            "Original tools can be found here:<br>"
-            "<a href='https://eng.auburn.edu/occupational-safety-ergonomics-injury-prevention/research/research-2.html'>"
-            "https://eng.auburn.edu/occupational-safety-ergonomics-injury-prevention/research/research-2.html</a>"
-        )
-
-        self.authorsLabel = QLabel(authorsText)
-        self.authorsLabel.setWordWrap(True)
-        self.authorsLabel.setTextFormat(Qt.RichText)
-        self.authorsLabel.setOpenExternalLinks(True)  # Makes the link clickable
-        layout.addWidget(self.authorsLabel)
-
-        # Add a central logo
-        logo_label = QLabel()
-        logo_path = '../images/ergologomain01.png'
-        pixmap = QPixmap(logo_path)  # Replace with your logo's path
-        if pixmap.isNull():
-            print("Failed to load the image:", logo_path)
-            return
-
-        # Scale the image and align it to the center
-        logo_label.setPixmap(pixmap.scaled(500, 500, Qt.KeepAspectRatio))
-        logo_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(logo_label)
-
-        # Set the layout and size
-        self.authorsDialog.setLayout(layout)
-        self.authorsDialog.setFixedSize(600, 700)  # Adjust size as needed
-        self.authorsDialog.exec_()
-    
-    
-    # Method to show authors dialog
-    def showAuthorsDialogOld(self):
         # Set the dialog window background color to white
         self.authorsDialog.setStyleSheet("background-color: white;")
 
@@ -2159,27 +1964,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         else:  # Linux variants
             subprocess.run(['xdg-open', help_pdf_path], check=True)
         
-    
-    #TODO: Single function!!!
-    # Method to open help PDF
-    def openHelpPDFJrot(self): # Get the directory of the current script
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        help_pdf_path = os.path.join(dir_path, '../assets', 'jrothelp01.pdf')
-
-        # Check if the file exists
-        if not os.path.exists(help_pdf_path):
-            #QMessageBox.critical(self, "File Not Found", f"Could not find the help file: {help_pdf_path}")
-            QMessageBox.critical(self, "File Not Found" if self.languageComboBox.currentIndex() == 0 else "Archivo No Encontrado", f"Could not find the help file: {help_pdf_path}" if self.languageComboBox.currentIndex() == 0 else f"No se pudo encontrar el archivo de ayuda: {help_pdf_path}")
-            return
-
-        if sys.platform == 'darwin':  # macOS
-            subprocess.run(['open', help_pdf_path], check=True)
-        elif sys.platform == 'win32':  # Windows
-            os.startfile(help_pdf_path)
-        else:  # Linux variants
-            subprocess.run(['xdg-open', help_pdf_path], check=True)
-
-    
     def setupAnimationTimers(self):
         self.animationTimer = QTimer(self)  # Timer for smooth transitions
         self.animationTimer.timeout.connect(self.updateRotation)
@@ -2749,79 +2533,7 @@ class ErgoTools(QtWidgets.QMainWindow):
             FOREIGN KEY (worker_id, plant_name, section_name, line_name, station_id, shift_id, tool_id) 
             REFERENCES WorkerStationShiftErgoTool (worker_id, plant_name, section_name, line_name, station_id, shift_id, tool_id) ON DELETE CASCADE
         )
-        
-        
         ''')
-
-
-        # Create the Job table
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Job (
-            id TEXT PRIMARY KEY,                 -- Job ID (e.g., "Job-01")
-            name TEXT NOT NULL,                 -- Human-readable name of the job
-            description TEXT                    -- Description of the job
-        )
-        ''')
-
-                
-        # Create the JobMeasurement table with color field
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS JobMeasurement (
-            job_id TEXT NOT NULL,              -- Foreign key referencing Job table
-            tool_id TEXT NOT NULL,             -- Foreign key referencing ErgoTool table (LiFFT, DUET, ST)
-
-            total_cumulative_damage REAL,      -- Risk value (e.g., 75.4%)
-            probability_outcome REAL,          -- Probability of injury or damage (e.g., 0.33)
-            color TEXT,                        -- Hex color code (e.g., "#72ff00")
-        
-            PRIMARY KEY (job_id, tool_id),
-            FOREIGN KEY (job_id) REFERENCES Job (id) ON DELETE CASCADE,
-            FOREIGN KEY (tool_id) REFERENCES ErgoTool (id) ON DELETE CASCADE
-        )
-        ''')
-
-
-        
-
-        # Create the RotationScheme table
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS RotationScheme (
-            id TEXT PRIMARY KEY,                     -- User-defined scheme ID (e.g., "ROT-001")
-            name TEXT NOT NULL,                      -- Descriptive name of the scheme
-        
-            plant_name TEXT NOT NULL,                -- FK to Plant table
-            shift_id TEXT NOT NULL,                  -- FK to Shift table
-        
-            num_workers INTEGER NOT NULL,            -- Number of workers in the rotation
-            num_timeblocks INTEGER NOT NULL,         -- Number of time blocks
-            num_jobs INTEGER NOT NULL,               -- Number of jobs used in this scheme
-        
-            FOREIGN KEY (plant_name) REFERENCES Plant (name) ON DELETE CASCADE,
-            FOREIGN KEY (shift_id) REFERENCES Shift (id) ON DELETE CASCADE
-        )
-        ''')
-
-       
-
-        # Create the RotationAssignment table
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS RotationAssignment (
-            scheme_id TEXT NOT NULL,               -- FK to RotationScheme.id (now TEXT)
-            block_index INTEGER NOT NULL,          -- Time block index
-            worker_id TEXT NOT NULL,               -- FK to Worker
-            job_id TEXT NOT NULL,                  -- FK to Job
-        
-            PRIMARY KEY (scheme_id, block_index, worker_id),
-        
-            FOREIGN KEY (scheme_id) REFERENCES RotationScheme (id) ON DELETE CASCADE,
-            FOREIGN KEY (worker_id) REFERENCES Worker (id) ON DELETE CASCADE,
-            FOREIGN KEY (job_id) REFERENCES Job (id) ON DELETE CASCADE
-        )
-        ''')
-
-
-
-     
 
         
 
@@ -3112,7 +2824,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.plant_combo.setFixedWidth(200)  # Set the fixed width for the combo box
         # Connect the combo box to an index change event
         self.plant_combo.currentIndexChanged.connect(self.plantComboIndexChanged)
-        
+
         plant_edit_button = QPushButton()
         plant_edit_button.setIcon(QIcon("../images/edit_icon.png"))
         plant_edit_button.setFixedSize(30, 30)
@@ -3123,11 +2835,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.tabstop_controls_layout.addWidget(plant_label)
         self.tabstop_controls_layout.addWidget(self.plant_combo)
         self.tabstop_controls_layout.addWidget(plant_edit_button)
-
-        self.plant_combo.hide()
-        plant_edit_button.hide()
-        plant_label.hide()
-
 
         self.tabstop_controls_layout.addStretch()  # Add a flexible stretch
         
@@ -3151,11 +2858,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.tabstop_controls_layout.addWidget(self.section_combo)
         self.tabstop_controls_layout.addWidget(section_edit_button)
 
-        self.section_combo.hide()
-        section_edit_button.hide()
-        section_label.hide()
-
-
         self.tabstop_controls_layout.addStretch()  # Add a flexible stretch
 
         # Create controls for Line
@@ -3178,10 +2880,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.tabstop_controls_layout.addWidget(self.line_combo)
         self.tabstop_controls_layout.addWidget(line_edit_button)
 
-        self.line_combo.hide()
-        line_edit_button.hide()
-        line_label.hide()
-  
         self.tabstop_controls_layout.addStretch()  # Add a flexible stretch
         
         # Create controls for Station
@@ -3204,10 +2902,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.tabstop_controls_layout.addWidget(self.station_combo)
         self.tabstop_controls_layout.addWidget(station_edit_button)
 
-        self.station_combo.hide()
-        station_edit_button.hide()
-        station_label.hide()
-        
         self.tabstop_controls_layout.addStretch()  # Add a flexible stretch
         
         # Add vertical separator
@@ -3234,11 +2928,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         shift_edit_button.setIconSize(QtCore.QSize(25, 25))
         shift_edit_button.clicked.connect(self.editShiftClicked)
 
-
-        self.shift_combo.hide()
-        shift_edit_button.hide()
-        shift_label.hide()
-        
         # Add Shift controls to layout
         self.tabstop_controls_layout.addWidget(shift_label)
         self.tabstop_controls_layout.addWidget(self.shift_combo)
@@ -3292,24 +2981,20 @@ class ErgoTools(QtWidgets.QMainWindow):
     
     # Navigation Handlers
     def firstButtonClicked(self):
-        self.job_combo.setCurrentIndex(-1)
         if self.workerComboBox.count() > 0:
             self.workerComboBox.setCurrentIndex(0)
  
     def previousButtonClicked(self):
-        self.job_combo.setCurrentIndex(-1)
         current_index = self.workerComboBox.currentIndex()
         if current_index > 0:
             self.workerComboBox.setCurrentIndex(current_index - 1)
  
     def nextButtonClicked(self):
-        self.job_combo.setCurrentIndex(-1)
         current_index = self.workerComboBox.currentIndex()
         if current_index < self.workerComboBox.count() - 1:
             self.workerComboBox.setCurrentIndex(current_index + 1)
             
     def lastButtonClicked(self):
-        self.job_combo.setCurrentIndex(-1)
         if self.workerComboBox.count() > 0:
             self.workerComboBox.setCurrentIndex(self.workerComboBox.count() - 1)
  
@@ -3365,15 +3050,10 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.toolbar.addAction(save_action)
 
         # Add Layout Viewer Button
-        #layout_action = QAction(QIcon("../images/layout_icon01.png"), "Layout", self)
-        #layout_action.triggered.connect(self.toolbaropenLayout)
-        #self.toolbar.addAction(layout_action)
+        layout_action = QAction(QIcon("../images/layout_icon01.png"), "Layout", self)
+        layout_action.triggered.connect(self.toolbaropenLayout)
+        self.toolbar.addAction(layout_action)
         
-        
-        # Add Rotation Viewer Button
-        rotation_action = QAction(QIcon("../images/rotation_icon01.png"), "Rotation", self)
-        rotation_action.triggered.connect(self.toolbaropenRotationLayout)
-        self.toolbar.addAction(rotation_action)
         
         # **Create a Spacer Widget to Push Items to the Right**
         spacer = QWidget()
@@ -3440,10 +3120,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.transferButton.clicked.connect(self.transferWorkerClicked)
         worker_controls_layout.addWidget(self.transferButton)
         
-        
-        self.transferButton.hide()
-        
-        
         # Refresh Button
         self.refreshButton = QtWidgets.QPushButton()
         self.refreshButton.setIcon(QIcon("../images/refresh_icon.png"))
@@ -3454,44 +3130,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         
         
         worker_controls_layout.addStretch()  # Push everything to the left
-        
-        
-        
-        
-        
-        
-        
-        
-        # Job
-        job_lbl = QtWidgets.QLabel("Job:")
-        job_lbl.setFont(bold_font)
-        worker_controls_layout.addWidget(job_lbl)
-
-
-        self.job_combo = QtWidgets.QComboBox()
-        #self.job_combo.addItems([str(i + 1) for i in range(0, 10)])  # 1-10 as example
-        self.job_combo.setFixedWidth(150)
-        worker_controls_layout.addWidget(self.job_combo)
-
-
-        # Edit button (same style as earlier)
-        self.jobEditButton = QtWidgets.QPushButton()
-        self.jobEditButton.setIcon(QIcon("../images/edit_icon.png"))
-        self.jobEditButton.setFixedSize(30, 30)
-        self.jobEditButton.setIconSize(QtCore.QSize(25, 25))
-        self.jobEditButton.clicked.connect(self.editJobClicked)  # define this slot
-        worker_controls_layout.addWidget(self.jobEditButton)
-
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         
         #self.topLayout.addStretch()  # Push everything to the left
         # Add worker controls layout to the top layout
@@ -3512,27 +3150,6 @@ class ErgoTools(QtWidgets.QMainWindow):
 
 
 
-    def editJobClicked(self):
-        self.editJobName = ""
-        
-        self.job_window = JobWindow(self)
-        self.job_window.exec_()
- 
-        if not self.projectFileCreated:
-            return
-            
-        self.loadJobs()
-        
-        # Find the index of the formatted worker text in the combo box of the main window
-        index = self.job_combo.findText(self.editJobName)
-
-        # If the index is valid, set the combo box to that index
-        if index != -1:
-            self.job_combo.setCurrentIndex(index)    
-
-    
-    
-    
     def searchWorkerClicked(self):
         # Validate that the project file and database are created
         if not self.projectFileCreated:
@@ -3655,9 +3272,7 @@ class ErgoTools(QtWidgets.QMainWindow):
 
     def toolbaropenLayout(self):
         self.openPlantLayout()
-    
-    def toolbaropenRotationLayout(self):
-        self.openRotationLayout()
+            
 
     # Handlers for the buttons
     def orderButtonClicked(self):
@@ -4251,7 +3866,6 @@ class ErgoTools(QtWidgets.QMainWindow):
                 self.duet_output_labels_matrix[j][4].setText(str(self.duet_percent[j]))
                 
 
-            
             self.duet_total_risk = round(duet.riskFromDamage(self.duet_total_damage) * 100, 1)
             if self.duet_total_risk < 5:
                 self.duet_total_risk = "< 5"
@@ -4261,13 +3875,6 @@ class ErgoTools(QtWidgets.QMainWindow):
             self.duet_total_risk_color = duet.colorFromDamageRisk(self.duet_total_damage)
 
             self.duet_total_damage_value_label.setText(f"{float(self.duet_total_damage):.4f}")
-            
-            
-            
-            #duet2 = DUET(0, 0)
-            #self.duet_total_risk2 = round(duet2.riskFromDamage(self.duet_total_damage) * 100, 1)
-            #self.duet_total_risk_color2 = duet2.colorFromDamageRisk(self.duet_total_damage2)
-            #print("self.duet_total_risk2:", self.duet_total_risk2)
             
             try:
                 # Try to convert to float and format
@@ -4481,10 +4088,6 @@ class ErgoTools(QtWidgets.QMainWindow):
             self.tst_total_risk_color = tst.colorFromDamageRisk(self.tst_total_damage)
 
             self.tst_total_damage_value_label.setText(f"{float(self.tst_total_damage):.4f}")
-            
-            #tst2 = TST(self.selectedMeasurementSystem, "", 0, 0, 0)
-            #self.tst_total_risk2 = round(tst2.riskFromDamage(self.tst_total_damage) * 100, 1)
-            #print("self.tst_total_risk2:", self.tst_total_risk2)
             
             try:
                 # Try to convert to float and format
@@ -5360,97 +4963,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.saveDUETToolData()
         self.saveTSTToolData()
         
-        
-        self.saveJobData()
-        
-    
-    
-    def saveJobData(self):
-        """
-        Saves the currently selected job's ergonomic tool data to the JobMeasurement table
-        when the user saves worker data from the main ergonomic tools window.
-        If data already exists for the job/tool, confirms with the user before overwriting.
-        """
-        job_id = self.job_combo.currentText().strip()
-        if not job_id:
-            return
-    
-        tab_index = self.tabWidget.currentIndex()
-        if tab_index == 0:
-            tool_id = "LiFFT"
-            damage_label = self.lifft_total_damage_value_label
-            probability_label = self.lifft_probability_value_label
-            color = self.lifft_total_risk_color
-        elif tab_index == 1:
-            tool_id = "DUET"
-            damage_label = self.duet_total_damage_value_label
-            probability_label = self.duet_probability_value_label
-            color = self.duet_total_risk_color
-        elif tab_index == 2:
-            tool_id = "ST"
-            damage_label = self.tst_total_damage_value_label
-            probability_label = self.tst_probability_value_label
-            color = self.tst_total_risk_color
-        else:
-            return
-    
-        try:
-            total_cumulative_damage = float(damage_label.text().strip()) if damage_label.text().strip() else 0
-        except ValueError:
-            total_cumulative_damage = 0
-    
-        probability_text = probability_label.text().strip()
-        if probability_text == "> 90":
-            probability_outcome = 100
-        elif probability_text == "< 5":
-            probability_outcome = 0
-        else:
-            try:
-                probability_outcome = float(probability_text)
-            except ValueError:
-                probability_outcome = 0
-    
-        try:
-            conn = sqlite3.connect(self.projectdatabasePath)
-            cursor = conn.cursor()
-    
-            # Check if record already exists
-            cursor.execute('''
-                SELECT 1 FROM JobMeasurement WHERE job_id = ? AND tool_id = ?
-            ''', (job_id, tool_id))
-            exists = cursor.fetchone()
-    
-            if exists:
-                reply = QMessageBox.question(
-                    self,
-                    "Confirm Update",
-                    f"Measurement data already exists for job '{job_id}' and tool '{tool_id}'.\nDo you want to overwrite it?",
-                    QMessageBox.Yes | QMessageBox.No
-                )
-                if reply != QMessageBox.Yes:
-                    conn.close()
-                    return  # Cancel the update
-
-            # Proceed to insert/update
-            cursor.execute('''
-                INSERT INTO JobMeasurement (job_id, tool_id, total_cumulative_damage, probability_outcome, color)
-                VALUES (?, ?, ?, ?, ?)
-                ON CONFLICT(job_id, tool_id) DO UPDATE SET
-                    total_cumulative_damage = excluded.total_cumulative_damage,
-                    probability_outcome = excluded.probability_outcome,
-                    color = excluded.color
-            ''', (job_id, tool_id, total_cumulative_damage, probability_outcome, color))
-    
-            conn.commit()
-            conn.close()
-            QMessageBox.information(self, "Success", "Job Measurement data updated successfully.")
-    
-        except sqlite3.Error as e:
-            QMessageBox.critical(self, "Database Error", f"An error occurred: {e}")
-
-
-
-
     
     def saveLiFFTToolData(self):
     
@@ -6523,8 +6035,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.lifft_transfer_button.setIconSize(QSize(25, 25))  # Increase icon size
         lifft_buttons_layout.addWidget(self.lifft_transfer_button)
         
-        self.lifft_transfer_button.hide()
-        
         # **Right-aligned Calculate Button (Expands to take available space)**
         self.lifft_calculate_button = QPushButton("Calculate")
         self.lifft_calculate_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)  # Expanding right button
@@ -6930,7 +6440,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.duet_calculate_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)  # Expanding right button
         duet_buttons_layout.addWidget(self.duet_calculate_button)
         
-        
         # **Add layout to main UI**
         duet_main_layout.addLayout(duet_buttons_layout)
 
@@ -6943,8 +6452,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.duet_delete_button.clicked.connect(self.duetDeleteAction)
         self.duet_transfer_button.clicked.connect(self.duetTransferAction)
 
-        self.duet_transfer_button.hide()
-        
         # **Create the DUET tab widget and set its layout**
         self.duet_tab = QWidget()
         self.duet_tab.setLayout(duet_main_layout)
@@ -7270,8 +6777,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.tst_transfer_button.setFixedSize(30, 30)  # Small square button
         self.tst_transfer_button.setIconSize(QSize(25, 25))  # Increase icon size
         tst_buttons_layout.addWidget(self.tst_transfer_button)
-        
-        self.tst_transfer_button.hide()
         
         # **Right-aligned Calculate Button (Expands to take available space)**
         self.tst_calculate_button = QPushButton("Calculate")
