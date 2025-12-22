@@ -1,0 +1,19 @@
+THIRD-PARTY NOTICES
+
+This project is licensed under Apache License 2.0 (see LICENSE).
+
+Depending on how you install or distribute this software, it may use the
+following third-party components (not exhaustive):
+
+1) Python
+   - License: Python Software Foundation License Version 2 (PSF-2.0)
+   - Full text: licenses/PSF-2.0.txt
+
+2) VTK (Visualization Toolkit) / Python bindings
+   - VTK is distributed under the OSI-approved BSD 3-Clause License.
+   - Full text (BSD 3-Clause template): licenses/BSD-3-Clause.txt
+
+Important for binary redistribution (e.g., PyInstaller/conda-pack installers):
+If you bundle Python and/or VTK inside your distributable, you must include the
+corresponding license texts and any additional third-party notices required by
+those projects and their bundled dependencies.
