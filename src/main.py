@@ -833,7 +833,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.setupUI()
         self.setupMenuBar()  # Setup the menu bar
         self.setupStatusBar()  # Setup the status bar
-        self.isAnimationAllowed = self.vtk_enabled
         
         self.initProjectVars()
         
@@ -1016,6 +1015,22 @@ class ErgoTools(QtWidgets.QMainWindow):
         #self.metric_action.setChecked(True)
         self.imperial_action.setChecked(True)
 
+        self.view_menu = self.menu_bar.addMenu('View')
+        settings = QtCore.QSettings("ErgoTools", "ErgoTools")
+        animation_enabled = settings.value("animated_body_region_focus", True, type=bool)
+        self.camera_animation_action = QAction('Animated body-region focus', self, checkable=True)
+        self.camera_animation_action.setChecked(animation_enabled)
+        self.camera_animation_action.setStatusTip(
+            "Animate the 3D camera toward the body region evaluated by each tool."
+        )
+        self.camera_animation_action.setToolTip(
+            "Disable this option to keep the original full-body camera view for every tool."
+        )
+        self.camera_animation_action.setEnabled(self.vtk_enabled)
+        self.camera_animation_action.toggled.connect(self.setCameraAnimationEnabled)
+        self.view_menu.addAction(self.camera_animation_action)
+        self.setCameraAnimationEnabled(animation_enabled)
+
         # Creating the "Tools" menu
         self.tools_menu = self.menu_bar.addMenu('Tools')
 
@@ -1045,6 +1060,19 @@ class ErgoTools(QtWidgets.QMainWindow):
 
     def paste(self):
         QMessageBox.information(self, "Edit Action", "Paste action triggered")
+
+    def setCameraAnimationEnabled(self, enabled):
+        requested = bool(enabled)
+        self.isAnimationAllowed = bool(requested and self.vtk_enabled)
+        QtCore.QSettings("ErgoTools", "ErgoTools").setValue(
+            "animated_body_region_focus", requested
+        )
+        if not self.vtk_enabled or not hasattr(self, "camera_director"):
+            return
+        if self.isAnimationAllowed:
+            self.camera_director.apply(self.tabWidget.currentIndex())
+        else:
+            self.camera_director.applyFullBody()
 
 
     def showPropertiesDialog(self):
@@ -7407,7 +7435,10 @@ class ErgoTools(QtWidgets.QMainWindow):
         if not self.vtk_enabled:
             return
         if hasattr(self, "camera_director"):
-            self.camera_director.apply(self.tabWidget.currentIndex())
+            if self.isAnimationAllowed:
+                self.camera_director.apply(self.tabWidget.currentIndex())
+            else:
+                self.camera_director.applyFullBody()
             return
         camera = self.renderer.GetActiveCamera()
         camera.SetPosition(self.initialCameraSettings['position'])
@@ -8986,8 +9017,11 @@ class ErgoTools(QtWidgets.QMainWindow):
             self.body_region_title.setText(title)
             self.active_region_label.setText(region)
 
-        if self.vtk_enabled and self.isAnimationAllowed and hasattr(self, "camera_director"):
-            self.camera_director.animateTo(index)
+        if self.vtk_enabled and hasattr(self, "camera_director"):
+            if self.isAnimationAllowed:
+                self.camera_director.animateTo(index)
+            else:
+                self.camera_director.applyFullBody()
         
         #self.loadToolsData() #TODO: check for a way to fill the tab without rebuilding it..
          

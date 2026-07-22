@@ -1,3 +1,5 @@
+import math
+
 from PyQt5 import QtCore
 
 
@@ -26,20 +28,20 @@ class VTKCameraDirector:
             full_bounds[3] - full_bounds[2],
             full_bounds[5] - full_bounds[4],
         ) * 2.2
-        self.full_body_shot = self._shot(full_center, full_scale, distance, x_offset=0.0)
+        self.full_body_shot = self._shot(full_center, full_scale, distance, yaw_degrees=0.0)
 
         shot_settings = {
-            0: (1.28, 125.0, 8.0),
-            1: (1.18, -70.0, 12.0),
-            2: (1.30, 95.0, 5.0),
+            0: (1.28 * 1.15, 6.0, 8.0),
+            1: (1.18 / 1.10, -17.0, 12.0),
+            2: (1.30 / 1.15, 19.0, 5.0),
         }
         for tool_index, actors in region_actors.items():
             bounds = self._combinedBounds(actors)
-            padding, x_offset, y_offset = shot_settings[tool_index]
+            padding, yaw_degrees, y_offset = shot_settings[tool_index]
             center = list(self._center(bounds))
             center[1] += y_offset
             self.shots[tool_index] = self._shot(
-                tuple(center), self._scaleForBounds(bounds, padding), distance, x_offset
+                tuple(center), self._scaleForBounds(bounds, padding), distance, yaw_degrees
             )
 
     def apply(self, tool_index):
@@ -48,6 +50,13 @@ class VTKCameraDirector:
         self.stop()
         self.active_tool = tool_index
         self._applyState(self.shots[tool_index])
+        self.render_window.Render()
+
+    def applyFullBody(self):
+        if not self.full_body_shot:
+            return
+        self.stop()
+        self._applyState(self.full_body_shot)
         self.render_window.Render()
 
     def animateTo(self, tool_index):
@@ -60,14 +69,15 @@ class VTKCameraDirector:
         approach = dict(target)
         approach["parallel_scale"] = target["parallel_scale"] * 1.045
         approach["position"] = (
-            target["position"][0] + 18.0,
+            target["position"][0] + (28.0 if target["position"][0] >= target["focal_point"][0] else -28.0),
             target["position"][1] + 6.0,
             target["position"][2],
         )
+        orbit_direction = 1.0 if target["position"][0] >= target["focal_point"][0] else -1.0
         self.segments = [
-            (current, self.full_body_shot, 190, "out"),
-            (self.full_body_shot, approach, 390, "smooth"),
-            (approach, target, 120, "out"),
+            (current, self.full_body_shot, 190, "out", None),
+            (self.full_body_shot, approach, 420, "smooth", (orbit_direction * 420.0, 0.0, -180.0)),
+            (approach, target, 120, "out", None),
         ]
         self.segment_index = 0
         self.clock.start()
@@ -81,9 +91,9 @@ class VTKCameraDirector:
         if self.segment_index >= len(self.segments):
             self.stop()
             return
-        start, end, duration, easing = self.segments[self.segment_index]
+        start, end, duration, easing, curve = self.segments[self.segment_index]
         progress = min(1.0, self.clock.elapsed() / float(duration))
-        self._applyState(self._interpolate(start, end, self._ease(progress, easing)))
+        self._applyState(self._interpolate(start, end, self._ease(progress, easing), curve))
         self.render_window.Render()
         if progress >= 1.0:
             self.segment_index += 1
@@ -113,12 +123,18 @@ class VTKCameraDirector:
         self.renderer.ResetCameraClippingRange()
 
     @staticmethod
-    def _interpolate(start, end, amount):
+    def _interpolate(start, end, amount, curve=None):
         def vector(key):
-            return tuple(
+            result = tuple(
                 left + (right - left) * amount
                 for left, right in zip(start[key], end[key])
             )
+            if key == "position" and curve:
+                curve_amount = 4.0 * amount * (1.0 - amount)
+                result = tuple(
+                    value + offset * curve_amount for value, offset in zip(result, curve)
+                )
+            return result
         return {
             "position": vector("position"),
             "focal_point": vector("focal_point"),
@@ -159,12 +175,13 @@ class VTKCameraDirector:
         return max(half_height, half_width) * padding
 
     @staticmethod
-    def _shot(focal_point, parallel_scale, distance, x_offset):
+    def _shot(focal_point, parallel_scale, distance, yaw_degrees):
+        yaw = math.radians(yaw_degrees)
         return {
             "position": (
-                focal_point[0] + x_offset,
+                focal_point[0] + math.sin(yaw) * distance,
                 focal_point[1] + 10.0,
-                focal_point[2] + distance,
+                focal_point[2] + math.cos(yaw) * distance,
             ),
             "focal_point": tuple(focal_point),
             "view_up": (0.0, 1.0, 0.0),
