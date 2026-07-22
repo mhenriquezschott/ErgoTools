@@ -13,13 +13,15 @@ import xml.etree.ElementTree as ET
 from vtk.util.numpy_support import numpy_to_vtk
 import numpy as np
 from PyQt5 import QtWidgets, QtCore 
-from PyQt5.QtCore import Qt, QTimer, QLocale, QTime, QDate, QStandardPaths, QSize
-from PyQt5.QtGui import QIntValidator, QDoubleValidator, QFont, QPixmap, QIcon
+from PyQt5.QtCore import Qt, QTimer, QLocale, QTime, QDate, QStandardPaths, QSize, QPointF, QRectF, QEasingCurve, QPropertyAnimation
+from PyQt5.QtGui import QColor, QIntValidator, QDoubleValidator, QFont, QPainter, QPen, QPixmap, QIcon, QPolygonF, QPalette
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QTabWidget, QVBoxLayout,
                              QHBoxLayout, QGridLayout, QPushButton, QLabel, QLineEdit,
                              QFrame, QWidget, QComboBox, QDateTimeEdit, QMessageBox, QAction, QDialog, QFileDialog, QInputDialog, QSpinBox, 	 
-                             QTextEdit, QDialogButtonBox, QActionGroup, QScrollArea, QToolBar, QSpacerItem, QSizePolicy)
+                             QTextEdit, QDialogButtonBox, QActionGroup, QProgressBar, QScrollArea, QToolBar, QSpacerItem, QSizePolicy, QStyle,
+                             QTreeWidget, QTreeWidgetItem, QStyledItemDelegate, QStyleOptionViewItem,
+                             QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QButtonGroup)
 import math
 
 import inspect
@@ -34,11 +36,644 @@ from section_window import SectionWindow
 from line_window import LineWindow
 from station_window import StationWindow
 from shift_window import ShiftWindow
+from organization_window import OrganizationWindow
 
 from tooltransferdialog import ToolTransferDialog
-from workertransferdialog import WorkerTransferDialog
+from worker_transfer_window import WorkerTransferDialog
 from tooldatadialog import ToolDataDialog
-        
+
+
+class VTKDisabledWidget(QtWidgets.QFrame):
+    """Headless UI-review stand-in for QVTKRenderWindowInteractor."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        self.setMinimumSize(220, 420)
+
+    def GetRenderWindow(self):
+        return self
+
+    def Render(self):
+        pass
+
+
+class VTKDisabledActor:
+    """No-op actor used by the VTK-disabled project-data path."""
+
+    def GetProperty(self):
+        return self
+
+    def SetColor(self, *args):
+        pass
+
+    def VisibilityOn(self):
+        pass
+
+    def VisibilityOff(self):
+        pass
+
+
+class RiskGauge(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._display_value = 0.0
+        self.target_value = 0.0
+        self.outcome_text = "Probability of outcome"
+        self.risk_color = QColor("#9EB0BE")
+        self.animation = QPropertyAnimation(self, b"displayValue", self)
+        self.animation.setDuration(750)
+        self.animation.setEasingCurve(QEasingCurve.OutCubic)
+        self.setMinimumWidth(190)
+        self.setFixedHeight(167)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+    @QtCore.pyqtProperty(float)
+    def displayValue(self):
+        return self._display_value
+
+    @displayValue.setter
+    def displayValue(self, value):
+        self._display_value = float(value)
+        self.update()
+
+    def setValue(self, value, color=None):
+        value = min(100.0, max(0.0, float(value)))
+        if color and color.lower() not in ("none", "transparent"):
+            candidate = QColor(color)
+            if candidate.isValid():
+                self.risk_color = candidate
+        if abs(value - self.target_value) < 0.001:
+            return
+        self.target_value = value
+        self.animation.stop()
+        self.animation.setStartValue(self._display_value)
+        self.animation.setEndValue(value)
+        self.animation.start()
+
+    def setOutcomeText(self, text):
+        if text != self.outcome_text:
+            self.outcome_text = text
+            self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        center = QPointF(self.width() / 2.0, 94.0)
+        radius = min(self.width() / 2.0 - 22.0, 61.0)
+        arc_rect = QRectF(center.x() - radius, center.y() - radius, radius * 2.0, radius * 2.0)
+        for start, end, color in (
+            (0, 10, "#19B83F"), (10, 30, "#F5C400"),
+            (30, 60, "#FF8A19"), (60, 100, "#FF3B30"),
+        ):
+            pen = QPen(QColor(color), 11, Qt.SolidLine, Qt.FlatCap)
+            painter.setPen(pen)
+            painter.drawArc(arc_rect, int((180 - start * 1.8) * 16), -int((end - start) * 1.8 * 16))
+
+        angle = math.radians(180.0 - self._display_value * 1.8)
+        tip = QPointF(center.x() + math.cos(angle) * (radius - 8), center.y() - math.sin(angle) * (radius - 8))
+        perpendicular = QPointF(math.sin(angle) * 4.0, math.cos(angle) * 4.0)
+        needle = QPolygonF([center + perpendicular, tip, center - perpendicular])
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor("#C7CED3"))
+        painter.drawPolygon(needle)
+        painter.setBrush(QColor("#AEB8BF"))
+        painter.drawEllipse(center, 4.5, 4.5)
+
+        painter.setPen(QColor("#0B326C"))
+        font = painter.font()
+        font.setPointSize(20)
+        font.setBold(True)
+        painter.setFont(font)
+        painter.drawText(QRectF(0, 70, self.width(), 34), Qt.AlignCenter, f"{self._display_value:.1f}%")
+
+        caption_font = painter.font()
+        caption_font.setPointSize(9)
+        caption_font.setBold(True)
+        painter.setFont(caption_font)
+        painter.setPen(QColor("#304652"))
+        painter.drawText(
+            QRectF(4, 126, self.width() - 8, 36),
+            Qt.AlignHCenter | Qt.AlignTop,
+            self.outcome_text,
+        )
+
+
+class DamageScale(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._display_value = 0.0
+        self.target_value = 0.0
+        self.fill_color = QColor("#F97316")
+        self.animation = QPropertyAnimation(self, b"displayValue", self)
+        self.animation.setDuration(700)
+        self.animation.setEasingCurve(QEasingCurve.OutCubic)
+        self.setMinimumHeight(38)
+
+    @QtCore.pyqtProperty(float)
+    def displayValue(self):
+        return self._display_value
+
+    @displayValue.setter
+    def displayValue(self, value):
+        self._display_value = float(value)
+        self.update()
+
+    def setValue(self, value, color=None):
+        value = min(4.0, max(0.0, float(value)))
+        if color:
+            candidate = QColor(color)
+            if candidate.isValid():
+                self.fill_color = candidate
+        if abs(value - self.target_value) < 0.0001:
+            self.update()
+            return
+        self.target_value = value
+        self.animation.stop()
+        self.animation.setStartValue(self._display_value)
+        self.animation.setEndValue(value)
+        self.animation.start()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        left, right, y = 3.0, self.width() - 3.0, 11.0
+        painter.setPen(QPen(QColor("#D9DEE2"), 8, Qt.SolidLine, Qt.RoundCap))
+        painter.drawLine(QPointF(left, y), QPointF(right, y))
+        progress_x = left + (right - left) * self._display_value / 4.0
+        if progress_x > left:
+            progress_x = max(progress_x, left + 4.0)
+            painter.setPen(QPen(self.fill_color, 8, Qt.SolidLine, Qt.RoundCap))
+            painter.drawLine(QPointF(left, y), QPointF(progress_x, y))
+        painter.setPen(QColor("#506273"))
+        font = painter.font()
+        font.setPointSize(8)
+        painter.setFont(font)
+        painter.drawText(QRectF(0, 22, 34, 14), Qt.AlignLeft | Qt.AlignVCenter, "0")
+        painter.drawText(QRectF(self.width() / 2 - 18, 22, 36, 14), Qt.AlignCenter, "2")
+        painter.drawText(QRectF(self.width() - 36, 22, 36, 14), Qt.AlignRight | Qt.AlignVCenter, "4")
+
+
+class ErgoComboItemDelegate(QStyledItemDelegate):
+    def paint(self, painter, option, index):
+        styled_option = QStyleOptionViewItem(option)
+        if styled_option.state & QStyle.State_Selected:
+            styled_option.palette.setColor(QPalette.Highlight, QColor("#087E91"))
+            styled_option.palette.setColor(QPalette.HighlightedText, QColor("#FFFFFF"))
+            painter.fillRect(styled_option.rect, QColor("#087E91"))
+        super().paint(painter, styled_option, index)
+
+
+class AssessmentWorkplaceDialog(QDialog):
+    """Select an existing station path and shift for the assessment context."""
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.main_window = parent
+        self.selected_path = None
+        self.setObjectName("assessmentWorkplaceDialog")
+        self.setWindowTitle("Assessment Workplace")
+        self.setMinimumSize(560, 540)
+        self.setStyleSheet(parent.mainWorkspaceStyleSheet() + """
+            QDialog#assessmentWorkplaceDialog { background: #F4F7F9; color: #1B2933; }
+            QDialog#assessmentWorkplaceDialog QTreeWidget {
+                background: white; color: #1B2933; border: 1px solid #BCC9D3;
+                border-radius: 5px; alternate-background-color: #F7FAFB;
+            }
+            QDialog#assessmentWorkplaceDialog QTreeWidget::item { min-height: 29px; padding: 2px 5px; }
+            QDialog#assessmentWorkplaceDialog QTreeWidget::item:selected {
+                background: #087E91; color: white;
+            }
+            QDialog#assessmentWorkplaceDialog QHeaderView::section {
+                background: #EAF2F6; color: #0B326C; border: 0;
+                border-bottom: 1px solid #BCC9D3; padding: 7px; font-weight: 700;
+            }
+        """)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(10)
+        title = QLabel("Assessment workplace")
+        title.setObjectName("dialogTitle")
+        layout.addWidget(title)
+        description = QLabel("Select the station where this assessment applies, then choose its work shift.")
+        description.setObjectName("supportingText")
+        description.setWordWrap(True)
+        layout.addWidget(description)
+        self.tree = QTreeWidget()
+        self.tree.setHeaderLabels(["Workplace hierarchy", "Type"])
+        self.tree.setColumnWidth(0, 390)
+        self.tree.setToolTip("Expand the hierarchy and select a station for this assessment.")
+        self.tree.currentItemChanged.connect(self.updateSelection)
+        self.tree.itemDoubleClicked.connect(lambda *_: self.acceptSelection())
+        layout.addWidget(self.tree, 1)
+        shift_row = QHBoxLayout()
+        shift_label = QLabel("Shift")
+        shift_label.setObjectName("contextLabel")
+        self.shift_combo = QComboBox()
+        self.shift_combo.setToolTip("Select the shift associated with this assessment.")
+        shift_row.addWidget(shift_label)
+        shift_row.addWidget(self.shift_combo, 1)
+        layout.addLayout(shift_row)
+        self.path_label = QLabel("Select a station from the hierarchy.")
+        self.path_label.setObjectName("contextSummary")
+        self.path_label.setWordWrap(True)
+        layout.addWidget(self.path_label)
+        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
+        self.accept_button = buttons.button(QDialogButtonBox.Ok)
+        self.accept_button.setText("Use workplace")
+        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
+        self.accept_button.setIcon(QIcon(os.path.join(icon_root, "station.png")))
+        self.accept_button.setIconSize(QSize(24, 24))
+        self.accept_button.setObjectName("primaryOutlineButton")
+        self.accept_button.setEnabled(False)
+        buttons.button(QDialogButtonBox.Cancel).setIcon(QIcon(os.path.join(icon_root, "cancel.png")))
+        buttons.button(QDialogButtonBox.Cancel).setIconSize(QSize(22, 22))
+        buttons.accepted.connect(self.acceptSelection)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+        self.populate()
+
+    def populate(self):
+        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
+        current = tuple(combo.currentText() for combo in (
+            self.main_window.plant_combo, self.main_window.section_combo,
+            self.main_window.line_combo, self.main_window.station_combo,
+        ))
+        current_item = None
+        database = self.main_window.projectdatabasePath
+        if database and os.path.exists(database):
+            with sqlite3.connect(database) as conn:
+                for (plant,) in conn.execute("SELECT name FROM Plant ORDER BY name"):
+                    plant_item = self.addItem(None, plant, "Plant", (plant,), icon_root)
+                    for (section,) in conn.execute(
+                        "SELECT name FROM Section WHERE plant_name=? ORDER BY name", (plant,)
+                    ):
+                        section_item = self.addItem(plant_item, section, "Section", (plant, section), icon_root)
+                        for (line,) in conn.execute(
+                            "SELECT name FROM Line WHERE plant_name=? AND section_name=? ORDER BY name",
+                            (plant, section),
+                        ):
+                            line_item = self.addItem(section_item, line, "Line", (plant, section, line), icon_root)
+                            for (station,) in conn.execute(
+                                "SELECT id FROM Station WHERE plant_name=? AND section_name=? AND line_name=? ORDER BY id",
+                                (plant, section, line),
+                            ):
+                                station_item = self.addItem(
+                                    line_item, station, "Station", (plant, section, line, station), icon_root
+                                )
+                                if station_item.data(0, Qt.UserRole) == current:
+                                    current_item = station_item
+                self.shift_combo.addItems([str(row[0]) for row in conn.execute("SELECT id FROM Shift ORDER BY id")])
+        if not self.shift_combo.count():
+            self.shift_combo.addItem(self.main_window.shift_combo.currentText() or "1")
+        self.shift_combo.setCurrentText(self.main_window.shift_combo.currentText())
+        self.tree.collapseAll()
+        if current_item:
+            ancestor = current_item.parent()
+            while ancestor:
+                ancestor.setExpanded(True)
+                ancestor = ancestor.parent()
+            self.tree.setCurrentItem(current_item)
+            self.tree.scrollToItem(current_item)
+
+    def addItem(self, parent, text, entity, path, icon_root):
+        item = QTreeWidgetItem([str(text), entity])
+        item.setData(0, Qt.UserRole, tuple(str(value) for value in path))
+        item.setIcon(0, QIcon(os.path.join(icon_root, entity.lower() + ".png")))
+        item.setToolTip(0, f"{entity}: {text}")
+        (self.tree.addTopLevelItem if parent is None else parent.addChild)(item)
+        return item
+
+    def updateSelection(self, current, previous=None):
+        is_station = bool(current and current.text(1) == "Station")
+        self.accept_button.setEnabled(is_station)
+        self.selected_path = current.data(0, Qt.UserRole) if is_station else None
+        self.path_label.setText(
+            "  >  ".join(self.selected_path) if self.selected_path else "Select a station from the hierarchy."
+        )
+
+    def acceptSelection(self):
+        if not self.selected_path:
+            QMessageBox.information(self, "Select a station", "Select a Station before continuing.")
+            return
+        self.accept()
+
+
+class WorkerSearchDialog(QDialog):
+    """Live worker directory filtered by surname and assessment workplace."""
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.main_window = parent
+        self.selected_worker_id = None
+        self.active_letter = None
+        self.active_workplace = ()
+        self.worker_rows = []
+        self.worker_contexts = {}
+        self.alphabet_buttons = {}
+        self.icon_root = os.path.normpath(os.path.join(
+            os.path.dirname(__file__), "..", "assets", "ui-icons"
+        ))
+        self.setObjectName("workerSearchDialog")
+        self.setWindowTitle("Find Worker")
+        self.resize(1080, 650)
+        self.setMinimumSize(900, 560)
+        self.setStyleSheet(parent.mainWorkspaceStyleSheet() + """
+            QDialog#workerSearchDialog { background: #F4F7F9; color: #1B2933; }
+            QFrame#searchPanel { background: white; border: 1px solid #D5DEE5; border-radius: 7px; }
+            QLabel#sectionTitle { color: #0B326C; font-size: 14px; font-weight: 700; }
+            QLabel#resultCount { color: #405462; font-weight: 600; }
+            QTreeWidget, QTableWidget {
+                background: white; color: #1B2933; border: 1px solid #BCC9D3;
+                border-radius: 5px; alternate-background-color: #F7FAFB; gridline-color: #E3E9ED;
+            }
+            QTreeWidget::item { min-height: 30px; padding: 2px 5px; }
+            QTreeWidget::item:selected, QTableWidget::item:selected { background: #087E91; color: white; }
+            QHeaderView::section {
+                background: #EAF2F6; color: #0B326C; border: 0;
+                border-bottom: 1px solid #BCC9D3; padding: 8px 6px; font-weight: 700;
+            }
+            QPushButton#alphabetButton {
+                min-width: 22px; max-width: 22px; min-height: 30px; max-height: 30px;
+                padding: 0; border: 0; background: transparent; color: #5F6F7A;
+                font-size: 11px; font-weight: 650;
+            }
+            QPushButton#alphabetButton:hover { background: #DDF3F5; color: #0B326C; font-size: 17px; }
+            QPushButton#alphabetButton:checked { background: #0B326C; color: white; border-radius: 4px; font-size: 12px; }
+            QPushButton#alphabetButton:disabled { color: #C7D0D7; }
+        """)
+        self.buildUi()
+        self.loadData()
+
+    def buildUi(self):
+        root = QVBoxLayout(self)
+        root.setContentsMargins(18, 16, 18, 16)
+        root.setSpacing(10)
+        title = QLabel("Find a worker")
+        title.setObjectName("dialogTitle")
+        root.addWidget(title)
+        subtitle = QLabel(
+            "Search by worker ID or name, then narrow the directory by last-name initial or assessment workplace."
+        )
+        subtitle.setObjectName("supportingText")
+        subtitle.setWordWrap(True)
+        root.addWidget(subtitle)
+
+        content = QHBoxLayout()
+        content.setSpacing(12)
+        workplace_panel = QFrame()
+        workplace_panel.setObjectName("searchPanel")
+        workplace_panel.setFixedWidth(360)
+        workplace_layout = QVBoxLayout(workplace_panel)
+        workplace_layout.setContentsMargins(12, 12, 12, 12)
+        workplace_title = QLabel("Assessment workplace")
+        workplace_title.setObjectName("sectionTitle")
+        workplace_title.setToolTip(
+            "Filter workers by workplaces where they already have saved assessment data."
+        )
+        workplace_layout.addWidget(workplace_title)
+        workplace_help = QLabel("Select any level to include all workplaces below it.")
+        workplace_help.setObjectName("supportingText")
+        workplace_help.setWordWrap(True)
+        workplace_layout.addWidget(workplace_help)
+        self.workplace_tree = QTreeWidget()
+        self.workplace_tree.setHeaderLabels(["Workplace hierarchy", "Type"])
+        self.workplace_tree.header().setSectionResizeMode(0, QHeaderView.Fixed)
+        self.workplace_tree.header().setSectionResizeMode(1, QHeaderView.Fixed)
+        self.workplace_tree.setColumnWidth(0, 245)
+        self.workplace_tree.setColumnWidth(1, 82)
+        self.workplace_tree.setAlternatingRowColors(True)
+        self.workplace_tree.setToolTip(
+            "Choose All workplaces, or expand the hierarchy to filter workers with assessments in that location."
+        )
+        self.workplace_tree.currentItemChanged.connect(self.workplaceChanged)
+        workplace_layout.addWidget(self.workplace_tree, 1)
+        content.addWidget(workplace_panel)
+
+        directory_panel = QFrame()
+        directory_panel.setObjectName("searchPanel")
+        directory_layout = QVBoxLayout(directory_panel)
+        directory_layout.setContentsMargins(12, 12, 12, 12)
+        directory_layout.setSpacing(8)
+        search_row = QHBoxLayout()
+        directory_title = QLabel("Worker directory")
+        directory_title.setObjectName("sectionTitle")
+        search_row.addWidget(directory_title)
+        search_row.addStretch(1)
+        self.result_count = QLabel()
+        self.result_count.setObjectName("resultCount")
+        search_row.addWidget(self.result_count)
+        directory_layout.addLayout(search_row)
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search worker ID, first name, or last name")
+        self.search_input.setClearButtonEnabled(True)
+        self.search_input.addAction(QIcon(os.path.join(self.icon_root, "search.png")), QLineEdit.LeadingPosition)
+        self.search_input.setToolTip("Results update as you type. Partial names and IDs are supported.")
+        self.search_input.textChanged.connect(self.applyFilters)
+        directory_layout.addWidget(self.search_input)
+
+        alphabet_row = QHBoxLayout()
+        alphabet_row.setSpacing(1)
+        alphabet_label = QLabel("Last name")
+        alphabet_label.setObjectName("supportingText")
+        alphabet_label.setToolTip("Filter workers by the first letter of their last name.")
+        alphabet_row.addWidget(alphabet_label)
+        alphabet_row.addSpacing(5)
+        self.alphabet_group = QButtonGroup(self)
+        self.alphabet_group.setExclusive(True)
+        for value in ["All"] + [chr(code) for code in range(ord("A"), ord("Z") + 1)]:
+            button = QPushButton(value)
+            button.setObjectName("alphabetButton")
+            button.setCheckable(True)
+            button.setChecked(value == "All")
+            button.setToolTip("Show every last name" if value == "All" else f"Show last names beginning with {value}")
+            button.clicked.connect(lambda checked, letter=value: self.setAlphabet(letter))
+            self.alphabet_group.addButton(button)
+            self.alphabet_buttons[value] = button
+            alphabet_row.addWidget(button)
+        alphabet_row.addStretch(1)
+        directory_layout.addLayout(alphabet_row)
+
+        self.table = QTableWidget(0, 6)
+        self.table.setHorizontalHeaderLabels([
+            "Worker ID", "Last name", "First name", "Sex", "Age", "Workplace"
+        ])
+        self.table.horizontalHeaderItem(5).setToolTip(
+            "Workplaces where the worker has saved assessment data."
+        )
+        self.table.setAlternatingRowColors(True)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.verticalHeader().hide()
+        self.table.verticalHeader().setDefaultSectionSize(35)
+        header = self.table.horizontalHeader()
+        section_widths = (105, 108, 108, 74, 50)
+        for column, width in enumerate(section_widths):
+            header.setSectionResizeMode(column, QHeaderView.Fixed)
+            self.table.setColumnWidth(column, width)
+        header.setSectionResizeMode(5, QHeaderView.Stretch)
+        header.setSortIndicator(1, Qt.AscendingOrder)
+        self.table.setToolTip("Select a worker, then choose Use worker. Double-clicking also selects the worker.")
+        self.table.itemSelectionChanged.connect(self.selectionChanged)
+        self.table.itemDoubleClicked.connect(lambda *_: self.acceptSelection())
+        directory_layout.addWidget(self.table, 1)
+        content.addWidget(directory_panel, 1)
+        root.addLayout(content, 1)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
+        cancel_button = buttons.button(QDialogButtonBox.Cancel)
+        cancel_button.setIcon(QIcon(os.path.join(self.icon_root, "cancel.png")))
+        cancel_button.setIconSize(QSize(22, 22))
+        cancel_button.setToolTip("Close without changing the selected worker.")
+        self.use_button = buttons.button(QDialogButtonBox.Ok)
+        self.use_button.setText("Use worker")
+        self.use_button.setObjectName("primaryOutlineButton")
+        self.use_button.setIcon(QIcon(os.path.join(self.icon_root, "worker.png")))
+        self.use_button.setIconSize(QSize(24, 24))
+        self.use_button.setToolTip("Show the selected worker in the main assessment workspace.")
+        self.use_button.setEnabled(False)
+        buttons.accepted.connect(self.acceptSelection)
+        buttons.rejected.connect(self.reject)
+        root.addWidget(buttons)
+
+    def loadData(self):
+        current_year = QDate.currentDate().year()
+        with sqlite3.connect(self.main_window.projectdatabasePath) as conn:
+            workers = conn.execute(
+                """SELECT id, last_name, first_name, gender, year_of_birth
+                   FROM Worker ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE, id"""
+            ).fetchall()
+            contexts = conn.execute(
+                """SELECT DISTINCT worker_id, plant_name, section_name, line_name, station_id
+                   FROM WorkerStationShiftErgoTool"""
+            ).fetchall()
+            for worker_id, plant, section, line, station in contexts:
+                self.worker_contexts.setdefault(str(worker_id), set()).add(tuple(
+                    str(value) for value in (plant, section, line, station)
+                ))
+            self.populateWorkplaceTree(conn)
+        self.worker_rows = []
+        for worker_id, last_name, first_name, gender, year_of_birth in workers:
+            try:
+                age = str(max(0, current_year - int(year_of_birth))) if year_of_birth else "-"
+            except (TypeError, ValueError):
+                age = "-"
+            self.worker_rows.append((
+                str(worker_id), last_name or "", first_name or "", gender or "-", age
+            ))
+        available = {row[1][0].upper() for row in self.worker_rows if row[1] and row[1][0].isalpha()}
+        for letter, button in self.alphabet_buttons.items():
+            button.setEnabled(letter == "All" or letter in available)
+        self.applyFilters()
+
+    def populateWorkplaceTree(self, conn):
+        all_item = QTreeWidgetItem(["All workplaces", "All"])
+        all_item.setData(0, Qt.UserRole, ())
+        all_item.setIcon(0, QIcon(os.path.join(self.icon_root, "plant.png")))
+        self.workplace_tree.addTopLevelItem(all_item)
+        for (plant,) in conn.execute("SELECT name FROM Plant ORDER BY name COLLATE NOCASE"):
+            plant_item = self.addWorkplaceItem(None, plant, "Plant", (plant,))
+            for (section,) in conn.execute(
+                "SELECT name FROM Section WHERE plant_name=? ORDER BY name COLLATE NOCASE", (plant,)
+            ):
+                section_item = self.addWorkplaceItem(plant_item, section, "Section", (plant, section))
+                for (line,) in conn.execute(
+                    """SELECT name FROM Line WHERE plant_name=? AND section_name=?
+                       ORDER BY name COLLATE NOCASE""", (plant, section)
+                ):
+                    line_item = self.addWorkplaceItem(section_item, line, "Line", (plant, section, line))
+                    for (station,) in conn.execute(
+                        """SELECT id FROM Station WHERE plant_name=? AND section_name=? AND line_name=?
+                           ORDER BY id COLLATE NOCASE""", (plant, section, line)
+                    ):
+                        self.addWorkplaceItem(
+                            line_item, station, "Station", (plant, section, line, station)
+                        )
+        self.workplace_tree.collapseAll()
+        self.workplace_tree.setCurrentItem(all_item)
+
+    def addWorkplaceItem(self, parent, text, entity, path):
+        item = QTreeWidgetItem([str(text), entity])
+        item.setData(0, Qt.UserRole, tuple(str(value) for value in path))
+        item.setIcon(0, QIcon(os.path.join(self.icon_root, entity.lower() + ".png")))
+        item.setToolTip(0, f"Filter by {entity.lower()}: {text}")
+        (self.workplace_tree.addTopLevelItem if parent is None else parent.addChild)(item)
+        return item
+
+    def setAlphabet(self, letter):
+        self.active_letter = None if letter == "All" else letter
+        self.applyFilters()
+
+    def workplaceChanged(self, item, previous=None):
+        self.active_workplace = tuple(item.data(0, Qt.UserRole) or ()) if item else ()
+        self.applyFilters()
+
+    def applyFilters(self, *args):
+        query = self.search_input.text().strip().casefold()
+        filtered = []
+        for row in self.worker_rows:
+            worker_id, last_name, first_name, gender, age = row
+            if query and query not in " ".join((worker_id, first_name, last_name)).casefold():
+                continue
+            if self.active_letter and not last_name.upper().startswith(self.active_letter):
+                continue
+            contexts = self.worker_contexts.get(worker_id, set())
+            if self.active_workplace and not any(
+                context[:len(self.active_workplace)] == self.active_workplace for context in contexts
+            ):
+                continue
+            filtered.append(row)
+        self.renderRows(filtered)
+
+    def renderRows(self, rows):
+        self.table.setSortingEnabled(False)
+        self.table.setRowCount(len(rows))
+        for row_index, (worker_id, last_name, first_name, gender, age) in enumerate(rows):
+            contexts = sorted(self.worker_contexts.get(worker_id, set()))
+            workplace = "; ".join(" > ".join(path) for path in contexts) if contexts else "No saved assessment workplace"
+            values = (worker_id, last_name or "-", first_name or "-", gender, age, workplace)
+            for column, value in enumerate(values):
+                item = QTableWidgetItem(value)
+                if column == 0:
+                    item.setData(Qt.UserRole, worker_id)
+                item.setToolTip(value)
+                self.table.setItem(row_index, column, item)
+        self.table.setSortingEnabled(True)
+        self.table.sortItems(1, Qt.AscendingOrder)
+        self.table.clearSelection()
+        self.selected_worker_id = None
+        self.use_button.setEnabled(False)
+        count = len(rows)
+        self.result_count.setText(f"{count} worker{'s' if count != 1 else ''}")
+
+    def selectionChanged(self):
+        selected = self.table.selectionModel().selectedRows()
+        self.selected_worker_id = self.table.item(selected[0].row(), 0).data(Qt.UserRole) if selected else None
+        self.use_button.setEnabled(bool(self.selected_worker_id))
+
+    def acceptSelection(self):
+        if self.selected_worker_id:
+            self.accept()
+
+
+class SyncedHeaderLayout(QGridLayout):
+    """Sticky header whose column widths are synchronized to the task grid."""
+
+    def __init__(self):
+        super().__init__()
+        self.next_column = 0
+
+    def addSpacing(self, size):
+        return
+
+    def addWidget(self, widget, *args):
+        if args:
+            return super().addWidget(widget, *args)
+        super().addWidget(widget, 0, self.next_column)
+        self.next_column += 1
+
+
 class ErgoTools(QtWidgets.QMainWindow):
     
     def retranslateUI(self):
@@ -93,7 +728,7 @@ class ErgoTools(QtWidgets.QMainWindow):
             self.tst_headers_labels[4].setText(QtWidgets.QApplication.translate("App", "Moment (N.m)"))      # Change back to N.m
     
         # setupLiFFTTab
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.lifft_tab), QtWidgets.QApplication.translate("App", "Lifting Fatigue Failure Tool (LiFFT)"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.lifft_tab), QtWidgets.QApplication.translate("App", "Lifting Fatigue Failure Tool (LiFFT)  "))
         self.lifft_headers_labels[0].setText(QtWidgets.QApplication.translate("App", "Task #"))
         self.lifft_headers_labels[4].setText(QtWidgets.QApplication.translate("App", "Repetitions (per work day)"))
         self.lifft_headers_labels[5].setText(QtWidgets.QApplication.translate("App", "Damage (cumulative)"))
@@ -164,8 +799,9 @@ class ErgoTools(QtWidgets.QMainWindow):
     # ------------------------------------------------------------------------   
     
         
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, disable_vtk=False):
         super(ErgoTools, self).__init__(parent)
+        self.vtk_enabled = not disable_vtk
         
         self.databasePath = "../data/ergotools_data.db"
         #self.setupDatabase()
@@ -286,6 +922,9 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.export_as_action.triggered.connect(self.exportFileAs)
         self.file_menu.addAction(self.export_as_action)
 
+        self.export_action.setEnabled(False)
+        self.export_as_action.setEnabled(False)
+
         self.export_csv_action = QAction('Export selected tool as CSV format', self) #TODO: move
         self.export_csv_action.triggered.connect(self.exportToCSV)
         self.file_menu.addAction(self.export_csv_action)
@@ -338,17 +977,24 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.language_english_action = QAction('English', self, checkable=True)
         self.language_english_action.triggered.connect(self.setLanguageEnglish)
 
+
         self.language_group.addAction(self.language_spanish_action)
         self.language_group.addAction(self.language_english_action)
 
         self.language_menu.addAction(self.language_spanish_action)
         self.language_menu.addAction(self.language_english_action)
+        
+        
 
         # Set the system language
         if QLocale.system().language() == QLocale.Spanish:
             self.language_spanish_action.setChecked(True)
         else:
             self.language_english_action.setChecked(True)
+
+        self.language_english_action.setEnabled(True)
+        self.language_spanish_action.setEnabled(False) 
+
 
         # Metric System submenu
         self.metric_system_menu = self.preferences_menu.addMenu('Measurement System')
@@ -790,6 +1436,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         for row in range(self.num_task):
             # Difficulty Rating dropdown
             omnires_dropdown = QComboBox()
+            omnires_dropdown.setMinimumWidth(225)
             omnires_dropdown.addItems(task_types)
             self.duet_tab_layout.removeWidget(omnires_dropdown)
             self.duet_tab_layout.addWidget(omnires_dropdown, row + 1, 1)
@@ -1073,12 +1720,56 @@ class ErgoTools(QtWidgets.QMainWindow):
         workers_list = self.getWorkers(order_by)
         # Populate the worker combobox
         
-        self.workerComboBox.blockSignals(True)  # Suspend signals
-        
+        self.worker_all_items = workers_list
+        available_letters = {
+            display.partition("(")[2].partition(",")[0].strip()[:1].upper()
+            for display in workers_list if display.partition("(")[2].partition(",")[0].strip()
+        }
+        for value, button in getattr(self, "main_worker_alphabet_buttons", {}).items():
+            button.setEnabled(value == "All" or value in available_letters)
+        self.applyMainWorkerAlphabetFilter(
+            getattr(self, "main_worker_alphabet_letter", None), preserve_selection=True
+        )
+
+    def applyMainWorkerAlphabetFilter(self, letter=None, preserve_selection=True):
+        """Filter the main worker selector by last-name initial."""
+        self.main_worker_alphabet_letter = letter
+        if not hasattr(self, "workerComboBox"):
+            return
+        current_id = self.workerComboBox.currentText().split(" ", 1)[0] if preserve_selection else ""
+        source = getattr(self, "worker_all_items", None)
+        if source is None:
+            source = [self.workerComboBox.itemText(index) for index in range(self.workerComboBox.count())]
+            self.worker_all_items = source
+        if letter:
+            visible = []
+            for display in source:
+                surname = display.partition("(")[2].partition(",")[0].strip()
+                if surname.upper().startswith(letter):
+                    visible.append(display)
+        else:
+            visible = list(source)
+        self.workerComboBox.blockSignals(True)
         self.workerComboBox.clear()
-        self.workerComboBox.addItems(workers_list)
-        
-        self.workerComboBox.blockSignals(False)  # Suspend signals
+        self.workerComboBox.addItems(visible)
+        index = next(
+            (index for index, display in enumerate(visible) if display.split(" ", 1)[0] == current_id), -1
+        )
+        if index >= 0:
+            self.workerComboBox.setCurrentIndex(index)
+        elif visible:
+            self.workerComboBox.setCurrentIndex(0)
+        self.workerComboBox.blockSignals(False)
+
+    def setMainWorkerAlphabetFilter(self, value):
+        letter = None if value == "All" else value
+        self.applyMainWorkerAlphabetFilter(letter)
+        for candidate, button in self.main_worker_alphabet_buttons.items():
+            button.blockSignals(True)
+            button.setChecked(candidate == value)
+            button.blockSignals(False)
+        if self.workerComboBox.count():
+            self.workerComboIndexChanged(self.workerComboBox.currentIndex())
         
         
     
@@ -1495,8 +2186,177 @@ class ErgoTools(QtWidgets.QMainWindow):
     
     
     
+    #def saveFileAs(self):
+    #    QMessageBox.information(self, "Save Project As", "Save File As action triggered")
+
     def saveFileAs(self):
-        QMessageBox.information(self, "Save Project As", "Save File As action triggered")
+        # If there is no current project yet, fall back to normal Save
+        if not self.projectFileCreated:
+            self.saveFile()
+            return
+
+        # First save current tool data into the current project database
+        #self.saveToolsData()
+        
+        
+        # Ask for the new project file path
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        new_file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Project As",
+            os.path.expanduser("~/Documents"),
+            "ErgoProj Files (*.ergprj)",
+            options=options
+        )
+
+        if not new_file_path:
+            return
+
+        # Ensure the file has the correct extension
+        if not new_file_path.endswith(".ergprj"):
+            new_file_path += ".ergprj"
+
+        # Avoid overwriting the same file path with unnecessary work
+        current_project_path = os.path.normpath(self.projectFilePath) if self.projectFilePath else ""
+        if os.path.normpath(new_file_path) == current_project_path:
+            QMessageBox.information(self, "Save Project As", "The selected file is the same as the current project.")
+            return
+
+        # Ask optionally for a new project name and description, prefilled with current values
+        description_dialog = QDialog(self)
+        description_dialog.setWindowTitle("Project Details")
+        description_layout = QVBoxLayout(description_dialog)
+
+        name_label = QLabel("Name:")
+        name_input = QLineEdit()
+        name_input.setText(self.projectName if hasattr(self, "projectName") else "")
+        description_layout.addWidget(name_label)
+        description_layout.addWidget(name_input)
+    
+        description_label = QLabel("Description:")
+        description_text_edit = QTextEdit()
+        description_text_edit.setPlainText(self.projectDescription if hasattr(self, "projectDescription") else "")
+        description_layout.addWidget(description_label)
+        description_layout.addWidget(description_text_edit)
+    
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box.accepted.connect(description_dialog.accept)
+        button_box.rejected.connect(description_dialog.reject)
+        description_layout.addWidget(button_box)
+    
+        if description_dialog.exec_() == QDialog.Accepted:
+            project_name_input = name_input.text().strip()
+            description = description_text_edit.toPlainText()
+        else:
+            return
+
+        # New project naming
+        new_project_folder = os.path.basename(new_file_path).replace(".ergprj", "")
+        new_project_name = project_name_input
+    
+        # New folder structure
+        new_project_folder_path = os.path.dirname(new_file_path)
+        new_data_folder_name = new_project_folder + "_data"
+        new_images_folder_name = new_project_folder + "_images"
+    
+        new_data_folder_path = os.path.join(new_project_folder_path, new_data_folder_name)
+        new_images_folder_path = os.path.join(new_project_folder_path, new_images_folder_name)
+    
+        os.makedirs(new_data_folder_path, exist_ok=True)
+        os.makedirs(new_images_folder_path, exist_ok=True)
+
+        # New database path/name
+        new_project_db_name = new_project_folder + "_data.db"
+        new_project_db_path = os.path.join(new_data_folder_path, new_project_db_name)
+
+        try:
+            # Copy the CURRENT database, not the template database
+            shutil.copyfile(self.projectdatabasePath, new_project_db_path)
+
+            # Copy current images folder contents if it exists
+            current_images_path = ""
+            if hasattr(self, "projectFolderPath") and hasattr(self, "imagesFolder") and self.projectFolderPath and self.imagesFolder:
+                current_images_path = os.path.join(self.projectFolderPath, self.imagesFolder)
+
+            if current_images_path and os.path.isdir(current_images_path):
+                for item_name in os.listdir(current_images_path):
+                    src_item = os.path.join(current_images_path, item_name)
+                    dst_item = os.path.join(new_images_folder_path, item_name)
+
+                    if os.path.isdir(src_item):
+                        if os.path.exists(dst_item):
+                            shutil.rmtree(dst_item)
+                        shutil.copytree(src_item, dst_item)
+                    else:
+                        shutil.copy2(src_item, dst_item)
+
+            # Update project-related paths accessible externally
+            self.projectFilePath = new_file_path
+            self.projectFolderPath = new_project_folder_path
+            self.projectRelFolderPath = os.path.join(new_project_folder, new_project_name)
+            self.projectFolderName = new_project_folder
+            self.projectDescription = description
+            self.projectName = new_project_name
+            self.projectdatabasePath = new_project_db_path
+            self.projectdatabaseName = new_project_db_name
+            self.dataFolder = new_data_folder_name
+            self.imagesFolder = new_images_folder_name
+    
+            # Save current language and measurement system
+            self.selectedLanguage = "Spanish" if self.language_spanish_action.isChecked() else "English"
+            self.selectedMeasurementSystem = "Metric" if self.metric_action.isChecked() else "Imperial"
+            self.default_metric_sys = self.selectedMeasurementSystem
+    
+            # Write the new XML project file
+            root = ET.Element("ErgoProject")
+    
+            name_element = ET.SubElement(root, "Name")
+            name_element.text = self.projectName
+        
+            description_element = ET.SubElement(root, "Description")
+            description_element.text = self.projectDescription
+
+            date_element = ET.SubElement(root, "Date")
+            date_element.text = QDate.currentDate().toString("yyyy-MM-dd")
+    
+            time_element = ET.SubElement(root, "Time")
+            time_element.text = QTime.currentTime().toString("HH:mm:ss")
+    
+            db_name_element = ET.SubElement(root, "DatabaseName")
+            db_name_element.text = self.projectdatabaseName
+    
+            db_path_element = ET.SubElement(root, "DatabasePath")
+            db_path_element.text = os.path.join(self.dataFolder, self.projectdatabaseName)
+    
+            folder_path_element = ET.SubElement(root, "ProjectPath")
+            folder_path_element.text = self.projectRelFolderPath
+    
+            folder_name_element = ET.SubElement(root, "ProjectFolder")
+            folder_name_element.text = self.projectFolderName
+    
+            data_folder_name_element = ET.SubElement(root, "DataPath")
+            data_folder_name_element.text = self.dataFolder
+
+            images_folder_name_element = ET.SubElement(root, "ImagesPath")
+            images_folder_name_element.text = self.imagesFolder
+
+            language_element = ET.SubElement(root, "Language")
+            language_element.text = self.selectedLanguage
+ 
+            measurement_system_element = ET.SubElement(root, "MeasurementSystem")
+            measurement_system_element.text = self.selectedMeasurementSystem
+
+            tree = ET.ElementTree(root)
+            tree.write(self.projectFilePath)
+
+            self.projectFileCreated = True
+
+            QMessageBox.information(self, "Save Project As", f"Project saved successfully as:\n{self.projectFilePath}")
+    
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save project as:\n{str(e)}")
+    
 
     def exportFile(self):
         QMessageBox.information(self, "Export Project", "Export Project action triggered")
@@ -1742,9 +2602,149 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.loadToolsData()
         
     
-
-
     def exportToCSV(self):
+        """Export one summary row per worker for the currently selected ergonomic tool."""
+        if not hasattr(self, "projectdatabasePath") or not self.projectdatabasePath:
+            QMessageBox.warning(
+                self,
+                "Export Error" if self.language_english_action.isChecked() else "Error de Exportación",
+                "No project database is available."
+                if self.language_english_action.isChecked()
+                else "No hay una base de datos de proyecto disponible."
+            )
+            return
+    
+        current_tab_index = self.tabWidget.currentIndex()
+
+        if current_tab_index == 0:
+            tool_id = "LiFFT"
+        elif current_tab_index == 1:
+            tool_id = "DUET"
+        elif current_tab_index == 2:
+            tool_id = "ST"
+        else:
+            QMessageBox.warning(
+                self,
+                "Export Error" if self.language_english_action.isChecked() else "Error de Exportación",
+                "Unknown tool tab selected."
+                if self.language_english_action.isChecked()
+                else "Se seleccionó una pestaña de herramienta desconocida."    
+            )
+            return
+
+        export_datetime_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        file_datetime_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        headers = [
+            "Export DateTime",
+            "Worker ID",
+            "Plant",
+            "Section",
+            "Line",
+            "Station",
+            "Shift",
+            "Tool ID",
+            "Total Cumulative Damage",
+            "Probability Outcome",
+            "Unit"
+        ]
+    
+        csv_data = [headers]
+    
+        conn = None
+        try:
+            conn = sqlite3.connect(self.projectdatabasePath)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+
+            query = """
+                SELECT
+                    worker_id,
+                    plant_name,
+                    section_name,
+                    line_name,
+                    station_id,
+                    shift_id,
+                    tool_id,
+                    total_cumulative_damage,
+                    probability_outcome,
+                    unit
+                FROM WorkerStationShiftErgoTool
+                WHERE tool_id = ?
+                ORDER BY plant_name, section_name, line_name, station_id, shift_id, worker_id
+            """
+            cursor.execute(query, (tool_id,))
+            rows = cursor.fetchall()
+
+            if not rows:
+                QMessageBox.information(
+                    self,
+                    "No Data" if self.language_english_action.isChecked() else "Sin Datos",
+                    f"No summary records were found for {tool_id}."
+                    if self.language_english_action.isChecked()
+                    else f"No se encontraron registros resumen para {tool_id}."
+                )
+                return
+    
+            for row in rows:
+                csv_data.append([
+                    export_datetime_str,
+                    str(row["worker_id"]).strip() if row["worker_id"] is not None else "",
+                    str(row["plant_name"]).strip() if row["plant_name"] is not None else "",
+                    str(row["section_name"]).strip() if row["section_name"] is not None else "",
+                    str(row["line_name"]).strip() if row["line_name"] is not None else "",
+                    str(row["station_id"]).strip() if row["station_id"] is not None else "",
+                    str(row["shift_id"]).strip() if row["shift_id"] is not None else "",
+                    str(row["tool_id"]).strip() if row["tool_id"] is not None else "",
+                    row["total_cumulative_damage"] if row["total_cumulative_damage"] is not None else "",
+                    row["probability_outcome"] if row["probability_outcome"] is not None else "",
+                    str(row["unit"]).strip() if row["unit"] is not None else ""
+                ])
+    
+            suggested_filename = f"{tool_id}_Summary_AllWorkers_{file_datetime_str}.csv"
+            dialog_title = (
+                f"Save {tool_id} Summary CSV"
+                if self.language_english_action.isChecked()
+                else f"Guardar CSV Resumen de {tool_id}"
+            )
+
+            filepath, _ = QFileDialog.getSaveFileName(
+                self,
+                dialog_title,
+                suggested_filename,
+                "CSV files (*.csv)"
+            )
+
+            if not filepath:
+                return
+    
+            with open(filepath, "w", newline="", encoding="utf-8-sig") as file:
+                writer = csv.writer(file)
+                writer.writerows(csv_data)
+
+            QMessageBox.information(
+                self,
+                "Export Successful" if self.language_english_action.isChecked() else "Exportación Exitosa",
+                f"{tool_id} summary data exported successfully to CSV."
+                if self.language_english_action.isChecked()
+                else f"Los datos resumen de {tool_id} se exportaron correctamente a CSV."
+            )
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Export Error" if self.language_english_action.isChecked() else "Error de Exportación",
+                f"An error occurred while exporting to CSV: {e}"
+                if self.language_english_action.isChecked()
+                else f"Ocurrió un error al exportar a CSV: {e}"
+            )
+
+        finally:
+            if conn:
+                conn.close()
+            
+            
+    def exportToCSVOld(self):
         currentTabIndex = self.tabWidget.currentIndex()
         currentTabText = self.tabWidget.tabText(currentTabIndex)
 
@@ -2733,77 +3733,809 @@ class ErgoTools(QtWidgets.QMainWindow):
 
 
     def setupUI(self):
-        # Main window central widget and vertical layout
         centralWidget = QtWidgets.QWidget(self)
+        centralWidget.setObjectName("mainWorkspace")
         self.setCentralWidget(centralWidget)
         mainLayout = QtWidgets.QVBoxLayout(centralWidget)
+        mainLayout.setContentsMargins(14, 10, 14, 8)
+        mainLayout.setSpacing(10)
 
-        # Setup top widgets first
-        self.setupTopWidgets()
-        mainLayout.addWidget(self.topContainer)  # Add the top layout container at the beginning
-        
-        # Horizontal layout for the content area
-        contentLayout = QtWidgets.QHBoxLayout()
-        
-        # Left side layout for the 3D model and controls
-        self.leftLayout = QtWidgets.QVBoxLayout()
-        
-        # VTK widget for 3D model visualization
-        self.vtkWidget = QVTKRenderWindowInteractor()
-        self.leftLayout.addWidget(self.vtkWidget)
-        
-        # Setup renderer for VTK widget
-        self.setupRenderer()
-        
-        # Setup renderer for Pain Visualization Sphere widget
-        #self.addPainVisualizationSphere()
-
-        # Model control panel (zoom, rotation, movement)
-        self.setupControlPanel()
-
-        # Wrap left layout content in a container
-        leftContainer = QtWidgets.QWidget()
-        leftContainer.setLayout(self.leftLayout)
-        contentLayout.addWidget(leftContainer)
-
-
-
-        # Right side tab widget for plant and shift controls and tools inputs bellow
-        right_controls_layout = QVBoxLayout()
-        
-        self.setupTabsTopControls()
-        
-        self.tabWidget = QtWidgets.QTabWidget()
-        self.tabWidget.currentChanged.connect(self.onTabChange)  # Connect the signal to your method
-
-
-        right_controls_layout.addLayout(self.tabstop_controls_layout)
-        
-        self.setupTabWidgets()
-        right_controls_layout.addWidget(self.tabWidget)
-
-        #left_controls_layout.addWidget(self.tabWidget)
-
-
-        contentLayout.addLayout(right_controls_layout)
-        # Adding the content layout to the main vertical layout
-        mainLayout.addLayout(contentLayout)
-        
-        
-        
-        
         self.setupNavigationButtons()
-        
+        self.setupTopWidgets()
+        mainLayout.addWidget(self.topContainer)
 
-        # Add navigation layout to the main layout
-        mainLayout.addLayout(self.navigationLayout)
-        
-        # Resize the window to ensure all tabs are visible
-        #self.resize(1280, 800)  # Adjust the width (1200) and height (800) as necessary
-        
-        
+        self.setupTabsTopControls()
+
+        contentLayout = QtWidgets.QHBoxLayout()
+        contentLayout.setSpacing(10)
+
+        model_frame = QFrame()
+        model_frame.setObjectName("bodyRegionPanel")
+        model_frame.setMinimumWidth(240)
+        model_frame.setMaximumWidth(285)
+        self.leftLayout = QtWidgets.QVBoxLayout()
+        self.leftLayout.setContentsMargins(14, 14, 14, 12)
+        self.leftLayout.setSpacing(8)
+        title_layout = QHBoxLayout()
+        self.body_region_title = QLabel("LiFFT Body Region")
+        self.body_region_title.setObjectName("bodyRegionTitle")
+        info_label = QLabel("i")
+        info_label.setObjectName("bodyInfoIcon")
+        info_label.setAlignment(Qt.AlignCenter)
+        info_label.setToolTip("The highlighted anatomy identifies the body region assessed by the selected tool.")
+        title_layout.addWidget(self.body_region_title)
+        title_layout.addStretch()
+        title_layout.addWidget(info_label)
+        self.leftLayout.addLayout(title_layout)
+        self.vtkWidget = QVTKRenderWindowInteractor() if self.vtk_enabled else VTKDisabledWidget()
+        self.vtkWidget.setObjectName("vtkWorkspace")
+        self.vtkWidget.setMinimumHeight(315)
+        self.leftLayout.addWidget(self.vtkWidget, 1)
+        if self.vtk_enabled:
+            self.setupRenderer()
+        else:
+            disabled_actor = VTKDisabledActor()
+            for actor_name in (
+                "humanActor",
+                "lowerBackActor",
+                "leftForeArmActor",
+                "leftHandActor",
+                "rightForeArmActor",
+                "rightHandActor",
+                "leftShoulderActor",
+                "rightShoulderActor",
+            ):
+                setattr(self, actor_name, disabled_actor)
+        self.setupControlPanel()
+        model_frame.setLayout(self.leftLayout)
+        contentLayout.addWidget(model_frame)
+
+        tool_frame = QFrame()
+        tool_frame.setObjectName("workspacePanel")
+        tool_frame.setMinimumWidth(0)
+        tool_frame.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Expanding)
+        tool_layout = QVBoxLayout(tool_frame)
+        tool_layout.setContentsMargins(6, 6, 6, 6)
+        self.tabWidget = QtWidgets.QTabWidget()
+        self.tabWidget.setObjectName("assessmentTabs")
+        self.tabWidget.setIconSize(QSize(36, 36))
+        self.tabWidget.tabBar().setElideMode(Qt.ElideNone)
+        self.tabWidget.tabBar().setUsesScrollButtons(False)
+        self.tabWidget.tabBar().setExpanding(False)
+        self.tabWidget.setMinimumWidth(0)
+        self.tabWidget.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Expanding)
+        self.tabWidget.currentChanged.connect(self.onTabChange)
+        self.setupTabWidgets()
+        tool_layout.addWidget(self.tabWidget)
+        contentLayout.addWidget(tool_frame, 1)
+
+        self.setupResultsSidebar()
+        contentLayout.addWidget(self.results_sidebar)
+        mainLayout.addLayout(contentLayout, 1)
+
+        mainLayout.addWidget(self.location_context_frame)
+
+        self.setupWorkspaceFooter()
+        mainLayout.addWidget(self.workspace_footer)
+        self.setStyleSheet(self.mainWorkspaceStyleSheet())
+        self.summary_timer = QTimer(self)
+        self.summary_timer.timeout.connect(self.refreshAssessmentSummary)
+        self.summary_timer.start(300)
+
+    def setupResultsSidebar(self):
+        self.results_sidebar = QFrame()
+        self.results_sidebar.setObjectName("resultsSidebar")
+        self.results_sidebar.setMinimumWidth(230)
+        self.results_sidebar.setMaximumWidth(260)
+        layout = QVBoxLayout(self.results_sidebar)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
+
+        risk_card = QFrame()
+        risk_card.setObjectName("summaryCard")
+        # Keep every vertical region deterministic.  The previous 240px card was
+        # smaller than its contents, so Qt compressed different gaps on repaint.
+        risk_card.setFixedHeight(235)
+        risk_layout = QVBoxLayout(risk_card)
+        risk_layout.setContentsMargins(10, 10, 10, 10)
+        risk_layout.setSpacing(4)
+        risk_header_widget = QWidget()
+        risk_header_widget.setFixedHeight(25)
+        risk_header = QHBoxLayout(risk_header_widget)
+        risk_header.setContentsMargins(0, 0, 0, 0)
+        risk_header.setSpacing(4)
+        risk_title = QLabel("Risk level")
+        risk_title.setObjectName("summaryTitle")
+        risk_title.setToolTip("Estimated probability for the adverse outcome calculated by the active ergonomic tool.")
+        self.risk_severity_label = QLabel("Low")
+        self.risk_severity_label.setObjectName("riskSeverity")
+        self.risk_severity_label.setMinimumWidth(78)
+        self.risk_severity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        risk_header.addWidget(risk_title)
+        risk_header.addStretch()
+        risk_header.addWidget(self.risk_severity_label)
+        self.risk_gauge = RiskGauge()
+        risk_layout.addWidget(risk_header_widget)
+        risk_layout.addWidget(self.risk_gauge)
+        risk_layout.addStretch(1)
+        layout.addWidget(risk_card)
+
+        damage_card = QFrame()
+        damage_card.setObjectName("summaryCard")
+        damage_layout = QVBoxLayout(damage_card)
+        damage_title = QLabel("Cumulative damage")
+        damage_title.setObjectName("summaryTitle")
+        damage_title.setToolTip("Combined cumulative damage contribution from the entered tasks.")
+        self.damage_value_label = QLabel("0.0000")
+        self.damage_value_label.setObjectName("metricValue")
+        self.damage_progress = DamageScale()
+        damage_layout.addWidget(damage_title)
+        damage_layout.addWidget(self.damage_value_label)
+        damage_layout.addWidget(self.damage_progress)
+        layout.addWidget(damage_card)
+
+        metrics_card = QFrame()
+        metrics_card.setObjectName("summaryCard")
+        metrics_layout = QGridLayout(metrics_card)
+        metrics_title = QLabel("Key metrics")
+        metrics_title.setObjectName("summaryTitle")
+        metrics_title.setToolTip("A live summary of the task data entered for the active tool.")
+        metrics_layout.addWidget(metrics_title, 0, 0, 1, 2)
+        self.metric_labels = {}
+        for row, (key, label) in enumerate((
+            ("tasks", "Tasks"), ("repetitions", "Repetitions"),
+            ("average_load", "Average load"), ("max_moment", "Max moment"),
+        ), start=1):
+            metrics_layout.addWidget(QLabel(label), row, 0)
+            value = QLabel("0")
+            value.setAlignment(Qt.AlignRight)
+            value.setObjectName("metricSmallValue")
+            metrics_layout.addWidget(value, row, 1)
+            self.metric_labels[key] = value
+        layout.addWidget(metrics_card)
+
+        status_card = QFrame()
+        status_card.setObjectName("summaryCard")
+        status_layout = QVBoxLayout(status_card)
+        status_title = QLabel("Status")
+        status_title.setObjectName("summaryTitle")
+        status_title.setToolTip("Indicates whether the active assessment contains data that can be evaluated.")
+        self.assessment_status_label = QLabel("Ready")
+        self.assessment_status_label.setObjectName("readyStatus")
+        self.assessment_status_detail = QLabel("Select a context and enter task data.")
+        self.assessment_status_detail.setObjectName("supportingText")
+        self.assessment_status_detail.setWordWrap(True)
+        status_layout.addWidget(status_title)
+        status_layout.addWidget(self.assessment_status_label)
+        status_layout.addWidget(self.assessment_status_detail)
+        layout.addWidget(status_card)
+        layout.addStretch()
+
+    def setupWorkspaceFooter(self):
+        self.workspace_footer = QFrame()
+        self.workspace_footer.setObjectName("workspaceFooter")
+        footer_layout = QHBoxLayout(self.workspace_footer)
+        footer_layout.setContentsMargins(10, 5, 10, 5)
+        self.footer_tool_label = QLabel("Tool: LiFFT")
+        self.footer_tool_label.setMinimumWidth(115)
+        self.footer_tool_label.setToolTip("The ergonomic assessment tool currently selected.")
+        self.footer_unit_label = QLabel("Units: Imperial")
+        self.footer_unit_label.setToolTip("The measurement system used by the current project.")
+        self.footer_context_label = QLabel("No project loaded")
+        self.footer_context_label.setToolTip("The project currently open in Ergo Tools.")
+        footer_layout.addWidget(self.footer_tool_label)
+        footer_layout.addWidget(self.footer_unit_label)
+        footer_layout.addStretch()
+        footer_layout.addWidget(self.footer_context_label)
+        self.workspace_footer.setAutoFillBackground(True)
+
+    def activeToolSummaryWidgets(self):
+        index = self.tabWidget.currentIndex()
+        if index == 0:
+            return {
+                "name": "LiFFT", "damage": self.lifft_total_damage_value_label,
+                "probability": self.lifft_probability_value_label, "color": self.lifft_total_risk_color,
+                "inputs": (self.lifft_lever_arm_inputs, self.lifft_load_inputs, self.lifft_repetitions_inputs),
+                "moments": [row[3] for row in self.lifft_output_labels_matrix[:len(self.lifft_lever_arm_inputs)]],
+            }
+        if index == 1:
+            return {
+                "name": "DUET", "damage": self.duet_total_damage_value_label,
+                "probability": self.duet_probability_value_label, "color": self.duet_total_risk_color,
+                "inputs": ([], [], self.duet_repetitions_inputs), "moments": [],
+            }
+        return {
+            "name": "Shoulder", "damage": self.tst_total_damage_value_label,
+            "probability": self.tst_probability_value_label, "color": self.tst_total_risk_color,
+            "inputs": (self.tst_lever_arm_inputs, self.tst_load_inputs, self.tst_repetitions_inputs),
+            "moments": [row[4] for row in self.tst_output_labels_matrix[:len(self.tst_lever_arm_inputs)]],
+        }
+
+    @staticmethod
+    def numericLabelValue(label):
+        text = label.text().strip().replace("%", "")
+        if text.startswith(">"):
+            return 100.0
+        if text.startswith("<"):
+            return 0.0
+        try:
+            return float(text)
+        except ValueError:
+            return 0.0
+
+    def refreshAssessmentSummary(self):
+        if not hasattr(self, "tabWidget") or self.tabWidget.count() < 3:
+            return
+        self.syncStickyHeaders()
+        summary = self.activeToolSummaryWidgets()
+        self.styleAssessmentControls()
+        probability = self.numericLabelValue(summary["probability"])
+        damage = self.numericLabelValue(summary["damage"])
+        self.risk_gauge.setValue(probability, summary["color"])
+        if probability < 10:
+            severity, severity_color = "Low", "#19A63A"
+        elif probability < 30:
+            severity, severity_color = "Moderate", "#C99300"
+        elif probability < 60:
+            severity, severity_color = "High", "#F57C00"
+        else:
+            severity, severity_color = "Very high", "#E6372E"
+        self.risk_severity_label.setText("● " + severity)
+        self.risk_severity_label.setStyleSheet(f"color: {severity_color}; font-weight: 700;")
+        outcome_text = {
+            "LiFFT": "Probability of high-risk\njob",
+            "DUET": "Probability of distal upper-\nextremity outcome",
+            "Shoulder": "Probability of shoulder\noutcome",
+        }[summary["name"]]
+        region_context = {
+            "LiFFT": ("LiFFT Body Region", "Lower Back"),
+            "DUET": ("DUET Body Region", "Distal Upper Extremity"),
+            "Shoulder": ("Shoulder Body Region", "Shoulders"),
+        }[summary["name"]]
+        self.body_region_title.setText(region_context[0])
+        self.active_region_label.setText(region_context[1])
+        self.risk_gauge.setOutcomeText(outcome_text)
+        damage_color = QColor(summary["color"])
+        if not damage_color.isValid():
+            damage_color = QColor("#F97316")
+        readable_damage_color = damage_color.darker(190)
+        self.damage_value_label.setText(f"{damage:.4f}")
+        self.damage_value_label.setStyleSheet(
+            f"color: {readable_damage_color.name()}; background: rgba({damage_color.red()}, {damage_color.green()}, "
+            f"{damage_color.blue()}, 38); border-left: 5px solid {damage_color.name()}; "
+            "border-radius: 4px; padding: 7px 9px; font-size: 20px; font-weight: 700;"
+        )
+        self.damage_progress.setValue(damage, damage_color.name())
+        self.styleToolResultSummary(summary, damage_color)
+        lever_inputs, load_inputs, repetition_inputs = summary["inputs"]
+        repetition_values = [float(field.text()) for field in repetition_inputs if field.text().strip()]
+        task_count = sum(1 for value in repetition_values if value > 0)
+        repetitions = sum(int(value) for value in repetition_values if value > 0)
+        loads = [float(field.text()) for field in load_inputs if field.text().strip()]
+        moments = [self.numericLabelValue(label) for label in summary["moments"] if label]
+        self.metric_labels["tasks"].setText(str(task_count))
+        self.metric_labels["repetitions"].setText(f"{repetitions:,}")
+        self.metric_labels["average_load"].setText(f"{sum(loads) / len(loads):.1f}" if loads else "-")
+        self.metric_labels["max_moment"].setText(f"{max(moments):.1f}" if moments else "-")
+        ready = bool(task_count and self.projectFileCreated)
+        self.assessment_status_label.setText("Ready" if ready else "Incomplete")
+        self.assessment_status_label.setProperty("ready", ready)
+        self.assessment_status_label.style().unpolish(self.assessment_status_label)
+        self.assessment_status_label.style().polish(self.assessment_status_label)
+        self.assessment_status_detail.setText(
+            "Assessment data is available." if ready else "Select a project context and enter task data."
+        )
+        if self.projectFileCreated:
+            project_text = self.projectName or os.path.splitext(os.path.basename(self.projectFilePath))[0] or "Untitled project"
+        else:
+            project_text = "No project loaded"
+        self.project_header_label.setText(project_text + ("  •  Loaded" if self.projectFileCreated else ""))
+        self.footer_tool_label.setText(f"Tool: {summary['name']}")
+        units = getattr(self, "selectedMeasurementSystem", "Imperial")
+        self.footer_unit_label.setText(f"Units: {units}")
+        self.footer_context_label.setText(project_text)
+
+    def styleToolResultSummary(self, summary, result_color):
+        name = summary["name"]
+        prefix = {"LiFFT": "lifft", "DUET": "duet", "Shoulder": "tst"}[name]
+        damage_label = getattr(self, f"{prefix}_total_damage_label")
+        probability_label = getattr(self, f"{prefix}_probability_label")
+        damage_value = getattr(self, f"{prefix}_total_damage_value_label")
+        probability_value = getattr(self, f"{prefix}_probability_value_label")
+        for label in (damage_label, probability_label):
+            label.setObjectName("toolResultName")
+            label.setStyleSheet("color: #0B326C; font-size: 13px; font-weight: 700; padding-right: 8px;")
+        luminance = (0.299 * result_color.red() + 0.587 * result_color.green() + 0.114 * result_color.blue())
+        foreground = "#10212B" if luminance > 145 else "#FFFFFF"
+        value_style = (
+            f"background: {result_color.name()}; color: {foreground}; border-radius: 4px; "
+            "font-size: 15px; font-weight: 800; padding: 5px 12px;"
+        )
+        for value in (damage_value, probability_value):
+            value.setObjectName("toolResultValue")
+            value.setMinimumHeight(30)
+            value.setStyleSheet(value_style)
+        self.alignToolSummary(prefix)
+
+    def alignToolSummary(self, prefix):
+        config = {
+            "lifft": (self.lifft_tab, self.lifft_tab_layout, self.scroll_area, 5),
+            "duet": (self.duet_tab, self.duet_tab_layout, self.scroll_area_duet, 3),
+            "tst": (self.tst_tab, self.tst_tab_layout, self.scroll_area_tst, 6),
+        }
+        tab, grid, scroll, damage_column = config[prefix]
+        layout = getattr(self, f"{prefix}_summary_layout", None)
+        item = grid.itemAtPosition(1, damage_column)
+        if not layout or not item or not item.widget():
+            return
+        name_labels = (
+            getattr(self, f"{prefix}_total_damage_label"), getattr(self, f"{prefix}_probability_label"),
+        )
+        value_labels = (
+            getattr(self, f"{prefix}_total_damage_value_label"), getattr(self, f"{prefix}_probability_value_label"),
+        )
+        label_width = max(label.sizeHint().width() for label in name_labels)
+        damage_widget = item.widget()
+        if not hasattr(self, "_summary_alignment_cache"):
+            self._summary_alignment_cache = {}
+        tab.setUpdatesEnabled(False)
+        try:
+            for widget in name_labels + value_labels:
+                widget.show()
+            layout.activate()
+            for _ in range(4):
+                current_value_x = value_labels[0].mapToGlobal(QtCore.QPoint(0, 0)).x()
+                target_value_x = damage_widget.mapToGlobal(QtCore.QPoint(0, 0)).x()
+                position_delta = target_value_x - current_value_x
+                left_margin = max(0, layout.contentsMargins().left() + position_delta)
+                available_width = max(0, layout.geometry().width())
+                max_left_margin = max(
+                    0, available_width - label_width - damage_widget.width() - layout.horizontalSpacing() - 4,
+                )
+                left_margin = min(left_margin, max_left_margin)
+                alignment_key = (left_margin, label_width, damage_widget.width())
+                if self._summary_alignment_cache.get(prefix) == alignment_key:
+                    break
+                self._summary_alignment_cache[prefix] = alignment_key
+                for widget in name_labels + value_labels:
+                    layout.removeWidget(widget)
+                for column in range(layout.columnCount()):
+                    layout.setColumnStretch(column, 0)
+                    layout.setColumnMinimumWidth(column, 0)
+                layout.setContentsMargins(left_margin, 5, 0, 5)
+                for row, (label, value) in enumerate(zip(name_labels, value_labels)):
+                    label.setFixedWidth(label_width)
+                    value.setFixedWidth(damage_widget.width())
+                    layout.addWidget(label, row, 0)
+                    layout.addWidget(value, row, 1)
+                layout.setColumnMinimumWidth(0, label_width)
+                layout.setColumnMinimumWidth(1, damage_widget.width())
+                layout.setColumnStretch(2, 1)
+                layout.invalidate()
+                layout.activate()
+        finally:
+            tab.setUpdatesEnabled(True)
+            tab.update()
+
+    def styleAssessmentControls(self):
+        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
+        for combo in self.findChildren(QComboBox):
+            if combo.property("ergoPopupStyled"):
+                continue
+            view = combo.view()
+            palette = view.palette()
+            palette.setColor(QPalette.Base, QColor("#FFFFFF"))
+            palette.setColor(QPalette.Text, QColor("#1B2933"))
+            palette.setColor(QPalette.Highlight, QColor("#087E91"))
+            palette.setColor(QPalette.HighlightedText, QColor("#FFFFFF"))
+            view.setPalette(palette)
+            view.setItemDelegate(ErgoComboItemDelegate(view))
+            view.setStyleSheet(
+                "QAbstractItemView { background: white; color: #1B2933; outline: 0; }"
+                "QAbstractItemView::item { min-height: 28px; padding: 2px 7px; }"
+                "QAbstractItemView::item:selected, QAbstractItemView::item:hover "
+                "{ background: #087E91; color: white; }"
+            )
+            combo.setProperty("ergoPopupStyled", True)
+        tools = (
+            (0, "lifft", "lifft.png"), (1, "duet", "duet.png"), (2, "tst", "shoulder.png"),
+        )
+        for tab_index, prefix, tab_icon in tools:
+            if tab_index < self.tabWidget.count():
+                self.tabWidget.setTabIcon(tab_index, QIcon(os.path.join(icon_root, tab_icon)))
+                self.tabWidget.setTabToolTip(tab_index, {
+                    0: "LiFFT evaluates lower-back fatigue risk from lifting task demands.",
+                    1: "DUET evaluates distal upper-extremity risk using OMNI-Res ratings and repetition exposure.",
+                    2: "Shoulder Tool evaluates shoulder fatigue risk from task direction, load, and moment.",
+                }[tab_index])
+            calculate = getattr(self, f"{prefix}_calculate_button", None)
+            reset = getattr(self, f"{prefix}_reset_button", None)
+            delete = getattr(self, f"{prefix}_delete_button", None)
+            transfer = getattr(self, f"{prefix}_transfer_button", None)
+            if calculate:
+                calculate.setObjectName("calculateButton")
+                calculate.setIcon(QIcon(os.path.join(icon_root, "calculate-light.png")))
+                calculate.setIconSize(QSize(28, 28))
+                calculate.setToolTip("Calculate risk results from the task data currently shown.")
+                calculate.style().unpolish(calculate)
+                calculate.style().polish(calculate)
+            if reset:
+                reset.setObjectName("resetButton")
+                reset.setIcon(QIcon(os.path.join(icon_root, "undo.png")))
+                reset.setIconSize(QSize(26, 26))
+                reset.setMaximumWidth(320)
+                reset.setToolTip("Clear the active tool's task inputs and calculated results.")
+                reset.style().unpolish(reset)
+                reset.style().polish(reset)
+            if delete:
+                delete.setIcon(QIcon(os.path.join(icon_root, "delete.png")))
+                delete.setIconSize(QSize(30, 30))
+                delete.setFixedSize(40, 40)
+                delete.setToolTip("Delete saved data for this tool and assessment context.")
+            if transfer:
+                transfer.setIcon(QIcon(os.path.join(icon_root, "transferworkerdata.png")))
+                transfer.setIconSize(QSize(30, 30))
+                transfer.setFixedSize(40, 40)
+                transfer.setToolTip("Transfer this tool's data to another assessment context.")
+            grid_button = getattr(self, f"{prefix}_grid_button", None)
+            if grid_button:
+                grid_button.setIcon(QIcon(os.path.join(icon_root, "bodyview.png")))
+                grid_button.setIconSize(QSize(30, 30))
+                grid_button.setFixedSize(40, 40)
+                grid_button.setToolTip("Open the task-data grid view for the active tool.")
+        header_tooltips = {
+            "lifft_headers_labels_fixed": (
+                "Task row number.", "Horizontal distance between the load and the lower back.",
+                "Load handled during this task.", "Calculated lower-back moment.",
+                "Task repetitions during one work day.", "Calculated cumulative damage for this task.",
+                "This task's percentage of total cumulative damage.",
+            ),
+            "duet_headers_labels_fixed": (
+                "Task row number.", "Perceived exertion rating on the OMNI-Resistance scale.",
+                "Task repetitions during one work day.", "Calculated cumulative damage for this task.",
+                "This task's percentage of total cumulative damage.",
+            ),
+            "tst_headers_labels_fixed": (
+                "Task row number.", "Direction of the shoulder exertion.",
+                "Horizontal distance used to calculate shoulder moment.", "Load handled during this task.",
+                "Calculated shoulder moment.", "Task repetitions during one work day.",
+                "Calculated cumulative damage for this task.", "This task's percentage of total cumulative damage.",
+            ),
+        }
+        for labels_name, tooltips in header_tooltips.items():
+            for label, tooltip in zip(getattr(self, labels_name, []), tooltips):
+                label.setToolTip(tooltip)
+        for fields, tooltip in (
+            (getattr(self, "lifft_lever_arm_inputs", []), "Enter the lower-back lever arm for this lifting task."),
+            (getattr(self, "lifft_load_inputs", []), "Enter the load handled during this lifting task."),
+            (getattr(self, "lifft_repetitions_inputs", []), "Enter repetitions performed during one work day."),
+            (getattr(self, "duet_repetitions_inputs", []), "Enter repetitions performed during one work day."),
+            (getattr(self, "tst_lever_arm_inputs", []), "Enter the shoulder lever arm for this task."),
+            (getattr(self, "tst_load_inputs", []), "Enter the load handled during this shoulder task."),
+            (getattr(self, "tst_repetitions_inputs", []), "Enter repetitions performed during one work day."),
+        ):
+            for field in fields:
+                field.setToolTip(tooltip)
+        for field in getattr(self, "omnires_dropdowns", []):
+            field.setMinimumWidth(250)
+            field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            field.setToolTip("Select the OMNI-Resistance exertion rating for this task.")
+        for field in getattr(self, "tst_type_of_task_dropdowns", []):
+            field.setMinimumWidth(0)
+            field.setMaximumWidth(220)
+            field.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+            field.setToolTip("Select the direction of force for this shoulder task.")
+
+    def syncStickyHeaders(self):
+        for grid_name, labels_name, body_name, header_widget_name in (
+            ("lifft_tab_layout", "lifft_headers_labels_fixed", "scroll_area", "lifft_header_widget"),
+            ("duet_tab_layout", "duet_headers_labels_fixed", "scroll_area_duet", "duet_header_widget"),
+            ("tst_tab_layout", "tst_headers_labels_fixed", "scroll_area_tst", "tst_header_widget"),
+        ):
+            grid = getattr(self, grid_name, None)
+            labels = getattr(self, labels_name, None)
+            if not grid or not labels:
+                continue
+            for column, label in enumerate(labels):
+                item = grid.itemAtPosition(1, column)
+                if item and item.widget() and item.widget().width() > 0:
+                    header_widget = getattr(self, header_widget_name, None)
+                    if header_widget:
+                        label.setFixedWidth(item.widget().width())
+                        label.setFixedHeight(42)
+                        label.setWordWrap(True)
+                        margins = grid.getContentsMargins()
+                        header_widget.layout().setContentsMargins(*margins)
+                        header_widget.layout().setHorizontalSpacing(grid.horizontalSpacing())
+            body = getattr(self, body_name, None)
+            header_widget = getattr(self, header_widget_name, None)
+            if body and header_widget:
+                content_width = body.viewport().width() + body.horizontalScrollBar().maximum()
+                header_widget.setFixedWidth(max(body.viewport().width(), content_width))
+
+    def createStickyHeader(self, header_layout, prefix):
+        header_widget = QWidget()
+        header_widget.setObjectName("stickyHeader")
+        header_widget.setLayout(header_layout)
+        header_scroll = QScrollArea()
+        header_scroll.setObjectName("stickyHeaderScroll")
+        header_scroll.setFrameShape(QFrame.NoFrame)
+        header_scroll.setWidgetResizable(False)
+        header_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        header_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        header_scroll.setFixedHeight(42)
+        header_scroll.setWidget(header_widget)
+        setattr(self, f"{prefix}_header_widget", header_widget)
+        setattr(self, f"{prefix}_header_scroll", header_scroll)
+        return header_scroll
+
+    def bindStickyHeader(self, prefix, body_scroll):
+        header_scroll = getattr(self, f"{prefix}_header_scroll")
+        body_scroll.horizontalScrollBar().valueChanged.connect(header_scroll.horizontalScrollBar().setValue)
+
+    def mainWorkspaceStyleSheet(self):
+        return """
+            QMainWindow, QWidget#mainWorkspace { background: #F4F7F9; color: #1B2933; font: 12px "Segoe UI"; }
+            QFrame#brandHeader { background: #073E68; border-radius: 7px; }
+            QLabel#brandName { color: white; font-size: 24px; font-weight: 600; }
+            QLabel#projectName { color: #D9EDF5; font-size: 14px; font-weight: 700; }
+            QToolBar#mainToolbar { background: white; border: 0; border-radius: 6px; padding: 6px 8px; spacing: 4px; }
+            QToolBar#mainToolbar QToolButton { color: #0B326C; min-width: 70px; padding: 8px 7px; border: 0; }
+            QToolBar#mainToolbar QToolButton:hover { background: #EAF7F8; border-radius: 5px; }
+            QToolBar#mainToolbar::separator { background: #D5DEE5; width: 1px; margin: 8px 6px; }
+            QFrame#contextBar, QFrame#workspacePanel, QFrame#resultsSidebar { background: white; border: 1px solid #D5DEE5; border-radius: 7px; }
+            QFrame#bodyRegionPanel { background: #092D45; border: 1px solid #174963; border-radius: 7px; color: white; }
+            QFrame#bodyRegionPanel QLabel { color: white; background: transparent; border: 0; }
+            QLabel#bodyRegionTitle, QLabel#bodySectionTitle { color: white; font-weight: 700; }
+            QFrame#activeRegionPanel { background: #092D45; border: 0; }
+            QLabel#activeRegionName { background: #092D45; color: white; font-size: 14px; font-weight: 700; }
+            QLabel#activeRegionCaption { background: #092D45; color: #66C7FF; font-size: 12px; font-weight: 600; }
+            QLabel#bodyInfoIcon { border: 2px solid #D7E6EE; border-radius: 9px; font-weight: 700; min-width: 14px; max-width: 14px; min-height: 14px; max-height: 14px; }
+            QLabel#activeRegionName { color: white; font-size: 16px; font-weight: 700; }
+            QLabel#activeRegionCaption { color: #42B8E8; font-weight: 600; }
+            QFrame#bodyPanelDivider { background: #376077; border: 0; }
+            QWidget#vtkWorkspace { background: #092D45; border: 0; }
+            QToolButton#modelViewButton { color: white; background: transparent; border: 0; padding: 4px 1px; font-size: 10px; }
+            QToolButton#modelViewButton:hover { background: #174963; border-radius: 4px; }
+            QLabel#contextLabel, QLabel#panelTitle, QLabel#summaryTitle { color: #0B326C; font-weight: 600; }
+            QLabel#dialogTitle { color: #0B326C; font-size: 20px; font-weight: 700; }
+            QLabel#contextArrow { color: #08A9B5; font-weight: 700; }
+            QLabel#contextSummary { color: #405462; font-size: 12px; font-weight: 600; }
+            QPushButton#contextToggleButton {
+                text-align: left; color: #0B326C;
+                background: transparent; border: 0; padding: 0 4px; font-weight: 700;
+            }
+            QPushButton#contextToggleButton:hover { color: #087E91; background: #EDF7F8; }
+            QLabel#supportingText { color: #405462; font-size: 12px; }
+            QFrame#resultsSidebar QLabel { font-size: 13px; }
+            QFrame#resultsSidebar QLabel#summaryTitle { font-size: 14px; font-weight: 700; }
+            QLabel#riskOutcome { color: #304652; font-size: 13px; font-weight: 650; }
+            QComboBox, QLineEdit { min-height: 30px; background: white; border: 1px solid #BCC9D3; border-radius: 5px; padding: 0 8px; }
+            QComboBox:focus, QLineEdit:focus { border: 2px solid #08A9B5; }
+            QComboBox QAbstractItemView {
+                background: white; color: #1B2933; border: 1px solid #9EB0BE;
+                selection-background-color: #087E91; selection-color: white;
+                outline: 0; padding: 3px;
+            }
+            QComboBox QAbstractItemView::item:selected,
+            QComboBox QAbstractItemView::item:hover { background: #087E91; color: white; }
+            QPushButton { min-height: 32px; background: white; color: #0B326C; border: 1px solid #9EB0BE; border-radius: 5px; padding: 0 12px; font-weight: 600; }
+            QPushButton:hover { background: #EDF7F8; border-color: #08A9B5; }
+            QPushButton#compactButton { padding: 0 9px; }
+            QPushButton#mainAlphabetButton {
+                min-width: 18px; max-width: 18px; min-height: 27px; max-height: 27px;
+                padding: 0; border: 0; background: transparent; color: #5F6F7A;
+                font-size: 10px; font-weight: 650;
+            }
+            QPushButton#mainAlphabetButton:hover { background: #DDF3F5; color: #0B326C; font-size: 16px; }
+            QPushButton#mainAlphabetButton:checked { background: #0B326C; color: white; border-radius: 4px; font-size: 11px; }
+            QPushButton#mainAlphabetButton[currentInitial="true"] { color: #102B3A; font-weight: 900; font-size: 12px; }
+            QPushButton#mainAlphabetButton:checked[currentInitial="true"] { color: white; }
+            QPushButton#primaryOutlineButton { border: 2px solid #08A9B5; }
+            QPushButton#calculateButton { background: #087E91; color: white; border-color: #087E91; }
+            QPushButton#calculateButton:hover { background: #096D7C; }
+            QPushButton#resetButton { color: #0B326C; }
+            QTabWidget#assessmentTabs::pane { border: 0; background: white; }
+            QTabWidget#assessmentTabs QTabBar::tab { min-height: 41px; padding: 9px 4px; color: #5F6F7A; border: 0; font-size: 13px; font-weight: 600; }
+            QTabWidget#assessmentTabs QTabBar::tab:selected { color: #087E91; font-weight: 600; border-bottom: 3px solid #08A9B5; }
+            QScrollArea, QScrollArea QWidget { background: white; border-color: #D5DEE5; }
+            QFrame#summaryCard { background: white; border: 1px solid #D5DEE5; border-radius: 6px; }
+            QLabel#metricValue { color: #F97316; font-size: 20px; font-weight: 600; }
+            QLabel#riskSeverity { font-size: 11px; font-weight: 700; }
+            QLabel#metricSmallValue { color: #0B326C; font-size: 14px; font-weight: 750; }
+            QLabel#readyStatus { color: #C17B00; font-size: 15px; font-weight: 800; }
+            QLabel#readyStatus[ready="true"] { color: #16813A; }
+            QProgressBar { min-height: 8px; max-height: 8px; border: 0; background: #DCE4E9; border-radius: 4px; }
+            QProgressBar::chunk { background: #08A9B5; border-radius: 4px; }
+            QFrame#workspaceFooter { background: #F4F7F9; border: 0; color: #5F6F7A; }
+            QFrame#workspaceFooter QLabel { background: transparent; color: #344B5A; font-size: 13px; font-weight: 600; }
+            QStatusBar { background: #F4F7F9; color: #5F6F7A; border: 0; }
+            QStatusBar::item { border: 0; }
+            QGroupBox { color: #0B326C; border: 1px solid #D5DEE5; border-radius: 5px; margin-top: 8px; }
+            QSlider::groove:horizontal { height: 5px; background: #D5DEE5; border-radius: 2px; }
+            QSlider::handle:horizontal { width: 14px; margin: -5px 0; background: #08A9B5; border-radius: 7px; }
+            QToolTip { background: #1B2933; color: white; border: 1px solid #0B326C; padding: 6px; }
+        """
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "results_sidebar"):
+            self.results_sidebar.setVisible(event.size().width() >= 1450)
 
     def setupTabsTopControls(self):
+        self.location_context_frame = QFrame()
+        self.location_context_frame.setObjectName("contextBar")
+        self.tabstop_controls_layout = QVBoxLayout(self.location_context_frame)
+        self.tabstop_controls_layout.setContentsMargins(14, 6, 12, 6)
+        self.tabstop_controls_layout.setSpacing(6)
+
+        context_disclosure_layout = QHBoxLayout()
+        context_disclosure_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.context_toggle_button = QPushButton("Optional Plant Information  >")
+        self.context_toggle_button.setObjectName("contextToggleButton")
+        self.context_toggle_button.setCheckable(True)
+        self.context_toggle_button.setChecked(False)
+        self.context_toggle_button.setFixedWidth(280)
+        self.context_toggle_button.setToolTip(
+            "Show or hide the plant, section, line, station, and shift assessment context."
+        )
+        self.context_toggle_button.toggled.connect(self.setContextControlsExpanded)
+        context_disclosure_layout.addWidget(self.context_toggle_button)
+        context_disclosure_layout.addStretch(1)
+
+        self.context_details_widget = QWidget()
+        context_details_layout = QHBoxLayout(self.context_details_widget)
+        context_details_layout.setContentsMargins(0, 0, 0, 0)
+        context_details_layout.setSpacing(8)
+
+        self.plant_combo = QComboBox()
+        self.section_combo = QComboBox()
+        self.line_combo = QComboBox()
+        self.station_combo = QComboBox()
+        self.shift_combo = QComboBox()
+        self.context_labels = []
+        combos = (
+            ("Plant", self.plant_combo, self.plantComboIndexChanged),
+            ("Section", self.section_combo, self.sectionComboIndexChanged),
+            ("Line", self.line_combo, self.lineComboIndexChanged),
+            ("Station", self.station_combo, self.stationComboIndexChanged),
+            ("Shift", self.shift_combo, self.shiftComboIndexChanged),
+        )
+        for index, (label_text, combo, callback) in enumerate(combos):
+            icon_label = QLabel()
+            icon_label.setPixmap(QIcon(os.path.join(
+                os.path.dirname(__file__), "..", "assets", "ui-icons", label_text.lower() + ".png"
+            )).pixmap(QSize(22, 22)))
+            icon_label.setFixedSize(22, 22)
+            icon_label.setAlignment(Qt.AlignCenter)
+            icon_label.setToolTip(f"{label_text} level of the current assessment context.")
+            label = QLabel(label_text)
+            label.setObjectName("contextLabel")
+            label.setContentsMargins(3, 0, 3, 0)
+            label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+            self.context_labels.append(label)
+            combo.setMinimumWidth(85 if label_text != "Shift" else 70)
+            combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            combo.currentIndexChanged.connect(callback)
+            combo.setToolTip(f"Select the {label_text.lower()} for this assessment context.")
+            context_details_layout.addWidget(icon_label)
+            context_details_layout.addWidget(label)
+            context_details_layout.addWidget(combo, 1)
+            if index < len(combos) - 1:
+                arrow = QLabel(">")
+                arrow.setObjectName("contextArrow")
+                arrow.setFixedWidth(10)
+                arrow.setAlignment(Qt.AlignCenter)
+                context_details_layout.addWidget(arrow)
+        for combo, value in (
+            (self.plant_combo, "Default"), (self.section_combo, "Default"),
+            (self.line_combo, "Default"), (self.station_combo, "Default"), (self.shift_combo, "1"),
+        ):
+            combo.blockSignals(True)
+            combo.addItem(value)
+            combo.blockSignals(False)
+            combo.currentTextChanged.connect(self.updateContextSummary)
+
+        manage_button = QPushButton("Organization")
+        manage_button.setObjectName("primaryOutlineButton")
+        manage_button.setFixedWidth(210)
+        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
+        manage_button.setIcon(QIcon(os.path.join(icon_root, "plant.png")))
+        manage_button.setIconSize(QSize(26, 26))
+        manage_button.setToolTip("Manage plants, sections, lines, stations, and shifts.")
+        manage_button.clicked.connect(self.editOrganizationClicked)
+        association_row = QHBoxLayout()
+        association_row.setContentsMargins(0, 0, 0, 0)
+        association_title = QLabel("Assessment workplace")
+        association_title.setObjectName("contextLabel")
+        association_title.setToolTip("Workplace and shift associated with the active tool assessment.")
+        self.context_summary_label = QLabel()
+        self.context_summary_label.setObjectName("contextSummary")
+        self.context_summary_label.setToolTip("Plant, section, line, station, and shift for the active assessment.")
+        association_row.addWidget(association_title)
+        association_row.addWidget(self.context_summary_label, 1)
+        choose_button = QPushButton("Change workplace")
+        choose_button.setObjectName("primaryOutlineButton")
+        choose_button.setIcon(QIcon(os.path.join(icon_root, "station.png")))
+        choose_button.setIconSize(QSize(24, 24))
+        choose_button.setToolTip("Choose a station and shift from the workplace hierarchy.")
+        choose_button.clicked.connect(self.openAssessmentWorkplaceDialog)
+        association_row.addWidget(choose_button)
+        manage_button.setText("Manage organization")
+        association_row.addWidget(manage_button)
+        self.tabstop_controls_layout.addLayout(association_row)
+        self.context_details_widget.hide()
+        self.context_toggle_button.hide()
+        self.updateContextSummary()
+        return
+
+    def setContextControlsExpanded(self, expanded):
+        detail_height = self.context_details_widget.sizeHint().height() + self.tabstop_controls_layout.spacing()
+        if expanded:
+            self._context_collapsed_window_height = self.height()
+            target_height = self._context_collapsed_window_height + detail_height
+        else:
+            target_height = getattr(
+                self, "_context_collapsed_window_height", self.height() - detail_height
+            )
+
+        self.context_details_widget.setVisible(expanded)
+        self.context_toggle_button.setText(
+            "Optional Plant Information  v" if expanded else "Optional Plant Information  >"
+        )
+        self.context_toggle_button.setToolTip(
+            "Hide the optional assessment context."
+            if expanded else
+            "Show the optional plant, section, line, station, and shift assessment context."
+        )
+        # The application uses a fixed-size main window. Growing it with the
+        # disclosure preserves the VTK viewport and result-card geometry.
+        self.setFixedSize(self.width(), target_height)
+
+    def updateContextSummary(self, *args):
+        if not hasattr(self, "context_summary_label"):
+            return
+        values = [combo.currentText() or fallback for combo, fallback in (
+            (self.plant_combo, "Default"), (self.section_combo, "Default"),
+            (self.line_combo, "Default"), (self.station_combo, "Default"), (self.shift_combo, "1"),
+        )]
+        self.context_summary_label.setText(
+            "Plant: {}   >   Section: {}   >   Line: {}   >   Station: {}   >   Shift: {}".format(*values)
+        )
+
+    def openAssessmentWorkplaceDialog(self):
+        dialog = AssessmentWorkplaceDialog(self)
+        if dialog.exec_() != QDialog.Accepted:
+            return
+        plant, section, line, station = dialog.selected_path
+        combos = (
+            self.plant_combo, self.section_combo, self.line_combo,
+            self.station_combo, self.shift_combo,
+        )
+        for combo in combos:
+            combo.blockSignals(True)
+        try:
+            values = (
+                (self.plant_combo, self.getPlants() or [], plant),
+                (self.section_combo, self.getSections(plant) or [], section),
+                (self.line_combo, self.getLines(plant, section) or [], line),
+                (self.station_combo, self.getStations(plant, section, line) or [], station),
+                (self.shift_combo, self.getShifts() or [], dialog.shift_combo.currentText()),
+            )
+            for combo, items, value in values:
+                combo.clear()
+                combo.addItems([str(item) for item in items])
+                index = combo.findText(str(value))
+                if index >= 0:
+                    combo.setCurrentIndex(index)
+        finally:
+            for combo in combos:
+                combo.blockSignals(False)
+        self.loadToolsData()
+        self.updateContextSummary()
+        return
+
         # Row of controls outside the tabs area
         self.tabstop_controls_layout = QHBoxLayout()
         # Create bold font for labels that need emphasis
@@ -2953,27 +4685,42 @@ class ErgoTools(QtWidgets.QMainWindow):
 
         # First button
         self.first_button = QtWidgets.QPushButton("|<")
+        self.first_button.setToolTip("First worker")
         self.first_button.setFont(bold_font)
         self.first_button.clicked.connect(self.firstButtonClicked)  
         self.navigationLayout.addWidget(self.first_button)
 
         # Previous button
         self.previous_button = QtWidgets.QPushButton("<")
+        self.previous_button.setToolTip("Previous worker")
         self.previous_button.setFont(bold_font)
         self.previous_button.clicked.connect(self.previousButtonClicked)  
         self.navigationLayout.addWidget(self.previous_button)
 
         # Next button
         self.next_button = QtWidgets.QPushButton(">")
+        self.next_button.setToolTip("Next worker")
         self.next_button.setFont(bold_font)
         self.next_button.clicked.connect(self.nextButtonClicked)  
         self.navigationLayout.addWidget(self.next_button)
 
         # Last button
         self.last_button = QtWidgets.QPushButton(">|")
+        self.last_button.setToolTip("Last worker")
         self.last_button.setFont(bold_font)
         self.last_button.clicked.connect(self.lastButtonClicked)  
         self.navigationLayout.addWidget(self.last_button)
+        for button in (self.first_button, self.previous_button, self.next_button, self.last_button):
+            button.setObjectName("navButton")
+            button.setFixedSize(38, 36)
+            button.setText("")
+            button.setIconSize(QSize(24, 24))
+        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
+        for button, icon_name in (
+            (self.first_button, "first.png"), (self.previous_button, "previous.png"),
+            (self.next_button, "next.png"), (self.last_button, "last.png"),
+        ):
+            button.setIcon(QIcon(os.path.join(icon_root, icon_name)))
     
 
     
@@ -3001,6 +4748,136 @@ class ErgoTools(QtWidgets.QMainWindow):
  
  
     def setupTopWidgets(self):
+        self.topContainer = QWidget()
+        top_layout = QVBoxLayout(self.topContainer)
+        top_layout.setContentsMargins(0, 0, 0, 0)
+        top_layout.setSpacing(8)
+
+        header = QFrame()
+        header.setObjectName("brandHeader")
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(20, 13, 10, 13)
+        brand_box = QVBoxLayout()
+        brand_box.setSpacing(2)
+        brand = QLabel("Ergo Tools")
+        brand.setObjectName("brandName")
+        self.project_header_label = QLabel("No project loaded")
+        self.project_header_label.setObjectName("projectName")
+        brand_box.addWidget(brand)
+        brand_box.addWidget(self.project_header_label)
+        header_layout.addLayout(brand_box, 1)
+
+        self.toolbar = QToolBar()
+        self.toolbar.setObjectName("mainToolbar")
+        self.toolbar.setIconSize(QSize(30, 30))
+        self.toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
+        toolbar_actions = (
+            ("new.png", "New", self.toolbarnewWorker), ("open.png", "Open", self.toolbaropenWorker),
+            ("save.png", "Save", self.toolbarsaveWorker), ("plot.png", "Layout", self.toolbaropenLayout),
+            ("export.png", "Export", self.exportToCSV), ("settings.png", "Settings", self.openNumTasksDialog),
+            ("help.png", "Help", self.openHelpPDF),
+        )
+        for action_index, (icon_name, text, callback) in enumerate(toolbar_actions):
+            action = QAction(QIcon(os.path.join(icon_root, icon_name)), text, self)
+            action.setToolTip({
+                "New": "Create a new project.", "Open": "Open an existing Ergo Tools project.",
+                "Save": "Save the current project and assessment data.",
+                "Layout": "Open the plant layout workspace.",
+                "Export": "Export data from the selected ergonomic tool.",
+                "Settings": "Configure the number of task rows and application options.",
+                "Help": "Open the Ergo Tools user manual.",
+            }[text])
+            action.triggered.connect(callback)
+            self.toolbar.addAction(action)
+            if action_index in (2, 3, 4, 5):
+                self.toolbar.addSeparator()
+        header_layout.addWidget(self.toolbar)
+        top_layout.addWidget(header)
+
+        worker_bar = QFrame()
+        worker_bar.setObjectName("contextBar")
+        worker_bar_layout = QVBoxLayout(worker_bar)
+        worker_bar_layout.setContentsMargins(14, 7, 12, 7)
+        worker_bar_layout.setSpacing(2)
+        worker_layout = QHBoxLayout()
+        worker_layout.setContentsMargins(0, 0, 0, 0)
+        worker_layout.setSpacing(8)
+        worker_icon = QLabel()
+        worker_icon.setPixmap(QIcon(os.path.join(icon_root, "worker.png")).pixmap(QSize(26, 26)))
+        worker_icon.setFixedSize(28, 28)
+        worker_icon.setAlignment(Qt.AlignCenter)
+        worker_icon.setToolTip("Worker associated with the assessment currently shown.")
+        worker_layout.addWidget(worker_icon)
+        self.workerLabel = QLabel("Worker")
+        self.workerLabel.setObjectName("contextLabel")
+        worker_layout.addWidget(self.workerLabel)
+        self.workerComboBox = QComboBox()
+        self.workerComboBox.setMinimumWidth(280)
+        self.workerComboBox.currentIndexChanged.connect(self.workerComboIndexChanged)
+        self.workerComboBox.addItem("Default")
+        self.workerComboBox.setToolTip("Select the worker whose assessment data you want to view or edit.")
+        worker_layout.addWidget(self.workerComboBox, 1)
+        self.orderButton = QPushButton("A-Z")
+        self.orderButton.setIcon(QIcon(os.path.join(icon_root, "alphabetorder.png")))
+        self.orderButton.setToolTip("Change worker ordering.")
+        self.orderButton.clicked.connect(self.orderButtonClicked)
+        self.editButton = QPushButton("Workers")
+        self.editButton.setIcon(QIcon(os.path.join(icon_root, "workermanagement.png")))
+        self.editButton.setToolTip("Open Worker Management.")
+        self.editButton.clicked.connect(self.editWorkerClicked)
+        self.searchButton = QPushButton("Search")
+        self.searchButton.setIcon(QIcon(os.path.join(icon_root, "search.png")))
+        self.searchButton.setToolTip("Find and select a worker by identifying information.")
+        self.searchButton.clicked.connect(self.searchWorkerClicked)
+        self.transferButton = QPushButton("Transfer")
+        self.transferButton.setIcon(QIcon(os.path.join(icon_root, "transferworkerdata.png")))
+        self.transferButton.setToolTip("Transfer worker assessment data to another context.")
+        self.transferButton.clicked.connect(self.transferWorkerClicked)
+        self.refreshButton = QPushButton("Refresh")
+        self.refreshButton.setIcon(QIcon(os.path.join(icon_root, "refresh.png")))
+        self.refreshButton.setToolTip("Reload workers and assessment context values from the project.")
+        self.refreshButton.clicked.connect(self.refreshWorkerClicked)
+        for button in (self.orderButton, self.editButton, self.searchButton, self.transferButton, self.refreshButton):
+            button.setObjectName("compactButton")
+            button.setIconSize(QSize(22, 22))
+            worker_layout.addWidget(button)
+        self.transferButton.setIconSize(QSize(30, 30))
+        worker_layout.addSpacing(10)
+        worker_layout.addLayout(self.navigationLayout)
+        worker_bar_layout.addLayout(worker_layout)
+
+        alphabet_layout = QHBoxLayout()
+        alphabet_layout.setContentsMargins(100, 0, 0, 0)
+        alphabet_layout.setSpacing(3)
+        alphabet_label = QLabel("Last name")
+        alphabet_label.setObjectName("supportingText")
+        alphabet_label.setFixedWidth(68)
+        alphabet_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        alphabet_label.setToolTip("Filter the worker selector by the first letter of the last name.")
+        alphabet_layout.addWidget(alphabet_label)
+        alphabet_layout.addSpacing(5)
+        self.main_worker_alphabet_group = QButtonGroup(self)
+        self.main_worker_alphabet_group.setExclusive(True)
+        self.main_worker_alphabet_buttons = {}
+        self.main_worker_alphabet_letter = None
+        for value in ["All"] + [chr(code) for code in range(ord("A"), ord("Z") + 1)]:
+            button = QPushButton(value)
+            button.setObjectName("mainAlphabetButton")
+            button.setCheckable(True)
+            button.setChecked(value == "All")
+            button.setToolTip("Show every worker" if value == "All" else f"Show last names beginning with {value}")
+            button.clicked.connect(lambda checked, letter=value: self.setMainWorkerAlphabetFilter(letter))
+            self.main_worker_alphabet_group.addButton(button)
+            self.main_worker_alphabet_buttons[value] = button
+            alphabet_layout.addWidget(button)
+        alphabet_layout.addStretch(1)
+        worker_bar_layout.addLayout(alphabet_layout)
+        top_layout.addWidget(worker_bar)
+        self.unit_label = QLabel("Unit: Imperial")
+        self.unit = "imperial"
+        return
+
         # Initialize the top container and layout
         self.topContainer = QtWidgets.QWidget()
         self.topLayout = QtWidgets.QVBoxLayout(self.topContainer)
@@ -3161,104 +5038,18 @@ class ErgoTools(QtWidgets.QMainWindow):
             return
 
 
-        
-        # Create the search dialog
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Search Worker")
-        dialog.setFixedSize(400, 200)
-        layout = QVBoxLayout(dialog)
-
-        # ID Search
-        id_layout = QHBoxLayout()
-        id_label = QLabel("Search by ID:")
-        id_input = QLineEdit()
-        id_layout.addWidget(id_label)
-        id_layout.addWidget(id_input)
-        layout.addLayout(id_layout)
-
-        # Name Search
-        name_layout = QHBoxLayout()
-        name_label = QLabel("Search by Name:")
-        first_name_input = QLineEdit()
-        first_name_input.setPlaceholderText("First Name")
-        last_name_input = QLineEdit()
-        last_name_input.setPlaceholderText("Last Name")
-        name_layout.addWidget(name_label)
-        name_layout.addWidget(last_name_input)
-        name_layout.addWidget(first_name_input)
-        layout.addLayout(name_layout)
-
-        # Dialog buttons
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        layout.addWidget(button_box)
-
-        # Function to handle the OK button click
-        def performSearch():
-            worker_id = ""
-            first_name = ""
-            last_name = ""
-            formatted_worker = ""
-            
-            conn = sqlite3.connect(self.projectdatabasePath)
-            cursor = conn.cursor()
-
-            try:
-                # Search by ID if provided
-                if id_input.text().strip():
-                    cursor.execute("SELECT id, first_name, last_name FROM Worker WHERE id = ?", (id_input.text().strip(),))
-                    result = cursor.fetchone()
-                    if result:
-                        worker_id = result[0]
-                        first_name = result[1]
-                        last_name = result[2]
-
-                    if first_name and last_name:
-                        formatted_worker = f"{worker_id} ({last_name}, {first_name})"
-                    else:
-                        formatted_worker = worker_id
-
-                        
-                    
-                    #formatted_worker = worker_id   
-                    #formatted_worker = f"{worker_id} ({last_name}, {first_name})"
-                else:
-                    # Search by First Name and Last Name if ID is not provided
-                    first_name = first_name_input.text().strip()
-                    last_name = last_name_input.text().strip()
-                    if first_name and last_name:
-                        cursor.execute("SELECT id, first_name, last_name FROM Worker WHERE first_name = ? AND last_name = ?", (first_name, last_name))
-                        result = cursor.fetchone()
-                        if result:
-                            worker_id = result[0]
-                            first_name = result[1]
-                            last_name = result[2]
-                            
-                            # Format the text as ID (Lastname, Firstname)
-                            formatted_worker = f"{worker_id} ({last_name}, {first_name})"
-
-            except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to search worker:\n{str(e)}")
-            finally:
-                conn.close()
-
-            if formatted_worker:
-                # Set the worker ID in the combo box and trigger the index change event
-                index = self.workerComboBox.findText(formatted_worker)
-                if index != -1:
-                    self.workerComboBox.setCurrentIndex(index)
-                else:
-                    QMessageBox.warning(self, "Not Found", "Worker ID not found in combo box.")
-            else:
-                QMessageBox.information(self, "No Match", "No worker found with the given criteria.")
-
-            dialog.accept()
-
-        # Connect buttons to actions
-        button_box.accepted.connect(performSearch)
-        button_box.rejected.connect(dialog.reject)
-
-        # Show the dialog
-        dialog.exec_()
+        dialog = WorkerSearchDialog(self)
+        if dialog.exec_() != QDialog.Accepted:
+            return
+        self.setMainWorkerAlphabetFilter("All")
+        worker_id = dialog.selected_worker_id
+        index = next(
+            (candidate for candidate in range(self.workerComboBox.count())
+             if self.workerComboBox.itemText(candidate).split(" ", 1)[0] == worker_id),
+            -1,
+        )
+        if index >= 0:
+            self.workerComboBox.setCurrentIndex(index)
 
     
     def toolbaropenWorker(self):
@@ -3282,10 +5073,18 @@ class ErgoTools(QtWidgets.QMainWindow):
     def setWorkerOrder(self):
         #print("Is Numbered Order:", self.isNumberOrder)
         if not self.isNumberOrder:
-            self.orderButton.setIcon(QIcon("../images/numberorder01.png"))
+            self.orderButton.setIcon(QIcon(os.path.join(
+                os.path.dirname(__file__), "..", "assets", "ui-icons", "numberorder.png"
+            )))
+            self.orderButton.setText("ID")
+            self.orderButton.setToolTip("Workers are ordered alphabetically. Click to order them by Worker ID.")
             self.loadWorkers(1)
         else:
-            self.orderButton.setIcon(QIcon("../images/alphaorder01.png"))
+            self.orderButton.setIcon(QIcon(os.path.join(
+                os.path.dirname(__file__), "..", "assets", "ui-icons", "alphabetorder.png"
+            )))
+            self.orderButton.setText("A-Z")
+            self.orderButton.setToolTip("Workers are ordered by Worker ID. Click to order them alphabetically.")
             self.loadWorkers(0)
     
         self.isNumberOrder = not self.isNumberOrder  # Toggle the state
@@ -3317,10 +5116,18 @@ class ErgoTools(QtWidgets.QMainWindow):
         if self.projectFileCreated == True:
             #print("Number Order:", self.isNumberOrder) 
             if self.isNumberOrder:
-                self.orderButton.setIcon(QIcon("../images/numberorder01.png"))
+                self.orderButton.setIcon(QIcon(os.path.join(
+                    os.path.dirname(__file__), "..", "assets", "ui-icons", "numberorder.png"
+                )))
+                self.orderButton.setText("ID")
+                self.orderButton.setToolTip("Workers are ordered alphabetically. Click to order them by Worker ID.")
                 self.loadWorkers(1)
             else:
-                self.orderButton.setIcon(QIcon("../images/alphaorder01.png"))
+                self.orderButton.setIcon(QIcon(os.path.join(
+                    os.path.dirname(__file__), "..", "assets", "ui-icons", "alphabetorder.png"
+                )))
+                self.orderButton.setText("A-Z")
+                self.orderButton.setToolTip("Workers are ordered by Worker ID. Click to order them alphabetically.")
                 self.loadWorkers(0)
             #self.setWorkerOrder()  
             
@@ -4301,7 +6108,19 @@ class ErgoTools(QtWidgets.QMainWindow):
         if hasattr(self, 'tabWidget') and self.tabWidget is not None:
             self.loadToolsData()
             self.previous_worker_index = index
+        self.updateMainWorkerCurrentInitial()
             #print(self.previous_worker_index)
+
+    def updateMainWorkerCurrentInitial(self):
+        if not hasattr(self, "main_worker_alphabet_buttons"):
+            return
+        display = self.workerComboBox.currentText()
+        surname = display.partition("(")[2].partition(",")[0].strip()
+        initial = surname[:1].upper() if surname else ""
+        for letter, button in self.main_worker_alphabet_buttons.items():
+            button.setProperty("currentInitial", letter == initial)
+            button.style().unpolish(button)
+            button.style().polish(button)
 
 
     
@@ -5519,62 +7338,96 @@ class ErgoTools(QtWidgets.QMainWindow):
 
 
     def setupControlPanel(self):
-        # Control panel layout
-        controlLayout = QtWidgets.QGridLayout()
-        
-        # Directional buttons
-        self.upButton = QtWidgets.QPushButton("Up")
-        self.downButton = QtWidgets.QPushButton("Down")
-        self.leftButton = QtWidgets.QPushButton("Left")
-        self.rightButton = QtWidgets.QPushButton("Right")
-        self.zoomLabel = QtWidgets.QLabel("Zoom:")
-        self.rotationLabel = QtWidgets.QLabel("Rotation:")
-        #self.axisGroup = QtWidgets.QLabel("Rotation Axis:")
-        #self.zoomLabel.setText(QtWidgets.QApplication.translate("App", "Zoom:"))
-        #self.rotationLabel.setText(QtWidgets.QApplication.translate("App", "Rotation:"))
-        #self.axisGroup.setTitle(QtWidgets.QApplication.translate("App", "Rotation Axis"))
-   
-        # Add buttons to layout
-        controlLayout.addWidget(self.upButton, 0, 1)
-        controlLayout.addWidget(self.downButton, 2, 1)
-        controlLayout.addWidget(self.leftButton, 1, 0)
-        controlLayout.addWidget(self.rightButton, 1, 2)
-        
-        # Slider for zoom
-        self.zoomSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-        self.zoomSlider.setMinimum(1)
-        self.zoomSlider.setMaximum(100)
-        self.zoomSlider.setValue(75)
-        #controlLayout.addWidget(QtWidgets.QLabel("Zoom:"), 3, 0)
-        controlLayout.addWidget(self.zoomLabel, 3, 0)
-        controlLayout.addWidget(self.zoomSlider, 3, 1, 1, 2)
-        
-        # Slider for rotation
-        self.rotationSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-        self.rotationSlider.setMinimum(0)
-        self.rotationSlider.setMaximum(360)
-        controlLayout.addWidget(self.rotationLabel, 4, 0)
-        controlLayout.addWidget(self.rotationSlider, 4, 1, 1, 2)
-        
-        # Radio buttons for axis selection
-        self.axisGroup = QtWidgets.QGroupBox("Rotation Axis")
-        self.axisLayout = QtWidgets.QHBoxLayout()
-        self.xRadio = QtWidgets.QRadioButton("X")
-        self.yRadio = QtWidgets.QRadioButton("Y")
-        self.zRadio = QtWidgets.QRadioButton("Z")
-        self.zRadio.setChecked(True)  # Default rotation around Z-axis
-        self.axisLayout.addWidget(self.xRadio)
-        self.axisLayout.addWidget(self.yRadio)
-        self.axisLayout.addWidget(self.zRadio)
-        self.axisGroup.setLayout(self.axisLayout)
-        controlLayout.addWidget(self.axisGroup, 5, 0, 1, 3)
-        
-        # Add control panel to the left layout
-        self.leftLayout.addLayout(controlLayout)
+        active_region_frame = QFrame()
+        active_region_frame.setObjectName("activeRegionPanel")
+        active_region_frame.setFixedHeight(56)
+        active_region_layout = QVBoxLayout(active_region_frame)
+        active_region_layout.setContentsMargins(4, 2, 4, 2)
+        active_region_layout.setSpacing(0)
+        self.active_region_label = QLabel("Lower Back")
+        self.active_region_label.setObjectName("activeRegionName")
+        self.active_region_label.setAlignment(Qt.AlignCenter)
+        self.active_region_label.setFixedHeight(28)
+        active_caption = QLabel("Active Region")
+        active_caption.setObjectName("activeRegionCaption")
+        active_caption.setAlignment(Qt.AlignCenter)
+        active_caption.setFixedHeight(22)
+        active_region_layout.addWidget(self.active_region_label)
+        active_region_layout.addWidget(active_caption)
+        self.leftLayout.addWidget(active_region_frame)
 
-	
-        # Connect signals
-        self.controlPanelconnectSignals()
+        self.leftLayout.addWidget(self.bodyPanelDivider())
+        legend_title = QLabel("Risk Legend")
+        legend_title.setObjectName("bodySectionTitle")
+        self.leftLayout.addWidget(legend_title)
+        for color, label, range_text in (
+            ("#19B83F", "Low Risk", "0 - 10%"),
+            ("#FFC51B", "Moderate Risk", "10 - 30%"),
+            ("#FF8A19", "High Risk", "30 - 60%"),
+            ("#FF4136", "Very High Risk", "> 60%"),
+        ):
+            row = QHBoxLayout()
+            swatch = QLabel()
+            swatch.setFixedSize(12, 12)
+            swatch.setStyleSheet(f"background: {color}; border-radius: 6px;")
+            row.addWidget(swatch)
+            row.addWidget(QLabel(label), 1)
+            range_label = QLabel(range_text)
+            range_label.setAlignment(Qt.AlignRight)
+            row.addWidget(range_label)
+            self.leftLayout.addLayout(row)
+
+        self.leftLayout.addWidget(self.bodyPanelDivider())
+        controls = QHBoxLayout()
+        controls.setSpacing(4)
+        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
+        for text, icon_name, callback, tooltip in (
+            ("Rotate", "3drotate-light.png", self.rotateModelView, "Rotate the model clockwise."),
+            ("Zoom", "3dzoom-light.png", self.zoomModelView, "Zoom in on the active body region."),
+            ("Reset View", "3dreset-light.png", self.resetModelView, "Restore the initial model view."),
+        ):
+            button = QtWidgets.QToolButton()
+            button.setObjectName("modelViewButton")
+            button.setText(text)
+            button.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+            button.setIcon(QIcon(os.path.join(icon_root, icon_name)))
+            button.setIconSize(QSize(28, 28))
+            button.setToolTip(tooltip)
+            button.clicked.connect(callback)
+            controls.addWidget(button, 1)
+        self.leftLayout.addLayout(controls)
+
+    def bodyPanelDivider(self):
+        divider = QFrame()
+        divider.setObjectName("bodyPanelDivider")
+        divider.setFrameShape(QFrame.HLine)
+        divider.setFixedHeight(1)
+        return divider
+
+    def rotateModelView(self):
+        if not self.vtk_enabled:
+            return
+        camera = self.renderer.GetActiveCamera()
+        camera.Azimuth(20)
+        self.renderer.ResetCameraClippingRange()
+        self.vtkWidget.GetRenderWindow().Render()
+
+    def zoomModelView(self):
+        if not self.vtk_enabled:
+            return
+        self.renderer.GetActiveCamera().Zoom(1.15)
+        self.renderer.ResetCameraClippingRange()
+        self.vtkWidget.GetRenderWindow().Render()
+
+    def resetModelView(self):
+        if not self.vtk_enabled:
+            return
+        camera = self.renderer.GetActiveCamera()
+        camera.SetPosition(self.initialCameraSettings['position'])
+        camera.SetFocalPoint(self.initialCameraSettings['focalPoint'])
+        camera.SetViewUp(self.initialCameraSettings['viewUp'])
+        self.renderer.ResetCameraClippingRange()
+        self.vtkWidget.GetRenderWindow().Render()
 
 
 
@@ -5600,15 +7453,46 @@ class ErgoTools(QtWidgets.QMainWindow):
         
         #------------------------------------------------------------------------
         
+        
     
     
-          
+    def editOrganizationClicked(self):
+        if not self.projectFileCreated:
+            QMessageBox.warning(self, "Project required", "Create or load a project before managing the organization.")
+            return
+        selections = [
+            self.plant_combo.currentText(), self.section_combo.currentText(), self.line_combo.currentText(),
+            self.station_combo.currentText(), self.shift_combo.currentText(),
+        ]
+        OrganizationWindow(self, "Plant").exec_()
+        self.loadPlants()
+        plant_index = self.plant_combo.findText(selections[0])
+        if plant_index >= 0:
+            self.plant_combo.setCurrentIndex(plant_index)
+        self.loadSections()
+        section_index = self.section_combo.findText(selections[1])
+        if section_index >= 0:
+            self.section_combo.setCurrentIndex(section_index)
+        self.loadLines()
+        line_index = self.line_combo.findText(selections[2])
+        if line_index >= 0:
+            self.line_combo.setCurrentIndex(line_index)
+        self.loadStations()
+        station_index = self.station_combo.findText(selections[3])
+        if station_index >= 0:
+            self.station_combo.setCurrentIndex(station_index)
+        self.loadShifts()
+        shift_index = self.shift_combo.findText(selections[4])
+        if shift_index >= 0:
+            self.shift_combo.setCurrentIndex(shift_index)
+
+
     def editPlantClicked(self):
         
         
         self.editPlantName = ""
         
-        self.plant_window = PlantWindow(self)
+        self.plant_window = OrganizationWindow(self, "Plant")
         self.plant_window.exec_()
  
         if not self.projectFileCreated:
@@ -5634,7 +7518,7 @@ class ErgoTools(QtWidgets.QMainWindow):
     def editSectionClicked(self):
         self.editSectionName = ""
         
-        self.section_window = SectionWindow(self)
+        self.section_window = OrganizationWindow(self, "Section")
         self.section_window.exec_()
  
         if not self.projectFileCreated:
@@ -5654,7 +7538,7 @@ class ErgoTools(QtWidgets.QMainWindow):
     def editLineClicked(self):
         self.editLineName = ""
         
-        self.line_window = LineWindow(self)
+        self.line_window = OrganizationWindow(self, "Line")
         self.line_window.exec_()
  
         if not self.projectFileCreated:
@@ -5673,7 +7557,7 @@ class ErgoTools(QtWidgets.QMainWindow):
     def editStationClicked(self):
         self.editStationName = ""
         
-        self.station_window = StationWindow(self)
+        self.station_window = OrganizationWindow(self, "Station")
         self.station_window.exec_()
  
         if not self.projectFileCreated:
@@ -5692,7 +7576,7 @@ class ErgoTools(QtWidgets.QMainWindow):
     def editShiftClicked(self):
         self.editShiftName = ""
         
-        self.shift_window = ShiftWindow(self)
+        self.shift_window = OrganizationWindow(self, "Shift")
         self.shift_window.exec_()
  
         if not self.projectFileCreated:
@@ -5808,7 +7692,7 @@ class ErgoTools(QtWidgets.QMainWindow):
 
 
         # **Duplicate Header (Fixed, Outside Scroll Area)**
-        header_layout = QHBoxLayout()
+        header_layout = SyncedHeaderLayout()
         #lifft_headers = ["Task #", "Lever Arm (cm)", "Load (N)", "Moment (N.m)", "Repetitions (per work day)", "Damage (cumulative)", "% Total (damage)"]
         
         lifft_headers = [
@@ -5853,7 +7737,7 @@ class ErgoTools(QtWidgets.QMainWindow):
              
     
     
-        lifft_main_layout.addLayout(header_layout)  # **Add the fixed header to the layout**
+        lifft_main_layout.addWidget(self.createStickyHeader(header_layout, "lifft"))
 
 
 
@@ -5870,10 +7754,12 @@ class ErgoTools(QtWidgets.QMainWindow):
 
         # Create grid layout for task controls
         self.lifft_tab_layout = QGridLayout()
+        self.lifft_tab_layout.setAlignment(Qt.AlignTop)
         scroll_frame_layout.addLayout(self.lifft_tab_layout)
 
         # Add the frame to the scroll area
         self.scroll_area.setWidget(self.scroll_frame)
+        self.bindStickyHeader("lifft", self.scroll_area)
 
         # Add the scroll area to the main layout
         lifft_main_layout.addWidget(self.scroll_area)
@@ -5963,6 +7849,9 @@ class ErgoTools(QtWidgets.QMainWindow):
         
         # **Summary Grid Layout with 7 Columns & 2 Rows**
         summary_layout = QGridLayout()
+        self.lifft_summary_layout = summary_layout
+        summary_layout.setRowMinimumHeight(0, 30)
+        summary_layout.setRowMinimumHeight(1, 30)
         
         # **Set Column Stretch for Precise Width Control**
         summary_layout.setColumnMinimumWidth(0, 50)  # Set fixed minimum width for the first column
@@ -6001,6 +7890,11 @@ class ErgoTools(QtWidgets.QMainWindow):
         
         # **Add the summary layout BEFORE the button layout**
         lifft_main_layout.addLayout(summary_layout)
+        for widget in (
+            self.lifft_total_damage_label, self.lifft_total_damage_value_label,
+            self.lifft_probability_label, self.lifft_probability_value_label,
+        ):
+            widget.hide()
 
         
 
@@ -6057,7 +7951,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.lifft_tab.setLayout(lifft_main_layout)
 
         # Add LiFFT tab to the tab widget
-        self.tabWidget.insertTab(0, self.lifft_tab, "Lifting Fatigue Failure Tool (LiFFT)")
+        self.tabWidget.insertTab(0, self.lifft_tab, "Lifting Fatigue Failure Tool (LiFFT)  ")
 
         self.any_lifft_input_changed = False
         ##print("HERE")
@@ -6271,7 +8165,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         duet_main_layout = QVBoxLayout()
     
         # **Duplicate Header (Fixed, Outside Scroll Area)**
-        header_layout = QHBoxLayout()
+        header_layout = SyncedHeaderLayout()
         duet_headers = ["Task #", "OMNI-Res Scale", "Repetitions (per work day)", "Damage (cumulative)", "% Total (damage)"]
         self.duet_headers_labels_fixed = []
     
@@ -6297,7 +8191,7 @@ class ErgoTools(QtWidgets.QMainWindow):
             #if header == "Damage (cumulative)":
             #    header_layout.addSpacing(80)  
 
-        duet_main_layout.addLayout(header_layout)  # **Add the fixed header to the layout**
+        duet_main_layout.addWidget(self.createStickyHeader(header_layout, "duet"))
 
         # **Add a scroll area**
         self.scroll_area_duet = QScrollArea()
@@ -6310,10 +8204,19 @@ class ErgoTools(QtWidgets.QMainWindow):
     
         # Create grid layout for task controls
         self.duet_tab_layout = QGridLayout()
+        self.duet_tab_layout.setAlignment(Qt.AlignTop)
+        self.duet_tab_layout.setColumnStretch(0, 0)
+        self.duet_tab_layout.setColumnStretch(1, 4)
+        self.duet_tab_layout.setColumnStretch(2, 3)
+        self.duet_tab_layout.setColumnStretch(3, 2)
+        self.duet_tab_layout.setColumnStretch(4, 1)
+        for column, width in enumerate((48, 250, 220, 150, 105)):
+            self.duet_tab_layout.setColumnMinimumWidth(column, width)
         scroll_frame_layout.addLayout(self.duet_tab_layout)
     
         # Add the frame to the scroll area
         self.scroll_area_duet.setWidget(self.scroll_frame_duet)
+        self.bindStickyHeader("duet", self.scroll_area_duet)
     
         # Add the scroll area to the main layout
         duet_main_layout.addWidget(self.scroll_area_duet)
@@ -6324,7 +8227,10 @@ class ErgoTools(QtWidgets.QMainWindow):
             duet_header_label = QLabel(header)
             duet_header_label.setFont(duet_bold_font)
             duet_header_label.setAlignment(Qt.AlignCenter)
+            duet_header_label.setWordWrap(True)
             duet_header_label.setFixedHeight(0)  # Smallest visible height
+            duet_header_label.setMinimumWidth(0)
+            duet_header_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
             self.duet_tab_layout.addWidget(duet_header_label, 0, col)
             self.duet_headers_labels.append(duet_header_label)
     
@@ -6339,6 +8245,9 @@ class ErgoTools(QtWidgets.QMainWindow):
     
             # Difficulty Rating dropdown
             omnires_dropdown = QComboBox()
+            omnires_dropdown.setMinimumWidth(250)
+            omnires_dropdown.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+            omnires_dropdown.setMinimumContentsLength(19)
             omnires_dropdown.addItems([
                 "0: Extremely Easy", "1:", "2: Easy", "3:", "4: Somewhat Easy", "5:",
                 "6: Somewhat Hard", "7:", "8: Hard", "9:", "10: Extremely Hard"
@@ -6349,6 +8258,7 @@ class ErgoTools(QtWidgets.QMainWindow):
 
             # Repetitions input
             duet_repetitions_input = QLineEdit()
+            duet_repetitions_input.setMaximumWidth(280)
             duet_repetitions_input.setValidator(QIntValidator())
             duet_repetitions_input.setAlignment(Qt.AlignCenter)
             self.duet_tab_layout.addWidget(duet_repetitions_input, row + 1, 2)
@@ -6369,6 +8279,9 @@ class ErgoTools(QtWidgets.QMainWindow):
         
         # **Summary Grid Layout with 7 Columns & 2 Rows**
         summary_layout = QGridLayout()
+        self.duet_summary_layout = summary_layout
+        summary_layout.setRowMinimumHeight(0, 30)
+        summary_layout.setRowMinimumHeight(1, 30)
 
         # **Set Column Stretch for Precise Width Control**
         summary_layout.setColumnMinimumWidth(0, 80)  # Fixed minimum width for the first column
@@ -6403,6 +8316,11 @@ class ErgoTools(QtWidgets.QMainWindow):
         
         # **Add the summary layout BEFORE the button layout**
         duet_main_layout.addLayout(summary_layout)
+        for widget in (
+            self.duet_total_damage_label, self.duet_total_damage_value_label,
+            self.duet_probability_label, self.duet_probability_value_label,
+        ):
+            widget.hide()
 
         
 
@@ -6577,7 +8495,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         tst_main_layout = QVBoxLayout()
     
         # **Duplicate Header (Fixed, Outside Scroll Area)**
-        header_layout = QHBoxLayout()
+        header_layout = SyncedHeaderLayout()
        
         tst_headers = [
             "Task #", 
@@ -6617,24 +8535,38 @@ class ErgoTools(QtWidgets.QMainWindow):
             header_layout.addWidget(tst_header_label)    
             self.tst_headers_labels_fixed.append(tst_header_label)
 
-        tst_main_layout.addLayout(header_layout)  # **Add the fixed header to the layout**
+        tst_main_layout.addWidget(self.createStickyHeader(header_layout, "tst"))
 
 
         # **Add a Scroll Area**
         self.scroll_area_tst = QScrollArea()
         self.scroll_area_tst.setWidgetResizable(True)
+        self.scroll_area_tst.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         # **Create a frame to hold all task controls**
         self.scroll_frame_tst = QFrame()
+        self.scroll_frame_tst.setMinimumWidth(0)
+        self.scroll_frame_tst.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Expanding)
         scroll_frame_layout_tst = QVBoxLayout()
+        scroll_frame_layout_tst.setContentsMargins(0, 0, 0, 0)
         self.scroll_frame_tst.setLayout(scroll_frame_layout_tst)
 
         # **Create grid layout for task controls**
         self.tst_tab_layout = QGridLayout()
+        self.tst_tab_layout.setAlignment(Qt.AlignTop)
+        self.tst_tab_layout.setContentsMargins(6, 0, 6, 0)
+        self.tst_tab_layout.setColumnStretch(1, 3)
+        self.tst_tab_layout.setColumnStretch(2, 2)
+        self.tst_tab_layout.setColumnStretch(3, 1)
+        self.tst_tab_layout.setColumnStretch(5, 3)
+        self.tst_tab_layout.setColumnStretch(6, 2)
+        for column, width in enumerate((55, 190, 95, 58, 80, 145, 115, 85)):
+            self.tst_tab_layout.setColumnMinimumWidth(column, width)
         scroll_frame_layout_tst.addLayout(self.tst_tab_layout)
 
         # **Add the frame to the scroll area**
         self.scroll_area_tst.setWidget(self.scroll_frame_tst)
+        self.bindStickyHeader("tst", self.scroll_area_tst)
 
         # **Add the scroll area to the main layout**
         tst_main_layout.addWidget(self.scroll_area_tst)
@@ -6646,7 +8578,10 @@ class ErgoTools(QtWidgets.QMainWindow):
             tst_header_label = QLabel(header)
             tst_header_label.setFont(tst_bold_font)
             tst_header_label.setAlignment(Qt.AlignCenter)
+            tst_header_label.setWordWrap(True)
             tst_header_label.setFixedHeight(0)  # Smallest visible height
+            tst_header_label.setMinimumWidth(0)
+            tst_header_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
             self.tst_tab_layout.addWidget(tst_header_label, 0, col)
             self.tst_headers_labels.append(tst_header_label)
 
@@ -6662,6 +8597,9 @@ class ErgoTools(QtWidgets.QMainWindow):
     
             # Type of Task dropdown
             type_of_task_dropdown = QComboBox()
+            type_of_task_dropdown.setMinimumWidth(0)
+            type_of_task_dropdown.setMaximumWidth(220)
+            type_of_task_dropdown.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
             type_of_task_dropdown.addItems(task_types)
             self.tst_tab_layout.addWidget(type_of_task_dropdown, row + 1, 1)
             self.tst_type_of_task_dropdowns.append(type_of_task_dropdown)
@@ -6711,6 +8649,9 @@ class ErgoTools(QtWidgets.QMainWindow):
 
         # **Summary Grid Layout (Outside Scroll Area)**
         summary_layout = QGridLayout()
+        self.tst_summary_layout = summary_layout
+        summary_layout.setRowMinimumHeight(0, 30)
+        summary_layout.setRowMinimumHeight(1, 30)
         
         # **Set Column Stretch for Precise Width Control (8 Columns)**
         summary_layout.setColumnStretch(0, 1)  # Left spacer
@@ -6746,6 +8687,11 @@ class ErgoTools(QtWidgets.QMainWindow):
         
         # **Add the summary layout BEFORE the button layout**
         tst_main_layout.addLayout(summary_layout)
+        for widget in (
+            self.tst_total_damage_label, self.tst_total_damage_value_label,
+            self.tst_probability_label, self.tst_probability_value_label,
+        ):
+            widget.hide()
 
 
 
@@ -6924,6 +8870,9 @@ class ErgoTools(QtWidgets.QMainWindow):
     
     def setupRenderer(self):
         self.renderer = vtk.vtkRenderer()
+        self.renderer.SetBackground(0.035, 0.176, 0.271)
+        self.renderer.SetBackground2(0.035, 0.176, 0.271)
+        self.renderer.GradientBackgroundOff()
         self.vtkWidget.GetRenderWindow().AddRenderer(self.renderer)
         self.interactor = self.vtkWidget.GetRenderWindow().GetInteractor()
         
@@ -7053,6 +9002,15 @@ class ErgoTools(QtWidgets.QMainWindow):
         return actor
         
     def onTabChange(self, index):
+        if hasattr(self, "active_region_label"):
+            title, region = {
+                0: ("LiFFT Body Region", "Lower Back"),
+                1: ("DUET Body Region", "Distal Upper Extremity"),
+                2: ("Shoulder Body Region", "Shoulders"),
+            }.get(index, ("Body Region", "Active Region"))
+            self.body_region_title.setText(title)
+            self.active_region_label.setText(region)
+
         if hasattr(self, 'animationTimer') and self.isAnimationAllowed:
             self.tabIndex = index  # Store the new tab index
             self.animationPhase = 1  # Start with resetting the view
@@ -7304,14 +9262,19 @@ if __name__ == "__main__":
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Fatigue Failure Risk Assessment Tools")
     parser.add_argument("project_file", nargs="?", help="Path to the .ergprj project file", default=None)
+    parser.add_argument(
+        "--disable-vtk",
+        action="store_true",
+        help="Skip the 3D renderer for headless UI review and screenshots",
+    )
     args = parser.parse_args()
 
     app = QtWidgets.QApplication(sys.argv)
-    window = ErgoTools()
+    window = ErgoTools(disable_vtk=args.disable_vtk)
     window.setWindowTitle("Fatigue Failure Risk Assessment Tools")
 
     # Set a fixed size for the main window
-    window.setFixedSize(1550, 900)  # Width and height in pixels
+    window.setFixedSize(1550, 1015)  # Preserve the complete 3D model after adding the worker alphabet row.
 
     # If a project file path is provided, call the openFilePath function
     if args.project_file:
@@ -7321,4 +9284,3 @@ if __name__ == "__main__":
     sys.exit(app.exec_())    
     
     
-

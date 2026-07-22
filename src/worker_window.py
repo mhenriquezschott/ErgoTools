@@ -10,12 +10,14 @@ from datetime import datetime
 
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QDateEdit, QSpinBox, 
-    QComboBox, QPushButton, QTabWidget, QWidget, QGridLayout, QMessageBox, QDialogButtonBox
+    QComboBox, QPushButton, QTabWidget, QWidget, QGridLayout, QMessageBox, QDialogButtonBox,
+    QTableWidget, QTableWidgetItem, QHeaderView, QFrame, QScrollArea, QToolButton,
+    QSizePolicy, QAbstractItemView, QStyle
 )
 
 from PyQt5 import QtWidgets, QtCore 
 from PyQt5.QtCore import QDate, Qt
-from PyQt5.QtGui import QDoubleValidator, QIntValidator, QFont, QPixmap, QRegExpValidator
+from PyQt5.QtGui import QDoubleValidator, QIntValidator, QFont, QPixmap, QRegExpValidator, QIcon
 
 from PyQt5.QtGui import QRegularExpressionValidator
 from PyQt5.QtCore import QRegularExpression, QRegExp
@@ -24,8 +26,9 @@ from PyQt5.QtCore import QRegularExpression, QRegExp
 class WorkerWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Workers Management")
-        self.resize(600, 400)
+        self.setWindowTitle("Worker Management")
+        self.setMinimumSize(1360, 760)
+        self.resize(1400, 800)
 
         self.setupUI()
 
@@ -45,102 +48,241 @@ class WorkerWindow(QDialog):
 
 
     def setupUI(self):
-            
-        # Create a bold font
-        bold_font = QFont()
-        bold_font.setBold(True)
+        self.setObjectName("workerManagementDialog")
+        self.setStyleSheet(self.workerManagementStyleSheet())
 
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(20, 18, 20, 18)
+        main_layout.setSpacing(16)
 
-        # Tab Widget
+        title = QLabel("Worker Management")
+        title.setObjectName("dialogTitle")
+        subtitle = QLabel("Find a worker or create a new record. Required identity fields are shown first.")
+        subtitle.setObjectName("dialogSubtitle")
+        main_layout.addWidget(title)
+        main_layout.addWidget(subtitle)
+
+        workspace = QHBoxLayout()
+        workspace.setSpacing(16)
+
+        directory_card = QFrame()
+        directory_card.setObjectName("card")
+        directory_card.setMinimumWidth(535)
+        directory_card.setMaximumWidth(575)
+        directory_layout = QVBoxLayout(directory_card)
+        directory_layout.setContentsMargins(16, 16, 16, 14)
+        directory_layout.setSpacing(12)
+
+        directory_heading = QLabel("Workers")
+        directory_heading.setObjectName("sectionTitle")
+        directory_layout.addWidget(directory_heading)
+
+        self.worker_search_input = QLineEdit()
+        self.worker_search_input.setPlaceholderText("Search by ID or name")
+        self.worker_search_input.setClearButtonEnabled(True)
+        self.worker_search_input.setToolTip("Filter the worker list by Worker ID, first name, or last name.")
+        self.worker_search_input.textChanged.connect(self.filterWorkerTable)
+        directory_layout.addWidget(self.worker_search_input)
+
+        self.worker_table = QTableWidget(0, 4)
+        self.worker_table.setHorizontalHeaderLabels(["Worker ID", "Name", "Sex", "Age"])
+        self.worker_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.worker_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.worker_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.worker_table.setAlternatingRowColors(True)
+        self.worker_table.verticalHeader().setVisible(False)
+        self.worker_table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.worker_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.worker_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.worker_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        self.worker_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        self.worker_table.setToolTip("Select a row to view or edit that worker's details.")
+        self.worker_table.itemSelectionChanged.connect(self.workerTableSelectionChanged)
+        self.worker_table.viewport().installEventFilter(self)
+        self.worker_rows = []
+        self.filtered_worker_rows = []
+        self.worker_page = 0
+        self.worker_page_size = 10
+        directory_layout.addWidget(self.worker_table, 1)
+
+        alphabet_layout = QHBoxLayout()
+        alphabet_layout.setSpacing(0)
+        alphabet_label = QLabel("Name")
+        alphabet_label.setObjectName("alphabetLabel")
+        alphabet_label.setToolTip("Filter workers by the first letter of their first or last name.")
+        alphabet_layout.addWidget(alphabet_label)
+        self.alphabet_buttons = {}
+        self.active_alphabet_letter = None
+        for letter in ["All"] + [chr(code) for code in range(ord("A"), ord("Z") + 1)]:
+            button = QPushButton(letter)
+            button.setObjectName("alphabetButton")
+            button.setCheckable(True)
+            button.setFixedSize(32 if letter == "All" else 17, 32)
+            button.setToolTip(
+                "Show all workers." if letter == "All"
+                else f"Show workers whose first or last name begins with {letter}."
+            )
+            button.clicked.connect(lambda checked, value=letter: self.setAlphabetFilter(value))
+            self.alphabet_buttons[letter] = button
+            alphabet_layout.addWidget(button)
+        self.alphabet_buttons["All"].setChecked(True)
+        directory_layout.addLayout(alphabet_layout)
+
+        list_footer = QHBoxLayout()
+        self.worker_count_label = QLabel("0 workers")
+        self.worker_count_label.setObjectName("supportingText")
+        list_footer.addWidget(self.worker_count_label)
+        list_footer.addStretch()
+        record_navigation_label = QLabel("Worker")
+        record_navigation_label.setObjectName("recordNavigationLabel")
+        record_navigation_label.setToolTip("The arrow buttons move one worker at a time.")
+        list_footer.addWidget(record_navigation_label)
+
+        self.first_button = QPushButton("|<")
+        self.previous_button = QPushButton("<")
+        self.next_button = QPushButton(">")
+        self.last_button = QPushButton(">|")
+        nav_icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
+        nav_buttons = (
+            (self.first_button, "Go to the first worker.", self.firstWorker),
+            (self.previous_button, "Go to the previous worker.", self.previousWorker),
+            (self.next_button, "Go to the next worker.", self.nextWorker),
+            (self.last_button, "Go to the last worker.", self.lastWorker),
+        )
+        for button, icon_name, tooltip, callback in (
+            (self.first_button, "first.png", "Go to the first worker.", self.firstWorker),
+            (self.previous_button, "previous.png", "Go to the previous worker.", self.previousWorker),
+            (self.next_button, "next.png", "Go to the next worker.", self.nextWorker),
+            (self.last_button, "last.png", "Go to the last worker.", self.lastWorker),
+        ):
+            button.setObjectName("navButton")
+            button.setFixedWidth(42)
+            button.setText("")
+            button.setIcon(QIcon(os.path.join(nav_icon_root, icon_name)))
+            button.setIconSize(QtCore.QSize(24, 24))
+            button.setToolTip(tooltip)
+            button.clicked.connect(callback)
+            list_footer.addWidget(button)
+        directory_layout.addLayout(list_footer)
+
+        page_footer = QHBoxLayout()
+        self.first_page_button = QPushButton("First")
+        self.first_page_button.setObjectName("pageButton")
+        self.first_page_button.setToolTip("Show the first page of workers.")
+        self.first_page_button.clicked.connect(self.firstWorkerPage)
+        self.previous_page_button = QPushButton("Prev")
+        self.previous_page_button.setObjectName("pageButton")
+        self.previous_page_button.setToolTip("Show the previous page of workers.")
+        self.previous_page_button.clicked.connect(self.previousWorkerPage)
+        self.page_label = QLabel("Page 1 of 1")
+        self.page_label.setObjectName("pageLabel")
+        self.page_label.setAlignment(Qt.AlignCenter)
+        self.page_label.setToolTip("Current worker-list page and total number of pages.")
+        self.next_page_button = QPushButton("Next")
+        self.next_page_button.setObjectName("pageButton")
+        self.next_page_button.setToolTip("Show the next page of workers.")
+        self.next_page_button.clicked.connect(self.nextWorkerPage)
+        self.last_page_button = QPushButton("Last")
+        self.last_page_button.setObjectName("pageButton")
+        self.last_page_button.setToolTip("Show the last page of workers.")
+        self.last_page_button.clicked.connect(self.lastWorkerPage)
+        for button, icon_name in (
+            (self.first_page_button, "first.png"), (self.previous_page_button, "previous.png"),
+            (self.next_page_button, "next.png"), (self.last_page_button, "last.png"),
+        ):
+            button.setIcon(QIcon(os.path.join(nav_icon_root, icon_name)))
+            button.setIconSize(QtCore.QSize(18, 18))
+        page_footer.addWidget(self.first_page_button)
+        page_footer.addWidget(self.previous_page_button)
+        page_footer.addWidget(self.page_label, 1)
+        page_footer.addWidget(self.next_page_button)
+        page_footer.addWidget(self.last_page_button)
+        directory_layout.addLayout(page_footer)
+        workspace.addWidget(directory_card)
+
+        details_card = QFrame()
+        details_card.setObjectName("card")
+        details_layout = QVBoxLayout(details_card)
+        details_layout.setContentsMargins(18, 16, 18, 16)
+        details_layout.setSpacing(10)
+
         self.tabWidget = QTabWidget()
-        # Connect the tab widget's currentChanged signal to a handler
+        self.tabWidget.setObjectName("detailsTabs")
         self.tabWidget.currentChanged.connect(self.onTabChanged)
-
-        main_layout.addWidget(self.tabWidget)
-        
-
-        # General Information Tab
         self.general_tab = QWidget()
         self.setupGeneralTab()
-        self.tabWidget.addTab(self.general_tab, "General Information")
+        self.tabWidget.addTab(self.general_tab, "Worker details")
+        self.tabWidget.tabBar().hide()
+        details_layout.addWidget(self.tabWidget, 1)
 
+        self.notification_area = QFrame()
+        self.notification_area.setObjectName("notificationArea")
+        self.notification_area.setProperty("severity", "info")
+        notification_layout = QHBoxLayout(self.notification_area)
+        notification_layout.setContentsMargins(12, 9, 12, 9)
+        self.notification_label = QLabel()
+        self.notification_label.setObjectName("notificationLabel")
+        self.notification_label.setWordWrap(True)
+        notification_layout.addWidget(self.notification_label)
+        details_layout.addWidget(self.notification_area)
+        self.setNotification("Select a worker to review or edit its information.", "info")
+        workspace.addWidget(details_card, 1)
+        main_layout.addLayout(workspace, 1)
 
-        # Head and Neck Tab
+        # These fields remain part of the saved schema, though their experimental
+        # measurement tabs are not exposed in this UI iteration.
         self.head_neck_tab = QWidget()
         self.setupHeadNeckTab()
-        #self.tabWidget.addTab(self.head_neck_tab, "Head and Neck")
-        
-        # Upper Body Measurements Tab
         self.upper_body_tab = QWidget()
         self.setupUpperBodyTab()
-        #self.tabWidget.addTab(self.upper_body_tab, "Upper Body Measurements")
-
-        # Lower Body Measurements Tab
         self.lower_body_tab = QWidget()
         self.setupLowerBodyTab()
-        #self.tabWidget.addTab(self.lower_body_tab, "Lower Body Measurements")
 
-        for i in range(1, self.tabWidget.count()):
-            self.tabWidget.tabBar().setTabVisible(i, False)
-    
-
-        # Buttons
-        button_layout = QHBoxLayout()
-        
-        self.first_button = QPushButton("|<")
-        self.first_button.setFont(bold_font)  # Set bold font
-        self.first_button.clicked.connect(self.firstWorker)
-        
-        self.previous_button = QPushButton("<")
-        self.previous_button.setFont(bold_font)  # Set bold font
-        self.previous_button.clicked.connect(self.previousWorker)
-        
-        self.new_button = QPushButton("New")
-        self.new_button.setFont(bold_font)  # Set bold font
-        self.new_button.clicked.connect(self.newWorker)
-        
-        self.save_button = QPushButton("Save")
-        self.save_button.setFont(bold_font)  # Set bold font
-        self.save_button.clicked.connect(self.saveWorker)
-        
+        action_bar = QHBoxLayout()
+        action_bar.setSpacing(10)
+        self.new_button = QPushButton("New worker")
+        self.save_button = QPushButton("Save changes")
         self.delete_button = QPushButton("Delete")
-        self.delete_button.setFont(bold_font)  # Set bold font
-        self.delete_button.clicked.connect(self.deleteWorker)
-        
         self.search_button = QPushButton("Search")
-        self.search_button.setFont(bold_font)  # Set bold font
-        self.search_button.clicked.connect(self.searchWorker)
-        
         self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.setFont(bold_font)  # Set bold font
-        self.cancel_button.clicked.connect(self.cancelWorker)
-        
         self.close_button = QPushButton("Close")
-        self.close_button.setFont(bold_font)  # Set bold font
-        self.close_button.clicked.connect(self.closeWorker)
-        
-        self.next_button = QPushButton(">")
-        self.next_button.setFont(bold_font)  # Set bold font
-        self.next_button.clicked.connect(self.nextWorker)
-        
-        self.last_button = QPushButton(">|")
-        self.last_button.setFont(bold_font)  # Set bold font
-        self.last_button.clicked.connect(self.lastWorker)
 
-        
-        button_layout.addWidget(self.first_button)
-        button_layout.addWidget(self.previous_button)
-        button_layout.addWidget(self.new_button)
-        button_layout.addWidget(self.save_button)
-        button_layout.addWidget(self.delete_button)
-        button_layout.addWidget(self.search_button)
-        button_layout.addWidget(self.cancel_button)
-        button_layout.addWidget(self.close_button)
-        button_layout.addWidget(self.next_button)
-        button_layout.addWidget(self.last_button)
-        
-        main_layout.addLayout(button_layout)
+        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
+        self.new_button.setIcon(QIcon(os.path.join(icon_root, "new.png")))
+        self.save_button.setIcon(QIcon(os.path.join(icon_root, "save.png")))
+        self.new_button.setIconSize(QtCore.QSize(26, 26))
+        self.save_button.setIconSize(QtCore.QSize(26, 26))
+        self.delete_button.setIcon(QIcon(os.path.join(icon_root, "delete.png")))
+        self.delete_button.setIconSize(QtCore.QSize(26, 26))
+        self.search_button.setIcon(QIcon(os.path.join(icon_root, "search.png")))
+        self.search_button.setIconSize(QtCore.QSize(26, 26))
+        self.cancel_button.setIcon(QIcon(os.path.join(icon_root, "cancel.png")))
+        self.cancel_button.setIconSize(QtCore.QSize(26, 26))
+        self.close_button.setIcon(QIcon(os.path.join(icon_root, "close.png")))
+        self.close_button.setIconSize(QtCore.QSize(26, 26))
+        self.save_button.setObjectName("primaryOutlineButton")
+        self.delete_button.setObjectName("dangerButton")
+        self.search_button.hide()
+
+        actions = (
+            (self.new_button, "Start a blank worker record. Unsaved edits in the form are cleared.", self.newWorker),
+            (self.save_button, "Save this worker and all entered optional details to the project.", self.saveWorker),
+            (self.delete_button, "Permanently delete the selected worker after confirmation.", self.deleteWorker),
+            (self.search_button, "Open the legacy worker search dialog.", self.searchWorker),
+            (self.cancel_button, "Discard the current new-record form and return to the first worker.", self.cancelWorker),
+            (self.close_button, "Close Worker Management and return to the assessment window.", self.closeWorker),
+        )
+        for button, tooltip, callback in actions:
+            button.setToolTip(tooltip)
+            button.clicked.connect(callback)
+
+        action_bar.addWidget(self.new_button)
+        action_bar.addWidget(self.save_button)
+        action_bar.addWidget(self.delete_button)
+        action_bar.addStretch()
+        action_bar.addWidget(self.cancel_button)
+        action_bar.addWidget(self.close_button)
+        main_layout.addLayout(action_bar)
 
 
     # Override the closeEvent method to handle the window close event
@@ -162,7 +304,6 @@ class WorkerWindow(QDialog):
         self.parent().editWorkerWindowID = worker_id
         self.parent().editWorkerWindowLastName = last_name
         self.parent().editWorkerWindowFirstName = first_name
-
 
     def searchWorker(self):
     
@@ -336,6 +477,7 @@ class WorkerWindow(QDialog):
 
             # Refresh the Worker ID combo box
             self.worker_id_combo.removeItem(self.worker_id_combo.currentIndex())
+            self.loadWorkerTable(0)
 
             # Reset the Worker ID combo box to the first index if items exist
             if self.worker_id_combo.count() > 0:
@@ -369,7 +511,8 @@ class WorkerWindow(QDialog):
         self.first_name_input.clear()
         self.last_name_input.clear()
         self.dob_input.setDate(QDate.currentDate())
-        self.age_label.setText("0")
+        self.year_of_birth_input.setValue(QDate.currentDate().year())
+        self.age_label.setText("0 years")
         self.height_input.clear()
         self.weight_input.clear()
         self.address_input.clear()
@@ -445,6 +588,14 @@ class WorkerWindow(QDialog):
         self.last_button.setEnabled(False)
         self.delete_button.setEnabled(False)
         self.search_button.setEnabled(False)
+        self.worker_table.clearSelection()
+        self.worker_table.setEnabled(False)
+        self.worker_search_input.setEnabled(False)
+        self.cancel_button.setEnabled(True)
+        self.setNotification(
+            "Add height and weight when available. Year of birth and sex improve advanced filtering in PLOT and other tools.",
+            "warning",
+        )
 
         #QMessageBox.information(self, "New Worker", "Ready to add a new worker.")
         self.tabWidget.setCurrentIndex(0)
@@ -463,208 +614,619 @@ class WorkerWindow(QDialog):
         self.last_button.setEnabled(True)
         self.delete_button.setEnabled(True)
         self.search_button.setEnabled(True)
+        self.worker_table.setEnabled(True)
+        self.worker_search_input.setEnabled(True)
 
         # Reset the Worker ID combo box to the first index if items exist
         if self.worker_id_combo.count() > 0:
             self.worker_id_combo.setCurrentIndex(0)
             self.loadWorkerDetails()
+        self.setNotification("New-worker entry was cancelled; the existing record was restored.", "info")
 
         # TODO: other cancel code if needed..
 
 
     # Navigation Handlers
     def firstWorker(self):
-        if self.worker_id_combo.count() > 0:
-            self.worker_id_combo.setCurrentIndex(0)
-            
-        if (self.tabWidget.currentIndex() > 0):
-            self.updateWorkerInfoLabels()
+        self.selectFilteredWorker(0)
 
     def previousWorker(self):
-        current_index = self.worker_id_combo.currentIndex()
-        if current_index > 0:
-            self.worker_id_combo.setCurrentIndex(current_index - 1)
-        
-        if (self.tabWidget.currentIndex() > 0):
-            self.updateWorkerInfoLabels()
+        current_index = self.currentFilteredWorkerIndex()
+        if current_index is not None:
+            self.selectFilteredWorker(current_index - 1)
 
     def nextWorker(self):
-        current_index = self.worker_id_combo.currentIndex()
-        if current_index < self.worker_id_combo.count() - 1:
-            self.worker_id_combo.setCurrentIndex(current_index + 1)
-            
-        if (self.tabWidget.currentIndex() > 0):
-            self.updateWorkerInfoLabels()
+        current_index = self.currentFilteredWorkerIndex()
+        if current_index is not None:
+            self.selectFilteredWorker(current_index + 1)
 
     def lastWorker(self):
-        if self.worker_id_combo.count() > 0:
-            self.worker_id_combo.setCurrentIndex(self.worker_id_combo.count() - 1)
-            
-        if (self.tabWidget.currentIndex() > 0):
+        self.selectFilteredWorker(len(self.filtered_worker_rows) - 1)
+
+    def currentFilteredWorkerIndex(self):
+        worker_id = self.worker_id_combo.currentText().strip()
+        return next(
+            (index for index, row in enumerate(self.filtered_worker_rows) if row[0] == worker_id),
+            None,
+        )
+
+    def selectFilteredWorker(self, index):
+        if not self.filtered_worker_rows:
+            return
+        index = min(max(0, index), len(self.filtered_worker_rows) - 1)
+        worker_id = self.filtered_worker_rows[index][0]
+        combo_index = self.worker_id_combo.findText(worker_id)
+        if combo_index != -1:
+            self.worker_id_combo.setCurrentIndex(combo_index)
+        if self.tabWidget.currentIndex() > 0:
             self.updateWorkerInfoLabels()
 
     def setupGeneralTab(self):
-        layout = QGridLayout()
+        tab_layout = QVBoxLayout(self.general_tab)
+        tab_layout.setContentsMargins(0, 0, 0, 0)
+        self.details_scroll = QScrollArea()
+        self.details_scroll.setObjectName("detailsScroll")
+        self.details_scroll.setWidgetResizable(True)
+        self.details_scroll.setFrameShape(QFrame.NoFrame)
+        self.details_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        details_content = QWidget()
+        details_content.setObjectName("detailsContent")
+        page_layout = QVBoxLayout(details_content)
+        page_layout.setContentsMargins(0, 0, 8, 0)
+        page_layout.setSpacing(12)
 
-        # Worker ID
-        layout.addWidget(QLabel("ID:"), 0, 0)
+        heading = QLabel("Worker details")
+        heading.setObjectName("sectionTitle")
+        page_layout.addWidget(heading)
+
+        required_note = QLabel("Required identity information")
+        required_note.setObjectName("eyebrow")
+        page_layout.addWidget(required_note)
+
+        required_grid = QGridLayout()
+        required_grid.setHorizontalSpacing(14)
+        required_grid.setVerticalSpacing(10)
+        required_grid.setColumnStretch(1, 1)
+        required_grid.setColumnStretch(3, 1)
+
         self.worker_id_combo = QComboBox()
-        self.worker_id_combo.setEditable(True)  # Allow the user to write in the combobox
+        self.worker_id_combo.setEditable(True)
         self.worker_id_combo.currentIndexChanged.connect(self.loadWorkerDetails)
-        layout.addWidget(self.worker_id_combo, 0, 1)
+        self.worker_id_combo.currentIndexChanged.connect(self.selectWorkerTableRow)
+        self.worker_id_combo.setToolTip("Required. Enter a unique Worker ID without spaces.")
 
-
-        # Name
-        layout.addWidget(QLabel("First Name:"), 1, 0)
         self.first_name_input = QLineEdit()
-        layout.addWidget(self.first_name_input, 1, 1)
-
-        # Last Name
-        layout.addWidget(QLabel("Last Name:"), 2, 0)
+        self.first_name_input.setToolTip("Worker's first name. If used, a last name is also required.")
         self.last_name_input = QLineEdit()
-        layout.addWidget(self.last_name_input, 2, 1)
+        self.last_name_input.setToolTip("Worker's last name. If used, a first name is also required.")
 
-        # Date of Birth
-        layout.addWidget(QLabel("Date of Birth:"), 3, 0)
+        self.year_of_birth_input = QSpinBox()
+        self.year_of_birth_input.setRange(1900, QDate.currentDate().year())
+        self.year_of_birth_input.setValue(QDate.currentDate().year())
+        self.year_of_birth_input.setToolTip("Worker's year of birth. Age is calculated automatically.")
+        self.year_of_birth_input.valueChanged.connect(self.yearOfBirthChanged)
+
         self.dob_input = QDateEdit()
-        self.dob_input.setCalendarPopup(True)
         self.dob_input.setDate(QDate.currentDate())
-        self.dob_input.dateChanged.connect(self.calculateAge)
-        layout.addWidget(self.dob_input, 3, 1)
+        self.dob_input.hide()
 
-        # Age
-        age_label = QLabel("Age:")
-        layout.addWidget(age_label, 4, 0)
-        self.age_label = QLabel("0")
-        self.age_label.setFixedHeight(30)  # Set the desired height in pixels
-        layout.addWidget(self.age_label, 4, 1)
+        self.age_label = QLabel("0 years")
+        self.age_label.setObjectName("calculatedValue")
+        self.age_label.setToolTip("Calculated from the year of birth and the current year.")
 
-        # Gender Combo Box
-        gender_label = QLabel("Sex:")
-        layout.addWidget(gender_label, 5, 0)
         self.gender_combo = QComboBox()
         self.gender_combo.addItems(["Female", "Male"])
-        self.gender_combo.setCurrentIndex(0)  # Set default to Female
-        self.gender_combo.setEditable(False)  # Keep it non-editable by default
-        # self.gender_combo.setEditable(True)  # Uncomment this line to make it editable if needed
-        layout.addWidget(self.gender_combo, 5, 1)
-        
+        self.gender_combo.setToolTip("Worker sex used for worker records and layout marker shape.")
 
-        # Height
-        layout.addWidget(QLabel("Height (inch):"), 6, 0)
-        self.height_input = QLineEdit()
-        self.height_input.setValidator(QDoubleValidator(50.0, 300.0, 2))
-        layout.addWidget(self.height_input, 6, 1)
-
-        # Weight
-        layout.addWidget(QLabel("Weight (lb):"), 7, 0)
-        self.weight_input = QLineEdit()
-        self.weight_input.setValidator(QDoubleValidator(10.0, 300.0, 2))
-        layout.addWidget(self.weight_input, 7, 1)
-
-        # Address
-        layout.addWidget(QLabel("Address:"), 8, 0)
-        self.address_input = QLineEdit()
-        layout.addWidget(self.address_input, 8, 1)
-        
-        
-        # City
-        layout.addWidget(QLabel("City:"), 9, 0)
-        self.city_input = QLineEdit()
-        layout.addWidget(self.city_input, 9, 1)
-
-
-        # State
-        layout.addWidget(QLabel("State:"), 10, 0)
-        self.state_combo = QComboBox()
-        self.state_combo.addItem("Outside US")  # Default value
-        self.state_combo.setEditable(True)  # Allow the user to write in the combobox
-                
-
-        layout.addWidget(self.state_combo, 10, 1)
-
-        # Country
-        layout.addWidget(QLabel("Country:"), 11, 0)
-        self.country_combo = QComboBox()
-
-        # Populate the country combobox using pycountry
-        
-        countries = sorted([country.name for country in pycountry.countries])
-        self.country_combo.addItems(countries)
-        self.country_combo.setEditable(True)  # Allow the user to write in the combobox
-                
-        # Get the system's country using locale and timezone
-        
-        # Retrieve the system's country from locale
-        try:
-            system_locale = locale.getdefaultlocale()
-            country_code_from_locale = system_locale[0].split('_')[-1] if system_locale else None
-        except Exception:
-            country_code_from_locale = None
-
-        # Fallback: Attempt to deduce the country using timezone
-        try:
-            timezone = time.tzname[0]
-            country_code_from_timezone = timezone.split('/')[-1] if '/' in timezone else None
-        except Exception:
-            country_code_from_timezone = None
-
-        # Combine the sources to find the system country
-        system_country_code = country_code_from_locale or country_code_from_timezone
-        system_country = next(
-            (country.name for country in pycountry.countries if country.alpha_2 == system_country_code),
-            None
+        required_fields = (
+            (0, 0, "Worker ID", self.worker_id_combo),
+            (0, 2, "Sex", self.gender_combo),
+            (1, 0, "First name", self.first_name_input),
+            (1, 2, "Last name", self.last_name_input),
+            (2, 0, "Year of birth", self.year_of_birth_input),
+            (2, 2, "Calculated age", self.age_label),
         )
+        for row, column, label_text, field in required_fields:
+            label = QLabel(label_text)
+            label.setProperty("fieldLabel", True)
+            required_grid.addWidget(label, row, column)
+            required_grid.addWidget(field, row, column + 1)
+        page_layout.addLayout(required_grid)
 
-        # Set the detected country if valid
-        if system_country and system_country in countries:
-            self.country_combo.setCurrentText(system_country)
+        divider = QFrame()
+        divider.setFrameShape(QFrame.HLine)
+        divider.setObjectName("divider")
+        page_layout.addWidget(divider)
 
-        # Connect the country combobox change event
+        self.optional_toggle = QToolButton()
+        self.optional_toggle.setObjectName("optionalToggle")
+        self.optional_toggle.setText("Optional details")
+        self.optional_toggle.setCheckable(True)
+        self.optional_toggle.setChecked(False)
+        self.optional_toggle.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.optional_toggle.setArrowType(Qt.RightArrow)
+        self.optional_toggle.setToolTip("Show or hide optional contact, employment, and body measurement fields.")
+        self.optional_toggle.toggled.connect(self.setOptionalDetailsVisible)
+        page_layout.addWidget(self.optional_toggle)
+
+        self.optional_details = QWidget()
+        optional_grid = QGridLayout(self.optional_details)
+        optional_grid.setContentsMargins(0, 4, 0, 0)
+        optional_grid.setHorizontalSpacing(14)
+        optional_grid.setVerticalSpacing(10)
+        optional_grid.setColumnStretch(1, 1)
+        optional_grid.setColumnStretch(3, 1)
+
+        self.height_input = QLineEdit()
+        self.height_input.setValidator(QDoubleValidator(0.0, 300.0, 2))
+        self.height_input.setToolTip("Optional worker height. Values use the project's configured measurement system.")
+        self.weight_input = QLineEdit()
+        self.weight_input.setValidator(QDoubleValidator(0.0, 500.0, 2))
+        self.weight_input.setToolTip("Optional worker weight. Values use the project's configured measurement system.")
+        self.address_input = QLineEdit()
+        self.address_input.setToolTip("Optional street or workplace address.")
+        self.city_input = QLineEdit()
+        self.city_input.setToolTip("Optional city.")
+        self.state_combo = QComboBox()
+        self.state_combo.setEditable(True)
+        self.state_combo.addItem("Outside US")
+        self.state_combo.setToolTip("Optional state or region. US states are listed when United States is selected.")
+        self.country_combo = QComboBox()
+        self.country_combo.setEditable(True)
+        self.country_combo.addItems(sorted(country.name for country in pycountry.countries))
+        self.country_combo.setToolTip("Optional country.")
         self.country_combo.currentIndexChanged.connect(self.populateStatesForUSA)
-        
-        layout.addWidget(self.country_combo, 11, 1)
-        
-        self.populateStatesForUSA()
-        
-
-        # Zip Code
-        layout.addWidget(QLabel("Zip Code:"), 12, 0)
         self.zipcode_input = QLineEdit()
-        #self.zip_code_input.setValidator(QRegExpValidator(QRegExp(r"^\d{5}(-\d{4})?$")))  # US ZIP Code validation
-        # International ZIP code validation: Allows numbers (e.g., 5480000) and alphanumerics (e.g., A1A 1A1)
-        zip_code_regex = QRegExp(r"^[A-Za-z0-9\- ]{3,10}$")
-        self.zipcode_input.setValidator(QRegExpValidator(zip_code_regex))
-        layout.addWidget(self.zipcode_input, 12, 1)
-
-        # Email
-        layout.addWidget(QLabel("Email:"), 13, 0)
+        self.zipcode_input.setValidator(QRegExpValidator(QRegExp(r"^[A-Za-z0-9\- ]{3,10}$")))
+        self.zipcode_input.setToolTip("Optional postal or ZIP code.")
         self.email_input = QLineEdit()
-        # Set up an email validation pattern
-        email_regex = QRegularExpression(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
-        email_validator = QRegularExpressionValidator(email_regex, self.email_input)
-        self.email_input.setValidator(email_validator)
-        layout.addWidget(self.email_input, 13, 1)
-
-        # Date of Hiring
-        layout.addWidget(QLabel("Date of Hiring:"), 14, 0)
+        self.email_input.setValidator(QRegularExpressionValidator(
+            QRegularExpression(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"),
+            self.email_input,
+        ))
+        self.email_input.setToolTip("Optional email address.")
         self.date_of_hiring_input = QDateEdit()
         self.date_of_hiring_input.setCalendarPopup(True)
         self.date_of_hiring_input.setDate(QDate.currentDate())
         self.date_of_hiring_input.setMinimumDate(QDate(1950, 1, 1))
         self.date_of_hiring_input.setMaximumDate(QDate.currentDate())
-        layout.addWidget(self.date_of_hiring_input, 14, 1)
+        self.date_of_hiring_input.setToolTip("Optional employment start date.")
 
-	# Alternatively, align all widgets to the top
-        #for row in range(layout.rowCount()):
-        #    for col in range(layout.columnCount()):
-        #        item = layout.itemAtPosition(row, col)
-        #        if item:
-        #            widget = item.widget()
-        #            if widget:
-        #                widget.setAlignment(Qt.AlignTop)
-                        
-        self.general_tab.setLayout(layout)
+        metric_units = getattr(self.parent(), "selectedMeasurementSystem", "Imperial") == "Metric"
+        height_label = "Height (cm)" if metric_units else "Height (in)"
+        weight_label = "Weight (kg)" if metric_units else "Weight (lb)"
+        optional_fields = (
+            (0, 0, height_label, self.height_input),
+            (0, 2, weight_label, self.weight_input),
+            (1, 0, "Address", self.address_input),
+            (1, 2, "City", self.city_input),
+            (2, 0, "Country", self.country_combo),
+            (2, 2, "State / region", self.state_combo),
+            (3, 0, "Postal code", self.zipcode_input),
+            (3, 2, "Email", self.email_input),
+            (4, 0, "Date of hiring", self.date_of_hiring_input),
+        )
+        for row, column, label_text, field in optional_fields:
+            label = QLabel(label_text)
+            label.setProperty("fieldLabel", True)
+            optional_grid.addWidget(label, row, column)
+            optional_grid.addWidget(field, row, column + 1)
+
+        self.populateStatesForUSA()
+        self.optional_details.hide()
+        page_layout.addWidget(self.optional_details)
+
+        page_layout.addStretch()
+        self.details_scroll.setWidget(details_content)
+        tab_layout.addWidget(self.details_scroll)
+
+    def workerManagementStyleSheet(self):
+        return """
+            QDialog#workerManagementDialog {
+                background: #F4F7F9;
+                color: #1B2933;
+                font-family: Inter, "Segoe UI", sans-serif;
+                font-size: 13px;
+            }
+            QLabel#dialogTitle {
+                color: #0B326C;
+                font-size: 22px;
+                font-weight: 600;
+            }
+            QLabel#dialogSubtitle, QLabel#supportingText {
+                color: #5F6F7A;
+            }
+            QLabel#sectionTitle {
+                color: #0B326C;
+                font-size: 16px;
+                font-weight: 600;
+            }
+            QLabel#eyebrow {
+                color: #5F6F7A;
+                font-size: 11px;
+                font-weight: 600;
+            }
+            QLabel#calculatedValue {
+                background: #EAF7F8;
+                border: 1px solid #B8E1E4;
+                border-radius: 6px;
+                color: #0B326C;
+                font-weight: 600;
+                padding: 7px 10px;
+            }
+            QFrame#card {
+                background: #FFFFFF;
+                border: 1px solid #D5DEE5;
+                border-radius: 8px;
+            }
+            QFrame#divider {
+                color: #D5DEE5;
+                background: #D5DEE5;
+                max-height: 1px;
+            }
+            QFrame#notificationArea {
+                border-radius: 6px;
+                border: 1px solid #B8E1E4;
+                background: #EAF7F8;
+            }
+            QFrame#notificationArea[severity="warning"] {
+                border-color: #E4A11B;
+                background: #FFF7E6;
+            }
+            QFrame#notificationArea[severity="error"] {
+                border-color: #C93C3C;
+                background: #FFF0F0;
+            }
+            QLabel#notificationLabel {
+                color: #1B2933;
+                font-size: 12px;
+                font-weight: 500;
+            }
+            QLineEdit, QComboBox, QDateEdit, QSpinBox {
+                min-height: 34px;
+                background: #FFFFFF;
+                border: 1px solid #BCC9D3;
+                border-radius: 6px;
+                padding: 0 9px;
+                selection-background-color: #08A9B5;
+            }
+            QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QSpinBox:focus {
+                border: 2px solid #08A9B5;
+            }
+            QTableWidget {
+                background: #FFFFFF;
+                alternate-background-color: #F7FAFC;
+                border: 1px solid #D5DEE5;
+                border-radius: 6px;
+                gridline-color: #E6ECF0;
+                outline: 0;
+            }
+            QTableWidget::item {
+                padding: 8px 6px;
+            }
+            QTableWidget::item:selected {
+                background: #DDF3F5;
+                color: #0B326C;
+            }
+            QHeaderView::section {
+                background: #EDF3F6;
+                color: #0B326C;
+                border: 0;
+                border-bottom: 1px solid #D5DEE5;
+                padding: 9px 6px;
+                font-weight: 600;
+            }
+            QPushButton {
+                min-height: 42px;
+                background: #FFFFFF;
+                color: #0B326C;
+                border: 1px solid #9EB0BE;
+                border-radius: 6px;
+                padding: 0 16px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background: #EDF7F8;
+                border-color: #08A9B5;
+            }
+            QPushButton#primaryButton {
+                background: #0B326C;
+                color: #FFFFFF;
+                border-color: #0B326C;
+            }
+            QPushButton#primaryButton:hover {
+                background: #12447F;
+            }
+            QPushButton#primaryOutlineButton {
+                background: #FFFFFF;
+                color: #0B326C;
+                border: 2px solid #08A9B5;
+            }
+            QPushButton#primaryOutlineButton:hover {
+                background: #EAF7F8;
+            }
+            QPushButton#dangerButton {
+                color: #C93C3C;
+                border-color: #D86A6A;
+            }
+            QPushButton#dangerButton:hover {
+                background: #FFF1F1;
+            }
+            QPushButton#navButton {
+                min-height: 30px;
+                padding: 0;
+            }
+            QPushButton#pageButton {
+                min-height: 30px;
+                padding: 0 7px;
+                font-size: 12px;
+            }
+            QLabel#pageLabel {
+                color: #5F6F7A;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QLabel#recordNavigationLabel {
+                color: #5F6F7A;
+                font-size: 11px;
+                font-weight: 600;
+            }
+            QLabel#alphabetLabel {
+                color: #5F6F7A;
+                font-size: 11px;
+                font-weight: 600;
+                padding-right: 4px;
+            }
+            QPushButton#alphabetButton {
+                min-height: 32px;
+                max-height: 32px;
+                min-width: 0;
+                padding: 0;
+                border: 0;
+                border-radius: 4px;
+                background: transparent;
+                color: #5F6F7A;
+                font-size: 11px;
+                font-weight: 600;
+            }
+            QPushButton#alphabetButton:hover {
+                background: #DDF3F5;
+                color: #0B326C;
+                font-size: 18px;
+                font-weight: 700;
+            }
+            QPushButton#alphabetButton:checked {
+                background: #0B326C;
+                color: #FFFFFF;
+                font-size: 13px;
+            }
+            QPushButton#alphabetButton:disabled {
+                background: transparent;
+                color: #C7D0D7;
+            }
+            QPushButton:disabled {
+                background: #EEF2F4;
+                color: #9AA7B0;
+                border-color: #D5DEE5;
+            }
+            QToolButton#optionalToggle {
+                min-height: 38px;
+                background: #F4F7F9;
+                color: #0B326C;
+                border: 1px solid #D5DEE5;
+                border-radius: 6px;
+                padding: 0 10px;
+                font-weight: 600;
+                text-align: left;
+            }
+            QToolButton#optionalToggle:hover {
+                border-color: #08A9B5;
+                background: #EDF7F8;
+            }
+            QTabWidget#detailsTabs::pane {
+                border: 0;
+            }
+            QScrollArea#detailsScroll, QWidget#detailsContent {
+                background: #FFFFFF;
+                border: 0;
+            }
+            QScrollBar:vertical {
+                background: #EDF3F6;
+                width: 9px;
+                margin: 0;
+            }
+            QScrollBar::handle:vertical {
+                background: #9EB0BE;
+                border-radius: 4px;
+                min-height: 28px;
+            }
+            QToolTip {
+                background: #1B2933;
+                color: #FFFFFF;
+                border: 1px solid #0B326C;
+                padding: 6px;
+            }
+        """
+
+    def setOptionalDetailsVisible(self, expanded):
+        self.optional_details.setVisible(expanded)
+        self.optional_toggle.setArrowType(Qt.DownArrow if expanded else Qt.RightArrow)
+
+    def setNotification(self, message, severity="info"):
+        self.notification_area.setProperty("severity", severity)
+        self.notification_label.setText(f"Note: {message}")
+        self.notification_area.style().unpolish(self.notification_area)
+        self.notification_area.style().polish(self.notification_area)
+        self.notification_area.update()
+
+    def yearOfBirthChanged(self, year):
+        current_date = self.dob_input.date()
+        day = min(current_date.day(), QDate(year, current_date.month(), 1).daysInMonth())
+        self.dob_input.blockSignals(True)
+        self.dob_input.setDate(QDate(year, current_date.month(), day))
+        self.dob_input.blockSignals(False)
+        self.calculateAge()
+
+    def filterWorkerTable(self, text):
+        query = text.strip().lower()
+        current_worker_id = self.worker_id_combo.currentText().strip()
+        self.filtered_worker_rows = [
+            row for row in self.worker_rows
+            if query in f"{row[0]} {row[1]}".lower()
+            and (self.active_alphabet_letter is None or self.active_alphabet_letter in row[4])
+        ]
+        current_index = next(
+            (index for index, row in enumerate(self.filtered_worker_rows) if row[0] == current_worker_id),
+            None,
+        )
+        self.worker_page = current_index // self.worker_page_size if current_index is not None else 0
+        self.renderWorkerPage(select_first=current_index is None and bool(self.filtered_worker_rows))
+        if current_index is not None:
+            self.selectWorkerTableRow()
+        visible_count = len(self.filtered_worker_rows)
+        self.worker_count_label.setText(
+            f"{visible_count} worker{'s' if visible_count != 1 else ''}"
+        )
+
+    def setAlphabetFilter(self, letter):
+        self.active_alphabet_letter = None if letter == "All" else letter
+        for value, button in self.alphabet_buttons.items():
+            button.blockSignals(True)
+            button.setChecked(value == letter)
+            button.blockSignals(False)
+        self.filterWorkerTable(self.worker_search_input.text())
+
+    def eventFilter(self, watched, event):
+        if watched is self.worker_table.viewport() and event.type() == QtCore.QEvent.Resize:
+            QtCore.QTimer.singleShot(0, self.refreshWorkerPageCapacity)
+        return super().eventFilter(watched, event)
+
+    def refreshWorkerPageCapacity(self):
+        available_height = self.worker_table.viewport().height()
+        page_size = max(1, available_height // 38)
+        if page_size != self.worker_page_size:
+            self.worker_page_size = page_size
+            self.showPageContainingWorker(self.worker_id_combo.currentText().strip())
+
+    def workerPageCount(self):
+        if not self.filtered_worker_rows:
+            return 1
+        return math.ceil(len(self.filtered_worker_rows) / self.worker_page_size)
+
+    def renderWorkerPage(self, select_first=False):
+        page_count = self.workerPageCount()
+        self.worker_page = min(max(0, self.worker_page), page_count - 1)
+        start = self.worker_page * self.worker_page_size
+        page_rows = self.filtered_worker_rows[start:start + self.worker_page_size]
+
+        self.worker_table.blockSignals(True)
+        self.worker_table.clearContents()
+        self.worker_table.setRowCount(len(page_rows))
+        for row_index, row_data in enumerate(page_rows):
+            for column, value in enumerate(row_data[:4]):
+                item = QTableWidgetItem(str(value))
+                if column in (2, 3):
+                    item.setTextAlignment(Qt.AlignCenter)
+                self.worker_table.setItem(row_index, column, item)
+            self.worker_table.setRowHeight(row_index, 38)
+        self.worker_table.clearSelection()
+        self.worker_table.blockSignals(False)
+
+        self.page_label.setText(f"Page {self.worker_page + 1} of {page_count}")
+        self.first_page_button.setEnabled(self.worker_page > 0)
+        self.previous_page_button.setEnabled(self.worker_page > 0)
+        self.next_page_button.setEnabled(self.worker_page < page_count - 1)
+        self.last_page_button.setEnabled(self.worker_page < page_count - 1)
+        if select_first and page_rows:
+            self.worker_table.selectRow(0)
+
+    def showPageContainingWorker(self, worker_id):
+        worker_index = next(
+            (index for index, row in enumerate(self.filtered_worker_rows) if row[0] == worker_id),
+            None,
+        )
+        if worker_index is not None:
+            self.worker_page = worker_index // self.worker_page_size
+        self.renderWorkerPage()
+        self.selectWorkerTableRow()
+
+    def previousWorkerPage(self):
+        if self.worker_page > 0:
+            self.worker_page -= 1
+            self.renderWorkerPage(select_first=True)
+
+    def nextWorkerPage(self):
+        if self.worker_page < self.workerPageCount() - 1:
+            self.worker_page += 1
+            self.renderWorkerPage(select_first=True)
+
+    def firstWorkerPage(self):
+        if self.worker_page != 0:
+            self.worker_page = 0
+            self.renderWorkerPage(select_first=True)
+
+    def lastWorkerPage(self):
+        last_page = self.workerPageCount() - 1
+        if self.worker_page != last_page:
+            self.worker_page = last_page
+            self.renderWorkerPage(select_first=True)
+
+    def workerTableSelectionChanged(self):
+        selected_rows = self.worker_table.selectionModel().selectedRows()
+        if not selected_rows:
+            return
+        worker_id = self.worker_table.item(selected_rows[0].row(), 0).text()
+        index = self.worker_id_combo.findText(worker_id)
+        if index != -1 and index != self.worker_id_combo.currentIndex():
+            self.worker_id_combo.setCurrentIndex(index)
+
+    def selectWorkerTableRow(self, index=None):
+        worker_id = self.worker_id_combo.currentText().strip()
+        filtered_index = next(
+            (position for position, row in enumerate(self.filtered_worker_rows) if row[0] == worker_id),
+            None,
+        )
+        if filtered_index is not None:
+            required_page = filtered_index // self.worker_page_size
+            if required_page != self.worker_page:
+                self.worker_page = required_page
+                self.renderWorkerPage()
+        for row in range(self.worker_table.rowCount()):
+            item = self.worker_table.item(row, 0)
+            if item and item.text() == worker_id:
+                self.worker_table.blockSignals(True)
+                self.worker_table.selectRow(row)
+                self.worker_table.blockSignals(False)
+                return
+
+    def loadWorkerTable(self, order_by):
+        if not self.parent().projectFileCreated or not self.parent().projectdatabasePath:
+            return
+        order_column = "id" if order_by == 0 else "last_name"
+        current_year = QDate.currentDate().year()
+        with sqlite3.connect(self.parent().projectdatabasePath) as conn:
+            rows = conn.execute(
+                f"""SELECT id, first_name, last_name, gender, year_of_birth
+                    FROM Worker ORDER BY {order_column}, id"""
+            ).fetchall()
+
+        self.worker_rows = []
+        for worker_id, first_name, last_name, gender, birth_year in rows:
+            full_name = " ".join(part for part in (first_name, last_name) if part).strip() or "Not provided"
+            age = str(max(0, current_year - int(birth_year))) if birth_year else "-"
+            initials = {
+                value[0].upper()
+                for value in (first_name or "", last_name or "")
+                if value and value[0].isalpha()
+            }
+            self.worker_rows.append((worker_id, full_name, gender or "-", age, initials))
+
+        available_letters = set().union(*(row[4] for row in self.worker_rows)) if self.worker_rows else set()
+        for letter, button in self.alphabet_buttons.items():
+            button.setEnabled(letter == "All" or letter in available_letters)
+
+        self.filterWorkerTable(self.worker_search_input.text())
+        self.selectWorkerTableRow()
         
         
 
@@ -714,8 +1276,18 @@ class WorkerWindow(QDialog):
         # Order workers by id (order_by = 0)
         workers_list = self.getWorkers(order_by)
         # Populate the worker combobox
+        current_worker = self.worker_id_combo.currentText()
+        self.worker_id_combo.blockSignals(True)
         self.worker_id_combo.clear()
         self.worker_id_combo.addItems(workers_list)
+        if current_worker:
+            current_index = self.worker_id_combo.findText(current_worker)
+            if current_index != -1:
+                self.worker_id_combo.setCurrentIndex(current_index)
+        self.worker_id_combo.blockSignals(False)
+        self.loadWorkerTable(order_by)
+        if self.worker_id_combo.currentText():
+            self.loadWorkerDetails()
     
     
     
@@ -768,6 +1340,10 @@ class WorkerWindow(QDialog):
                 dob_day = int(worker_data[5]) if worker_data[5] else QDate.currentDate().day()
                 dob = QDate(dob_year, dob_month, dob_day)
                 self.dob_input.setDate(dob)
+                self.year_of_birth_input.blockSignals(True)
+                self.year_of_birth_input.setValue(dob_year)
+                self.year_of_birth_input.blockSignals(False)
+                self.calculateAge()
     
                 # Gender Mapping
                 gender_value = worker_data[6] if worker_data[6] else "Female"  # Default to Female
@@ -809,6 +1385,21 @@ class WorkerWindow(QDialog):
                 # Ensure correct state selection after updating country
                 self.populateStatesForUSA()
                 self.state_combo.setCurrentText(worker_data[15])  # Adjusted index for state
+                self.selectWorkerTableRow()
+                missing_identity = not self.first_name_input.text().strip() or not self.last_name_input.text().strip()
+                missing_filter_data = not self.height_input.text().strip() or not self.weight_input.text().strip()
+                if missing_identity:
+                    self.setNotification(
+                        "This legacy record is missing a first or last name. Add the missing identity information before saving changes.",
+                        "warning",
+                    )
+                elif missing_filter_data:
+                    self.setNotification(
+                        "Height or weight is missing. Adding both improves advanced filtering in PLOT and other tools.",
+                        "warning",
+                    )
+                else:
+                    self.setNotification("Worker record loaded and ready to edit.", "info")
             else:
                 QMessageBox.warning(self, "Error", f"No data found for Worker ID: {selected_worker_id}")
 
@@ -911,10 +1502,8 @@ class WorkerWindow(QDialog):
     
     
     def calculateAge(self):
-        today = QDate.currentDate()
-        dob = self.dob_input.date()
-        age = today.year() - dob.year() - ((today.month(), today.day()) < (dob.month(), dob.day()))
-        self.age_label.setText(str(age))
+        age = max(0, QDate.currentDate().year() - self.year_of_birth_input.value())
+        self.age_label.setText(f"{age} years")
 
     # Function to populate states if "United States" is selected
     def populateStatesForUSA(self):
@@ -1753,21 +2342,23 @@ class WorkerWindow(QDialog):
             QMessageBox.critical(self, "Error", "Database path is not set. Unable to save worker.")
             return
     
-        # Connect to the database
         database_path = self.parent().projectdatabasePath
-        conn = sqlite3.connect(database_path)
-        cursor = conn.cursor()
-    
+
         # Validate Worker ID
         worker_id = self.worker_id_combo.currentText().strip()
         if not worker_id:
-            QMessageBox.warning(self, "Validation Error", "Worker ID is required.")
+            self.setNotification(
+                "Minimum information must include Worker ID, first name, last name, year of birth, and sex.",
+                "error",
+            )
+            self.worker_id_combo.setFocus()
             return
         
         #Validate Worker ID (No spaces allowed)
         worker_id = self.worker_id_combo.currentText().strip()
         if " " in worker_id:
-            QMessageBox.warning(self, "Validation Error", "Worker ID cannot contain spaces.")
+            self.setNotification("Worker ID cannot contain spaces.", "error")
+            self.worker_id_combo.setFocus()
             return
     
         # Collect all fields
@@ -1775,8 +2366,12 @@ class WorkerWindow(QDialog):
         first_name = self.first_name_input.text().strip()
         last_name = self.last_name_input.text().strip()
 
-        if (first_name and not last_name) or (last_name and not first_name):
-            QMessageBox.warning(self, "Validation Error", "Both First Name and Last Name are required if one is entered.")
+        if not first_name or not last_name:
+            self.setNotification(
+                "Minimum information must include Worker ID, first name, last name, year of birth, and sex.",
+                "error",
+            )
+            (self.first_name_input if not first_name else self.last_name_input).setFocus()
             return
     
         # If both are empty, keep them as blank
@@ -1786,7 +2381,7 @@ class WorkerWindow(QDialog):
     
         # Extract Date of Birth
         dob = self.dob_input.date()
-        year_of_birth = dob.year()
+        year_of_birth = self.year_of_birth_input.value()
         month_of_birth = dob.month()
         day_of_birth = dob.day()
     
@@ -1822,6 +2417,8 @@ class WorkerWindow(QDialog):
    
     
         # Insert or update the worker
+        conn = sqlite3.connect(database_path)
+        cursor = conn.cursor()
         try:
             cursor.execute('''
                 INSERT INTO Worker (
@@ -1893,6 +2490,7 @@ class WorkerWindow(QDialog):
             conn.commit()
 
             QMessageBox.information(self, "Success", f"Worker '{worker_id}' has been saved successfully.")
+            self.setNotification(f"Worker '{worker_id}' was saved successfully.", "info")
 
             # Enable navigation and other disabled buttons
             self.first_button.setEnabled(True)
@@ -1901,12 +2499,16 @@ class WorkerWindow(QDialog):
             self.last_button.setEnabled(True)
             self.delete_button.setEnabled(True)
             self.search_button.setEnabled(True)
+            self.worker_table.setEnabled(True)
+            self.worker_search_input.setEnabled(True)
 
             current_text = self.worker_id_combo.currentText()
             self.loadWorkers(0)
             index = self.worker_id_combo.findText(current_text)
             if index != -1:
                 self.worker_id_combo.setCurrentIndex(index)
+            self.loadWorkerTable(0)
+            self.selectWorkerTableRow()
 
         except sqlite3.Error as e:
             QMessageBox.critical(self, "Database Error", f"An error occurred while saving the worker:\n{str(e)}")
@@ -1919,4 +2521,3 @@ class WorkerWindow(QDialog):
                 
             
             
-
