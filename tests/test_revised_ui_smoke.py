@@ -54,7 +54,17 @@ parent.isAnimationAllowed = True
 parent.onTabChange(0)
 assert parent.camera_director.animated_tools == []
 parent.onTabChange(1)
+assert parent.camera_director.animated_tools == []
+parent.onToolTabClicked(1)
 assert parent.camera_director.animated_tools == [1]
+parent.camera_director.active_tool = parent.tabWidget.currentIndex()
+parent.camera_director.animated_tools.clear()
+parent.nextButtonClicked()
+app.processEvents()
+assert parent.camera_director.animated_tools == []
+parent.setMainWorkerAlphabetFilter("A")
+app.processEvents()
+assert parent.camera_director.animated_tools == []
 parent.vtk_enabled = False
 
 worker = WorkerWindow(parent)

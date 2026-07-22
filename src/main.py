@@ -3820,6 +3820,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.tabWidget.setMinimumWidth(0)
         self.tabWidget.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Expanding)
         self.tabWidget.currentChanged.connect(self.onTabChange)
+        self.tabWidget.tabBarClicked.connect(self.onToolTabClicked)
         self.setupTabWidgets()
         tool_layout.addWidget(self.tabWidget)
         contentLayout.addWidget(tool_frame, 1)
@@ -9016,13 +9017,6 @@ class ErgoTools(QtWidgets.QMainWindow):
             self.body_region_title.setText(title)
             self.active_region_label.setText(region)
 
-        if self.vtk_enabled and hasattr(self, "camera_director"):
-            if self.isAnimationAllowed:
-                if self.camera_director.active_tool != index:
-                    self.camera_director.animateTo(index)
-            else:
-                self.camera_director.applyFullBody()
-        
         #self.loadToolsData() #TODO: check for a way to fill the tab without rebuilding it..
          
         # Ensure the variables exist and have valid values before assigning
@@ -9043,6 +9037,16 @@ class ErgoTools(QtWidgets.QMainWindow):
             self.imperial_action.setChecked(self.selectedMeasurementSystem.lower() == "imperial")
 
         self.unit_label.setText(f"Unit: {self.selectedMeasurementSystem}")
+
+    def onToolTabClicked(self, index):
+        """Animate only for a tool tab explicitly selected by the user."""
+        if not self.vtk_enabled or not hasattr(self, "camera_director"):
+            return
+        if not self.isAnimationAllowed:
+            self.camera_director.applyFullBody()
+            return
+        if self.camera_director.active_tool != index:
+            self.camera_director.animateTo(index)
     
     
     def removeDuplicateTabs(self):
