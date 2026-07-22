@@ -36,6 +36,7 @@ parent.grab().save("/tmp/main_damage_over_two.png")
 brand_logo = parent.findChild(QLabel, "brandLogo")
 assert brand_logo is not None
 assert brand_logo.pixmap() is not None and not brand_logo.pixmap().isNull()
+assert brand_logo.width() >= 80 and brand_logo.height() >= 80
 
 
 class CameraDirectorProbe:
