@@ -38,6 +38,7 @@ from station_window import StationWindow
 from shift_window import ShiftWindow
 from organization_window import OrganizationWindow
 from vtk_camera_director import VTKCameraDirector
+from risk_ranges import RISK_BANDS, risk_band
 
 from tooltransferdialog import ToolTransferDialog
 from worker_transfer_window import WorkerTransferDialog
@@ -123,10 +124,7 @@ class RiskGauge(QWidget):
         center = QPointF(self.width() / 2.0, 94.0)
         radius = min(self.width() / 2.0 - 22.0, 61.0)
         arc_rect = QRectF(center.x() - radius, center.y() - radius, radius * 2.0, radius * 2.0)
-        for start, end, color in (
-            (0, 10, "#19B83F"), (10, 30, "#F5C400"),
-            (30, 60, "#FF8A19"), (60, 100, "#FF3B30"),
-        ):
+        for start, end, _label, color, _range_text in RISK_BANDS:
             pen = QPen(QColor(color), 11, Qt.SolidLine, Qt.FlatCap)
             painter.setPen(pen)
             painter.drawArc(arc_rect, int((180 - start * 1.8) * 16), -int((end - start) * 1.8 * 16))
@@ -181,7 +179,7 @@ class DamageScale(QWidget):
         self.update()
 
     def setValue(self, value, color=None):
-        value = min(4.0, max(0.0, float(value)))
+        value = min(2.0, max(0.0, float(value)))
         if color:
             candidate = QColor(color)
             if candidate.isValid():
@@ -201,7 +199,7 @@ class DamageScale(QWidget):
         left, right, y = 3.0, self.width() - 3.0, 11.0
         painter.setPen(QPen(QColor("#D9DEE2"), 8, Qt.SolidLine, Qt.RoundCap))
         painter.drawLine(QPointF(left, y), QPointF(right, y))
-        progress_x = left + (right - left) * self._display_value / 4.0
+        progress_x = left + (right - left) * self._display_value / 2.0
         if progress_x > left:
             progress_x = max(progress_x, left + 4.0)
             painter.setPen(QPen(self.fill_color, 8, Qt.SolidLine, Qt.RoundCap))
@@ -211,8 +209,8 @@ class DamageScale(QWidget):
         font.setPointSize(8)
         painter.setFont(font)
         painter.drawText(QRectF(0, 22, 34, 14), Qt.AlignLeft | Qt.AlignVCenter, "0")
-        painter.drawText(QRectF(self.width() / 2 - 18, 22, 36, 14), Qt.AlignCenter, "2")
-        painter.drawText(QRectF(self.width() - 36, 22, 36, 14), Qt.AlignRight | Qt.AlignVCenter, "4")
+        painter.drawText(QRectF(self.width() / 2 - 18, 22, 36, 14), Qt.AlignCenter, "1")
+        painter.drawText(QRectF(self.width() - 42, 22, 42, 14), Qt.AlignRight | Qt.AlignVCenter, ">2")
 
 
 class ErgoComboItemDelegate(QStyledItemDelegate):
@@ -3866,7 +3864,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         risk_title.setToolTip("Estimated probability for the adverse outcome calculated by the active ergonomic tool.")
         self.risk_severity_label = QLabel("Low")
         self.risk_severity_label.setObjectName("riskSeverity")
-        self.risk_severity_label.setMinimumWidth(78)
+        self.risk_severity_label.setMinimumWidth(120)
         self.risk_severity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         risk_header.addWidget(risk_title)
         risk_header.addStretch()
@@ -3886,6 +3884,9 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.damage_value_label = QLabel("0.0000")
         self.damage_value_label.setObjectName("metricValue")
         self.damage_progress = DamageScale()
+        self.damage_progress.setToolTip(
+            "Cumulative damage scale: 0 at the left, 1 at the midpoint, and values above 2 capped at >2."
+        )
         damage_layout.addWidget(damage_title)
         damage_layout.addWidget(self.damage_value_label)
         damage_layout.addWidget(self.damage_progress)
@@ -3989,14 +3990,8 @@ class ErgoTools(QtWidgets.QMainWindow):
         probability = self.numericLabelValue(summary["probability"])
         damage = self.numericLabelValue(summary["damage"])
         self.risk_gauge.setValue(probability, summary["color"])
-        if probability < 10:
-            severity, severity_color = "Low", "#19A63A"
-        elif probability < 30:
-            severity, severity_color = "Moderate", "#C99300"
-        elif probability < 60:
-            severity, severity_color = "High", "#F57C00"
-        else:
-            severity, severity_color = "Very high", "#E6372E"
+        _start, _end, severity_name, severity_color, _range_text = risk_band(probability)
+        severity = severity_name.removesuffix(" Risk")
         self.risk_severity_label.setText("● " + severity)
         self.risk_severity_label.setStyleSheet(f"color: {severity_color}; font-weight: 700;")
         outcome_text = {
@@ -4016,7 +4011,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         if not damage_color.isValid():
             damage_color = QColor("#F97316")
         readable_damage_color = damage_color.darker(190)
-        self.damage_value_label.setText(f"{damage:.4f}")
+        self.damage_value_label.setText(">2.0" if damage > 2.0 else f"{damage:.4f}")
         self.damage_value_label.setStyleSheet(
             f"color: {readable_damage_color.name()}; background: rgba({damage_color.red()}, {damage_color.green()}, "
             f"{damage_color.blue()}, 38); border-left: 5px solid {damage_color.name()}; "
@@ -4298,6 +4293,8 @@ class ErgoTools(QtWidgets.QMainWindow):
             QFrame#bodyRegionPanel { background: #092D45; border: 1px solid #174963; border-radius: 7px; color: white; }
             QFrame#bodyRegionPanel QLabel { color: white; background: transparent; border: 0; }
             QLabel#bodyRegionTitle, QLabel#bodySectionTitle { color: white; font-weight: 700; }
+            QLabel#bodyRiskLabel { color: white; font-size: 11px; }
+            QLabel#bodyRiskRange { color: white; font-size: 10px; }
             QFrame#activeRegionPanel { background: #092D45; border: 0; }
             QLabel#activeRegionName { background: #092D45; color: white; font-size: 14px; font-weight: 700; }
             QLabel#activeRegionCaption { background: #092D45; color: #66C7FF; font-size: 12px; font-weight: 600; }
@@ -7372,19 +7369,17 @@ class ErgoTools(QtWidgets.QMainWindow):
         legend_title = QLabel("Risk Legend")
         legend_title.setObjectName("bodySectionTitle")
         self.leftLayout.addWidget(legend_title)
-        for color, label, range_text in (
-            ("#19B83F", "Low Risk", "0 - 10%"),
-            ("#FFC51B", "Moderate Risk", "10 - 30%"),
-            ("#FF8A19", "High Risk", "30 - 60%"),
-            ("#FF4136", "Very High Risk", "> 60%"),
-        ):
+        for _start, _end, label, color, range_text in RISK_BANDS:
             row = QHBoxLayout()
             swatch = QLabel()
             swatch.setFixedSize(12, 12)
             swatch.setStyleSheet(f"background: {color}; border-radius: 6px;")
             row.addWidget(swatch)
-            row.addWidget(QLabel(label), 1)
+            risk_label = QLabel(label)
+            risk_label.setObjectName("bodyRiskLabel")
+            row.addWidget(risk_label, 1)
             range_label = QLabel(range_text)
+            range_label.setObjectName("bodyRiskRange")
             range_label.setAlignment(Qt.AlignRight)
             row.addWidget(range_label)
             self.leftLayout.addLayout(row)

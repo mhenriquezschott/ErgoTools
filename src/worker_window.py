@@ -745,7 +745,7 @@ class WorkerWindow(QDialog):
         self.optional_toggle.setChecked(False)
         self.optional_toggle.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.optional_toggle.setArrowType(Qt.RightArrow)
-        self.optional_toggle.setToolTip("Show or hide optional contact, employment, and body measurement fields.")
+        self.optional_toggle.setToolTip("Show or hide optional employment and body measurement fields.")
         self.optional_toggle.toggled.connect(self.setOptionalDetailsVisible)
         page_layout.addWidget(self.optional_toggle)
 
@@ -774,6 +774,7 @@ class WorkerWindow(QDialog):
         self.country_combo = QComboBox()
         self.country_combo.setEditable(True)
         self.country_combo.addItems(sorted(country.name for country in pycountry.countries))
+        self.country_combo.setCurrentIndex(-1)
         self.country_combo.setToolTip("Optional country.")
         self.country_combo.currentIndexChanged.connect(self.populateStatesForUSA)
         self.zipcode_input = QLineEdit()
@@ -785,6 +786,7 @@ class WorkerWindow(QDialog):
             self.email_input,
         ))
         self.email_input.setToolTip("Optional email address.")
+        self.state_combo.setCurrentIndex(-1)
         self.date_of_hiring_input = QDateEdit()
         self.date_of_hiring_input.setCalendarPopup(True)
         self.date_of_hiring_input.setDate(QDate.currentDate())
@@ -798,13 +800,7 @@ class WorkerWindow(QDialog):
         optional_fields = (
             (0, 0, height_label, self.height_input),
             (0, 2, weight_label, self.weight_input),
-            (1, 0, "Address", self.address_input),
-            (1, 2, "City", self.city_input),
-            (2, 0, "Country", self.country_combo),
-            (2, 2, "State / region", self.state_combo),
-            (3, 0, "Postal code", self.zipcode_input),
-            (3, 2, "Email", self.email_input),
-            (4, 0, "Date of hiring", self.date_of_hiring_input),
+            (1, 0, "Date of hiring", self.date_of_hiring_input),
         )
         for row, column, label_text, field in optional_fields:
             label = QLabel(label_text)
@@ -812,7 +808,6 @@ class WorkerWindow(QDialog):
             optional_grid.addWidget(label, row, column)
             optional_grid.addWidget(field, row, column + 1)
 
-        self.populateStatesForUSA()
         self.optional_details.hide()
         page_layout.addWidget(self.optional_details)
 

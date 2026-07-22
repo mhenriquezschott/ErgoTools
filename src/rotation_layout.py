@@ -1112,8 +1112,8 @@ class RotationLayoutWindow(QDialog):
     def generateSuggestion(self, probs):
         if not probs:
             return ""
-        high = [p for p in probs if p > 60]
-        low = [p for p in probs if p < 20]
+        high = [p for p in probs if p > 50]
+        low = [p for p in probs if p <= 25]
         avg = sum(probs) / len(probs)
     
         if len(high) >= 2 and len(low) >= 1:
@@ -1134,8 +1134,8 @@ class RotationLayoutWindow(QDialog):
     def generateSuggestionOldWorking(self, probs):
         if not probs:
             return ""
-        high = [p for p in probs if p > 60]
-        low = [p for p in probs if p < 20]
+        high = [p for p in probs if p > 50]
+        low = [p for p in probs if p <= 25]
         avg = sum(probs) / len(probs)
         if len(high) >= 2 and len(low) >= 1:
             return "Avoid assigning multiple high-risk jobs"
@@ -2767,5 +2767,4 @@ if __name__ == "__main__":
     sys.exit(app.exec_())
 
  
-
 
