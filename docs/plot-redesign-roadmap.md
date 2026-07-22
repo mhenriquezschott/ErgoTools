@@ -16,6 +16,9 @@ reviewed independently without losing the overall direction.
 - Make worker demographics a real collapsible section.
 - Remove the unused Other Options controls.
 - Enlarge and strengthen the main risk gauge without increasing its card.
+- Stack Tool, Workplace, and Worker demographics as full-width filter rows.
+- Replace the chained workplace combos with a collapsed hierarchy selector.
+- Restyle the map action rail as a fused navy toolbar with square controls.
 
 ## Filter redesign
 

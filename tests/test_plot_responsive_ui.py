@@ -5,11 +5,11 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 sys.path.insert(0, os.path.abspath("src"))
 
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QPoint, QTimer
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
 from main import ErgoTools
-from plant_layout import PlantLayoutWindow
+from plant_layout import PlantLayoutWindow, PlotWorkplaceFilterDialog
 
 
 app = QApplication.instance() or QApplication([])
@@ -34,11 +34,24 @@ window.grab().save("/tmp/plot_responsive_default.png")
 default_canvas_size = window.plantlayout_image.viewport().size()
 assert window.minimumSizeHint().width() <= 1390
 assert window.minimumSizeHint().height() <= 940
-assert window.summaryplot_canvas.geometry().bottom() < window.summaryplot_combo.geometry().top()
+assert window.summaryplot_canvas.geometry().bottom() <= window.summaryplot_combo.geometry().top()
 assert window.otheroptionsfilter_group.isHidden()
+assert window.shiftfilter_group.isHidden()
+assert window.toolsfiltersettings_button.isHidden()
 assert set(window.plot_tool_buttons) == {"LiFFT", "DUET", "ST"}
 assert window.plot_tool_buttons["LiFFT"].isChecked()
 assert not window.agefrom_edit.isVisible()
+assert window.workplace_button.isVisible()
+workplace_dialog = PlotWorkplaceFilterDialog(window)
+workplace_dialog.show()
+app.processEvents()
+workplace_dialog.grab().save("/tmp/plot_workplace_filter.png")
+assert workplace_dialog.tree.topLevelItemCount() > 0
+assert all(not workplace_dialog.tree.topLevelItem(i).isExpanded()
+           for i in range(workplace_dialog.tree.topLevelItemCount()))
+workplace_dialog.close()
+window.applyWorkplaceScope(("Default", "Default", "Default", "ST02"), "1")
+assert "ST02" in window.workplace_summary_label.text()
 for metric in (
     window.summaryresult1_label, window.summaryresult2_label,
     window.summaryresult3_label, window.summaryresult4_label,
@@ -67,9 +80,12 @@ window.nextInfoButtonClicked()
 app.processEvents()
 assert window.workerComboBox.currentIndex() != initial_worker_index
 window.agefrom_edit.setText("30")
+collapsed_canvas_top = window.plantlayout_image.mapTo(window, QPoint(0, 0)).y()
 window.workerfilter_group.setChecked(True)
 app.processEvents()
 assert window.agefrom_edit.isVisible()
+expanded_canvas_top = window.plantlayout_image.mapTo(window, QPoint(0, 0)).y()
+assert expanded_canvas_top > collapsed_canvas_top
 window.grab().save("/tmp/plot_responsive_filters_expanded.png")
 window.clearfilterButtonClicked()
 assert window.agefrom_edit.text() == ""

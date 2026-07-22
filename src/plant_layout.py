@@ -61,6 +61,111 @@ from multiselectcombobox import MultiSelectComboBox
 from zcpwindow import ZCPWindow
 
 
+class PlotWorkplaceFilterDialog(QDialog):
+    """Choose a PLOT workplace scope from the existing assignment hierarchy."""
+
+    def __init__(self, plot_window):
+        super().__init__(plot_window)
+        self.plot_window = plot_window
+        self.selected_path = None
+        self.setWindowTitle("Filter by Workplace")
+        self.setMinimumSize(570, 540)
+        self.setObjectName("plotWorkplaceDialog")
+        self.setStyleSheet(plot_window.styleSheet())
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(10)
+        title = QLabel("Workplace scope")
+        title.setObjectName("dialogTitle")
+        layout.addWidget(title)
+        description = QLabel(
+            "Select a plant, section, line, or station. Higher levels include every location beneath them."
+        )
+        description.setWordWrap(True)
+        description.setObjectName("supportingText")
+        layout.addWidget(description)
+        self.tree = QtWidgets.QTreeWidget()
+        self.tree.setHeaderLabels(["Workplace hierarchy", "Scope"])
+        self.tree.setAlternatingRowColors(True)
+        self.tree.setIconSize(QSize(22, 22))
+        self.tree.header().setStretchLastSection(False)
+        self.tree.header().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        self.tree.header().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
+        self.tree.currentItemChanged.connect(self.selectionChanged)
+        self.tree.itemDoubleClicked.connect(lambda *_: self.acceptSelection())
+        self.tree.setToolTip("Expand the organization hierarchy and select the workplace scope to display.")
+        layout.addWidget(self.tree, 1)
+        shift_row = QHBoxLayout()
+        shift_row.addWidget(QLabel("Shift"))
+        self.shift_combo = QComboBox()
+        self.shift_combo.setToolTip("Choose a shift or include every shift in the selected workplace.")
+        shift_row.addWidget(self.shift_combo, 1)
+        layout.addLayout(shift_row)
+        self.path_label = QLabel("Select a workplace scope.")
+        self.path_label.setWordWrap(True)
+        self.path_label.setObjectName("contextSummary")
+        layout.addWidget(self.path_label)
+        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
+        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
+        self.use_button = buttons.button(QDialogButtonBox.Ok)
+        self.use_button.setText("Use workplace")
+        self.use_button.setIcon(QIcon(os.path.join(icon_root, "station.png")))
+        self.use_button.setIconSize(QSize(24, 24))
+        self.use_button.setEnabled(False)
+        cancel_button = buttons.button(QDialogButtonBox.Cancel)
+        cancel_button.setIcon(QIcon(os.path.join(icon_root, "cancel.png")))
+        cancel_button.setIconSize(QSize(22, 22))
+        buttons.accepted.connect(self.acceptSelection)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+        self.populate(icon_root)
+
+    def populate(self, icon_root):
+        database = getattr(self.plot_window.parent(), "projectdatabasePath", "")
+        paths = []
+        shifts = []
+        if database and os.path.exists(database):
+            with sqlite3.connect(database) as connection:
+                paths = connection.execute(
+                    """SELECT DISTINCT plant_name, section_name, line_name, station_id
+                       FROM WorkerStationShiftErgoTool
+                       ORDER BY plant_name, section_name, line_name, station_id"""
+                ).fetchall()
+                shifts = [str(row[0]) for row in connection.execute(
+                    "SELECT DISTINCT shift_id FROM WorkerStationShiftErgoTool ORDER BY shift_id"
+                )]
+        item_cache = {}
+        entity_names = ("Plant", "Section", "Line", "Station")
+        for path in paths:
+            parent = None
+            normalized = tuple(str(value) for value in path)
+            for depth, value in enumerate(normalized, start=1):
+                partial = normalized[:depth]
+                if partial not in item_cache:
+                    item = QtWidgets.QTreeWidgetItem([value, entity_names[depth - 1]])
+                    item.setData(0, Qt.UserRole, partial)
+                    item.setIcon(0, QIcon(os.path.join(icon_root, entity_names[depth - 1].lower() + ".png")))
+                    (self.tree.addTopLevelItem if parent is None else parent.addChild)(item)
+                    item_cache[partial] = item
+                parent = item_cache[partial]
+        self.tree.collapseAll()
+        self.shift_combo.addItem("All")
+        self.shift_combo.addItems(shifts)
+        current_shift = self.plot_window.shift_combo.currentText().strip()
+        self.shift_combo.setCurrentText(current_shift if current_shift in shifts else "All")
+
+    def selectionChanged(self, current, previous=None):
+        self.selected_path = current.data(0, Qt.UserRole) if current else None
+        self.use_button.setEnabled(bool(self.selected_path))
+        self.path_label.setText(
+            "  >  ".join(self.selected_path) if self.selected_path else "Select a workplace scope."
+        )
+
+    def acceptSelection(self):
+        if self.selected_path:
+            self.accept()
+
+
 class PlantLayoutWindow(QDialog):
     
     def __init__(self, parent=None):
@@ -827,18 +932,24 @@ class PlantLayoutWindow(QDialog):
         icon_root = os.path.normpath(
             os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons")
         )
-        # Primary workplace filters.
+        # Preserve the original combos as the filter data interface while the
+        # hierarchy dialog becomes the user-facing workplace selector.
         plant_layout = QHBoxLayout(self.plantfilter_group)
         plant_layout.setContentsMargins(10, 10, 10, 8)
         plant_layout.setSpacing(8)
-        for label, combo in (
-            (self.plantid_label, self.plant_combo),
-            (self.sectionid_label, self.section_combo),
-            (self.lineid_label, self.line_combo),
-            (self.stationid_label, self.station_combo),
-        ):
-            plant_layout.addWidget(label)
-            plant_layout.addWidget(combo, 1)
+        workplace_icon = QLabel()
+        workplace_icon.setPixmap(QIcon(os.path.join(icon_root, "plant.png")).pixmap(QSize(26, 26)))
+        workplace_icon.setFixedSize(28, 28)
+        self.workplace_summary_label = QLabel("All available workplaces")
+        self.workplace_summary_label.setObjectName("workplaceFilterSummary")
+        self.workplace_button = QPushButton("Choose workplace")
+        self.workplace_button.setIcon(QIcon(os.path.join(icon_root, "station.png")))
+        self.workplace_button.setIconSize(QSize(24, 24))
+        self.workplace_button.setToolTip("Choose a workplace scope and shift from the organization hierarchy.")
+        self.workplace_button.clicked.connect(self.openWorkplaceFilter)
+        plant_layout.addWidget(workplace_icon)
+        plant_layout.addWidget(self.workplace_summary_label, 1)
+        plant_layout.addWidget(self.workplace_button)
         for combo, tooltip in (
             (self.plant_combo, "Select the plant whose layout and workers should be displayed."),
             (self.section_combo, "Filter the layout by one or more sections."),
@@ -846,6 +957,9 @@ class PlantLayoutWindow(QDialog):
             (self.station_combo, "Filter the layout by one or more stations."),
         ):
             combo.setToolTip(tooltip)
+            combo.hide()
+        for label in (self.plantid_label, self.sectionid_label, self.lineid_label, self.stationid_label):
+            label.hide()
 
         shift_layout = QHBoxLayout(self.shiftfilter_group)
         shift_layout.setContentsMargins(10, 10, 10, 8)
@@ -853,6 +967,7 @@ class PlantLayoutWindow(QDialog):
         shift_layout.addWidget(self.shiftid_label)
         shift_layout.addWidget(self.shift_combo, 1)
         self.shift_combo.setToolTip("Filter workers and results by one or more shifts.")
+        self.shiftfilter_group.hide()
 
         tool_filter_layout = QVBoxLayout(self.toolfilter_group)
         tool_filter_layout.setContentsMargins(10, 10, 10, 8)
@@ -882,7 +997,7 @@ class PlantLayoutWindow(QDialog):
             tool_button_row.addWidget(button)
             self.plot_tool_buttons[tool_id] = button
         tool_filter_layout.addLayout(tool_button_row)
-        tool_filter_layout.addWidget(self.toolsfiltersettings_button)
+        self.toolsfiltersettings_button.hide()
         self.tool_combo.currentTextChanged.connect(self.syncPlotToolButtons)
         self.syncPlotToolButtons(self.tool_combo.currentText())
 
@@ -952,26 +1067,23 @@ class PlantLayoutWindow(QDialog):
         filters_layout.setContentsMargins(10, 10, 10, 10)
         filters_layout.setHorizontalSpacing(9)
         filters_layout.setVerticalSpacing(8)
-        filters_layout.addWidget(self.plantfilter_group, 0, 0, 1, 3)
-        filters_layout.addWidget(self.shiftfilter_group, 0, 3)
-        filters_layout.addWidget(self.toolfilter_group, 1, 0, 1, 2)
-        filters_layout.addWidget(self.workerfilter_group, 1, 2, 1, 2)
-        filters_layout.addWidget(filter_actions, 0, 4, 2, 1)
+        filters_layout.addWidget(self.toolfilter_group, 0, 0, 1, 4)
+        filters_layout.addWidget(self.plantfilter_group, 1, 0, 1, 4)
+        filters_layout.addWidget(self.workerfilter_group, 2, 0, 1, 4)
+        filters_layout.addWidget(filter_actions, 0, 4, 3, 1)
         filters_layout.setColumnStretch(0, 1)
         filters_layout.setColumnStretch(1, 2)
         filters_layout.setColumnStretch(2, 2)
         filters_layout.setColumnStretch(3, 1)
         self.filters_group.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed)
-        self.filters_group.setMinimumHeight(150)
+        self.filters_group.setMinimumHeight(205)
         for group in (
-            self.plantfilter_group, self.shiftfilter_group, self.toolfilter_group,
+            self.plantfilter_group, self.toolfilter_group,
             self.workerfilter_group,
         ):
             group.setMinimumWidth(0)
             group.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Preferred)
-        for group in (self.shiftfilter_group,):
-            group.setMinimumWidth(220)
-            group.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        self.plantfilter_group.setTitle("Workplace")
 
         # Vertical action rail. Existing callbacks remain attached to these buttons.
         tool_actions = (
@@ -997,6 +1109,7 @@ class PlantLayoutWindow(QDialog):
             tools_layout.addWidget(button, 0, Qt.AlignHCenter)
         tools_layout.addStretch(1)
         self.toolsgraphic_group.setFixedWidth(64)
+        self.toolsgraphic_group.setObjectName("plotToolRail")
 
         self.plantlayout_image.setMinimumSize(520, 340)
         self.plantlayout_image.setSizePolicy(
@@ -1175,6 +1288,36 @@ class PlantLayoutWindow(QDialog):
         root_layout.addWidget(self.statusBar)
 
         self.applyPlotStyle()
+        self.toolsgraphic_group.setStyleSheet("""
+            QGroupBox {
+                background: #073E68;
+                color: #FFFFFF;
+                border: 1px solid #073E68;
+                border-radius: 6px;
+                margin-top: 10px;
+                padding-top: 6px;
+            }
+            QGroupBox::title {
+                color: #FFFFFF;
+                background: #073E68;
+                subcontrol-origin: margin;
+                left: 8px;
+                padding: 0 4px;
+            }
+            QPushButton#plotToolButton {
+                min-width: 42px;
+                max-width: 42px;
+                min-height: 42px;
+                max-height: 42px;
+                padding: 0;
+                border: 0;
+                border-bottom: 1px solid #D5DEE5;
+                border-radius: 0;
+                background: #FFFFFF;
+            }
+            QPushButton#plotToolButton:hover { background: #EAF7F8; }
+            QPushButton#plotToolButton:pressed { background: #D6ECEF; }
+        """)
 
     def applyPlotStyle(self):
         self.setObjectName("plotDialog")
@@ -1203,6 +1346,13 @@ class PlantLayoutWindow(QDialog):
                 width: 15px;
                 height: 15px;
             }
+            QGroupBox#plotToolRail {
+                background: #073E68;
+                color: #FFFFFF;
+                border: 1px solid #073E68;
+                border-radius: 6px;
+            }
+            QGroupBox#plotToolRail::title { color: #FFFFFF; background: #073E68; }
             QGroupBox QLabel, QGroupBox QCheckBox, QGroupBox QRadioButton {
                 color: #1B2933;
                 font-weight: 400;
@@ -1211,6 +1361,7 @@ class PlantLayoutWindow(QDialog):
                 color: #0B326C;
                 font-weight: 700;
             }
+            QLabel#workplaceFilterSummary { color: #304652; font-weight: 600; }
             QWidget#plotCanvasPanel { background: #FFFFFF; }
             QGraphicsView, QComboBox, QLineEdit {
                 background: #FFFFFF;
@@ -1223,6 +1374,23 @@ class PlantLayoutWindow(QDialog):
             }
             QComboBox, QLineEdit { padding: 0 8px; }
             QComboBox:focus, QLineEdit:focus { border: 2px solid #08A9B5; }
+            QTreeWidget {
+                background: #FFFFFF;
+                color: #1B2933;
+                border: 1px solid #BCC9D3;
+                border-radius: 5px;
+                alternate-background-color: #F7FAFB;
+            }
+            QTreeWidget::item { min-height: 29px; padding: 2px 5px; }
+            QTreeWidget::item:selected { background: #087E91; color: #FFFFFF; }
+            QHeaderView::section {
+                background: #EAF2F6;
+                color: #0B326C;
+                border: 0;
+                border-bottom: 1px solid #BCC9D3;
+                padding: 7px;
+                font-weight: 700;
+            }
             QPushButton {
                 min-height: 34px;
                 background: #FFFFFF;
@@ -1284,7 +1452,40 @@ class PlantLayoutWindow(QDialog):
     def updateWorkerFilterDisclosure(self, expanded):
         """Collapse demographic fields completely instead of merely disabling them."""
         self.worker_filter_container.setVisible(expanded)
-        self.filters_group.setMinimumHeight(208 if expanded else 150)
+        self.filters_group.setMinimumHeight(265 if expanded else 205)
+
+    def openWorkplaceFilter(self):
+        dialog = PlotWorkplaceFilterDialog(self)
+        if dialog.exec_() != QDialog.Accepted:
+            return
+        self.applyWorkplaceScope(dialog.selected_path, dialog.shift_combo.currentText())
+
+    def applyWorkplaceScope(self, path, shift):
+        """Map a hierarchy selection into the existing PLOT filter widgets."""
+        if not path:
+            return
+        self.plant_combo.setCurrentText(path[0])
+        self.loadSections()
+        self.setMultiFilterValue(self.section_combo, path[1] if len(path) > 1 else "All")
+        self.loadLines()
+        self.setMultiFilterValue(self.line_combo, path[2] if len(path) > 2 else "All")
+        self.loadStations()
+        self.setMultiFilterValue(self.station_combo, path[3] if len(path) > 3 else "All")
+        self.loadShifts()
+        self.setMultiFilterValue(self.shift_combo, shift or "All")
+        scope = "  >  ".join(path)
+        self.workplace_summary_label.setText(f"{scope}  |  Shift: {shift or 'All'}")
+
+    @staticmethod
+    def setMultiFilterValue(combo, value):
+        target = value if combo.findText(str(value), Qt.MatchFixedString) >= 0 else "All"
+        combo.blockSignals(True)
+        for index in range(combo.count()):
+            item = combo.model().item(index)
+            if item:
+                item.setCheckState(Qt.Checked if combo.itemText(index) == target else Qt.Unchecked)
+        combo.updateText()
+        combo.blockSignals(False)
 
     def syncPlotToolButtons(self, tool_id):
         if not hasattr(self, "plot_tool_buttons"):
@@ -1651,6 +1852,8 @@ class PlantLayoutWindow(QDialog):
     
         # **Uncheck Worker Filter Group**
         self.workerfilter_group.setChecked(False)    
+        if hasattr(self, "workplace_summary_label"):
+            self.workplace_summary_label.setText("All available workplaces")
 
     
     
