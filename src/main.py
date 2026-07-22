@@ -37,6 +37,7 @@ from line_window import LineWindow
 from station_window import StationWindow
 from shift_window import ShiftWindow
 from organization_window import OrganizationWindow
+from vtk_camera_director import VTKCameraDirector
 
 from tooltransferdialog import ToolTransferDialog
 from worker_transfer_window import WorkerTransferDialog
@@ -805,7 +806,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         
         self.databasePath = "../data/ergotools_data.db"
         #self.setupDatabase()
-        self.isAnimationAllowed = False  # Add a flag to control when animation is allowed
+        self.isAnimationAllowed = False
         
         self.default_num_task = 15
         self.default_metric_sys = "Imperial"   
@@ -832,8 +833,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.setupUI()
         self.setupMenuBar()  # Setup the menu bar
         self.setupStatusBar()  # Setup the status bar
-        self.setupAnimationTimers()
-        self.isAnimationAllowed = False
+        self.isAnimationAllowed = self.vtk_enabled
         
         self.initProjectVars()
         
@@ -2964,12 +2964,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         else:  # Linux variants
             subprocess.run(['xdg-open', help_pdf_path], check=True)
         
-    def setupAnimationTimers(self):
-        self.animationTimer = QTimer(self)  # Timer for smooth transitions
-        self.animationTimer.timeout.connect(self.updateRotation)
-        self.targetRotation = 0
-        self.currentRotation = 0
-
     def setupStatusBar(self):
         # Create or retrieve the status bar
         statusBar = self.statusBar()
@@ -3759,13 +3753,8 @@ class ErgoTools(QtWidgets.QMainWindow):
         title_layout = QHBoxLayout()
         self.body_region_title = QLabel("LiFFT Body Region")
         self.body_region_title.setObjectName("bodyRegionTitle")
-        info_label = QLabel("i")
-        info_label.setObjectName("bodyInfoIcon")
-        info_label.setAlignment(Qt.AlignCenter)
-        info_label.setToolTip("The highlighted anatomy identifies the body region assessed by the selected tool.")
         title_layout.addWidget(self.body_region_title)
         title_layout.addStretch()
-        title_layout.addWidget(info_label)
         self.leftLayout.addLayout(title_layout)
         self.vtkWidget = QVTKRenderWindowInteractor() if self.vtk_enabled else VTKDisabledWidget()
         self.vtkWidget.setObjectName("vtkWorkspace")
@@ -4151,7 +4140,6 @@ class ErgoTools(QtWidgets.QMainWindow):
             calculate = getattr(self, f"{prefix}_calculate_button", None)
             reset = getattr(self, f"{prefix}_reset_button", None)
             delete = getattr(self, f"{prefix}_delete_button", None)
-            transfer = getattr(self, f"{prefix}_transfer_button", None)
             if calculate:
                 calculate.setObjectName("calculateButton")
                 calculate.setIcon(QIcon(os.path.join(icon_root, "calculate-light.png")))
@@ -4172,11 +4160,6 @@ class ErgoTools(QtWidgets.QMainWindow):
                 delete.setIconSize(QSize(30, 30))
                 delete.setFixedSize(40, 40)
                 delete.setToolTip("Delete saved data for this tool and assessment context.")
-            if transfer:
-                transfer.setIcon(QIcon(os.path.join(icon_root, "transferworkerdata.png")))
-                transfer.setIconSize(QSize(30, 30))
-                transfer.setFixedSize(40, 40)
-                transfer.setToolTip("Transfer this tool's data to another assessment context.")
             grid_button = getattr(self, f"{prefix}_grid_button", None)
             if grid_button:
                 grid_button.setIcon(QIcon(os.path.join(icon_root, "bodyview.png")))
@@ -4324,13 +4307,14 @@ class ErgoTools(QtWidgets.QMainWindow):
             QPushButton#compactButton { padding: 0 9px; }
             QPushButton#mainAlphabetButton {
                 min-width: 18px; max-width: 18px; min-height: 27px; max-height: 27px;
-                padding: 0; border: 0; background: transparent; color: #5F6F7A;
-                font-size: 10px; font-weight: 650;
+                padding: 0; border: 0; background: transparent; color: #173544;
+                font-size: 11px; font-weight: 850;
             }
             QPushButton#mainAlphabetButton:hover { background: #DDF3F5; color: #0B326C; font-size: 16px; }
             QPushButton#mainAlphabetButton:checked { background: #0B326C; color: white; border-radius: 4px; font-size: 11px; }
-            QPushButton#mainAlphabetButton[currentInitial="true"] { color: #102B3A; font-weight: 900; font-size: 12px; }
+            QPushButton#mainAlphabetButton[currentInitial="true"] { color: #001C2B; font-weight: 900; font-size: 13px; }
             QPushButton#mainAlphabetButton:checked[currentInitial="true"] { color: white; }
+            QPushButton#mainAlphabetButton:disabled { color: #C7D0D7; font-weight: 600; font-size: 10px; }
             QPushButton#primaryOutlineButton { border: 2px solid #08A9B5; }
             QPushButton#calculateButton { background: #087E91; color: white; border-color: #087E91; }
             QPushButton#calculateButton:hover { background: #096D7C; }
@@ -4759,7 +4743,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         header_layout.setContentsMargins(20, 13, 10, 13)
         brand_box = QVBoxLayout()
         brand_box.setSpacing(2)
-        brand = QLabel("Ergo Tools")
+        brand = QLabel("ErgoTools")
         brand.setObjectName("brandName")
         self.project_header_label = QLabel("No project loaded")
         self.project_header_label.setObjectName("projectName")
@@ -7422,6 +7406,9 @@ class ErgoTools(QtWidgets.QMainWindow):
     def resetModelView(self):
         if not self.vtk_enabled:
             return
+        if hasattr(self, "camera_director"):
+            self.camera_director.apply(self.tabWidget.currentIndex())
+            return
         camera = self.renderer.GetActiveCamera()
         camera.SetPosition(self.initialCameraSettings['position'])
         camera.SetFocalPoint(self.initialCameraSettings['focalPoint'])
@@ -7922,13 +7909,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         lifft_buttons_layout.addWidget(self.lifft_grid_button)
         
         
-        # **Small Transfer Button (Fixed Size, Larger Icon)**
-        self.lifft_transfer_button = QPushButton()
-        self.lifft_transfer_button.setIcon(QIcon("../images/transfer_icon01.png"))
-        self.lifft_transfer_button.setFixedSize(30, 30)  # Small square button
-        self.lifft_transfer_button.setIconSize(QSize(25, 25))  # Increase icon size
-        lifft_buttons_layout.addWidget(self.lifft_transfer_button)
-        
         # **Right-aligned Calculate Button (Expands to take available space)**
         self.lifft_calculate_button = QPushButton("Calculate")
         self.lifft_calculate_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)  # Expanding right button
@@ -7944,7 +7924,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         
         self.lifft_delete_button.clicked.connect(self.lifftDeleteAction)
         self.lifft_grid_button.clicked.connect(self.toolGridAction)
-        self.lifft_transfer_button.clicked.connect(self.lifftTransferAction)
 
         # Create the LiFFT tab widget and set its layout
         self.lifft_tab = QWidget()
@@ -8346,13 +8325,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.duet_grid_button.setIconSize(QSize(25, 25))  # Increase icon size
         duet_buttons_layout.addWidget(self.duet_grid_button)
         
-        # **Small Transfer Button (Fixed Size, Larger Icon)**
-        self.duet_transfer_button = QPushButton()
-        self.duet_transfer_button.setIcon(QIcon("../images/transfer_icon01.png"))
-        self.duet_transfer_button.setFixedSize(30, 30)  # Small square button
-        self.duet_transfer_button.setIconSize(QSize(25, 25))  # Increase icon size
-        duet_buttons_layout.addWidget(self.duet_transfer_button)
-        
         # **Right-aligned Calculate Button (Expands to take available space)**
         self.duet_calculate_button = QPushButton("Calculate")
         self.duet_calculate_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)  # Expanding right button
@@ -8368,7 +8340,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.duet_calculate_button.clicked.connect(self.duetCalculateResultsClicked)
         
         self.duet_delete_button.clicked.connect(self.duetDeleteAction)
-        self.duet_transfer_button.clicked.connect(self.duetTransferAction)
 
         # **Create the DUET tab widget and set its layout**
         self.duet_tab = QWidget()
@@ -8717,13 +8688,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.tst_grid_button.setIconSize(QSize(25, 25))  # Increase icon size
         tst_buttons_layout.addWidget(self.tst_grid_button)
         
-        # **Small Transfer Button (Fixed Size)**
-        self.tst_transfer_button = QPushButton()
-        self.tst_transfer_button.setIcon(QIcon("../images/transfer_icon01.png"))
-        self.tst_transfer_button.setFixedSize(30, 30)  # Small square button
-        self.tst_transfer_button.setIconSize(QSize(25, 25))  # Increase icon size
-        tst_buttons_layout.addWidget(self.tst_transfer_button)
-        
         # **Right-aligned Calculate Button (Expands to take available space)**
         self.tst_calculate_button = QPushButton("Calculate")
         self.tst_calculate_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)  # Expanding right button
@@ -8744,7 +8708,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         
         self.tst_delete_button.clicked.connect(self.tstDeleteAction)
         self.tst_grid_button.clicked.connect(self.toolGridAction)
-        self.tst_transfer_button.clicked.connect(self.tstTransferAction)
 
         # **Create the TST tab widget and set its layout**
         self.tst_tab = QWidget()
@@ -8881,7 +8844,19 @@ class ErgoTools(QtWidgets.QMainWindow):
 
         # Reset the camera to fit all actors in view
         self.renderer.ResetCamera()
-        
+        self.camera_director = VTKCameraDirector(
+            self.renderer, self.vtkWidget.GetRenderWindow(), self
+        )
+        self.camera_director.configure(self.humanActor, {
+            0: [self.lowerBackActor],
+            1: [
+                self.leftForeArmActor, self.leftHandActor,
+                self.rightForeArmActor, self.rightHandActor,
+            ],
+            2: [self.leftShoulderActor, self.rightShoulderActor],
+        })
+        self.camera_director.apply(0)
+
         self.initialCameraSettings = {'position': None, 'focalPoint': None, 'viewUp': None}
         self.storeInitialCameraSettings()
         
@@ -9011,11 +8986,8 @@ class ErgoTools(QtWidgets.QMainWindow):
             self.body_region_title.setText(title)
             self.active_region_label.setText(region)
 
-        if hasattr(self, 'animationTimer') and self.isAnimationAllowed:
-            self.tabIndex = index  # Store the new tab index
-            self.animationPhase = 1  # Start with resetting the view
-            self.resetView()  # Reset view settings before starting animation
-            self.animationTimer.start(16)  # Approx. 60 FPS
+        if self.vtk_enabled and self.isAnimationAllowed and hasattr(self, "camera_director"):
+            self.camera_director.animateTo(index)
         
         #self.loadToolsData() #TODO: check for a way to fill the tab without rebuilding it..
          
@@ -9054,58 +9026,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         # Remove tabs in reverse order to avoid shifting indices
         for index in reversed(tabs_to_remove):
             self.tabWidget.removeTab(index)
-        
-        
-    def resetView(self):
-        # Reset parameters for the initial view
-        self.targetAzimuth = 0
-        self.targetElevation = 0
-        self.currentAzimuth = 0
-        self.currentElevation = 0
-
-    def setNewTargetPosition(self):
-        # Define target positions based on the currently selected tab
-        if self.tabIndex == 0:  # First tab LiFFT
-            self.targetAzimuth = -30  # Example values
-            self.targetElevation = -15
-        elif self.tabIndex == 1:  # DUET
-            self.targetAzimuth = 45
-            self.targetElevation = 20
-        elif self.tabIndex == 2:  # Shoulder Tool
-            self.targetAzimuth = 90
-            self.targetElevation = 0
-
-    def positionReached(self, target, current):
-        return abs(target - current) < 1
-
-    def updateCameraPosition(self):
-        camera = self.renderer.GetActiveCamera()
-        if self.animationPhase == 1:
-            # Incremental rotation towards reset view
-            if not self.positionReached(0, self.currentAzimuth) or not self.positionReached(0, self.currentElevation):
-                camera.Azimuth(-self.currentAzimuth / 10)
-                camera.Elevation(-self.currentElevation / 10)
-                self.currentAzimuth -= self.currentAzimuth / 10
-                self.currentElevation -= self.currentElevation / 10
-            else:
-                self.animationPhase = 2  # Switch to moving towards the new target position
-                self.setNewTargetPosition()
-        elif self.animationPhase == 2:
-            # Perform incremental rotation towards the target angle
-            azimuthStep = (self.targetAzimuth - self.currentAzimuth) / 10
-            elevationStep = (self.targetElevation - self.currentElevation) / 10
-            camera.Azimuth(azimuthStep)
-            camera.Elevation(elevationStep)
-            self.currentAzimuth += azimuthStep
-            self.currentElevation += elevationStep
-            if self.positionReached(self.targetAzimuth, self.currentAzimuth) and self.positionReached(self.targetElevation, self.currentElevation):
-                self.animationTimer.stop()  # Stop the timer when the target position is reached
-            
-                
-    def updateRotation(self):
-        self.updateCameraPosition()
-        self.renderer.GetRenderWindow().Render()
-        QtWidgets.QApplication.processEvents()  # Keep the UI responsive
         
         
     # ----------------------------------------------------------------------------
