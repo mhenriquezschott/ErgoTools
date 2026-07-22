@@ -12,6 +12,10 @@ reviewed independently without losing the overall direction.
 - Enlarge the main toolbar icons while locking its existing header geometry.
 - Make Clear Filters and Apply Filters visually prominent.
 - Convert the map tool rail to consistent square controls distributed vertically.
+- Replace the Tool combo with a persistent LiFFT, DUET, and Shoulder selector.
+- Make worker demographics a real collapsible section.
+- Remove the unused Other Options controls.
+- Enlarge and strengthen the main risk gauge without increasing its card.
 
 ## Filter redesign
 

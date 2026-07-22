@@ -856,15 +856,40 @@ class PlantLayoutWindow(QDialog):
 
         tool_filter_layout = QVBoxLayout(self.toolfilter_group)
         tool_filter_layout.setContentsMargins(10, 10, 10, 8)
-        tool_filter_row = QHBoxLayout()
-        tool_filter_row.addWidget(self.toolsid_label)
-        tool_filter_row.addWidget(self.tool_combo, 1)
-        tool_filter_layout.addLayout(tool_filter_row)
+        tool_filter_layout.setSpacing(6)
+        self.toolsid_label.hide()
+        self.tool_combo.hide()
+        tool_button_row = QHBoxLayout()
+        tool_button_row.setContentsMargins(0, 0, 0, 0)
+        tool_button_row.setSpacing(0)
+        self.plot_tool_buttons = {}
+        for tool_id, label, icon_name in (
+            ("LiFFT", "LiFFT", "lifft.png"),
+            ("DUET", "DUET", "duet.png"),
+            ("ST", "Shoulder", "shoulder.png"),
+        ):
+            button = QToolButton(self.toolfilter_group)
+            button.setObjectName("plotFilterTool")
+            button.setText(label)
+            button.setIcon(QIcon(os.path.join(icon_root, icon_name)))
+            button.setIconSize(QSize(28, 28))
+            button.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+            button.setCheckable(True)
+            button.setAutoExclusive(True)
+            button.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            button.setToolTip(f"Show workers and summaries for the {label} assessment tool.")
+            button.clicked.connect(lambda _checked=False, value=tool_id: self.selectPlotTool(value))
+            tool_button_row.addWidget(button)
+            self.plot_tool_buttons[tool_id] = button
+        tool_filter_layout.addLayout(tool_button_row)
         tool_filter_layout.addWidget(self.toolsfiltersettings_button)
-        self.tool_combo.setToolTip("Choose the ergonomic tool used to color and summarize workers.")
+        self.tool_combo.currentTextChanged.connect(self.syncPlotToolButtons)
+        self.syncPlotToolButtons(self.tool_combo.currentText())
 
-        worker_filter_layout = QGridLayout(self.workerfilter_group)
-        worker_filter_layout.setContentsMargins(10, 10, 10, 8)
+        worker_filter_container = QWidget(self.workerfilter_group)
+        self.worker_filter_container = worker_filter_container
+        worker_filter_layout = QGridLayout(worker_filter_container)
+        worker_filter_layout.setContentsMargins(0, 0, 0, 0)
         worker_filter_layout.setHorizontalSpacing(7)
         worker_filter_layout.setVerticalSpacing(7)
         worker_filter_layout.addWidget(self.genderflt_label, 0, 0)
@@ -885,6 +910,12 @@ class PlantLayoutWindow(QDialog):
         worker_filter_layout.setColumnStretch(3, 1)
         worker_filter_layout.setColumnStretch(5, 1)
         worker_filter_layout.setColumnStretch(7, 1)
+        worker_group_layout = QVBoxLayout(self.workerfilter_group)
+        worker_group_layout.setContentsMargins(10, 10, 10, 8)
+        worker_group_layout.addWidget(worker_filter_container)
+        worker_filter_container.setVisible(self.workerfilter_group.isChecked())
+        self.workerfilter_group.toggled.connect(self.updateWorkerFilterDisclosure)
+        self.workerfilter_group.setTitle("Worker demographics")
         self.workerfilter_group.setToolTip("Enable demographic filtering for workers shown on the layout.")
         self.gender_combo.setToolTip("Filter workers by sex.")
         for field, tooltip in (
@@ -894,13 +925,7 @@ class PlantLayoutWindow(QDialog):
         ):
             field.setToolTip(tooltip)
 
-        other_layout = QGridLayout(self.otheroptionsfilter_group)
-        other_layout.setContentsMargins(10, 10, 10, 8)
-        other_layout.addWidget(self.option1a_option, 0, 0)
-        other_layout.addWidget(self.option1b_option, 0, 1)
-        other_layout.addWidget(self.option1c_radio, 1, 0)
-        other_layout.addWidget(self.option1d_radio, 1, 1)
-        self.otheroptionsfilter_group.setToolTip("Enable additional optional filtering criteria.")
+        self.otheroptionsfilter_group.hide()
 
         filter_actions = QWidget(self.filters_group)
         filter_actions.setObjectName("filterActions")
@@ -914,7 +939,7 @@ class PlantLayoutWindow(QDialog):
         self.clearfilter_button.setIconSize(QSize(32, 32))
         self.clearfilter_button.setFixedHeight(58)
         self.clearfilter_button.setToolTip("Reset every filter to its default value.")
-        self.applyfilter_button.setIcon(QIcon(os.path.join(icon_root, "filterapply.png")))
+        self.applyfilter_button.setIcon(QIcon(os.path.join(icon_root, "filterapply-light.png")))
         self.applyfilter_button.setIconSize(QSize(32, 32))
         self.applyfilter_button.setFixedHeight(58)
         self.applyfilter_button.setToolTip("Apply the selected filters to the plant layout and summaries.")
@@ -929,26 +954,24 @@ class PlantLayoutWindow(QDialog):
         filters_layout.setVerticalSpacing(8)
         filters_layout.addWidget(self.plantfilter_group, 0, 0, 1, 3)
         filters_layout.addWidget(self.shiftfilter_group, 0, 3)
-        filters_layout.addWidget(self.toolfilter_group, 1, 0)
-        filters_layout.addWidget(self.workerfilter_group, 1, 1, 1, 2)
-        filters_layout.addWidget(self.otheroptionsfilter_group, 1, 3)
+        filters_layout.addWidget(self.toolfilter_group, 1, 0, 1, 2)
+        filters_layout.addWidget(self.workerfilter_group, 1, 2, 1, 2)
         filters_layout.addWidget(filter_actions, 0, 4, 2, 1)
         filters_layout.setColumnStretch(0, 1)
         filters_layout.setColumnStretch(1, 2)
         filters_layout.setColumnStretch(2, 2)
         filters_layout.setColumnStretch(3, 1)
         self.filters_group.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed)
-        self.filters_group.setMinimumHeight(208)
+        self.filters_group.setMinimumHeight(150)
         for group in (
             self.plantfilter_group, self.shiftfilter_group, self.toolfilter_group,
-            self.workerfilter_group, self.otheroptionsfilter_group,
+            self.workerfilter_group,
         ):
             group.setMinimumWidth(0)
             group.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Preferred)
-        for group in (self.shiftfilter_group, self.otheroptionsfilter_group):
+        for group in (self.shiftfilter_group,):
             group.setMinimumWidth(220)
             group.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
-        self.otheroptionsfilter_group.setMinimumWidth(240)
 
         # Vertical action rail. Existing callbacks remain attached to these buttons.
         tool_actions = (
@@ -963,17 +986,17 @@ class PlantLayoutWindow(QDialog):
             (self.grtool9_button, os.path.join(icon_root, "export.png"), "Export layout data."),
         )
         tools_layout = QVBoxLayout(self.toolsgraphic_group)
-        tools_layout.setContentsMargins(10, 10, 10, 10)
+        tools_layout.setContentsMargins(9, 10, 9, 10)
         tools_layout.setSpacing(0)
         for button, icon_path, tooltip in tool_actions:
-            button.setFixedSize(54, 54)
-            button.setIconSize(QSize(38, 38))
+            button.setFixedSize(42, 42)
+            button.setIconSize(QSize(32, 32))
             button.setToolTip(tooltip)
             button.setObjectName("plotToolButton")
             button.setIcon(QIcon(icon_path))
             tools_layout.addWidget(button, 0, Qt.AlignHCenter)
-            tools_layout.addStretch(1)
-        self.toolsgraphic_group.setFixedWidth(78)
+        tools_layout.addStretch(1)
+        self.toolsgraphic_group.setFixedWidth(64)
 
         self.plantlayout_image.setMinimumSize(520, 340)
         self.plantlayout_image.setSizePolicy(
@@ -1217,11 +1240,31 @@ class PlantLayoutWindow(QDialog):
                 border-color: #087E91;
             }
             QPushButton#plotToolButton {
-                min-width: 54px;
-                max-width: 54px;
-                min-height: 54px;
-                max-height: 54px;
+                min-width: 42px;
+                max-width: 42px;
+                min-height: 42px;
+                max-height: 42px;
                 padding: 0;
+                border: 0;
+                border-bottom: 1px solid #D5DEE5;
+                border-radius: 0;
+                background: #FFFFFF;
+            }
+            QPushButton#plotToolButton:hover { background: #EAF7F8; }
+            QPushButton#plotToolButton:pressed { background: #D6ECEF; }
+            QToolButton#plotFilterTool {
+                min-height: 42px;
+                padding: 2px 12px;
+                color: #49606F;
+                background: #FFFFFF;
+                border: 1px solid #BCC9D3;
+                font-weight: 600;
+            }
+            QToolButton#plotFilterTool:hover { background: #EAF7F8; }
+            QToolButton#plotFilterTool:checked {
+                color: #087E91;
+                background: #DDF3F5;
+                border-color: #08A9B5;
             }
             QCheckBox, QRadioButton { color: #304652; spacing: 6px; }
             QCheckBox:disabled, QRadioButton:disabled, QLabel:disabled { color: #98A7B2; }
@@ -1230,6 +1273,27 @@ class PlantLayoutWindow(QDialog):
             QStatusBar { background: #F4F7F9; color: #506273; border: 0; }
             QToolTip { background: #1B2933; color: white; border: 1px solid #0B326C; padding: 6px; }
         """)
+
+    def selectPlotTool(self, tool_id):
+        """Select a tool through the visual filter control without duplicating filter logic."""
+        index = self.tool_combo.findText(tool_id, Qt.MatchFixedString)
+        if index >= 0:
+            self.tool_combo.setCurrentIndex(index)
+        self.syncPlotToolButtons(self.tool_combo.currentText())
+
+    def updateWorkerFilterDisclosure(self, expanded):
+        """Collapse demographic fields completely instead of merely disabling them."""
+        self.worker_filter_container.setVisible(expanded)
+        self.filters_group.setMinimumHeight(208 if expanded else 150)
+
+    def syncPlotToolButtons(self, tool_id):
+        if not hasattr(self, "plot_tool_buttons"):
+            return
+        normalized = str(tool_id).strip().upper()
+        aliases = {"LIFFT": "LiFFT", "DUET": "DUET", "ST": "ST", "SHOULDER": "ST"}
+        selected = aliases.get(normalized)
+        for key, button in self.plot_tool_buttons.items():
+            button.setChecked(key == selected)
         
         
 
@@ -3075,6 +3139,7 @@ class PlantLayoutWindow(QDialog):
     
         # Restore signals
         self.tool_combo.blockSignals(False)
+        self.syncPlotToolButtons(self.tool_combo.currentText())
     
     
     def getTools(self):

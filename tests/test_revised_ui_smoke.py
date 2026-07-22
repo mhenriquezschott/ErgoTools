@@ -32,12 +32,14 @@ assert "background: #" in parent.damage_value_label.styleSheet()
 parent.resize(1550, 1015)
 parent.show()
 app.processEvents()
+QTest.qWait(800)
+app.processEvents()
 parent.grab().save("/tmp/main_damage_over_two.png")
-assert parent.toolbar.iconSize().width() == 42
-assert parent.toolbar.iconSize().height() == 42
-assert parent.toolbar.height() == 99
-assert parent.toolbar.parentWidget().height() == 125
-assert all(button.height() == 83 for button in parent.toolbar.findChildren(QToolButton) if button.text())
+assert parent.toolbar.iconSize().width() == 38
+assert parent.toolbar.iconSize().height() == 38
+assert parent.toolbar.height() == 90
+assert parent.toolbar.parentWidget().height() == 112
+assert all(button.height() == 75 for button in parent.toolbar.findChildren(QToolButton) if button.text())
 brand_logo = parent.findChild(QLabel, "brandLogo")
 assert brand_logo is not None
 assert brand_logo.pixmap() is not None and not brand_logo.pixmap().isNull()

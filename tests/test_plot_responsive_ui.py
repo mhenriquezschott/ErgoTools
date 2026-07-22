@@ -35,11 +35,10 @@ default_canvas_size = window.plantlayout_image.viewport().size()
 assert window.minimumSizeHint().width() <= 1390
 assert window.minimumSizeHint().height() <= 940
 assert window.summaryplot_canvas.geometry().bottom() < window.summaryplot_combo.geometry().top()
-for option in (
-    window.option1a_option, window.option1b_option,
-    window.option1c_radio, window.option1d_radio,
-):
-    assert option.width() >= option.sizeHint().width()
+assert window.otheroptionsfilter_group.isHidden()
+assert set(window.plot_tool_buttons) == {"LiFFT", "DUET", "ST"}
+assert window.plot_tool_buttons["LiFFT"].isChecked()
+assert not window.agefrom_edit.isVisible()
 for metric in (
     window.summaryresult1_label, window.summaryresult2_label,
     window.summaryresult3_label, window.summaryresult4_label,
@@ -69,6 +68,9 @@ app.processEvents()
 assert window.workerComboBox.currentIndex() != initial_worker_index
 window.agefrom_edit.setText("30")
 window.workerfilter_group.setChecked(True)
+app.processEvents()
+assert window.agefrom_edit.isVisible()
+window.grab().save("/tmp/plot_responsive_filters_expanded.png")
 window.clearfilterButtonClicked()
 assert window.agefrom_edit.text() == ""
 assert not window.workerfilter_group.isChecked()

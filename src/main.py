@@ -122,22 +122,22 @@ class RiskGauge(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         center = QPointF(self.width() / 2.0, 94.0)
-        radius = min(self.width() / 2.0 - 22.0, 61.0)
+        radius = min(self.width() / 2.0 - 16.0, 70.0)
         arc_rect = QRectF(center.x() - radius, center.y() - radius, radius * 2.0, radius * 2.0)
         for start, end, _label, color, _range_text in RISK_BANDS:
-            pen = QPen(QColor(color), 11, Qt.SolidLine, Qt.FlatCap)
+            pen = QPen(QColor(color), 13, Qt.SolidLine, Qt.FlatCap)
             painter.setPen(pen)
             painter.drawArc(arc_rect, int((180 - start * 1.8) * 16), -int((end - start) * 1.8 * 16))
 
         angle = math.radians(180.0 - self._display_value * 1.8)
-        tip = QPointF(center.x() + math.cos(angle) * (radius - 8), center.y() - math.sin(angle) * (radius - 8))
-        perpendicular = QPointF(math.sin(angle) * 4.0, math.cos(angle) * 4.0)
+        tip = QPointF(center.x() + math.cos(angle) * (radius - 9), center.y() - math.sin(angle) * (radius - 9))
+        perpendicular = QPointF(math.sin(angle) * 4.6, math.cos(angle) * 4.6)
         needle = QPolygonF([center + perpendicular, tip, center - perpendicular])
         painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor("#C7CED3"))
+        painter.setBrush(QColor("#87949D"))
         painter.drawPolygon(needle)
-        painter.setBrush(QColor("#AEB8BF"))
-        painter.drawEllipse(center, 4.5, 4.5)
+        painter.setBrush(QColor("#6F7E88"))
+        painter.drawEllipse(center, 5.0, 5.0)
 
         painter.setPen(QColor("#0B326C"))
         font = painter.font()
@@ -4290,8 +4290,8 @@ class ErgoTools(QtWidgets.QMainWindow):
             QFrame#brandHeader { background: #073E68; border-radius: 7px; }
             QLabel#brandName { color: white; font-size: 36px; font-weight: 700; }
             QLabel#projectName { color: #D9EDF5; font-size: 14px; font-weight: 700; }
-            QToolBar#mainToolbar { background: white; border: 0; border-radius: 6px; padding: 6px 8px; spacing: 4px; }
-            QToolBar#mainToolbar QToolButton { color: #0B326C; min-width: 70px; padding: 8px 7px; border: 0; }
+            QToolBar#mainToolbar { background: white; border: 0; border-radius: 6px; padding: 5px 7px; spacing: 3px; }
+            QToolBar#mainToolbar QToolButton { color: #0B326C; min-width: 63px; padding: 6px 5px; border: 0; }
             QToolBar#mainToolbar QToolButton:hover { background: #EAF7F8; border-radius: 5px; }
             QToolBar#mainToolbar::separator { background: #D5DEE5; width: 1px; margin: 8px 6px; }
             QFrame#contextBar, QFrame#workspacePanel, QFrame#resultsSidebar { background: white; border: 1px solid #D5DEE5; border-radius: 7px; }
@@ -4794,9 +4794,9 @@ class ErgoTools(QtWidgets.QMainWindow):
 
         header = QFrame()
         header.setObjectName("brandHeader")
-        header.setFixedHeight(125)
+        header.setFixedHeight(112)
         header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(20, 13, 10, 13)
+        header_layout.setContentsMargins(20, 8, 10, 8)
         brand_identity = QHBoxLayout()
         brand_identity.setSpacing(12)
         brand_logo = QLabel()
@@ -4824,8 +4824,8 @@ class ErgoTools(QtWidgets.QMainWindow):
 
         self.toolbar = QToolBar()
         self.toolbar.setObjectName("mainToolbar")
-        self.toolbar.setFixedHeight(99)
-        self.toolbar.setIconSize(QSize(42, 42))
+        self.toolbar.setFixedHeight(90)
+        self.toolbar.setIconSize(QSize(38, 38))
         self.toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
         toolbar_actions = (
@@ -4846,7 +4846,7 @@ class ErgoTools(QtWidgets.QMainWindow):
             }[text])
             action.triggered.connect(callback)
             self.toolbar.addAction(action)
-            self.toolbar.widgetForAction(action).setFixedHeight(83)
+            self.toolbar.widgetForAction(action).setFixedHeight(75)
             if action_index in (2, 3, 4, 5):
                 self.toolbar.addSeparator()
         header_layout.addWidget(self.toolbar)
