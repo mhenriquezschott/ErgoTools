@@ -4288,7 +4288,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         return """
             QMainWindow, QWidget#mainWorkspace { background: #F4F7F9; color: #1B2933; font: 12px "Segoe UI"; }
             QFrame#brandHeader { background: #073E68; border-radius: 7px; }
-            QLabel#brandName { color: white; font-size: 24px; font-weight: 600; }
+            QLabel#brandName { color: white; font-size: 36px; font-weight: 700; }
             QLabel#projectName { color: #D9EDF5; font-size: 14px; font-weight: 700; }
             QToolBar#mainToolbar { background: white; border: 0; border-radius: 6px; padding: 6px 8px; spacing: 4px; }
             QToolBar#mainToolbar QToolButton { color: #0B326C; min-width: 70px; padding: 8px 7px; border: 0; }
