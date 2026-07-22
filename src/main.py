@@ -4823,7 +4823,7 @@ class ErgoTools(QtWidgets.QMainWindow):
 
         self.toolbar = QToolBar()
         self.toolbar.setObjectName("mainToolbar")
-        self.toolbar.setIconSize(QSize(30, 30))
+        self.toolbar.setIconSize(QSize(36, 36))
         self.toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
         toolbar_actions = (

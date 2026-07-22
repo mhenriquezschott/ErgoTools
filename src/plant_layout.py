@@ -73,7 +73,9 @@ class PlantLayoutWindow(QDialog):
         self.initUI()
     
     def initUI(self):
-        self.setFixedSize(1390, 940)
+        self.setMinimumSize(1300, 900)
+        self.resize(1390, 940)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowMaximizeButtonHint)
         
         self.filters_group = QtWidgets.QGroupBox(self)
         self.filters_group.setGeometry(QtCore.QRect(10, 0, 1371, 181))
@@ -722,6 +724,7 @@ class PlantLayoutWindow(QDialog):
         #self.addWidget(self.statusBar)
         
         self.setUIText()
+        self.configureResponsiveLayout()
         #QtCore.QMetaObject.connectSlotsByName(Dialog)
         
         #self.statusBar.showMessage(f"Mouse Coordinates: X=")
@@ -818,6 +821,416 @@ class PlantLayoutWindow(QDialog):
             self.line_combo.model().clear()
             self.station_combo.model().clear()
             self.shift_combo.model().clear()
+
+    def configureResponsiveLayout(self):
+        """Replace the generated absolute geometry with nested Qt layouts."""
+        icon_root = os.path.normpath(
+            os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons")
+        )
+        legacy_icon_root = os.path.normpath(
+            os.path.join(os.path.dirname(__file__), "..", "images")
+        )
+
+        # Primary workplace filters.
+        plant_layout = QHBoxLayout(self.plantfilter_group)
+        plant_layout.setContentsMargins(10, 10, 10, 8)
+        plant_layout.setSpacing(8)
+        for label, combo in (
+            (self.plantid_label, self.plant_combo),
+            (self.sectionid_label, self.section_combo),
+            (self.lineid_label, self.line_combo),
+            (self.stationid_label, self.station_combo),
+        ):
+            plant_layout.addWidget(label)
+            plant_layout.addWidget(combo, 1)
+        for combo, tooltip in (
+            (self.plant_combo, "Select the plant whose layout and workers should be displayed."),
+            (self.section_combo, "Filter the layout by one or more sections."),
+            (self.line_combo, "Filter the layout by one or more production lines."),
+            (self.station_combo, "Filter the layout by one or more stations."),
+        ):
+            combo.setToolTip(tooltip)
+
+        shift_layout = QHBoxLayout(self.shiftfilter_group)
+        shift_layout.setContentsMargins(10, 10, 10, 8)
+        shift_layout.setSpacing(8)
+        shift_layout.addWidget(self.shiftid_label)
+        shift_layout.addWidget(self.shift_combo, 1)
+        self.shift_combo.setToolTip("Filter workers and results by one or more shifts.")
+
+        tool_filter_layout = QVBoxLayout(self.toolfilter_group)
+        tool_filter_layout.setContentsMargins(10, 10, 10, 8)
+        tool_filter_row = QHBoxLayout()
+        tool_filter_row.addWidget(self.toolsid_label)
+        tool_filter_row.addWidget(self.tool_combo, 1)
+        tool_filter_layout.addLayout(tool_filter_row)
+        tool_filter_layout.addWidget(self.toolsfiltersettings_button)
+        self.tool_combo.setToolTip("Choose the ergonomic tool used to color and summarize workers.")
+
+        worker_filter_layout = QGridLayout(self.workerfilter_group)
+        worker_filter_layout.setContentsMargins(10, 10, 10, 8)
+        worker_filter_layout.setHorizontalSpacing(7)
+        worker_filter_layout.setVerticalSpacing(7)
+        worker_filter_layout.addWidget(self.genderflt_label, 0, 0)
+        worker_filter_layout.addWidget(self.gender_combo, 0, 1, 1, 3)
+        worker_filter_layout.addWidget(self.weightftl_label, 0, 4)
+        worker_filter_layout.addWidget(self.weightfrom_edit, 0, 5)
+        worker_filter_layout.addWidget(self.label_10, 0, 6)
+        worker_filter_layout.addWidget(self.weightto_edit, 0, 7)
+        worker_filter_layout.addWidget(self.ageflt_label, 1, 0)
+        worker_filter_layout.addWidget(self.agefrom_edit, 1, 1)
+        worker_filter_layout.addWidget(self.ageto_label, 1, 2)
+        worker_filter_layout.addWidget(self.ageto_edit, 1, 3)
+        worker_filter_layout.addWidget(self.heightflt_label, 1, 4)
+        worker_filter_layout.addWidget(self.heightfrom_edit, 1, 5)
+        worker_filter_layout.addWidget(self.label_12, 1, 6)
+        worker_filter_layout.addWidget(self.heightto_edit, 1, 7)
+        worker_filter_layout.setColumnStretch(1, 1)
+        worker_filter_layout.setColumnStretch(3, 1)
+        worker_filter_layout.setColumnStretch(5, 1)
+        worker_filter_layout.setColumnStretch(7, 1)
+        self.workerfilter_group.setToolTip("Enable demographic filtering for workers shown on the layout.")
+        self.gender_combo.setToolTip("Filter workers by sex.")
+        for field, tooltip in (
+            (self.agefrom_edit, "Minimum worker age."), (self.ageto_edit, "Maximum worker age."),
+            (self.weightfrom_edit, "Minimum worker weight."), (self.weightto_edit, "Maximum worker weight."),
+            (self.heightfrom_edit, "Minimum worker height."), (self.heightto_edit, "Maximum worker height."),
+        ):
+            field.setToolTip(tooltip)
+
+        other_layout = QGridLayout(self.otheroptionsfilter_group)
+        other_layout.setContentsMargins(10, 10, 10, 8)
+        other_layout.addWidget(self.option1a_option, 0, 0)
+        other_layout.addWidget(self.option1b_option, 0, 1)
+        other_layout.addWidget(self.option1c_radio, 1, 0)
+        other_layout.addWidget(self.option1d_radio, 1, 1)
+        self.otheroptionsfilter_group.setToolTip("Enable additional optional filtering criteria.")
+
+        filter_actions = QWidget(self.filters_group)
+        filter_actions.setObjectName("filterActions")
+        filter_action_layout = QVBoxLayout(filter_actions)
+        filter_action_layout.setContentsMargins(0, 0, 0, 0)
+        filter_action_layout.setSpacing(7)
+        filter_action_layout.addWidget(self.clearfilter_button)
+        filter_action_layout.addWidget(self.applyfilter_button)
+        self.clearfilter_button.setIcon(QIcon(os.path.join(icon_root, "cancel.png")))
+        self.clearfilter_button.setIconSize(QSize(22, 22))
+        self.clearfilter_button.setToolTip("Reset every filter to its default value.")
+        self.applyfilter_button.setIcon(QIcon(os.path.join(icon_root, "search.png")))
+        self.applyfilter_button.setIconSize(QSize(22, 22))
+        self.applyfilter_button.setToolTip("Apply the selected filters to the plant layout and summaries.")
+        for button in (self.toolsfiltersettings_button, self.summarysettings_button):
+            button.setIcon(QIcon(os.path.join(icon_root, "settings.png")))
+            button.setIconSize(QSize(22, 22))
+            button.setToolTip("Open settings for this section.")
+
+        filters_layout = QGridLayout(self.filters_group)
+        filters_layout.setContentsMargins(10, 10, 10, 10)
+        filters_layout.setHorizontalSpacing(9)
+        filters_layout.setVerticalSpacing(8)
+        filters_layout.addWidget(self.plantfilter_group, 0, 0, 1, 3)
+        filters_layout.addWidget(self.shiftfilter_group, 0, 3)
+        filters_layout.addWidget(self.toolfilter_group, 1, 0)
+        filters_layout.addWidget(self.workerfilter_group, 1, 1, 1, 2)
+        filters_layout.addWidget(self.otheroptionsfilter_group, 1, 3)
+        filters_layout.addWidget(filter_actions, 0, 4, 2, 1)
+        filters_layout.setColumnStretch(0, 1)
+        filters_layout.setColumnStretch(1, 2)
+        filters_layout.setColumnStretch(2, 2)
+        filters_layout.setColumnStretch(3, 1)
+        self.filters_group.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed)
+        self.filters_group.setMinimumHeight(208)
+        for group in (
+            self.plantfilter_group, self.shiftfilter_group, self.toolfilter_group,
+            self.workerfilter_group, self.otheroptionsfilter_group,
+        ):
+            group.setMinimumWidth(0)
+            group.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Preferred)
+        for group in (self.shiftfilter_group, self.otheroptionsfilter_group):
+            group.setMinimumWidth(220)
+            group.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        self.otheroptionsfilter_group.setMinimumWidth(240)
+
+        # Vertical action rail. Existing callbacks remain attached to these buttons.
+        tool_actions = (
+            (self.grtool1_button, os.path.join(icon_root, "open.png"), "Open a plant layout image."),
+            (self.grtool2_button, os.path.join(icon_root, "save.png"), "Save the current plant layout."),
+            (self.grtool3_button, os.path.join(legacy_icon_root, "zoomimg.png"), "Zoom in on the plant layout."),
+            (self.grtool4_button, os.path.join(legacy_icon_root, "zoomimg02.png"), "Zoom out of the plant layout."),
+            (self.grtool5_button, os.path.join(legacy_icon_root, "zoomrest01.png"), "Reset the layout to its actual-size view."),
+            (self.grtool7_button, os.path.join(legacy_icon_root, "transparent_icon01.png"), "Cycle the opacity of layout markers."),
+            (self.grtool6_button, os.path.join(legacy_icon_root, "phototake_icon01.png"), "Capture an image of the current layout."),
+            (self.grtool8_button, os.path.join(icon_root, "view.png"), "Open the hierarchical organization visualization."),
+            (self.grtool9_button, os.path.join(icon_root, "export.png"), "Export layout data."),
+        )
+        tools_layout = QVBoxLayout(self.toolsgraphic_group)
+        tools_layout.setContentsMargins(9, 10, 9, 10)
+        tools_layout.setSpacing(7)
+        for button, icon_path, tooltip in tool_actions:
+            button.setFixedSize(46, 46)
+            button.setIconSize(QSize(30, 30))
+            button.setToolTip(tooltip)
+            button.setObjectName("plotToolButton")
+            button.setIcon(QIcon(icon_path))
+            tools_layout.addWidget(button, 0, Qt.AlignHCenter)
+        tools_layout.addStretch(1)
+        self.toolsgraphic_group.setFixedWidth(72)
+
+        self.plantlayout_image.setMinimumSize(520, 340)
+        self.plantlayout_image.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
+        self.plantlayout_image.setRenderHints(
+            QPainter.Antialiasing | QPainter.SmoothPixmapTransform
+        )
+        self.plantlayout_image.setToolTip(
+            "Plant layout canvas. Select workers and use the tool rail to navigate or export the view."
+        )
+        canvas_panel = QWidget()
+        canvas_panel.setObjectName("plotCanvasPanel")
+        canvas_layout = QHBoxLayout(canvas_panel)
+        canvas_layout.setContentsMargins(0, 0, 0, 0)
+        canvas_layout.setSpacing(8)
+        canvas_layout.addWidget(self.toolsgraphic_group)
+        canvas_layout.addWidget(self.plantlayout_image, 1)
+
+        # Summary chart and metrics.
+        summary_layout = QVBoxLayout(self.summary_group)
+        summary_layout.setContentsMargins(10, 12, 10, 10)
+        summary_layout.setSpacing(8)
+        self.summaryplot_canvas.setMinimumHeight(170)
+        self.summaryplot_canvas.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
+        self.summaryplot_canvas.setToolTip("Click the chart to open a larger interactive view.")
+        self.summaryplot_combo.setToolTip("Choose the summary visualization shown above.")
+        self.summarytitle_label.hide()
+        summary_layout.addWidget(self.summaryplot_canvas, 2)
+        summary_layout.addSpacing(4)
+        summary_layout.addWidget(self.summaryplot_combo)
+        summary_metrics = QGridLayout()
+        summary_metrics.setContentsMargins(0, 0, 0, 0)
+        summary_metrics.setHorizontalSpacing(10)
+        summary_metrics.setVerticalSpacing(4)
+        summary_metrics.addWidget(self.summaryresult1_label, 0, 0)
+        summary_metrics.addWidget(self.summaryresult2_label, 0, 1)
+        summary_metrics.addWidget(self.summaryresult3_label, 1, 0)
+        summary_metrics.addWidget(self.summaryresult4_label, 1, 1)
+        summary_metrics.addWidget(self.summaryresult5_label, 2, 0, 1, 2)
+        summary_metrics.addWidget(self.summaryresult6_label, 3, 0, 1, 2)
+        summary_metrics.addWidget(self.summaryresult7_label, 4, 0, 1, 2)
+        for label in (
+            self.summaryresult1_label, self.summaryresult2_label, self.summaryresult3_label,
+            self.summaryresult4_label, self.summaryresult5_label, self.summaryresult6_label,
+            self.summaryresult7_label,
+        ):
+            label.setFixedHeight(20)
+        summary_layout.addLayout(summary_metrics)
+        summary_layout.addStretch(1)
+        summary_layout.addWidget(self.summarysettings_button)
+        self.summary_group.setMinimumWidth(330)
+        self.summary_group.setMaximumWidth(420)
+        self.summary_group.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Ignored
+        )
+
+        # Worker selector, properties, navigation, and save controls.
+        worker_layout = QVBoxLayout(self.workerinfo_group)
+        worker_layout.setContentsMargins(10, 12, 10, 10)
+        worker_layout.setSpacing(8)
+        worker_selector = QHBoxLayout()
+        worker_selector.setSpacing(7)
+        worker_selector.addWidget(self.workeridinfolbl_label)
+        worker_selector.addWidget(self.workerComboBox, 1)
+        self.workerComboBox.setToolTip("Select a worker assignment to inspect or edit on the layout.")
+        for button, icon_name, tooltip in (
+            (self.orderInfo_button, "alphabetorder.png", "Change worker ordering."),
+            (self.searchInfo_button, "search.png", "Search for a worker."),
+        ):
+            button.setFixedSize(36, 36)
+            button.setIcon(QIcon(os.path.join(icon_root, icon_name)))
+            button.setIconSize(QSize(24, 24))
+            button.setToolTip(tooltip)
+            worker_selector.addWidget(button)
+        worker_selector.addSpacing(8)
+        worker_selector.addWidget(self.xview_label)
+        worker_selector.addWidget(self.xview_input)
+        worker_selector.addWidget(self.yview_label)
+        worker_selector.addWidget(self.yview_input)
+        self.xview_input.setFixedWidth(58)
+        self.yview_input.setFixedWidth(58)
+        self.xview_input.setToolTip("Current horizontal pointer coordinate on the layout.")
+        self.yview_input.setToolTip("Current vertical pointer coordinate on the layout.")
+        worker_layout.addLayout(worker_selector)
+
+        worker_editor = QHBoxLayout()
+        worker_editor.setSpacing(10)
+        self.gridLayoutWidget.setSizePolicy(
+            QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Preferred
+        )
+        worker_editor.addWidget(self.gridLayoutWidget, 1)
+        bulk_actions = QVBoxLayout()
+        scale_all_row = QHBoxLayout()
+        scale_all_row.addWidget(self.scaleallinfolbl_label)
+        scale_all_row.addWidget(self.scaleallinfo_input)
+        self.scaleallinfo_input.setFixedWidth(70)
+        bulk_actions.addLayout(scale_all_row)
+        bulk_actions.addStretch(1)
+        self.saveallinfo_button.setIcon(QIcon(os.path.join(icon_root, "save.png")))
+        self.saveallinfo_button.setIconSize(QSize(22, 22))
+        self.saveallinfo_button.setToolTip("Save all worker positions and display settings.")
+        bulk_actions.addWidget(self.saveallinfo_button)
+        worker_editor.addLayout(bulk_actions)
+        worker_layout.addLayout(worker_editor)
+
+        for button, icon_name, tooltip in (
+            (self.firstinfo_button, "first.png", "Select the first worker."),
+            (self.previousinfo_button, "previous.png", "Select the previous worker."),
+            (self.nextinfo_button, "next.png", "Select the next worker."),
+            (self.lastinfo_button, "last.png", "Select the last worker."),
+        ):
+            button.setText("")
+            button.setIcon(QIcon(os.path.join(icon_root, icon_name)))
+            button.setIconSize(QSize(20, 20))
+            button.setToolTip(tooltip)
+            button.setMinimumWidth(38)
+        self.saveinfo_button.setIcon(QIcon(os.path.join(icon_root, "save.png")))
+        self.saveinfo_button.setIconSize(QSize(20, 20))
+        self.saveinfo_button.setToolTip("Save the selected worker's layout settings.")
+        self.visibleinfo_check.setToolTip("Show or hide the selected worker marker.")
+        self.enableinfo_check.setToolTip("Include or exclude the selected worker from layout summaries.")
+        self.lockinfo_check.setToolTip("Prevent the selected worker marker from being moved.")
+        self.xinfo_input.setToolTip("Horizontal position of the selected worker marker.")
+        self.yinfo_input.setToolTip("Vertical position of the selected worker marker.")
+        self.scaleinfo_input.setToolTip("Display scale of the selected worker marker.")
+        self.scaleallinfo_input.setToolTip("Scale applied when saving all worker markers.")
+        self.workerinfo_group.setMinimumHeight(225)
+        self.workerinfo_group.setMinimumWidth(0)
+        self.workerinfo_group.setSizePolicy(
+            QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed
+        )
+
+        # Outcome/highlight region.
+        outcome_layout = QHBoxLayout(self.outcome_group)
+        outcome_layout.setContentsMargins(10, 12, 10, 10)
+        outcome_layout.setSpacing(10)
+        self.outcome_image.setFixedSize(100, 108)
+        outcome_layout.addWidget(self.outcome_image)
+        outcome_text = QVBoxLayout()
+        outcome_text.addWidget(self.outcometitle_label)
+        self.outcomeresult1_label.setWordWrap(True)
+        outcome_text.addWidget(self.outcomeresult1_label, 1)
+        self.outcomemore_button.setIcon(QIcon(os.path.join(icon_root, "view.png")))
+        self.outcomemore_button.setIconSize(QSize(22, 22))
+        self.outcomemore_button.setToolTip("View the complete set of layout highlights and warnings.")
+        outcome_text.addWidget(self.outcomemore_button)
+        outcome_layout.addLayout(outcome_text, 1)
+        self.outcome_group.setMinimumWidth(300)
+
+        middle_splitter = QtWidgets.QSplitter(Qt.Horizontal)
+        middle_splitter.setObjectName("plotMainSplitter")
+        middle_splitter.addWidget(canvas_panel)
+        middle_splitter.addWidget(self.summary_group)
+        middle_splitter.setStretchFactor(0, 4)
+        middle_splitter.setStretchFactor(1, 1)
+        middle_splitter.setSizes([1040, 330])
+
+        lower_splitter = QtWidgets.QSplitter(Qt.Horizontal)
+        lower_splitter.setObjectName("plotLowerSplitter")
+        lower_splitter.addWidget(self.workerinfo_group)
+        lower_splitter.addWidget(self.outcome_group)
+        lower_splitter.setChildrenCollapsible(False)
+        lower_splitter.setStretchFactor(0, 4)
+        lower_splitter.setStretchFactor(1, 1)
+        lower_splitter.setSizes([1040, 330])
+
+        root_layout = QVBoxLayout(self)
+        root_layout.setContentsMargins(10, 8, 10, 8)
+        root_layout.setSpacing(8)
+        root_layout.addWidget(self.filters_group)
+        root_layout.addWidget(middle_splitter, 1)
+        root_layout.addWidget(lower_splitter)
+        root_layout.addWidget(self.statusBar)
+
+        self.applyPlotStyle()
+
+    def applyPlotStyle(self):
+        self.setObjectName("plotDialog")
+        self.setStyleSheet("""
+            QDialog#plotDialog {
+                background: #F4F7F9;
+                color: #1B2933;
+                font-family: "Segoe UI", sans-serif;
+                font-size: 12px;
+            }
+            QGroupBox {
+                background: #FFFFFF;
+                border: 1px solid #D5DEE5;
+                border-radius: 6px;
+                margin-top: 10px;
+                padding-top: 6px;
+                color: #0B326C;
+                font-weight: 700;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 4px;
+            }
+            QGroupBox::indicator {
+                width: 15px;
+                height: 15px;
+            }
+            QGroupBox QLabel, QGroupBox QCheckBox, QGroupBox QRadioButton {
+                color: #1B2933;
+                font-weight: 400;
+            }
+            QLabel#summarytitle_label, QLabel#outcometitle_label {
+                color: #0B326C;
+                font-weight: 700;
+            }
+            QWidget#plotCanvasPanel { background: #FFFFFF; }
+            QGraphicsView, QComboBox, QLineEdit {
+                background: #FFFFFF;
+                color: #1B2933;
+                border: 1px solid #BCC9D3;
+                border-radius: 5px;
+                min-height: 30px;
+                selection-background-color: #087E91;
+                selection-color: #FFFFFF;
+            }
+            QComboBox, QLineEdit { padding: 0 8px; }
+            QComboBox:focus, QLineEdit:focus { border: 2px solid #08A9B5; }
+            QPushButton {
+                min-height: 34px;
+                background: #FFFFFF;
+                color: #0B326C;
+                border: 1px solid #9EB0BE;
+                border-radius: 5px;
+                padding: 0 12px;
+                font-weight: 600;
+            }
+            QPushButton:hover { background: #EAF7F8; border-color: #08A9B5; }
+            QPushButton:pressed { background: #D6ECEF; }
+            QPushButton#applyfilter_button {
+                background: #087E91;
+                color: #FFFFFF;
+                border-color: #087E91;
+            }
+            QPushButton#plotToolButton {
+                min-width: 46px;
+                max-width: 46px;
+                min-height: 46px;
+                max-height: 46px;
+                padding: 0;
+            }
+            QCheckBox, QRadioButton { color: #304652; spacing: 6px; }
+            QCheckBox:disabled, QRadioButton:disabled, QLabel:disabled { color: #98A7B2; }
+            QSplitter::handle { background: #E4EBEF; }
+            QSplitter::handle:horizontal { width: 5px; }
+            QStatusBar { background: #F4F7F9; color: #506273; border: 0; }
+            QToolTip { background: #1B2933; color: white; border: 1px solid #0B326C; padding: 6px; }
+        """)
         
         
 
@@ -1186,11 +1599,14 @@ class PlantLayoutWindow(QDialog):
     
     def setWorkerOrder(self):
         #print("Is Numbered Order:", self.isNumberOrder)
+        icon_root = os.path.normpath(
+            os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons")
+        )
         if not self.isNumberOrder:
-            self.orderInfo_button.setIcon(QIcon("../images/numberorder01.png"))
+            self.orderInfo_button.setIcon(QIcon(os.path.join(icon_root, "numberorder.png")))
             self.loadWorkers(1)
         else:
-            self.orderInfo_button.setIcon(QIcon("../images/alphaorder01.png"))
+            self.orderInfo_button.setIcon(QIcon(os.path.join(icon_root, "alphabetorder.png")))
             self.loadWorkers(0)
     
     

@@ -33,6 +33,8 @@ parent.resize(1550, 1015)
 parent.show()
 app.processEvents()
 parent.grab().save("/tmp/main_damage_over_two.png")
+assert parent.toolbar.iconSize().width() == 36
+assert parent.toolbar.iconSize().height() == 36
 brand_logo = parent.findChild(QLabel, "brandLogo")
 assert brand_logo is not None
 assert brand_logo.pixmap() is not None and not brand_logo.pixmap().isNull()
