@@ -37,6 +37,9 @@ brand_logo = parent.findChild(QLabel, "brandLogo")
 assert brand_logo is not None
 assert brand_logo.pixmap() is not None and not brand_logo.pixmap().isNull()
 assert brand_logo.width() >= 80 and brand_logo.height() >= 80
+workplace_separators = parent.findChildren(QLabel, "contextArrow")
+assert len(workplace_separators) == 4
+assert all(label.pixmap() is not None and not label.pixmap().isNull() for label in workplace_separators)
 
 
 class CameraDirectorProbe:

@@ -4377,6 +4377,7 @@ class ErgoTools(QtWidgets.QMainWindow):
             self.results_sidebar.setVisible(event.size().width() >= 1450)
 
     def setupTabsTopControls(self):
+        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
         self.location_context_frame = QFrame()
         self.location_context_frame.setObjectName("contextBar")
         self.tabstop_controls_layout = QVBoxLayout(self.location_context_frame)
@@ -4437,10 +4438,12 @@ class ErgoTools(QtWidgets.QMainWindow):
             context_details_layout.addWidget(label)
             context_details_layout.addWidget(combo, 1)
             if index < len(combos) - 1:
-                arrow = QLabel(">")
+                arrow = QLabel()
                 arrow.setObjectName("contextArrow")
-                arrow.setFixedWidth(10)
+                arrow.setPixmap(QIcon(os.path.join(icon_root, "next.png")).pixmap(QSize(14, 14)))
+                arrow.setFixedSize(16, 16)
                 arrow.setAlignment(Qt.AlignCenter)
+                arrow.setToolTip("Next workplace level")
                 context_details_layout.addWidget(arrow)
         for combo, value in (
             (self.plant_combo, "Default"), (self.section_combo, "Default"),
@@ -4454,7 +4457,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         manage_button = QPushButton("Organization")
         manage_button.setObjectName("primaryOutlineButton")
         manage_button.setFixedWidth(210)
-        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
         manage_button.setIcon(QIcon(os.path.join(icon_root, "plant.png")))
         manage_button.setIconSize(QSize(26, 26))
         manage_button.setToolTip("Manage plants, sections, lines, stations, and shifts.")
@@ -4464,11 +4466,31 @@ class ErgoTools(QtWidgets.QMainWindow):
         association_title = QLabel("Assessment workplace")
         association_title.setObjectName("contextLabel")
         association_title.setToolTip("Workplace and shift associated with the active tool assessment.")
-        self.context_summary_label = QLabel()
-        self.context_summary_label.setObjectName("contextSummary")
-        self.context_summary_label.setToolTip("Plant, section, line, station, and shift for the active assessment.")
+        self.context_summary_widget = QWidget()
+        self.context_summary_widget.setToolTip(
+            "Plant, section, line, station, and shift for the active assessment."
+        )
+        context_summary_layout = QHBoxLayout(self.context_summary_widget)
+        context_summary_layout.setContentsMargins(0, 0, 0, 0)
+        context_summary_layout.setSpacing(5)
+        self.context_summary_labels = []
+        for index, level_name in enumerate(("Plant", "Section", "Line", "Station", "Shift")):
+            value_label = QLabel()
+            value_label.setObjectName("contextSummary")
+            value_label.setToolTip(f"{level_name} associated with the active assessment.")
+            self.context_summary_labels.append(value_label)
+            context_summary_layout.addWidget(value_label)
+            if index < 4:
+                separator = QLabel()
+                separator.setObjectName("contextArrow")
+                separator.setPixmap(QIcon(os.path.join(icon_root, "next.png")).pixmap(QSize(14, 14)))
+                separator.setFixedSize(16, 16)
+                separator.setAlignment(Qt.AlignCenter)
+                separator.setToolTip("Next workplace level")
+                context_summary_layout.addWidget(separator)
+        context_summary_layout.addStretch(1)
         association_row.addWidget(association_title)
-        association_row.addWidget(self.context_summary_label, 1)
+        association_row.addWidget(self.context_summary_widget, 1)
         choose_button = QPushButton("Change workplace")
         choose_button.setObjectName("primaryOutlineButton")
         choose_button.setIcon(QIcon(os.path.join(icon_root, "station.png")))
@@ -4508,15 +4530,18 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.setFixedSize(self.width(), target_height)
 
     def updateContextSummary(self, *args):
-        if not hasattr(self, "context_summary_label"):
+        if not hasattr(self, "context_summary_labels"):
             return
         values = [combo.currentText() or fallback for combo, fallback in (
             (self.plant_combo, "Default"), (self.section_combo, "Default"),
             (self.line_combo, "Default"), (self.station_combo, "Default"), (self.shift_combo, "1"),
         )]
-        self.context_summary_label.setText(
-            "Plant: {}   >   Section: {}   >   Line: {}   >   Station: {}   >   Shift: {}".format(*values)
-        )
+        for label, level_name, value in zip(
+            self.context_summary_labels,
+            ("Plant", "Section", "Line", "Station", "Shift"),
+            values,
+        ):
+            label.setText(f"{level_name}: {value}")
 
     def openAssessmentWorkplaceDialog(self):
         dialog = AssessmentWorkplaceDialog(self)
