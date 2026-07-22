@@ -5,6 +5,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 sys.path.insert(0, os.path.abspath("src"))
 
+from PyQt5.QtCore import QDate, QPoint, Qt
+from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication, QLabel, QMessageBox
 
 from main import ErgoTools
@@ -26,6 +28,34 @@ parent.refreshAssessmentSummary()
 assert parent.damage_value_label.text() == ">2.0"
 assert parent.damage_progress.target_value == 2.0
 assert parent.risk_severity_label.text().endswith("High")
+assert "background: #" in parent.damage_value_label.styleSheet()
+parent.resize(1550, 1015)
+parent.show()
+app.processEvents()
+parent.grab().save("/tmp/main_damage_over_two.png")
+
+
+class CameraDirectorProbe:
+    def __init__(self):
+        self.active_tool = 0
+        self.animated_tools = []
+
+    def animateTo(self, index):
+        self.animated_tools.append(index)
+        self.active_tool = index
+
+    def applyFullBody(self):
+        pass
+
+
+parent.camera_director = CameraDirectorProbe()
+parent.vtk_enabled = True
+parent.isAnimationAllowed = True
+parent.onTabChange(0)
+assert parent.camera_director.animated_tools == []
+parent.onTabChange(1)
+assert parent.camera_director.animated_tools == [1]
+parent.vtk_enabled = False
 
 worker = WorkerWindow(parent)
 worker.resize(1400, 800)
@@ -40,6 +70,17 @@ for removed_label in ("Address", "City", "Country", "State/Region", "Postal Code
 assert any(label in form_labels for label in ("Height (in)", "Height (cm)"))
 assert any(label in form_labels for label in ("Weight (lb)", "Weight (kg)"))
 assert "Date of hiring" in form_labels
+assert "Date of birth" in form_labels
+assert worker.dob_input.calendarPopup()
+worker.dob_input.setDate(QDate.currentDate().addYears(-20).addDays(1))
+assert worker.age_label.text() == "19 years"
+QTest.mouseClick(
+    worker.dob_input,
+    Qt.LeftButton,
+    pos=QPoint(worker.dob_input.width() - 10, worker.dob_input.height() // 2),
+)
+app.processEvents()
+worker.dob_input.calendarWidget().grab().save("/tmp/worker_birth_calendar.png")
 
 organization = OrganizationWindow(parent)
 organization.resize(1180, 780)

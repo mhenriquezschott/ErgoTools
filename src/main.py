@@ -4010,12 +4010,16 @@ class ErgoTools(QtWidgets.QMainWindow):
         damage_color = QColor(summary["color"])
         if not damage_color.isValid():
             damage_color = QColor("#F97316")
-        readable_damage_color = damage_color.darker(190)
+        red = damage_color.redF()
+        green = damage_color.greenF()
+        blue = damage_color.blueF()
+        luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
+        readable_damage_color = QColor("#102A43" if luminance > 0.58 else "#FFFFFF")
         self.damage_value_label.setText(">2.0" if damage > 2.0 else f"{damage:.4f}")
         self.damage_value_label.setStyleSheet(
-            f"color: {readable_damage_color.name()}; background: rgba({damage_color.red()}, {damage_color.green()}, "
-            f"{damage_color.blue()}, 38); border-left: 5px solid {damage_color.name()}; "
-            "border-radius: 4px; padding: 7px 9px; font-size: 20px; font-weight: 700;"
+            f"color: {readable_damage_color.name()}; background: {damage_color.name()}; "
+            f"border: 1px solid {damage_color.darker(115).name()}; "
+            "border-radius: 4px; padding: 7px 10px; font-size: 20px; font-weight: 700;"
         )
         self.damage_progress.setValue(damage, damage_color.name())
         self.styleToolResultSummary(summary, damage_color)
@@ -9014,7 +9018,8 @@ class ErgoTools(QtWidgets.QMainWindow):
 
         if self.vtk_enabled and hasattr(self, "camera_director"):
             if self.isAnimationAllowed:
-                self.camera_director.animateTo(index)
+                if self.camera_director.active_tool != index:
+                    self.camera_director.animateTo(index)
             else:
                 self.camera_director.applyFullBody()
         

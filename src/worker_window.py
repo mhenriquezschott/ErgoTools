@@ -705,10 +705,16 @@ class WorkerWindow(QDialog):
         self.year_of_birth_input.setValue(QDate.currentDate().year())
         self.year_of_birth_input.setToolTip("Worker's year of birth. Age is calculated automatically.")
         self.year_of_birth_input.valueChanged.connect(self.yearOfBirthChanged)
+        self.year_of_birth_input.hide()
 
         self.dob_input = QDateEdit()
+        self.dob_input.setCalendarPopup(True)
+        self.dob_input.setDisplayFormat("dd MMM yyyy")
+        self.dob_input.setMinimumDate(QDate(1900, 1, 1))
+        self.dob_input.setMaximumDate(QDate.currentDate())
         self.dob_input.setDate(QDate.currentDate())
-        self.dob_input.hide()
+        self.dob_input.setToolTip("Required. Select the worker's complete date of birth. Age is calculated automatically.")
+        self.dob_input.dateChanged.connect(self.dateOfBirthChanged)
 
         self.age_label = QLabel("0 years")
         self.age_label.setObjectName("calculatedValue")
@@ -723,7 +729,7 @@ class WorkerWindow(QDialog):
             (0, 2, "Sex", self.gender_combo),
             (1, 0, "First name", self.first_name_input),
             (1, 2, "Last name", self.last_name_input),
-            (2, 0, "Year of birth", self.year_of_birth_input),
+            (2, 0, "Date of birth", self.dob_input),
             (2, 2, "Calculated age", self.age_label),
         )
         for row, column, label_text, field in required_fields:
@@ -793,6 +799,22 @@ class WorkerWindow(QDialog):
         self.date_of_hiring_input.setMinimumDate(QDate(1950, 1, 1))
         self.date_of_hiring_input.setMaximumDate(QDate.currentDate())
         self.date_of_hiring_input.setToolTip("Optional employment start date.")
+
+        calendar_icon_root = os.path.normpath(
+            os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons")
+        )
+        for date_edit in (self.dob_input, self.date_of_hiring_input):
+            calendar = date_edit.calendarWidget()
+            previous_button = calendar.findChild(QToolButton, "qt_calendar_prevmonth")
+            next_button = calendar.findChild(QToolButton, "qt_calendar_nextmonth")
+            if previous_button:
+                previous_button.setIcon(QIcon(os.path.join(calendar_icon_root, "previous.png")))
+                previous_button.setIconSize(QtCore.QSize(18, 18))
+                previous_button.setToolTip("Previous month")
+            if next_button:
+                next_button.setIcon(QIcon(os.path.join(calendar_icon_root, "next.png")))
+                next_button.setIconSize(QtCore.QSize(18, 18))
+                next_button.setToolTip("Next month")
 
         metric_units = getattr(self.parent(), "selectedMeasurementSystem", "Imperial") == "Metric"
         height_label = "Height (cm)" if metric_units else "Height (in)"
@@ -887,6 +909,29 @@ class WorkerWindow(QDialog):
             }
             QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QSpinBox:focus {
                 border: 2px solid #08A9B5;
+            }
+            QCalendarWidget QWidget#qt_calendar_navigationbar {
+                background: #E8F3F6;
+                border-bottom: 1px solid #C6D5DD;
+            }
+            QCalendarWidget QToolButton {
+                color: #0B326C;
+                background: transparent;
+                border: 0;
+                border-radius: 4px;
+                padding: 5px 8px;
+                font-weight: 600;
+            }
+            QCalendarWidget QToolButton:hover {
+                background: #D6ECEF;
+            }
+            QCalendarWidget QAbstractItemView:enabled {
+                background: #FFFFFF;
+                alternate-background-color: #F4F7F9;
+                color: #1B2933;
+                selection-background-color: #087E91;
+                selection-color: #FFFFFF;
+                outline: 0;
             }
             QTableWidget {
                 background: #FFFFFF;
@@ -1060,6 +1105,12 @@ class WorkerWindow(QDialog):
         self.dob_input.blockSignals(True)
         self.dob_input.setDate(QDate(year, current_date.month(), day))
         self.dob_input.blockSignals(False)
+        self.calculateAge()
+
+    def dateOfBirthChanged(self, date):
+        self.year_of_birth_input.blockSignals(True)
+        self.year_of_birth_input.setValue(date.year())
+        self.year_of_birth_input.blockSignals(False)
         self.calculateAge()
 
     def filterWorkerTable(self, text):
@@ -1497,7 +1548,12 @@ class WorkerWindow(QDialog):
     
     
     def calculateAge(self):
-        age = max(0, QDate.currentDate().year() - self.year_of_birth_input.value())
+        today = QDate.currentDate()
+        birth_date = self.dob_input.date()
+        age = today.year() - birth_date.year()
+        if (today.month(), today.day()) < (birth_date.month(), birth_date.day()):
+            age -= 1
+        age = max(0, age)
         self.age_label.setText(f"{age} years")
 
     # Function to populate states if "United States" is selected
@@ -2343,7 +2399,7 @@ class WorkerWindow(QDialog):
         worker_id = self.worker_id_combo.currentText().strip()
         if not worker_id:
             self.setNotification(
-                "Minimum information must include Worker ID, first name, last name, year of birth, and sex.",
+                "Minimum information must include Worker ID, first name, last name, date of birth, and sex.",
                 "error",
             )
             self.worker_id_combo.setFocus()
@@ -2376,7 +2432,7 @@ class WorkerWindow(QDialog):
     
         # Extract Date of Birth
         dob = self.dob_input.date()
-        year_of_birth = self.year_of_birth_input.value()
+        year_of_birth = dob.year()
         month_of_birth = dob.month()
         day_of_birth = dob.day()
     
