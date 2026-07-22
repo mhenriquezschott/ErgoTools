@@ -4794,6 +4794,7 @@ class ErgoTools(QtWidgets.QMainWindow):
 
         header = QFrame()
         header.setObjectName("brandHeader")
+        header.setFixedHeight(125)
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(20, 13, 10, 13)
         brand_identity = QHBoxLayout()
@@ -4823,7 +4824,8 @@ class ErgoTools(QtWidgets.QMainWindow):
 
         self.toolbar = QToolBar()
         self.toolbar.setObjectName("mainToolbar")
-        self.toolbar.setIconSize(QSize(36, 36))
+        self.toolbar.setFixedHeight(99)
+        self.toolbar.setIconSize(QSize(42, 42))
         self.toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
         toolbar_actions = (
@@ -4844,6 +4846,7 @@ class ErgoTools(QtWidgets.QMainWindow):
             }[text])
             action.triggered.connect(callback)
             self.toolbar.addAction(action)
+            self.toolbar.widgetForAction(action).setFixedHeight(83)
             if action_index in (2, 3, 4, 5):
                 self.toolbar.addSeparator()
         header_layout.addWidget(self.toolbar)

@@ -827,10 +827,6 @@ class PlantLayoutWindow(QDialog):
         icon_root = os.path.normpath(
             os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons")
         )
-        legacy_icon_root = os.path.normpath(
-            os.path.join(os.path.dirname(__file__), "..", "images")
-        )
-
         # Primary workplace filters.
         plant_layout = QHBoxLayout(self.plantfilter_group)
         plant_layout.setContentsMargins(10, 10, 10, 8)
@@ -910,14 +906,17 @@ class PlantLayoutWindow(QDialog):
         filter_actions.setObjectName("filterActions")
         filter_action_layout = QVBoxLayout(filter_actions)
         filter_action_layout.setContentsMargins(0, 0, 0, 0)
-        filter_action_layout.setSpacing(7)
+        filter_action_layout.setSpacing(10)
         filter_action_layout.addWidget(self.clearfilter_button)
         filter_action_layout.addWidget(self.applyfilter_button)
-        self.clearfilter_button.setIcon(QIcon(os.path.join(icon_root, "cancel.png")))
-        self.clearfilter_button.setIconSize(QSize(22, 22))
+        filter_actions.setFixedWidth(164)
+        self.clearfilter_button.setIcon(QIcon(os.path.join(icon_root, "filterreset.png")))
+        self.clearfilter_button.setIconSize(QSize(32, 32))
+        self.clearfilter_button.setFixedHeight(58)
         self.clearfilter_button.setToolTip("Reset every filter to its default value.")
-        self.applyfilter_button.setIcon(QIcon(os.path.join(icon_root, "search.png")))
-        self.applyfilter_button.setIconSize(QSize(22, 22))
+        self.applyfilter_button.setIcon(QIcon(os.path.join(icon_root, "filterapply.png")))
+        self.applyfilter_button.setIconSize(QSize(32, 32))
+        self.applyfilter_button.setFixedHeight(58)
         self.applyfilter_button.setToolTip("Apply the selected filters to the plant layout and summaries.")
         for button in (self.toolsfiltersettings_button, self.summarysettings_button):
             button.setIcon(QIcon(os.path.join(icon_root, "settings.png")))
@@ -955,26 +954,26 @@ class PlantLayoutWindow(QDialog):
         tool_actions = (
             (self.grtool1_button, os.path.join(icon_root, "open.png"), "Open a plant layout image."),
             (self.grtool2_button, os.path.join(icon_root, "save.png"), "Save the current plant layout."),
-            (self.grtool3_button, os.path.join(legacy_icon_root, "zoomimg.png"), "Zoom in on the plant layout."),
-            (self.grtool4_button, os.path.join(legacy_icon_root, "zoomimg02.png"), "Zoom out of the plant layout."),
-            (self.grtool5_button, os.path.join(legacy_icon_root, "zoomrest01.png"), "Reset the layout to its actual-size view."),
-            (self.grtool7_button, os.path.join(legacy_icon_root, "transparent_icon01.png"), "Cycle the opacity of layout markers."),
-            (self.grtool6_button, os.path.join(legacy_icon_root, "phototake_icon01.png"), "Capture an image of the current layout."),
+            (self.grtool3_button, os.path.join(icon_root, "zoomplus.png"), "Zoom in on the plant layout."),
+            (self.grtool4_button, os.path.join(icon_root, "zoomminus.png"), "Zoom out of the plant layout."),
+            (self.grtool5_button, os.path.join(icon_root, "actualsize.png"), "Reset the layout to its actual-size view."),
+            (self.grtool7_button, os.path.join(icon_root, "opacitytransparency.png"), "Cycle the opacity of layout markers."),
+            (self.grtool6_button, os.path.join(icon_root, "captureimage.png"), "Capture an image of the current layout."),
             (self.grtool8_button, os.path.join(icon_root, "view.png"), "Open the hierarchical organization visualization."),
             (self.grtool9_button, os.path.join(icon_root, "export.png"), "Export layout data."),
         )
         tools_layout = QVBoxLayout(self.toolsgraphic_group)
-        tools_layout.setContentsMargins(9, 10, 9, 10)
-        tools_layout.setSpacing(7)
+        tools_layout.setContentsMargins(10, 10, 10, 10)
+        tools_layout.setSpacing(0)
         for button, icon_path, tooltip in tool_actions:
-            button.setFixedSize(46, 46)
-            button.setIconSize(QSize(30, 30))
+            button.setFixedSize(54, 54)
+            button.setIconSize(QSize(38, 38))
             button.setToolTip(tooltip)
             button.setObjectName("plotToolButton")
             button.setIcon(QIcon(icon_path))
             tools_layout.addWidget(button, 0, Qt.AlignHCenter)
-        tools_layout.addStretch(1)
-        self.toolsgraphic_group.setFixedWidth(72)
+            tools_layout.addStretch(1)
+        self.toolsgraphic_group.setFixedWidth(78)
 
         self.plantlayout_image.setMinimumSize(520, 340)
         self.plantlayout_image.setSizePolicy(
@@ -1218,10 +1217,10 @@ class PlantLayoutWindow(QDialog):
                 border-color: #087E91;
             }
             QPushButton#plotToolButton {
-                min-width: 46px;
-                max-width: 46px;
-                min-height: 46px;
-                max-height: 46px;
+                min-width: 54px;
+                max-width: 54px;
+                min-height: 54px;
+                max-height: 54px;
                 padding: 0;
             }
             QCheckBox, QRadioButton { color: #304652; spacing: 6px; }
