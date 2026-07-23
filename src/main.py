@@ -2570,6 +2570,8 @@ class ErgoTools(QtWidgets.QMainWindow):
         tool_tab_map = {"LiFFT": 0, "DUET": 1, "ST": 2}
         tab_index = tool_tab_map.get(self.editToolID, 0)  # Default to tab 0 if not found
         self.tabWidget.setCurrentIndex(tab_index)
+        if self.vtk_enabled and hasattr(self, "camera_director"):
+            QTimer.singleShot(0, lambda index=tab_index: self.onToolTabClicked(index))
     
         # **Block signals for all combo boxes before updating values**
         self.workerComboBox.blockSignals(True)

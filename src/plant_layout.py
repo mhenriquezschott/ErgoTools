@@ -291,7 +291,7 @@ class PlotWorkerMarkerPreview(QWidget):
         super().__init__(parent)
         self.gender = ""
         self.color = QColor("#19B83F")
-        self.setFixedSize(78, 78)
+        self.setFixedSize(94, 94)
         self.setToolTip("Marker shape identifies sex; color identifies the selected assessment risk.")
 
     def setWorker(self, gender, color):
@@ -306,7 +306,7 @@ class PlotWorkerMarkerPreview(QWidget):
         painter.setPen(QPen(QColor("#FFFFFF"), 2))
         painter.setBrush(self.color)
         center = QPointF(self.width() / 2.0, self.height() / 2.0 + 2.0)
-        size = 25.0
+        size = 30.0
         if self.gender == "male":
             painter.drawPolygon(QPolygonF([
                 QPointF(center.x(), center.y() - size),
@@ -1469,9 +1469,9 @@ class PlantLayoutWindow(QDialog):
             if label in scope_icon_names:
                 entity_icon = QLabel(block)
                 entity_icon.setPixmap(
-                    QIcon(os.path.join(icon_root, scope_icon_names[label])).pixmap(QSize(18, 18))
+                    QIcon(os.path.join(icon_root, scope_icon_names[label])).pixmap(QSize(24, 24))
                 )
-                entity_icon.setFixedSize(19, 19)
+                entity_icon.setFixedSize(25, 25)
                 entity_icon.setToolTip(tooltip)
                 heading_layout.addWidget(entity_icon)
             heading_layout.addWidget(type_label)
@@ -1484,11 +1484,12 @@ class PlantLayoutWindow(QDialog):
             workplace_path_layout.addWidget(block)
             self.workplace_scope_values[label] = value_label
         workplace_path_layout.addStretch(1)
-        self.workplace_button = QPushButton("Choose workplace")
+        self.workplace_button = QPushButton("Choose\nWorkplace")
         self.workplace_button.setIcon(QIcon(os.path.join(icon_root, "station.png")))
         self.workplace_button.setIconSize(QSize(24, 24))
         self.workplace_button.setToolTip("Choose a workplace scope and shift from the organization hierarchy.")
         self.workplace_button.clicked.connect(self.openWorkplaceFilter)
+        self.workplace_button.setFixedWidth(150)
         plant_layout.addWidget(workplace_icon)
         plant_layout.addWidget(workplace_path, 1)
         plant_layout.addWidget(self.workplace_button)
@@ -1541,6 +1542,7 @@ class PlantLayoutWindow(QDialog):
         tool_filter_layout.addLayout(tool_button_row)
         self.toolsfiltersettings_button.hide()
         self.tool_combo.currentTextChanged.connect(self.syncPlotToolButtons)
+        self.applied_plot_tool = self.tool_combo.currentText().strip() or "LiFFT"
         self.syncPlotToolButtons(self.tool_combo.currentText())
 
         # Replace the legacy line edits with mouse-friendly numeric steppers.
@@ -1772,14 +1774,17 @@ class PlantLayoutWindow(QDialog):
         )
         self.plot_description_label.setObjectName("plotDescription")
         self.plot_description_label.setWordWrap(True)
-        summary_layout.addWidget(self.plot_description_label)
+        self.plot_description_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.plot_description_label.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding
+        )
+        summary_layout.addWidget(self.plot_description_label, 1)
         for label in (
             self.summaryresult1_label, self.summaryresult2_label, self.summaryresult3_label,
             self.summaryresult4_label, self.summaryresult5_label, self.summaryresult6_label,
             self.summaryresult7_label,
         ):
             label.setFixedHeight(20)
-        summary_layout.addStretch(1)
         summary_layout.addWidget(self.summarysettings_button)
         self.summary_group.setMinimumWidth(330)
         self.summary_group.setMaximumWidth(420)
@@ -2088,7 +2093,19 @@ class PlantLayoutWindow(QDialog):
         self.details_tabs.setObjectName("plotDetailsTabs")
         self.details_tabs.setIconSize(QSize(24, 24))
         self.details_tabs.addTab(self.summary_group, QIcon(os.path.join(icon_root, "plot.png")), "Tools Overview")
-        self.details_tabs.addTab(self.workerinfo_group, QIcon(os.path.join(icon_root, "worker.png")), "Worker Overview")
+        worker_tab_icon = QPixmap(96, 96)
+        worker_tab_icon.fill(Qt.transparent)
+        worker_source = QPixmap(os.path.join(icon_root, "worker.png")).scaled(
+            82, 82, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        )
+        worker_painter = QPainter(worker_tab_icon)
+        worker_painter.drawPixmap(
+            (worker_tab_icon.width() - worker_source.width()) // 2,
+            (worker_tab_icon.height() - worker_source.height()) // 2,
+            worker_source,
+        )
+        worker_painter.end()
+        self.details_tabs.addTab(self.workerinfo_group, QIcon(worker_tab_icon), "Worker Overview")
         self.summary_group.setTitle("")
         self.workerinfo_group.setTitle("")
         self.details_tabs.setTabToolTip(0, "View aggregate charts and metrics for the current filters.")
@@ -2113,6 +2130,7 @@ class PlantLayoutWindow(QDialog):
         self.statusBar.hide()
 
         self.applyPlotStyle()
+        self.updateAppliedToolOutcomeTitle()
         self.toolsgraphic_group.setStyleSheet("""
             QGroupBox {
                 background: #073E68;
@@ -2211,17 +2229,17 @@ class PlantLayoutWindow(QDialog):
             QFrame#workplaceScopeBlock { background: transparent; border: 0; }
             QLabel#workplaceScopeType {
                 color: #405866;
-                font-size: 11px;
+                font-size: 13px;
                 font-weight: 700;
             }
             QLabel#workplaceScopeValue {
                 color: #304652;
-                font-size: 12px;
+                font-size: 14px;
                 font-weight: 600;
             }
             QLabel#workplacePlantValue {
                 color: #087E91;
-                font-size: 13px;
+                font-size: 15px;
                 font-weight: 700;
             }
             QLabel#demographicFieldTitle {
@@ -2238,7 +2256,13 @@ class PlantLayoutWindow(QDialog):
             }
             QLabel#rangeFieldLabel, QLabel#plotDescription {
                 color: #506273;
-                font-size: 11px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QTabWidget#plotDetailsTabs QTabBar::tab {
+                min-height: 34px;
+                padding: 3px 10px;
+                font-size: 14px;
                 font-weight: 600;
             }
             QLabel#outcomeSectionHeading {
@@ -2440,11 +2464,14 @@ class PlantLayoutWindow(QDialog):
         selected = aliases.get(normalized)
         for key, button in self.plot_tool_buttons.items():
             button.setChecked(key == selected)
-        if hasattr(self, "outcome_group"):
-            tool_name = {"LiFFT": "LiFFT", "DUET": "DUET", "ST": "Shoulder"}.get(
-                selected, str(tool_id).strip() or "Selected"
-            )
-            self.outcome_group.setTitle(f"{tool_name} Tool Outcome")
+
+    def updateAppliedToolOutcomeTitle(self):
+        """Keep results labeled with the tool used by the last applied filter."""
+        selected = getattr(self, "applied_plot_tool", "LiFFT")
+        tool_name = {"LiFFT": "LiFFT", "DUET": "DUET", "ST": "Shoulder"}.get(
+            selected, selected or "Selected"
+        )
+        self.outcome_group.setTitle(f"{tool_name} Tool Outcome")
 
     def updateMapScopeFooter(self):
         count = len(getattr(self, "visual_worker_tools", []))
@@ -2757,7 +2784,9 @@ class PlantLayoutWindow(QDialog):
     def applyfilterButtonClicked(self):
        	#self.loadPlantImage()
        	
-       	self.loadWorkers(0)
+        self.applied_plot_tool = self.tool_combo.currentText().strip() or "LiFFT"
+        self.updateAppliedToolOutcomeTitle()
+        self.loadWorkers(0)
         selected_worker = self.workerComboBox.currentText().strip()
         # Extract worker ID (format: "<worker_id> (Last, First)")
         worker_id = selected_worker.split(" ")[0] if " " in selected_worker else selected_worker

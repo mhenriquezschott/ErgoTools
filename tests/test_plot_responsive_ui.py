@@ -192,7 +192,12 @@ window.grab().save("/tmp/plot_worker_tab.png")
 assert window.details_tabs.tabText(0) == "Tools Overview"
 assert window.details_tabs.tabText(1) == "Worker Overview"
 assert window.details_tabs.tabBar().tabRect(1).right() <= window.details_tabs.tabBar().width()
+assert window.details_tabs.tabBar().font().pointSize() >= 12
+assert window.details_tabs.tabIcon(0).actualSize(window.details_tabs.iconSize()) == window.details_tabs.iconSize()
+assert window.details_tabs.tabIcon(1).actualSize(window.details_tabs.iconSize()) == window.details_tabs.iconSize()
 assert window.worker_marker_preview.isVisible()
+assert window.worker_marker_preview.size().width() == 94
+assert window.worker_marker_preview.size().height() == 94
 assert window.worker_marker_preview.gender in ("male", "female")
 male_index = next((
     index for index, row in enumerate(window.workerstationshifttool_dataset)
@@ -233,11 +238,20 @@ assert expanded_canvas_top > collapsed_canvas_top
 window.grab().save("/tmp/plot_responsive_filters_expanded.png")
 window.selectPlotTool("DUET")
 app.processEvents()
+assert window.outcome_group.title() == "LiFFT Tool Outcome"
+window.applyfilterButtonClicked()
+app.processEvents()
 assert window.outcome_group.title() == "DUET Tool Outcome"
 window.selectPlotTool("ST")
 app.processEvents()
+assert window.outcome_group.title() == "DUET Tool Outcome"
+window.applyfilterButtonClicked()
+app.processEvents()
 assert window.outcome_group.title() == "Shoulder Tool Outcome"
 window.selectPlotTool("LiFFT")
+app.processEvents()
+assert window.outcome_group.title() == "Shoulder Tool Outcome"
+window.applyfilterButtonClicked()
 app.processEvents()
 assert window.outcome_group.title() == "LiFFT Tool Outcome"
 window.clearfilterButtonClicked()

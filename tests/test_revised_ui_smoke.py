@@ -79,6 +79,23 @@ assert parent.camera_director.animated_tools == []
 parent.setMainWorkerAlphabetFilter("A")
 app.processEvents()
 assert parent.camera_director.animated_tools == []
+
+# Returning a result from PLOT is an explicit tool change and should focus the
+# corresponding body region even though the tab is selected programmatically.
+parent.camera_director.active_tool = 0
+parent.camera_director.animated_tools.clear()
+parent.editWorkerID = "Default"
+parent.editPlantName = "Default"
+parent.editSectionName = "Default"
+parent.editLineName = "Default"
+parent.editStationName = "Default"
+parent.editShiftName = "1"
+parent.editToolID = "DUET"
+parent.editUnit = "Metric"
+parent.loadEditVarsToUI()
+app.processEvents()
+assert parent.tabWidget.currentIndex() == 1
+assert parent.camera_director.animated_tools == [1]
 parent.vtk_enabled = False
 
 worker = WorkerWindow(parent)
