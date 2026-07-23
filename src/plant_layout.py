@@ -1754,6 +1754,19 @@ class PlantLayoutWindow(QDialog):
         summary_layout.setContentsMargins(10, 12, 10, 10)
         summary_layout.setSpacing(8)
         self.summaryplot_canvas.setMinimumHeight(155)
+        self.summaryplot_canvas.setObjectName("plotSummaryCanvas")
+        self.summaryplot_canvas.setStyleSheet("""
+            QWidget#plotSummaryCanvas {
+                background: #FFFFFF;
+                color: #1B2933;
+            }
+            QToolTip {
+                background: #1B2933;
+                color: #FFFFFF;
+                border: 1px solid #0B326C;
+                padding: 6px;
+            }
+        """)
         self.summaryplot_canvas.setSizePolicy(
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
         )
@@ -3075,7 +3088,6 @@ class PlantLayoutWindow(QDialog):
         figure.set_size_inches(width / figure.dpi, height / figure.dpi, forward=False)
         self.applyGraphSettings(figure)
         self.summaryplot_canvas.figure = figure
-        self.summaryplot_canvas.setStyleSheet("background: #FFFFFF;")
         self.summaryplot_canvas.updateGeometry()
         self.summaryplot_canvas.draw()
         self.summaryplot_canvas.update()

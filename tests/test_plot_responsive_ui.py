@@ -43,12 +43,21 @@ assert window.minimumSizeHint().height() <= 1060
 assert default_canvas_size.width() >= 960
 assert default_canvas_size.height() >= 575
 assert window.summaryplot_canvas.geometry().bottom() <= window.summaryplot_combo.geometry().top()
+assert window.summaryplot_canvas.objectName() == "plotSummaryCanvas"
+assert "QToolTip" in window.summaryplot_canvas.styleSheet()
+assert "color: #FFFFFF" in window.summaryplot_canvas.styleSheet()
 tooltip_palette = window.summaryplot_canvas.toolTip()
 assert tooltip_palette == "Click the chart to open a larger interactive view."
 assert window.palette().color(QPalette.WindowText) != window.palette().color(QPalette.Window)
 assert QToolTip.palette().color(QPalette.ToolTipText).name().upper() == "#FFFFFF"
 assert QToolTip.palette().color(QPalette.ToolTipBase).name().upper() == "#1B2933"
 assert QToolTip.palette().color(QPalette.ToolTipText) != QToolTip.palette().color(QPalette.ToolTipBase)
+tooltip_position = window.summaryplot_canvas.mapToGlobal(window.summaryplot_canvas.rect().center())
+QToolTip.showText(tooltip_position, window.summaryplot_canvas.toolTip(), window.summaryplot_canvas)
+app.processEvents()
+QTest.qWait(100)
+app.primaryScreen().grabWindow(0).save("/tmp/plot_chart_tooltip.png")
+QToolTip.hideText()
 assert window.otheroptionsfilter_group.isHidden()
 assert window.shiftfilter_group.isHidden()
 assert window.toolsfiltersettings_button.isHidden()
