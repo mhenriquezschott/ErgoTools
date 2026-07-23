@@ -1426,8 +1426,9 @@ class PlantLayoutWindow(QDialog):
         plant_layout.setContentsMargins(10, 10, 10, 8)
         plant_layout.setSpacing(8)
         workplace_icon = QLabel()
-        workplace_icon.setPixmap(QIcon(os.path.join(icon_root, "plant.png")).pixmap(QSize(26, 26)))
-        workplace_icon.setFixedSize(28, 28)
+        workplace_icon.setPixmap(QIcon(os.path.join(icon_root, "plant.png")).pixmap(QSize(34, 34)))
+        workplace_icon.setFixedSize(36, 36)
+        workplace_icon.setToolTip("The selected plant supplies the layout image displayed below.")
         self.workplace_summary_label = QLabel("Plant: –  ›  Section: All  ›  Line: All  ›  Station: All")
         self.workplace_summary_label.setObjectName("workplaceFilterSummary")
         self.workplace_summary_label.hide()
@@ -1436,6 +1437,12 @@ class PlantLayoutWindow(QDialog):
         workplace_path_layout.setContentsMargins(0, 0, 0, 0)
         workplace_path_layout.setSpacing(5)
         self.workplace_scope_values = {}
+        scope_icon_names = {
+            "Section": "section.png",
+            "Line": "line.png",
+            "Station": "station.png",
+            "Shift": "shift.png",
+        }
         for index, (label, initial, tooltip) in enumerate((
             ("Plant", "–", "Plant whose layout image is displayed."),
             ("Section", "All", "Section scope included in the current results."),
@@ -1456,10 +1463,23 @@ class PlantLayoutWindow(QDialog):
             block_layout.setSpacing(0)
             type_label = QLabel(label, block)
             type_label.setObjectName("workplaceScopeType")
+            heading_layout = QHBoxLayout()
+            heading_layout.setContentsMargins(0, 0, 0, 0)
+            heading_layout.setSpacing(3)
+            if label in scope_icon_names:
+                entity_icon = QLabel(block)
+                entity_icon.setPixmap(
+                    QIcon(os.path.join(icon_root, scope_icon_names[label])).pixmap(QSize(18, 18))
+                )
+                entity_icon.setFixedSize(19, 19)
+                entity_icon.setToolTip(tooltip)
+                heading_layout.addWidget(entity_icon)
+            heading_layout.addWidget(type_label)
+            heading_layout.addStretch(1)
             value_label = QLabel(initial, block)
             value_label.setObjectName("workplacePlantValue" if label == "Plant" else "workplaceScopeValue")
             value_label.setToolTip(tooltip)
-            block_layout.addWidget(type_label)
+            block_layout.addLayout(heading_layout)
             block_layout.addWidget(value_label)
             workplace_path_layout.addWidget(block)
             self.workplace_scope_values[label] = value_label
@@ -1587,6 +1607,11 @@ class PlantLayoutWindow(QDialog):
         self.ageflt_label.setText("Age range")
         self.weightftl_label.setText("Weight range")
         self.heightflt_label.setText("Height range")
+        for label in (
+            self.genderflt_label, self.ageflt_label,
+            self.weightftl_label, self.heightflt_label,
+        ):
+            label.setObjectName("demographicFieldTitle")
         self.ageto_label.hide()
         self.label_10.hide()
         self.label_12.hide()
@@ -2185,9 +2210,9 @@ class PlantLayoutWindow(QDialog):
             }
             QFrame#workplaceScopeBlock { background: transparent; border: 0; }
             QLabel#workplaceScopeType {
-                color: #607785;
-                font-size: 9px;
-                font-weight: 600;
+                color: #405866;
+                font-size: 11px;
+                font-weight: 700;
             }
             QLabel#workplaceScopeValue {
                 color: #304652;
@@ -2197,6 +2222,10 @@ class PlantLayoutWindow(QDialog):
             QLabel#workplacePlantValue {
                 color: #087E91;
                 font-size: 13px;
+                font-weight: 700;
+            }
+            QLabel#demographicFieldTitle {
+                color: #1B2933;
                 font-weight: 700;
             }
             QLabel#workerAssignmentContext {
@@ -2411,6 +2440,11 @@ class PlantLayoutWindow(QDialog):
         selected = aliases.get(normalized)
         for key, button in self.plot_tool_buttons.items():
             button.setChecked(key == selected)
+        if hasattr(self, "outcome_group"):
+            tool_name = {"LiFFT": "LiFFT", "DUET": "DUET", "ST": "Shoulder"}.get(
+                selected, str(tool_id).strip() or "Selected"
+            )
+            self.outcome_group.setTitle(f"{tool_name} Tool Outcome")
 
     def updateMapScopeFooter(self):
         count = len(getattr(self, "visual_worker_tools", []))

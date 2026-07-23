@@ -49,6 +49,13 @@ assert window.toolsfiltersettings_button.isHidden()
 assert set(window.plot_tool_buttons) == {"LiFFT", "DUET", "ST"}
 assert window.summaryplot_combo.count() == 3
 assert window.plot_tool_buttons["LiFFT"].isChecked()
+assert window.outcome_group.title() == "LiFFT Tool Outcome"
+assert len(window.findChildren(type(window.genderflt_label), "workplaceScopeType")) == 5
+for label in (
+    window.genderflt_label, window.ageflt_label,
+    window.weightftl_label, window.heightflt_label,
+):
+    assert label.objectName() == "demographicFieldTitle"
 for button in window.plot_tool_buttons.values():
     bottom_right = button.mapTo(window.toolfilter_group, button.rect().bottomRight())
     assert bottom_right.y() <= window.toolfilter_group.contentsRect().bottom()
@@ -224,6 +231,15 @@ for button in window.plot_tool_buttons.values():
 expanded_canvas_top = window.plantlayout_image.mapTo(window, QPoint(0, 0)).y()
 assert expanded_canvas_top > collapsed_canvas_top
 window.grab().save("/tmp/plot_responsive_filters_expanded.png")
+window.selectPlotTool("DUET")
+app.processEvents()
+assert window.outcome_group.title() == "DUET Tool Outcome"
+window.selectPlotTool("ST")
+app.processEvents()
+assert window.outcome_group.title() == "Shoulder Tool Outcome"
+window.selectPlotTool("LiFFT")
+app.processEvents()
+assert window.outcome_group.title() == "LiFFT Tool Outcome"
 window.clearfilterButtonClicked()
 assert window.agefrom_edit.value() == window.agefrom_edit.minimum()
 assert not window.workerfilter_group.isChecked()
