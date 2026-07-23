@@ -281,7 +281,7 @@ class PlotRiskGauge(QWidget):
         value_font.setPointSize(20)
         value_font.setBold(True)
         painter.setFont(value_font)
-        painter.drawText(QRectF(0, 80, self.width(), 36), Qt.AlignCenter, f"{self._display_value:.1f}%")
+        painter.drawText(QRectF(4, 80, self.width(), 36), Qt.AlignCenter, f"{self._display_value:.1f}%")
 
 
 class PlotWorkerMarkerPreview(QWidget):
@@ -291,7 +291,7 @@ class PlotWorkerMarkerPreview(QWidget):
         super().__init__(parent)
         self.gender = ""
         self.color = QColor("#19B83F")
-        self.setFixedSize(94, 94)
+        self.setFixedSize(108, 108)
         self.setToolTip("Marker shape identifies sex; color identifies the selected assessment risk.")
 
     def setWorker(self, gender, color):
@@ -306,7 +306,7 @@ class PlotWorkerMarkerPreview(QWidget):
         painter.setPen(QPen(QColor("#FFFFFF"), 2))
         painter.setBrush(self.color)
         center = QPointF(self.width() / 2.0, self.height() / 2.0 + 2.0)
-        size = 30.0
+        size = 36.0
         if self.gender == "male":
             painter.drawPolygon(QPolygonF([
                 QPointF(center.x(), center.y() - size),
@@ -1486,7 +1486,7 @@ class PlantLayoutWindow(QDialog):
         workplace_path_layout.addStretch(1)
         self.workplace_button = QPushButton("Choose\nWorkplace")
         self.workplace_button.setIcon(QIcon(os.path.join(icon_root, "station.png")))
-        self.workplace_button.setIconSize(QSize(29, 29))
+        self.workplace_button.setIconSize(QSize(34, 34))
         self.workplace_button.setToolTip("Choose a workplace scope and shift from the organization hierarchy.")
         self.workplace_button.clicked.connect(self.openWorkplaceFilter)
         self.workplace_button.setFixedSize(150, 52)

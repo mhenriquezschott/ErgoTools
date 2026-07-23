@@ -64,8 +64,8 @@ assert not window.xview_input.isVisible()
 assert window.workplace_button.isVisible()
 assert window.workplace_button.height() == 52
 assert window.workplace_button.text().replace("\n", " ") == "Choose Workplace"
-assert window.workplace_button.iconSize().width() == 29
-assert window.workplace_button.iconSize().height() == 29
+assert window.workplace_button.iconSize().width() == 34
+assert window.workplace_button.iconSize().height() == 34
 assert window.workplace_scope_values["Plant"].text() == "Default"
 assert window.workplace_scope_values["Section"].text() == "All"
 assert not window.grtool8_button.isVisible()
@@ -201,8 +201,8 @@ assert window.details_tabs.tabBar().font().pointSize() >= 12
 assert window.details_tabs.tabIcon(0).actualSize(window.details_tabs.iconSize()) == window.details_tabs.iconSize()
 assert window.details_tabs.tabIcon(1).actualSize(window.details_tabs.iconSize()) == window.details_tabs.iconSize()
 assert window.worker_marker_preview.isVisible()
-assert window.worker_marker_preview.size().width() == 94
-assert window.worker_marker_preview.size().height() == 94
+assert window.worker_marker_preview.size().width() == 108
+assert window.worker_marker_preview.size().height() == 108
 assert window.worker_marker_preview.gender in ("male", "female")
 male_index = next((
     index for index, row in enumerate(window.workerstationshifttool_dataset)
