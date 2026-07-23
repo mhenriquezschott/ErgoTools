@@ -1486,7 +1486,7 @@ class PlantLayoutWindow(QDialog):
         workplace_path_layout.addStretch(1)
         self.workplace_button = QPushButton("Choose\nWorkplace")
         self.workplace_button.setIcon(QIcon(os.path.join(icon_root, "station.png")))
-        self.workplace_button.setIconSize(QSize(24, 24))
+        self.workplace_button.setIconSize(QSize(29, 29))
         self.workplace_button.setToolTip("Choose a workplace scope and shift from the organization hierarchy.")
         self.workplace_button.clicked.connect(self.openWorkplaceFilter)
         self.workplace_button.setFixedSize(150, 52)
@@ -1768,17 +1768,27 @@ class PlantLayoutWindow(QDialog):
         summary_layout.addWidget(self.summaryplot_canvas, 2)
         summary_layout.addSpacing(4)
         summary_layout.addWidget(self.summaryplot_combo)
+        description_panel = QWidget(self.summary_group)
+        description_layout = QVBoxLayout(description_panel)
+        description_layout.setContentsMargins(0, 2, 0, 2)
+        description_layout.setSpacing(8)
         self.plot_description_label = QLabel(
-            "Chart values reflect enabled worker results in the active filter scope.",
-            self.summary_group,
+            "<b>What this shows:</b> Chart values reflect enabled worker results "
+            "in the active filter scope.",
+            description_panel,
         )
         self.plot_description_label.setObjectName("plotDescription")
         self.plot_description_label.setWordWrap(True)
-        self.plot_description_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.plot_description_label.setSizePolicy(
-            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding
-        )
-        summary_layout.addWidget(self.plot_description_label, 1)
+        self.plot_description_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.plot_compare_label = QLabel("", description_panel)
+        self.plot_compare_label.setObjectName("plotDescription")
+        self.plot_compare_label.setWordWrap(True)
+        self.plot_compare_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        description_layout.addWidget(self.plot_description_label)
+        description_layout.addStretch(2)
+        description_layout.addWidget(self.plot_compare_label)
+        description_layout.addStretch(1)
+        summary_layout.addWidget(description_panel, 1)
         for label in (
             self.summaryresult1_label, self.summaryresult2_label, self.summaryresult3_label,
             self.summaryresult4_label, self.summaryresult5_label, self.summaryresult6_label,
@@ -3081,18 +3091,23 @@ class PlantLayoutWindow(QDialog):
             descriptions = (
                 (
                     "<b>What this shows:</b> Average outcome probability for each ergonomic tool. "
-                    "Error bars show one standard deviation.<br><b>Scale:</b> 0–100%; higher values indicate greater risk."
+                    "Error bars show one standard deviation.",
+                    "<b>Scale:</b> 0–100%; higher values indicate greater risk.",
                 ),
                 (
                     "<b>What this shows:</b> Average outcome probability by sex for each ergonomic tool. "
-                    "Error bars show one standard deviation.<br><b>Compare:</b> Differences within and across tools."
+                    "Error bars show one standard deviation.",
+                    "<b>Compare:</b> Differences within and across tools.",
                 ),
                 (
                     "<b>What this shows:</b> Average outcome probability by worker age range and ergonomic tool. "
-                    "Error bars show one standard deviation.<br><b>Compare:</b> Risk patterns between age groups."
+                    "Error bars show one standard deviation.",
+                    "<b>Compare:</b> Risk patterns between age groups.",
                 ),
             )
-            self.plot_description_label.setText(descriptions[selected_index] if 0 <= selected_index < 3 else "")
+            description = descriptions[selected_index] if 0 <= selected_index < 3 else ("", "")
+            self.plot_description_label.setText(description[0])
+            self.plot_compare_label.setText(description[1])
     
         # **Ensure workers dataset is available**
         if not hasattr(self, "workerstationshifttool_dataset") or not self.workerstationshifttool_dataset:

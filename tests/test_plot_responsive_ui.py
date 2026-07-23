@@ -64,6 +64,8 @@ assert not window.xview_input.isVisible()
 assert window.workplace_button.isVisible()
 assert window.workplace_button.height() == 52
 assert window.workplace_button.text().replace("\n", " ") == "Choose Workplace"
+assert window.workplace_button.iconSize().width() == 29
+assert window.workplace_button.iconSize().height() == 29
 assert window.workplace_scope_values["Plant"].text() == "Default"
 assert window.workplace_scope_values["Section"].text() == "All"
 assert not window.grtool8_button.isVisible()
@@ -166,6 +168,7 @@ for chart_index in range(min(4, window.summaryplot_combo.count())):
     app.processEvents()
     assert window.summaryplot_canvas.figure.canvas is window.summaryplot_canvas
     assert "What this shows:" in window.plot_description_label.text()
+    assert window.plot_compare_label.text().startswith(("<b>Compare:</b>", "<b>Scale:</b>"))
 window.summaryplot_canvas.grab().save("/tmp/plot_summary_after_switching.png")
 worker_picker = PlotWorkerPickerDialog(window.workerstationshifttool_dataset, window)
 worker_picker.show()
