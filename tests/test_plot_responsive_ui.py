@@ -62,6 +62,8 @@ for button in window.plot_tool_buttons.values():
 assert not window.agefrom_edit.isVisible()
 assert not window.xview_input.isVisible()
 assert window.workplace_button.isVisible()
+assert window.workplace_button.height() == 52
+assert window.workplace_button.text().replace("\n", " ") == "Choose Workplace"
 assert window.workplace_scope_values["Plant"].text() == "Default"
 assert window.workplace_scope_values["Section"].text() == "All"
 assert not window.grtool8_button.isVisible()

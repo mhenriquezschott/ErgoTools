@@ -1489,7 +1489,7 @@ class PlantLayoutWindow(QDialog):
         self.workplace_button.setIconSize(QSize(24, 24))
         self.workplace_button.setToolTip("Choose a workplace scope and shift from the organization hierarchy.")
         self.workplace_button.clicked.connect(self.openWorkplaceFilter)
-        self.workplace_button.setFixedWidth(150)
+        self.workplace_button.setFixedSize(150, 52)
         plant_layout.addWidget(workplace_icon)
         plant_layout.addWidget(workplace_path, 1)
         plant_layout.addWidget(self.workplace_button)
@@ -2260,10 +2260,23 @@ class PlantLayoutWindow(QDialog):
                 font-weight: 600;
             }
             QTabWidget#plotDetailsTabs QTabBar::tab {
-                min-height: 34px;
-                padding: 3px 10px;
-                font-size: 14px;
-                font-weight: 600;
+                min-height: 30px;
+                padding: 2px 9px;
+                color: #405866;
+                background: #EDF2F5;
+                border: 1px solid #BCC9D3;
+                border-bottom-color: #D5DEE5;
+                font-size: 12px;
+                font-weight: 400;
+            }
+            QTabWidget#plotDetailsTabs QTabBar::tab:selected {
+                color: #087E91;
+                background: #FFFFFF;
+                border-bottom: 3px solid #08A9B5;
+                font-weight: 500;
+            }
+            QTabWidget#plotDetailsTabs QTabBar::tab:hover:!selected {
+                background: #EAF7F8;
             }
             QLabel#outcomeSectionHeading {
                 color: #0B326C;
