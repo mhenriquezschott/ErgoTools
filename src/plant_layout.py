@@ -16,6 +16,7 @@ import matplotlib.cm as cm
 #import threading
 import json
 import re
+import math
 
 import csv
 
@@ -30,7 +31,10 @@ from matplotlib.cm import ScalarMappable
 from PyQt5.QtWidgets import (QApplication, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QDateEdit,
                              QPushButton, QFrame, QGraphicsView, QGraphicsScene, QToolButton, QCheckBox, QGroupBox, QGridLayout, QStatusBar, QGraphicsPixmapItem, QMenu, QAction, QSpinBox, QGraphicsRectItem, QFileDialog)
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QPixmap, QCursor, QPen, QIcon, QBrush, QColor, QPolygonF, QFont, QPainter, QFontMetrics, QTransform
-from PyQt5.QtCore import Qt, QDate, QSize, QPointF, QRectF, QTimer
+from PyQt5.QtCore import (
+    Qt, QDate, QSize, QPointF, QRectF, QTimer, QEasingCurve,
+    QPropertyAnimation,
+)
 from PyQt5.QtWidgets import QWidget, QGraphicsItem, QGraphicsEllipseItem, QGraphicsRectItem, QFileDialog, QGraphicsItem, QGraphicsPolygonItem, QGraphicsScene, QGraphicsPixmapItem
 from PyQt5 import QtWidgets, QtCore 
 
@@ -57,8 +61,450 @@ from visualworkertool import VisualWorkerTool
 
 from plotviewerdialog import PlotViewerDialog
 from multiselectcombobox import MultiSelectComboBox
+from risk_ranges import RISK_BANDS, risk_band
 
 from zcpwindow import ZCPWindow
+
+
+class PlotGraphSettingsDialog(QDialog):
+    """Presentation settings shared by the PLOT summary charts."""
+
+    def __init__(self, settings, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Graph Settings")
+        self.setModal(True)
+        self.setMinimumWidth(520)
+        self._defaults = parent.defaultGraphSettings()
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(22, 18, 22, 18)
+        root.setSpacing(14)
+
+        title = QLabel("Graph Settings")
+        title.setObjectName("dialogTitle")
+        subtitle = QLabel("Adjust or export charts from the Tools Overview tab.")
+        subtitle.setObjectName("dialogSubtitle")
+        root.addWidget(title)
+        root.addWidget(subtitle)
+
+        appearance_group = QGroupBox("Chart content")
+        appearance_layout = QGridLayout(appearance_group)
+        appearance_layout.setContentsMargins(14, 16, 14, 14)
+        appearance_layout.setHorizontalSpacing(18)
+        appearance_layout.setVerticalSpacing(12)
+        self.show_title = QCheckBox("Show chart title")
+        self.show_legend = QCheckBox("Show legend")
+        self.show_grid = QCheckBox("Show grid lines")
+        self.show_bar_values = QCheckBox("Show values on bars")
+        appearance_layout.addWidget(self.show_title, 0, 0)
+        appearance_layout.addWidget(self.show_legend, 0, 1)
+        appearance_layout.addWidget(self.show_grid, 1, 0)
+        appearance_layout.addWidget(self.show_bar_values, 1, 1)
+        root.addWidget(appearance_group)
+
+        scale_group = QGroupBox("Scale and text")
+        scale_layout = QGridLayout(scale_group)
+        scale_layout.setContentsMargins(14, 16, 14, 14)
+        scale_layout.setHorizontalSpacing(12)
+        scale_layout.setVerticalSpacing(10)
+        scale_layout.addWidget(QLabel("Vertical axis"), 0, 0)
+        self.y_axis_mode = QComboBox()
+        self.y_axis_mode.addItem("Chart default", "default")
+        self.y_axis_mode.addItem("Risk scale (0–100%)", "risk")
+        self.y_axis_mode.addItem("Custom maximum", "custom")
+        scale_layout.addWidget(self.y_axis_mode, 0, 1)
+        scale_layout.addWidget(QLabel("Maximum"), 1, 0)
+        self.y_axis_max = QtWidgets.QDoubleSpinBox()
+        self.y_axis_max.setRange(1.0, 1000000.0)
+        self.y_axis_max.setDecimals(1)
+        self.y_axis_max.setSingleStep(5.0)
+        scale_layout.addWidget(self.y_axis_max, 1, 1)
+        scale_layout.addWidget(QLabel("Text size"), 2, 0)
+        self.text_scale = QSpinBox()
+        self.text_scale.setRange(80, 140)
+        self.text_scale.setSingleStep(5)
+        self.text_scale.setSuffix("%")
+        scale_layout.addWidget(self.text_scale, 2, 1)
+        root.addWidget(scale_group)
+
+        self.show_title.setToolTip("Show or hide the title inside the chart.")
+        self.show_legend.setToolTip("Show or hide the chart legend when one is available.")
+        self.show_grid.setToolTip("Draw subtle horizontal guide lines on standard charts.")
+        self.show_bar_values.setToolTip("Display the numeric value above each bar.")
+        self.y_axis_mode.setToolTip("Use the chart's normal scale, the standard risk scale, or a custom maximum.")
+        self.y_axis_max.setToolTip("Set the top of the vertical axis when Custom maximum is selected.")
+        self.text_scale.setToolTip("Scale chart titles, labels, ticks, legends, and annotations.")
+
+        buttons = QHBoxLayout()
+        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
+        self.save_plot_button = QPushButton("Save plot")
+        self.save_plot_button.setIcon(QIcon(os.path.join(icon_root, "save.png")))
+        self.save_plot_button.setIconSize(QSize(22, 22))
+        self.save_plot_button.setMinimumHeight(38)
+        self.save_plot_button.setToolTip("Save the current Summary graph as an image or document.")
+        self.save_plot_button.clicked.connect(self.savePlot)
+        buttons.addWidget(self.save_plot_button)
+        buttons.addStretch(1)
+        reset_button = QPushButton("Reset")
+        reset_button.setIcon(QIcon(os.path.join(icon_root, "undo.png")))
+        close_button = QPushButton("Close")
+        close_button.setIcon(QIcon(os.path.join(icon_root, "close.png")))
+        apply_button = QPushButton("Apply")
+        apply_button.setObjectName("primaryButton")
+        for button in (reset_button, close_button, apply_button):
+            button.setIconSize(QSize(22, 22))
+            button.setMinimumHeight(38)
+        reset_button.setToolTip("Restore the default graph presentation settings.")
+        close_button.setToolTip("Close without applying additional changes.")
+        apply_button.setToolTip("Apply these settings to the current graph.")
+        reset_button.clicked.connect(lambda: self.loadSettings(self._defaults))
+        close_button.clicked.connect(self.reject)
+        apply_button.clicked.connect(self.accept)
+        buttons.addWidget(reset_button)
+        buttons.addWidget(close_button)
+        buttons.addWidget(apply_button)
+        root.addLayout(buttons)
+
+        self.y_axis_mode.currentIndexChanged.connect(self.updateMaximumState)
+        self.loadSettings(settings)
+
+    def savePlot(self):
+        figure = getattr(self.parent(), "current_plot_figure", None)
+        if figure is None:
+            QMessageBox.warning(self, "Save plot", "No Summary graph is available to save.")
+            return
+        chart_name = getattr(self.parent(), "summaryplot_combo", None)
+        chart_name = chart_name.currentText() if chart_name is not None else "plot-summary"
+        filename = re.sub(r"[^A-Za-z0-9]+", "-", chart_name).strip("-").lower() or "plot-summary"
+        path, selected_filter = QFileDialog.getSaveFileName(
+            self,
+            "Save Summary Plot",
+            f"{filename}.png",
+            "PNG image (*.png);;JPEG image (*.jpg *.jpeg);;SVG image (*.svg);;PDF document (*.pdf)",
+        )
+        if not path:
+            return
+        if not os.path.splitext(path)[1]:
+            extensions = {"JPEG": ".jpg", "SVG": ".svg", "PDF": ".pdf"}
+            path += next((extension for name, extension in extensions.items() if name in selected_filter), ".png")
+        try:
+            figure.savefig(path, dpi=300, bbox_inches="tight", facecolor="#FFFFFF")
+        except Exception as error:
+            QMessageBox.critical(self, "Save plot", f"The graph could not be saved:\n{error}")
+            return
+        QMessageBox.information(self, "Save plot", f"Graph saved to:\n{path}")
+
+    def loadSettings(self, settings):
+        self.show_title.setChecked(settings["show_title"])
+        self.show_legend.setChecked(settings["show_legend"])
+        self.show_grid.setChecked(settings["show_grid"])
+        self.show_bar_values.setChecked(settings["show_bar_values"])
+        index = self.y_axis_mode.findData(settings["y_axis_mode"])
+        self.y_axis_mode.setCurrentIndex(max(0, index))
+        self.y_axis_max.setValue(settings["y_axis_max"])
+        self.text_scale.setValue(settings["text_scale"])
+        self.updateMaximumState()
+
+    def updateMaximumState(self):
+        self.y_axis_max.setEnabled(self.y_axis_mode.currentData() == "custom")
+
+    def settings(self):
+        return {
+            "show_title": self.show_title.isChecked(),
+            "show_legend": self.show_legend.isChecked(),
+            "show_grid": self.show_grid.isChecked(),
+            "show_bar_values": self.show_bar_values.isChecked(),
+            "y_axis_mode": self.y_axis_mode.currentData(),
+            "y_axis_max": self.y_axis_max.value(),
+            "text_scale": self.text_scale.value(),
+        }
+
+
+class PlotRiskGauge(QWidget):
+    """Animated aggregate-risk gauge used by the PLOT outcome summary."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._display_value = 0.0
+        self.target_value = 0.0
+        self.animation = QPropertyAnimation(self, b"displayValue", self)
+        self.animation.setDuration(700)
+        self.animation.setEasingCurve(QEasingCurve.OutCubic)
+        self.setMinimumSize(240, 152)
+        self.setMaximumWidth(310)
+
+    @QtCore.pyqtProperty(float)
+    def displayValue(self):
+        return self._display_value
+
+    @displayValue.setter
+    def displayValue(self, value):
+        self._display_value = float(value)
+        self.update()
+
+    def setValue(self, value):
+        value = min(100.0, max(0.0, float(value)))
+        self.target_value = value
+        self.animation.stop()
+        self.animation.setStartValue(self._display_value)
+        self.animation.setEndValue(value)
+        self.animation.start()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        center = QPointF(self.width() / 2.0, 105.0)
+        radius = min(self.width() / 2.0 - 20.0, 82.0)
+        arc_rect = QRectF(center.x() - radius, center.y() - radius, radius * 2, radius * 2)
+        for start, end, _label, color, _range in RISK_BANDS:
+            painter.setPen(QPen(QColor(color), 15, Qt.SolidLine, Qt.FlatCap))
+            painter.drawArc(
+                arc_rect,
+                int((180.0 - start * 1.8) * 16),
+                -int((end - start) * 1.8 * 16),
+            )
+
+        angle = math.radians(180.0 - self._display_value * 1.8)
+        tip = QPointF(
+            center.x() + math.cos(angle) * (radius - 10),
+            center.y() - math.sin(angle) * (radius - 10),
+        )
+        perpendicular = QPointF(math.sin(angle) * 5, math.cos(angle) * 5)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor("#758590"))
+        painter.drawPolygon(QPolygonF([center + perpendicular, tip, center - perpendicular]))
+        painter.setBrush(QColor("#647580"))
+        painter.drawEllipse(center, 5.5, 5.5)
+
+        painter.setPen(QColor("#0B326C"))
+        value_font = painter.font()
+        value_font.setPointSize(20)
+        value_font.setBold(True)
+        painter.setFont(value_font)
+        painter.drawText(QRectF(0, 80, self.width(), 36), Qt.AlignCenter, f"{self._display_value:.1f}%")
+
+
+class PlotWorkerMarkerPreview(QWidget):
+    """Compact preview of the selected worker marker used on the plant canvas."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.gender = ""
+        self.color = QColor("#19B83F")
+        self.setFixedSize(78, 78)
+        self.setToolTip("Marker shape identifies sex; color identifies the selected assessment risk.")
+
+    def setWorker(self, gender, color):
+        self.gender = str(gender or "").strip().casefold()
+        candidate = QColor(str(color or ""))
+        self.color = candidate if candidate.isValid() else QColor("#19B83F")
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(QPen(QColor("#FFFFFF"), 2))
+        painter.setBrush(self.color)
+        center = QPointF(self.width() / 2.0, self.height() / 2.0 + 2.0)
+        size = 25.0
+        if self.gender == "male":
+            painter.drawPolygon(QPolygonF([
+                QPointF(center.x(), center.y() - size),
+                QPointF(center.x() - size, center.y() + size * 0.8),
+                QPointF(center.x() + size, center.y() + size * 0.8),
+            ]))
+        else:
+            painter.drawEllipse(center, size, size)
+
+
+class PlotHighlightDetailsDialog(QDialog):
+    """Display actionable details behind the compact PLOT warning."""
+
+    def __init__(self, details, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("PLOT Highlight Details")
+        self.resize(760, 420)
+        self.setMinimumSize(720, 390)
+        if parent is not None:
+            self.setStyleSheet(parent.styleSheet())
+        root = QVBoxLayout(self)
+        root.setContentsMargins(20, 18, 20, 16)
+        root.setSpacing(10)
+        title = QLabel("High-risk station details")
+        title.setObjectName("dialogTitle")
+        root.addWidget(title)
+        subtitle = QLabel(
+            "Stations containing two or more enabled worker results above 50% in the current filter scope."
+        )
+        subtitle.setObjectName("dialogSubtitle")
+        subtitle.setWordWrap(True)
+        root.addWidget(subtitle)
+        self.table = QtWidgets.QTreeWidget()
+        self.table.setRootIsDecorated(False)
+        self.table.setAlternatingRowColors(True)
+        self.table.setHeaderLabels(("Station", "High-risk workers", "Average outcome", "Maximum outcome"))
+        self.table.header().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        for column in range(1, 4):
+            self.table.header().setSectionResizeMode(column, QtWidgets.QHeaderView.ResizeToContents)
+        self.table.setToolTip("High-risk station results calculated from the active PLOT filters.")
+        for detail in details:
+            item = QtWidgets.QTreeWidgetItem((
+                detail["station"], str(detail["count"]),
+                f'{detail["average"]:.1f}%', f'{detail["maximum"]:.1f}%',
+            ))
+            item.setTextAlignment(1, Qt.AlignCenter)
+            item.setTextAlignment(2, Qt.AlignRight | Qt.AlignVCenter)
+            item.setTextAlignment(3, Qt.AlignRight | Qt.AlignVCenter)
+            self.table.addTopLevelItem(item)
+        root.addWidget(self.table, 1)
+        close_row = QHBoxLayout()
+        close_row.addStretch(1)
+        close_button = QPushButton("Close")
+        close_button.setIcon(QIcon(os.path.join(
+            os.path.dirname(__file__), "..", "assets", "ui-icons", "close.png"
+        )))
+        close_button.setIconSize(QSize(22, 22))
+        close_button.setToolTip("Close the highlight details.")
+        close_button.clicked.connect(self.accept)
+        close_row.addWidget(close_button)
+        root.addLayout(close_row)
+
+
+class PlotWorkerPickerDialog(QDialog):
+    """Search the worker assignments already present in the active PLOT scope."""
+
+    def __init__(self, rows, parent=None, hierarchy_paths=None):
+        super().__init__(parent)
+        self.rows = rows
+        self.hierarchy_paths = hierarchy_paths or [tuple(str(row.get(key, "") or "") for key in (
+            "plant_name", "section_name", "line_name", "station_id",
+        )) for row in rows]
+        self.selected_index = None
+        self.scope_path = ()
+        self.setWindowTitle("Select Worker Result")
+        self.resize(820, 500)
+        self.setMinimumSize(680, 420)
+        if parent is not None:
+            self.setStyleSheet(parent.styleSheet())
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 18, 18, 16)
+        layout.setSpacing(10)
+        title = QLabel("Select worker result")
+        title.setObjectName("dialogTitle")
+        layout.addWidget(title)
+        subtitle = QLabel("Search within the workers and workplace assignments shown by the current filters.")
+        subtitle.setObjectName("dialogSubtitle")
+        layout.addWidget(subtitle)
+
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search by worker ID, name, plant, section, line, station, or shift")
+        self.search_input.setClearButtonEnabled(True)
+        self.search_input.setToolTip("Results update while you type.")
+        layout.addWidget(self.search_input)
+
+        result_splitter = QtWidgets.QSplitter(Qt.Horizontal)
+        self.workplace_tree = QtWidgets.QTreeWidget()
+        self.workplace_tree.setHeaderLabels(("Workplace",))
+        self.workplace_tree.setAlternatingRowColors(True)
+        self.workplace_tree.setMinimumWidth(220)
+        self.workplace_tree.setToolTip("Select a workplace level to narrow the worker results.")
+        nodes = {}
+        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
+        icon_names = ("plant.png", "section.png", "line.png", "station.png")
+        for hierarchy_path in self.hierarchy_paths:
+            parent_item = None
+            path = ()
+            for depth, value in enumerate(hierarchy_path):
+                path += (value,)
+                if path not in nodes:
+                    item = QtWidgets.QTreeWidgetItem((value,))
+                    item.setData(0, Qt.UserRole, path)
+                    item.setIcon(0, QIcon(os.path.join(icon_root, icon_names[depth])))
+                    if parent_item is None:
+                        self.workplace_tree.addTopLevelItem(item)
+                    else:
+                        parent_item.addChild(item)
+                    nodes[path] = item
+                parent_item = nodes[path]
+        self.workplace_tree.collapseAll()
+        if self.workplace_tree.topLevelItemCount():
+            self.workplace_tree.setCurrentItem(self.workplace_tree.topLevelItem(0))
+        result_splitter.addWidget(self.workplace_tree)
+
+        self.results = QtWidgets.QTreeWidget()
+        self.results.setColumnCount(4)
+        self.results.setHeaderLabels(("Worker", "Name", "Workplace", "Shift"))
+        self.results.setRootIsDecorated(False)
+        self.results.setAlternatingRowColors(True)
+        self.results.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.results.header().setStretchLastSection(False)
+        self.results.header().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
+        self.results.header().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
+        self.results.header().setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)
+        self.results.header().setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeToContents)
+        result_splitter.addWidget(self.results)
+        result_splitter.setStretchFactor(0, 1)
+        result_splitter.setStretchFactor(1, 3)
+        result_splitter.setSizes((230, 570))
+        layout.addWidget(result_splitter, 1)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
+        self.select_button = buttons.button(QDialogButtonBox.Ok)
+        self.select_button.setText("Select Worker")
+        self.select_button.setIcon(QIcon(os.path.join(icon_root, "worker.png")))
+        self.select_button.setIconSize(QSize(22, 22))
+        self.select_button.setToolTip("Select this worker result on the plant layout.")
+        cancel_button = buttons.button(QDialogButtonBox.Cancel)
+        cancel_button.setIcon(QIcon(os.path.join(icon_root, "cancel.png")))
+        cancel_button.setIconSize(QSize(22, 22))
+        cancel_button.setToolTip("Close without changing the selected worker.")
+        buttons.accepted.connect(self.acceptSelection)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+        self.search_input.textChanged.connect(self.populate)
+        self.workplace_tree.currentItemChanged.connect(self.changeScope)
+        self.results.itemDoubleClicked.connect(lambda *_args: self.acceptSelection())
+        self.populate()
+
+    def changeScope(self, item):
+        self.scope_path = tuple(item.data(0, Qt.UserRole) or ()) if item else ()
+        self.populate()
+
+    def populate(self):
+        query = self.search_input.text().strip().casefold()
+        self.results.clear()
+        for index, row in enumerate(self.rows):
+            worker_id = str(row.get("worker_id", ""))
+            name = ", ".join(value for value in (
+                str(row.get("last_name", "") or ""),
+                str(row.get("first_name", "") or ""),
+            ) if value)
+            workplace = " › ".join(str(row.get(key, "") or "") for key in (
+                "plant_name", "section_name", "line_name", "station_id",
+            ))
+            row_path = tuple(str(row.get(key, "") or "") for key in (
+                "plant_name", "section_name", "line_name", "station_id",
+            ))
+            if self.scope_path and row_path[:len(self.scope_path)] != self.scope_path:
+                continue
+            shift = str(row.get("shift_id", ""))
+            searchable = " ".join((worker_id, name, workplace, shift)).casefold()
+            if query and query not in searchable:
+                continue
+            item = QtWidgets.QTreeWidgetItem((worker_id, name, workplace, shift))
+            item.setData(0, Qt.UserRole, index)
+            self.results.addTopLevelItem(item)
+        if self.results.topLevelItemCount():
+            self.results.setCurrentItem(self.results.topLevelItem(0))
+
+    def acceptSelection(self):
+        item = self.results.currentItem()
+        if item is None:
+            return
+        self.selected_index = int(item.data(0, Qt.UserRole))
+        self.accept()
 
 
 class PlotWorkplaceFilterDialog(QDialog):
@@ -99,6 +545,7 @@ class PlotWorkplaceFilterDialog(QDialog):
         shift_row.addWidget(QLabel("Shift"))
         self.shift_combo = QComboBox()
         self.shift_combo.setToolTip("Choose a shift or include every shift in the selected workplace.")
+        self.shift_combo.currentTextChanged.connect(self.updatePathLabel)
         shift_row.addWidget(self.shift_combo, 1)
         layout.addLayout(shift_row)
         self.path_label = QLabel("Select a workplace scope.")
@@ -149,6 +596,20 @@ class PlotWorkplaceFilterDialog(QDialog):
                     item_cache[partial] = item
                 parent = item_cache[partial]
         self.tree.collapseAll()
+        current_path = [self.plot_window.plant_combo.currentText().strip()]
+        for combo in (
+            self.plot_window.section_combo, self.plot_window.line_combo,
+            self.plot_window.station_combo,
+        ):
+            value = combo.currentText().strip()
+            if not value or value == "All":
+                break
+            current_path.append(value)
+        current_item = item_cache.get(tuple(current_path))
+        if current_item is None and self.tree.topLevelItemCount():
+            current_item = self.tree.topLevelItem(0)
+        if current_item is not None:
+            self.tree.setCurrentItem(current_item)
         self.shift_combo.addItem("All")
         self.shift_combo.addItems(shifts)
         current_shift = self.plot_window.shift_combo.currentText().strip()
@@ -157,9 +618,16 @@ class PlotWorkplaceFilterDialog(QDialog):
     def selectionChanged(self, current, previous=None):
         self.selected_path = current.data(0, Qt.UserRole) if current else None
         self.use_button.setEnabled(bool(self.selected_path))
-        self.path_label.setText(
-            "  >  ".join(self.selected_path) if self.selected_path else "Select a workplace scope."
-        )
+        self.updatePathLabel()
+
+    def updatePathLabel(self):
+        if not self.selected_path:
+            self.path_label.setText("Select a workplace scope.")
+            return
+        labels = ("Plant", "Section", "Line", "Station")
+        values = list(self.selected_path) + ["All"] * (4 - len(self.selected_path))
+        scope = "  ›  ".join(f"{label}: {value}" for label, value in zip(labels, values))
+        self.path_label.setText(f"{scope}   |   Shift: {self.shift_combo.currentText() or 'All'}")
 
     def acceptSelection(self):
         if self.selected_path:
@@ -167,19 +635,35 @@ class PlotWorkplaceFilterDialog(QDialog):
 
 
 class PlantLayoutWindow(QDialog):
+    DEFAULT_WINDOW_SIZE = QSize(1460, 1060)
+    REFERENCE_CANVAS_SIZE = QSize(970, 580)
+    SHOW_POINTER_DEBUG_CONTROLS = False
     
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Plant-Layout Organizational Tool (PLOT)")
+        self.graph_settings = self.defaultGraphSettings()
         
         #self._save_lock = threading.Lock()
 
         self.operator_count = 0
         self.initUI()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Initial plots are populated before the final window geometry exists.
+        # Redraw after layout activation to size the backing buffer correctly.
+        QTimer.singleShot(60, self.refreshInitialSummaryPlot)
+        QTimer.singleShot(250, self.refreshInitialSummaryPlot)
+
+    def refreshInitialSummaryPlot(self):
+        if getattr(self, "workerstationshifttool_dataset", None):
+            self.onSummaryPlotChanged()
+            self.summaryplot_canvas.repaint()
     
     def initUI(self):
-        self.setMinimumSize(1300, 900)
-        self.resize(1390, 940)
+        self.setMinimumSize(1300, 1045)
+        self.resize(self.DEFAULT_WINDOW_SIZE)
         self.setWindowFlags(self.windowFlags() | Qt.WindowMaximizeButtonHint)
         
         self.filters_group = QtWidgets.QGroupBox(self)
@@ -465,12 +949,6 @@ class PlantLayoutWindow(QDialog):
         self.summaryplot_combo.addItem("Total Worker Distribution by Tool")
         self.summaryplot_combo.addItem("Worker Risk Distribution by Gender & Tool")
         self.summaryplot_combo.addItem("Worker Risk Distribution by Age & Tool")
-        self.summaryplot_combo.addItem("Risk Distribution by Station")
-        self.summaryplot_combo.addItem("Worker Risk Levels (Heatmap)")
-        self.summaryplot_combo.addItem("Risk Heatmap Across Stations")
-        self.summaryplot_combo.addItem("Worker Distribution by Gender & Tool")
-        self.summaryplot_combo.addItem("Scatter Plot: Risk vs. Age of Workers")
-        self.summaryplot_combo.addItem("Cumulative Risk Over Time")
         self.summaryplot_combo.currentIndexChanged.connect(self.onSummaryPlotChanged)
 
         
@@ -785,12 +1263,19 @@ class PlantLayoutWindow(QDialog):
         self.visibleinfo_check = QtWidgets.QCheckBox(self.gridLayoutWidget)
         self.visibleinfo_check.setObjectName("visibleinfo_check")
         self.info_gridLayout.addWidget(self.visibleinfo_check, 0, 0, 1, 1)
+        self.visibleinfo_check.stateChanged.connect(self.visibleCheckChanged)
+
+
         self.enableinfo_check = QtWidgets.QCheckBox(self.gridLayoutWidget)
         self.enableinfo_check.setObjectName("enableinfo_check")
         self.info_gridLayout.addWidget(self.enableinfo_check, 1, 0, 1, 1)
+        self.enableinfo_check.stateChanged.connect(self.enableCheckChanged)
+
         self.lockinfo_check = QtWidgets.QCheckBox(self.gridLayoutWidget)
         self.lockinfo_check.setObjectName("lockinfo_check")
         self.info_gridLayout.addWidget(self.lockinfo_check, 2, 0, 1, 1)
+        self.lockinfo_check.stateChanged.connect(self.lockCheckChanged)
+
         self.saveinfo_button = QtWidgets.QPushButton(self.gridLayoutWidget)
         self.saveinfo_button.setObjectName("saveinfo_button")
         self.saveinfo_button.clicked.connect(self.saveInfoButtonClicked)  
@@ -887,9 +1372,11 @@ class PlantLayoutWindow(QDialog):
                     if self.station_combo.lineEdit().text() == "All":
                         for i in range(self.station_combo.count()):
                             self.station_combo.model().item(i).setCheckState(Qt.Checked)
-           
-           
-           
+
+            # PLOT always opens one plant at a time: first plant, all of its
+            # descendants, and shift 1 when that shift exists.
+            self.restoreDefaultPlantScope()
+
             self.loadWorkers(0)
             selected_worker = self.workerComboBox.currentText().strip()
             # Extract worker ID (format: "<worker_id> (Last, First)")
@@ -919,6 +1406,7 @@ class PlantLayoutWindow(QDialog):
             QTimer.singleShot(0, self.loadVisualWorkerTools)
             #self.updateWorkerBorders()
             QTimer.singleShot(0, self.updateWorkerBorders)
+            QTimer.singleShot(0, self.updateMapScopeFooter)
         
         
         else:
@@ -940,15 +1428,49 @@ class PlantLayoutWindow(QDialog):
         workplace_icon = QLabel()
         workplace_icon.setPixmap(QIcon(os.path.join(icon_root, "plant.png")).pixmap(QSize(26, 26)))
         workplace_icon.setFixedSize(28, 28)
-        self.workplace_summary_label = QLabel("All available workplaces")
+        self.workplace_summary_label = QLabel("Plant: –  ›  Section: All  ›  Line: All  ›  Station: All")
         self.workplace_summary_label.setObjectName("workplaceFilterSummary")
+        self.workplace_summary_label.hide()
+        workplace_path = QWidget(self.plantfilter_group)
+        workplace_path_layout = QHBoxLayout(workplace_path)
+        workplace_path_layout.setContentsMargins(0, 0, 0, 0)
+        workplace_path_layout.setSpacing(5)
+        self.workplace_scope_values = {}
+        for index, (label, initial, tooltip) in enumerate((
+            ("Plant", "–", "Plant whose layout image is displayed."),
+            ("Section", "All", "Section scope included in the current results."),
+            ("Line", "All", "Production-line scope included in the current results."),
+            ("Station", "All", "Station scope included in the current results."),
+            ("Shift", "1", "Shift included in the current results."),
+        )):
+            if index:
+                arrow = QLabel(workplace_path)
+                arrow.setPixmap(QIcon(os.path.join(icon_root, "next.png")).pixmap(QSize(14, 14)))
+                arrow.setFixedSize(16, 18)
+                arrow.setToolTip("The next level is contained within the preceding workplace level.")
+                workplace_path_layout.addWidget(arrow, 0, Qt.AlignVCenter)
+            block = QFrame(workplace_path)
+            block.setObjectName("workplacePlantScope" if label == "Plant" else "workplaceScopeBlock")
+            block_layout = QVBoxLayout(block)
+            block_layout.setContentsMargins(6, 2, 6, 2)
+            block_layout.setSpacing(0)
+            type_label = QLabel(label, block)
+            type_label.setObjectName("workplaceScopeType")
+            value_label = QLabel(initial, block)
+            value_label.setObjectName("workplacePlantValue" if label == "Plant" else "workplaceScopeValue")
+            value_label.setToolTip(tooltip)
+            block_layout.addWidget(type_label)
+            block_layout.addWidget(value_label)
+            workplace_path_layout.addWidget(block)
+            self.workplace_scope_values[label] = value_label
+        workplace_path_layout.addStretch(1)
         self.workplace_button = QPushButton("Choose workplace")
         self.workplace_button.setIcon(QIcon(os.path.join(icon_root, "station.png")))
         self.workplace_button.setIconSize(QSize(24, 24))
         self.workplace_button.setToolTip("Choose a workplace scope and shift from the organization hierarchy.")
         self.workplace_button.clicked.connect(self.openWorkplaceFilter)
         plant_layout.addWidget(workplace_icon)
-        plant_layout.addWidget(self.workplace_summary_label, 1)
+        plant_layout.addWidget(workplace_path, 1)
         plant_layout.addWidget(self.workplace_button)
         for combo, tooltip in (
             (self.plant_combo, "Select the plant whose layout and workers should be displayed."),
@@ -1001,30 +1523,76 @@ class PlantLayoutWindow(QDialog):
         self.tool_combo.currentTextChanged.connect(self.syncPlotToolButtons)
         self.syncPlotToolButtons(self.tool_combo.currentText())
 
+        # Replace the legacy line edits with mouse-friendly numeric steppers.
+        for legacy_field in (
+            self.agefrom_edit, self.ageto_edit, self.weightfrom_edit,
+            self.weightto_edit, self.heightfrom_edit, self.heightto_edit,
+        ):
+            legacy_field.hide()
+            legacy_field.setParent(None)
+
+        def optional_spin(decimals, suffix=""):
+            spin = QtWidgets.QDoubleSpinBox(self.workerfilter_group)
+            spin.setRange(-1.0, 1000.0)
+            spin.setDecimals(decimals)
+            spin.setSingleStep(1.0 if decimals == 0 else 0.1)
+            spin.setSpecialValueText("–")
+            spin.setValue(-1.0)
+            spin.setSuffix(suffix)
+            spin.setKeyboardTracking(False)
+            spin.setMinimumWidth(88)
+            return spin
+
+        self.agefrom_edit = optional_spin(0)
+        self.ageto_edit = optional_spin(0)
+        self.weightfrom_edit = optional_spin(1)
+        self.weightto_edit = optional_spin(1)
+        self.heightfrom_edit = optional_spin(1)
+        self.heightto_edit = optional_spin(1)
+
         worker_filter_container = QWidget(self.workerfilter_group)
         self.worker_filter_container = worker_filter_container
-        worker_filter_layout = QGridLayout(worker_filter_container)
+        worker_filter_layout = QHBoxLayout(worker_filter_container)
         worker_filter_layout.setContentsMargins(0, 0, 0, 0)
-        worker_filter_layout.setHorizontalSpacing(7)
-        worker_filter_layout.setVerticalSpacing(7)
-        worker_filter_layout.addWidget(self.genderflt_label, 0, 0)
-        worker_filter_layout.addWidget(self.gender_combo, 0, 1, 1, 3)
-        worker_filter_layout.addWidget(self.weightftl_label, 0, 4)
-        worker_filter_layout.addWidget(self.weightfrom_edit, 0, 5)
-        worker_filter_layout.addWidget(self.label_10, 0, 6)
-        worker_filter_layout.addWidget(self.weightto_edit, 0, 7)
-        worker_filter_layout.addWidget(self.ageflt_label, 1, 0)
-        worker_filter_layout.addWidget(self.agefrom_edit, 1, 1)
-        worker_filter_layout.addWidget(self.ageto_label, 1, 2)
-        worker_filter_layout.addWidget(self.ageto_edit, 1, 3)
-        worker_filter_layout.addWidget(self.heightflt_label, 1, 4)
-        worker_filter_layout.addWidget(self.heightfrom_edit, 1, 5)
-        worker_filter_layout.addWidget(self.label_12, 1, 6)
-        worker_filter_layout.addWidget(self.heightto_edit, 1, 7)
-        worker_filter_layout.setColumnStretch(1, 1)
-        worker_filter_layout.setColumnStretch(3, 1)
-        worker_filter_layout.setColumnStretch(5, 1)
-        worker_filter_layout.setColumnStretch(7, 1)
+        worker_filter_layout.setSpacing(18)
+        sex_block = QWidget(worker_filter_container)
+        sex_layout = QVBoxLayout(sex_block)
+        sex_layout.setContentsMargins(0, 0, 0, 0)
+        sex_layout.setSpacing(3)
+        sex_layout.addWidget(self.genderflt_label)
+        sex_layout.addWidget(self.gender_combo)
+        self.gender_combo.setMinimumWidth(130)
+        worker_filter_layout.addWidget(sex_block, 1)
+
+        def add_range_block(label, minimum, maximum, stretch=1):
+            block = QWidget(worker_filter_container)
+            column = QVBoxLayout(block)
+            column.setContentsMargins(0, 0, 0, 0)
+            column.setSpacing(3)
+            column.addWidget(label)
+            row = QHBoxLayout()
+            row.setSpacing(6)
+            min_label = QLabel("Min", block)
+            max_label = QLabel("Max", block)
+            min_label.setObjectName("rangeFieldLabel")
+            max_label.setObjectName("rangeFieldLabel")
+            row.addWidget(min_label)
+            row.addWidget(minimum, 1)
+            row.addSpacing(5)
+            row.addWidget(max_label)
+            row.addWidget(maximum, 1)
+            column.addLayout(row)
+            worker_filter_layout.addWidget(block, stretch)
+
+        self.ageflt_label.setText("Age range")
+        self.weightftl_label.setText("Weight range")
+        self.heightflt_label.setText("Height range")
+        self.ageto_label.hide()
+        self.label_10.hide()
+        self.label_12.hide()
+        add_range_block(self.ageflt_label, self.agefrom_edit, self.ageto_edit)
+        add_range_block(self.weightftl_label, self.weightfrom_edit, self.weightto_edit)
+        add_range_block(self.heightflt_label, self.heightfrom_edit, self.heightto_edit)
         worker_group_layout = QVBoxLayout(self.workerfilter_group)
         worker_group_layout.setContentsMargins(10, 10, 10, 8)
         worker_group_layout.addWidget(worker_filter_container)
@@ -1062,21 +1630,22 @@ class PlantLayoutWindow(QDialog):
             button.setIcon(QIcon(os.path.join(icon_root, "settings.png")))
             button.setIconSize(QSize(22, 22))
             button.setToolTip("Open settings for this section.")
+        self.summarysettings_button.setText("Graph Settings")
+        self.summarysettings_button.setToolTip("Adjust graph labels, guides, text size, and vertical scale.")
+        self.summarysettings_button.clicked.connect(self.openGraphSettings)
 
         filters_layout = QGridLayout(self.filters_group)
         filters_layout.setContentsMargins(10, 10, 10, 10)
         filters_layout.setHorizontalSpacing(9)
         filters_layout.setVerticalSpacing(8)
-        filters_layout.addWidget(self.toolfilter_group, 0, 0, 1, 4)
-        filters_layout.addWidget(self.plantfilter_group, 1, 0, 1, 4)
-        filters_layout.addWidget(self.workerfilter_group, 2, 0, 1, 4)
-        filters_layout.addWidget(filter_actions, 0, 4, 3, 1)
-        filters_layout.setColumnStretch(0, 1)
-        filters_layout.setColumnStretch(1, 2)
-        filters_layout.setColumnStretch(2, 2)
-        filters_layout.setColumnStretch(3, 1)
+        filters_layout.addWidget(self.toolfilter_group, 0, 0)
+        filters_layout.addWidget(self.plantfilter_group, 0, 1)
+        filters_layout.addWidget(self.workerfilter_group, 1, 0, 1, 2)
+        filters_layout.addWidget(filter_actions, 0, 2, 2, 1)
+        filters_layout.setColumnStretch(0, 2)
+        filters_layout.setColumnStretch(1, 3)
         self.filters_group.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed)
-        self.filters_group.setMinimumHeight(205)
+        self.filters_group.setFixedHeight(183)
         for group in (
             self.plantfilter_group, self.toolfilter_group,
             self.workerfilter_group,
@@ -1084,6 +1653,9 @@ class PlantLayoutWindow(QDialog):
             group.setMinimumWidth(0)
             group.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Preferred)
         self.plantfilter_group.setTitle("Workplace")
+        self.toolfilter_group.setFixedHeight(88)
+        self.plantfilter_group.setFixedHeight(88)
+        self.workerfilter_group.setFixedHeight(42)
 
         # Vertical action rail. Existing callbacks remain attached to these buttons.
         tool_actions = (
@@ -1094,24 +1666,31 @@ class PlantLayoutWindow(QDialog):
             (self.grtool5_button, os.path.join(icon_root, "actualsize.png"), "Reset the layout to its actual-size view."),
             (self.grtool7_button, os.path.join(icon_root, "opacitytransparency.png"), "Cycle the opacity of layout markers."),
             (self.grtool6_button, os.path.join(icon_root, "captureimage.png"), "Capture an image of the current layout."),
-            (self.grtool8_button, os.path.join(icon_root, "view.png"), "Open the hierarchical organization visualization."),
             (self.grtool9_button, os.path.join(icon_root, "export.png"), "Export layout data."),
         )
+        self.grtool8_button.hide()
         tools_layout = QVBoxLayout(self.toolsgraphic_group)
-        tools_layout.setContentsMargins(9, 10, 9, 10)
+        tools_layout.setContentsMargins(0, 0, 0, 10)
         tools_layout.setSpacing(0)
+        self.toolsgraphic_group.setTitle("")
+        self.tool_rail_title = QLabel("Tools", self.toolsgraphic_group)
+        self.tool_rail_title.setObjectName("toolRailTitle")
+        self.tool_rail_title.setAlignment(Qt.AlignCenter)
+        self.tool_rail_title.setFixedHeight(30)
+        self.tool_rail_title.setToolTip("Plant layout viewing and export tools.")
+        tools_layout.addWidget(self.tool_rail_title)
         for button, icon_path, tooltip in tool_actions:
-            button.setFixedSize(42, 42)
-            button.setIconSize(QSize(32, 32))
+            button.setFixedSize(63, 63)
+            button.setIconSize(QSize(48, 48))
             button.setToolTip(tooltip)
             button.setObjectName("plotToolButton")
             button.setIcon(QIcon(icon_path))
             tools_layout.addWidget(button, 0, Qt.AlignHCenter)
         tools_layout.addStretch(1)
-        self.toolsgraphic_group.setFixedWidth(64)
+        self.toolsgraphic_group.setFixedWidth(81)
         self.toolsgraphic_group.setObjectName("plotToolRail")
 
-        self.plantlayout_image.setMinimumSize(520, 340)
+        self.plantlayout_image.setMinimumSize(900, 580)
         self.plantlayout_image.setSizePolicy(
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
         )
@@ -1124,43 +1703,57 @@ class PlantLayoutWindow(QDialog):
         canvas_panel = QWidget()
         canvas_panel.setObjectName("plotCanvasPanel")
         canvas_layout = QHBoxLayout(canvas_panel)
-        canvas_layout.setContentsMargins(0, 0, 0, 0)
+        canvas_layout.setContentsMargins(2, 0, 0, 0)
         canvas_layout.setSpacing(8)
         canvas_layout.addWidget(self.toolsgraphic_group)
-        canvas_layout.addWidget(self.plantlayout_image, 1)
+        map_column = QVBoxLayout()
+        map_column.setContentsMargins(0, 0, 0, 0)
+        map_column.setSpacing(6)
+        map_column.addWidget(self.plantlayout_image, 1)
+        self.map_scope_footer = QFrame()
+        self.map_scope_footer.setObjectName("mapScopeFooter")
+        self.map_scope_footer.setFixedHeight(36)
+        map_scope_layout = QHBoxLayout(self.map_scope_footer)
+        map_scope_layout.setContentsMargins(10, 0, 10, 0)
+        self.map_scope_label = QLabel("Displayed results: 0  |  Tool: LiFFT  |  Plant scope loading")
+        self.map_scope_label.setObjectName("mapScopeLabel")
+        map_scope_layout.addWidget(self.map_scope_label)
+        map_scope_layout.addStretch(1)
+        self.map_scope_footer.hide()
+        canvas_layout.addLayout(map_column, 1)
 
         # Summary chart and metrics.
         summary_layout = QVBoxLayout(self.summary_group)
         summary_layout.setContentsMargins(10, 12, 10, 10)
         summary_layout.setSpacing(8)
-        self.summaryplot_canvas.setMinimumHeight(170)
+        self.summaryplot_canvas.setMinimumHeight(155)
         self.summaryplot_canvas.setSizePolicy(
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
         )
         self.summaryplot_canvas.setToolTip("Click the chart to open a larger interactive view.")
+        self.summaryplot_canvas.setAttribute(Qt.WA_OpaquePaintEvent, False)
+        self.summaryplot_canvas.setAutoFillBackground(True)
+        canvas_palette = self.summaryplot_canvas.palette()
+        canvas_palette.setColor(self.summaryplot_canvas.backgroundRole(), QColor("#FFFFFF"))
+        self.summaryplot_canvas.setPalette(canvas_palette)
         self.summaryplot_combo.setToolTip("Choose the summary visualization shown above.")
         self.summarytitle_label.hide()
         summary_layout.addWidget(self.summaryplot_canvas, 2)
         summary_layout.addSpacing(4)
         summary_layout.addWidget(self.summaryplot_combo)
-        summary_metrics = QGridLayout()
-        summary_metrics.setContentsMargins(0, 0, 0, 0)
-        summary_metrics.setHorizontalSpacing(10)
-        summary_metrics.setVerticalSpacing(4)
-        summary_metrics.addWidget(self.summaryresult1_label, 0, 0)
-        summary_metrics.addWidget(self.summaryresult2_label, 0, 1)
-        summary_metrics.addWidget(self.summaryresult3_label, 1, 0)
-        summary_metrics.addWidget(self.summaryresult4_label, 1, 1)
-        summary_metrics.addWidget(self.summaryresult5_label, 2, 0, 1, 2)
-        summary_metrics.addWidget(self.summaryresult6_label, 3, 0, 1, 2)
-        summary_metrics.addWidget(self.summaryresult7_label, 4, 0, 1, 2)
+        self.plot_description_label = QLabel(
+            "Chart values reflect enabled worker results in the active filter scope.",
+            self.summary_group,
+        )
+        self.plot_description_label.setObjectName("plotDescription")
+        self.plot_description_label.setWordWrap(True)
+        summary_layout.addWidget(self.plot_description_label)
         for label in (
             self.summaryresult1_label, self.summaryresult2_label, self.summaryresult3_label,
             self.summaryresult4_label, self.summaryresult5_label, self.summaryresult6_label,
             self.summaryresult7_label,
         ):
             label.setFixedHeight(20)
-        summary_layout.addLayout(summary_metrics)
         summary_layout.addStretch(1)
         summary_layout.addWidget(self.summarysettings_button)
         self.summary_group.setMinimumWidth(330)
@@ -1169,13 +1762,34 @@ class PlantLayoutWindow(QDialog):
             QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Ignored
         )
 
-        # Worker selector, properties, navigation, and save controls.
+        # Worker selector, properties, navigation, and save controls. This is a
+        # compact side-panel layout; the original form assumed 1031 px of width.
         worker_layout = QVBoxLayout(self.workerinfo_group)
-        worker_layout.setContentsMargins(10, 12, 10, 10)
-        worker_layout.setSpacing(8)
+        worker_layout.setContentsMargins(10, 14, 10, 10)
+        worker_layout.setSpacing(7)
+
+        worker_widgets = (
+            self.workeridinfolbl_label, self.workerComboBox, self.orderInfo_button,
+            self.searchInfo_button, self.xview_label, self.xview_input,
+            self.yview_label, self.yview_input, self.ageinfolbl_label,
+            self.ageinfo_label, self.sexinfolbl_label, self.sexinfo_label,
+            self.weightinfolbl_label, self.weightinfo_label,
+            self.heightinfolbl_label, self.heightinfo_label,
+            self.visibleinfo_check, self.enableinfo_check, self.lockinfo_check,
+            self.xinfolbl_label_2, self.xinfo_input, self.yinfolbl_label,
+            self.yinfo_input, self.scaleinfolbl_label_2, self.scaleinfo_input,
+            self.firstinfo_button, self.previousinfo_button, self.nextinfo_button,
+            self.lastinfo_button, self.saveinfo_button,
+            self.scaleallinfolbl_label, self.scaleallinfo_input,
+            self.saveallinfo_button,
+        )
+        for widget in worker_widgets:
+            widget.setParent(self.workerinfo_group)
+            widget.show()
+        self.gridLayoutWidget.hide()
+
         worker_selector = QHBoxLayout()
         worker_selector.setSpacing(7)
-        worker_selector.addWidget(self.workeridinfolbl_label)
         worker_selector.addWidget(self.workerComboBox, 1)
         self.workerComboBox.setToolTip("Select a worker assignment to inspect or edit on the layout.")
         for button, icon_name, tooltip in (
@@ -1187,36 +1801,112 @@ class PlantLayoutWindow(QDialog):
             button.setIconSize(QSize(24, 24))
             button.setToolTip(tooltip)
             worker_selector.addWidget(button)
-        worker_selector.addSpacing(8)
-        worker_selector.addWidget(self.xview_label)
-        worker_selector.addWidget(self.xview_input)
-        worker_selector.addWidget(self.yview_label)
-        worker_selector.addWidget(self.yview_input)
+        worker_layout.addLayout(worker_selector)
+
+        self.worker_assignment_label = QLabel("No workplace assignment selected", self.workerinfo_group)
+        self.worker_assignment_label.setObjectName("workerAssignmentContext")
+        self.worker_assignment_label.setWordWrap(True)
+        self.worker_assignment_label.setMinimumHeight(42)
+        self.worker_assignment_label.setToolTip(
+            "Plant, section, line, station, shift, and ergonomic tool for the selected result."
+        )
+        worker_layout.addWidget(self.worker_assignment_label)
+
+        navigation_row = QHBoxLayout()
+        navigation_row.setSpacing(5)
+        worker_layout.addLayout(navigation_row)
+        worker_layout.addSpacing(8)
+
+        details_group = QGroupBox("Worker details", self.workerinfo_group)
+        details_group.setObjectName("workerSubgroup")
+        details_grid = QGridLayout(details_group)
+        details_grid.setContentsMargins(10, 12, 10, 10)
+        details_grid.setHorizontalSpacing(8)
+        details_grid.setVerticalSpacing(4)
+        for row, (left_label, left_value, right_label, right_value) in enumerate((
+            (self.ageinfolbl_label, self.ageinfo_label, self.sexinfolbl_label, self.sexinfo_label),
+            (self.weightinfolbl_label, self.weightinfo_label, self.heightinfolbl_label, self.heightinfo_label),
+        )):
+            details_grid.addWidget(left_label, row, 0)
+            details_grid.addWidget(left_value, row, 1)
+            details_grid.addWidget(right_label, row, 2)
+            details_grid.addWidget(right_value, row, 3)
+        details_grid.setColumnStretch(1, 1)
+        details_grid.setColumnStretch(3, 1)
+        worker_layout.addWidget(details_group)
+
+        assessment_group = QGroupBox("Assessment result", self.workerinfo_group)
+        assessment_group.setObjectName("workerSubgroup")
+        assessment_grid = QGridLayout(assessment_group)
+        assessment_grid.setContentsMargins(10, 12, 10, 10)
+        assessment_grid.setHorizontalSpacing(8)
+        self.worker_tool_value = QLabel("–", assessment_group)
+        self.worker_damage_value = QLabel("0.0000", assessment_group)
+        self.worker_risk_value = QLabel("0.0%", assessment_group)
+        assessment_grid.addWidget(QLabel("Tool", assessment_group), 0, 0)
+        assessment_grid.addWidget(self.worker_tool_value, 0, 1)
+        assessment_grid.addWidget(QLabel("Cumulative damage", assessment_group), 1, 0)
+        assessment_grid.addWidget(self.worker_damage_value, 1, 1)
+        assessment_grid.addWidget(QLabel("Outcome probability", assessment_group), 2, 0)
+        assessment_grid.addWidget(self.worker_risk_value, 2, 1)
+        self.worker_marker_preview = PlotWorkerMarkerPreview(assessment_group)
+        assessment_grid.addWidget(self.worker_marker_preview, 0, 2, 3, 1, Qt.AlignCenter)
+        assessment_grid.setColumnStretch(1, 1)
+        worker_layout.addWidget(assessment_group)
+
+        worker_layout.addStretch(1)
+        visual_group = QGroupBox("Visual controls", self.workerinfo_group)
+        visual_group.setObjectName("workerSubgroup")
+        visual_layout = QVBoxLayout(visual_group)
+        visual_layout.setContentsMargins(10, 12, 10, 10)
+        visual_layout.setSpacing(8)
+        state_row = QHBoxLayout()
+        state_row.setSpacing(12)
+        state_row.addWidget(self.visibleinfo_check)
+        state_row.addWidget(self.enableinfo_check)
+        state_row.addWidget(self.lockinfo_check)
+        state_row.addStretch(1)
+        visual_layout.addLayout(state_row)
+
+        marker_grid = QGridLayout()
+        marker_grid.setContentsMargins(0, 0, 0, 0)
+        marker_grid.setHorizontalSpacing(5)
+        marker_grid.addWidget(self.xinfolbl_label_2, 0, 0)
+        marker_grid.addWidget(self.xinfo_input, 0, 1)
+        marker_grid.addWidget(self.yinfolbl_label, 0, 2)
+        marker_grid.addWidget(self.yinfo_input, 0, 3)
+        marker_grid.addWidget(self.scaleinfolbl_label_2, 0, 4)
+        marker_grid.addWidget(self.scaleinfo_input, 0, 5)
+        for field in (self.xinfo_input, self.yinfo_input, self.scaleinfo_input):
+            field.setMinimumWidth(44)
+            field.setMaximumWidth(72)
+        marker_grid.setColumnStretch(1, 1)
+        marker_grid.setColumnStretch(3, 1)
+        marker_grid.setColumnStretch(5, 1)
+        visual_layout.addLayout(marker_grid)
+
+        pointer_row = QHBoxLayout()
+        pointer_row.setSpacing(5)
+        pointer_label = QLabel("Pointer", self.workerinfo_group)
+        pointer_label.setToolTip("Current pointer coordinates on the plant layout.")
+        pointer_row.addWidget(pointer_label)
+        pointer_row.addStretch(1)
+        pointer_row.addWidget(self.xview_label)
+        pointer_row.addWidget(self.xview_input)
+        pointer_row.addWidget(self.yview_label)
+        pointer_row.addWidget(self.yview_input)
         self.xview_input.setFixedWidth(58)
         self.yview_input.setFixedWidth(58)
         self.xview_input.setToolTip("Current horizontal pointer coordinate on the layout.")
         self.yview_input.setToolTip("Current vertical pointer coordinate on the layout.")
-        worker_layout.addLayout(worker_selector)
-
-        worker_editor = QHBoxLayout()
-        worker_editor.setSpacing(10)
-        self.gridLayoutWidget.setSizePolicy(
-            QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Preferred
-        )
-        worker_editor.addWidget(self.gridLayoutWidget, 1)
-        bulk_actions = QVBoxLayout()
-        scale_all_row = QHBoxLayout()
-        scale_all_row.addWidget(self.scaleallinfolbl_label)
-        scale_all_row.addWidget(self.scaleallinfo_input)
-        self.scaleallinfo_input.setFixedWidth(70)
-        bulk_actions.addLayout(scale_all_row)
-        bulk_actions.addStretch(1)
-        self.saveallinfo_button.setIcon(QIcon(os.path.join(icon_root, "save.png")))
-        self.saveallinfo_button.setIconSize(QSize(22, 22))
-        self.saveallinfo_button.setToolTip("Save all worker positions and display settings.")
-        bulk_actions.addWidget(self.saveallinfo_button)
-        worker_editor.addLayout(bulk_actions)
-        worker_layout.addLayout(worker_editor)
+        if self.SHOW_POINTER_DEBUG_CONTROLS:
+            worker_layout.addLayout(pointer_row)
+        else:
+            pointer_label.hide()
+            self.xview_label.hide()
+            self.xview_input.hide()
+            self.yview_label.hide()
+            self.yview_input.hide()
 
         for button, icon_name, tooltip in (
             (self.firstinfo_button, "first.png", "Select the first worker."),
@@ -1229,9 +1919,27 @@ class PlantLayoutWindow(QDialog):
             button.setIconSize(QSize(20, 20))
             button.setToolTip(tooltip)
             button.setMinimumWidth(38)
+        for button in (
+            self.firstinfo_button, self.previousinfo_button,
+            self.nextinfo_button, self.lastinfo_button,
+        ):
+            navigation_row.addWidget(button, 1)
+
         self.saveinfo_button.setIcon(QIcon(os.path.join(icon_root, "save.png")))
         self.saveinfo_button.setIconSize(QSize(20, 20))
         self.saveinfo_button.setToolTip("Save the selected worker's layout settings.")
+        self.saveallinfo_button.setIcon(QIcon(os.path.join(icon_root, "save.png")))
+        self.saveallinfo_button.setIconSize(QSize(20, 20))
+        self.saveallinfo_button.setToolTip("Save all worker positions and display settings.")
+        save_row = QHBoxLayout()
+        save_row.setSpacing(6)
+        save_row.addWidget(self.saveinfo_button, 1)
+        save_row.addWidget(self.scaleallinfolbl_label)
+        save_row.addWidget(self.scaleallinfo_input)
+        self.scaleallinfo_input.setFixedWidth(54)
+        save_row.addWidget(self.saveallinfo_button, 1)
+        visual_layout.addLayout(save_row)
+        worker_layout.addWidget(visual_group)
         self.visibleinfo_check.setToolTip("Show or hide the selected worker marker.")
         self.enableinfo_check.setToolTip("Include or exclude the selected worker from layout summaries.")
         self.lockinfo_check.setToolTip("Prevent the selected worker marker from being moved.")
@@ -1239,53 +1947,145 @@ class PlantLayoutWindow(QDialog):
         self.yinfo_input.setToolTip("Vertical position of the selected worker marker.")
         self.scaleinfo_input.setToolTip("Display scale of the selected worker marker.")
         self.scaleallinfo_input.setToolTip("Scale applied when saving all worker markers.")
-        self.workerinfo_group.setMinimumHeight(225)
+        self.workerinfo_group.setMinimumHeight(0)
         self.workerinfo_group.setMinimumWidth(0)
         self.workerinfo_group.setSizePolicy(
-            QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed
+            QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Expanding
         )
 
-        # Outcome/highlight region.
+        # Outcome/highlight region. It spans beneath the map and detail panel so
+        # the map retains its reference size while the gauge has useful width.
         outcome_layout = QHBoxLayout(self.outcome_group)
-        outcome_layout.setContentsMargins(10, 12, 10, 10)
-        outcome_layout.setSpacing(10)
-        self.outcome_image.setFixedSize(100, 108)
-        outcome_layout.addWidget(self.outcome_image)
-        outcome_text = QVBoxLayout()
-        outcome_text.addWidget(self.outcometitle_label)
-        self.outcomeresult1_label.setWordWrap(True)
-        outcome_text.addWidget(self.outcomeresult1_label, 1)
+        outcome_layout.setContentsMargins(14, 14, 14, 12)
+        outcome_layout.setSpacing(24)
+        self.outcome_image.hide()
+
+        summary_panel = QWidget(self.outcome_group)
+        summary_panel.setObjectName("outcomeSummaryPanel")
+        summary_panel_layout = QVBoxLayout(summary_panel)
+        summary_panel_layout.setContentsMargins(10, 8, 10, 8)
+        summary_panel_layout.setSpacing(3)
+        summary_heading = QLabel("Filtered results", summary_panel)
+        summary_heading.setObjectName("outcomeSectionHeading")
+        summary_panel_layout.addWidget(summary_heading)
+        summary_metrics = QGridLayout()
+        summary_metrics.setContentsMargins(0, 0, 0, 0)
+        summary_metrics.setHorizontalSpacing(16)
+        summary_metrics.setVerticalSpacing(2)
+        summary_metrics.addWidget(self.summaryresult1_label, 0, 0)
+        summary_metrics.addWidget(self.summaryresult2_label, 0, 1)
+        summary_metrics.addWidget(self.summaryresult3_label, 0, 2)
+        summary_metrics.addWidget(self.summaryresult4_label, 1, 0)
+        summary_metrics.addWidget(self.summaryresult5_label, 1, 1)
+        summary_metrics.addWidget(self.summaryresult6_label, 1, 2)
+        summary_metrics.addWidget(self.summaryresult7_label, 2, 0, 1, 3)
+        summary_panel_layout.addLayout(summary_metrics)
+        self.outcometitle_label.setText("Highlights")
+        highlight_header = QHBoxLayout()
+        highlight_header.setContentsMargins(0, 5, 0, 0)
+        highlight_header.addWidget(self.outcometitle_label)
+        highlight_header.addStretch(1)
+        self.outcomemore_button.setText("View details")
         self.outcomemore_button.setIcon(QIcon(os.path.join(icon_root, "view.png")))
-        self.outcomemore_button.setIconSize(QSize(22, 22))
-        self.outcomemore_button.setToolTip("View the complete set of layout highlights and warnings.")
-        outcome_text.addWidget(self.outcomemore_button)
-        outcome_layout.addLayout(outcome_text, 1)
-        self.outcome_group.setMinimumWidth(300)
+        self.outcomemore_button.setIconSize(QSize(20, 20))
+        self.outcomemore_button.setToolTip("Open station-level details for the current warning.")
+        self.outcomemore_button.clicked.connect(self.openHighlightDetails)
+        self.outcomemore_button.hide()
+        highlight_header.addWidget(self.outcomemore_button)
+        summary_panel_layout.addLayout(highlight_header)
+        self.outcomeresult1_label.setWordWrap(True)
+        summary_panel_layout.addWidget(self.outcomeresult1_label)
+        summary_panel_layout.addStretch(1)
+        summary_panel.setMinimumWidth(600)
+        outcome_layout.addWidget(summary_panel, 1)
+        outcome_layout.addStretch(1)
+
+        risk_cluster = QFrame(self.outcome_group)
+        risk_cluster.setObjectName("outcomeRiskCluster")
+        risk_cluster_layout = QHBoxLayout(risk_cluster)
+        risk_cluster_layout.setContentsMargins(12, 8, 12, 8)
+        risk_cluster_layout.setSpacing(8)
+
+        ranges_panel = QWidget(risk_cluster)
+        ranges_layout = QVBoxLayout(ranges_panel)
+        ranges_layout.setContentsMargins(0, 0, 0, 0)
+        ranges_layout.setSpacing(4)
+        ranges_heading = QLabel("Risk ranges", ranges_panel)
+        ranges_heading.setObjectName("outcomeSectionHeading")
+        ranges_layout.addWidget(ranges_heading)
+        for _start, _end, label, color, range_text in RISK_BANDS:
+            band = QLabel(f"<span style='color:{color}; font-size:16px;'>●</span>  {label}   {range_text}", ranges_panel)
+            band.setObjectName("outcomeRangeLabel")
+            ranges_layout.addWidget(band)
+        ranges_layout.addStretch(1)
+        ranges_panel.setFixedWidth(300)
+        risk_cluster_layout.addWidget(ranges_panel)
+
+        risk_divider = QFrame(risk_cluster)
+        risk_divider.setObjectName("riskClusterDivider")
+        risk_divider.setFrameShape(QFrame.VLine)
+        risk_divider.setFixedWidth(1)
+        risk_cluster_layout.addWidget(risk_divider)
+
+        result_panel = QWidget(risk_cluster)
+        result_panel.setObjectName("outcomeResultPanel")
+        result_layout = QVBoxLayout(result_panel)
+        result_layout.setContentsMargins(0, 0, 0, 0)
+        result_layout.setSpacing(3)
+        risk_header = QHBoxLayout()
+        risk_title = QLabel("Risk level", result_panel)
+        risk_title.setObjectName("outcomeSectionHeading")
+        self.outcome_risk_label = QLabel("Low Risk", result_panel)
+        self.outcome_risk_label.setObjectName("outcomeRiskLabel")
+        self.outcome_risk_label.setAlignment(Qt.AlignCenter)
+        risk_header.addStretch(1)
+        risk_header.addWidget(risk_title)
+        risk_header.addSpacing(12)
+        risk_header.addWidget(self.outcome_risk_label)
+        risk_header.addStretch(1)
+        result_layout.addLayout(risk_header)
+        self.plot_risk_gauge = PlotRiskGauge(result_panel)
+        self.plot_risk_gauge.setToolTip("Average outcome probability for enabled workers in the current filter scope.")
+        result_layout.addWidget(self.plot_risk_gauge, 0, Qt.AlignCenter)
+        gauge_caption = QLabel("Average probability of outcome", result_panel)
+        gauge_caption.setObjectName("outcomeGaugeCaption")
+        gauge_caption.setAlignment(Qt.AlignCenter)
+        result_layout.addWidget(gauge_caption)
+        result_layout.addStretch(1)
+        result_panel.setFixedWidth(330)
+        risk_cluster_layout.addWidget(result_panel)
+        risk_cluster.setFixedWidth(671)
+        outcome_layout.addWidget(risk_cluster)
+        self.outcome_group.setMinimumWidth(700)
+        self.outcome_group.setFixedHeight(220)
+
+        self.details_tabs = QtWidgets.QTabWidget()
+        self.details_tabs.setObjectName("plotDetailsTabs")
+        self.details_tabs.setIconSize(QSize(24, 24))
+        self.details_tabs.addTab(self.summary_group, QIcon(os.path.join(icon_root, "plot.png")), "Tools Overview")
+        self.details_tabs.addTab(self.workerinfo_group, QIcon(os.path.join(icon_root, "worker.png")), "Worker Overview")
+        self.summary_group.setTitle("")
+        self.workerinfo_group.setTitle("")
+        self.details_tabs.setTabToolTip(0, "View aggregate charts and metrics for the current filters.")
+        self.details_tabs.setTabToolTip(1, "Select and control an individual worker marker on the plant layout.")
+        self.details_tabs.setMinimumWidth(390)
+        self.details_tabs.setMaximumWidth(500)
 
         middle_splitter = QtWidgets.QSplitter(Qt.Horizontal)
         middle_splitter.setObjectName("plotMainSplitter")
         middle_splitter.addWidget(canvas_panel)
-        middle_splitter.addWidget(self.summary_group)
+        middle_splitter.addWidget(self.details_tabs)
         middle_splitter.setStretchFactor(0, 4)
         middle_splitter.setStretchFactor(1, 1)
-        middle_splitter.setSizes([1040, 330])
-
-        lower_splitter = QtWidgets.QSplitter(Qt.Horizontal)
-        lower_splitter.setObjectName("plotLowerSplitter")
-        lower_splitter.addWidget(self.workerinfo_group)
-        lower_splitter.addWidget(self.outcome_group)
-        lower_splitter.setChildrenCollapsible(False)
-        lower_splitter.setStretchFactor(0, 4)
-        lower_splitter.setStretchFactor(1, 1)
-        lower_splitter.setSizes([1040, 330])
+        middle_splitter.setSizes([1040, 390])
 
         root_layout = QVBoxLayout(self)
-        root_layout.setContentsMargins(10, 8, 10, 8)
+        root_layout.setContentsMargins(2, 8, 2, 8)
         root_layout.setSpacing(8)
         root_layout.addWidget(self.filters_group)
         root_layout.addWidget(middle_splitter, 1)
-        root_layout.addWidget(lower_splitter)
-        root_layout.addWidget(self.statusBar)
+        root_layout.addWidget(self.outcome_group)
+        self.statusBar.hide()
 
         self.applyPlotStyle()
         self.toolsgraphic_group.setStyleSheet("""
@@ -1294,8 +2094,8 @@ class PlantLayoutWindow(QDialog):
                 color: #FFFFFF;
                 border: 1px solid #073E68;
                 border-radius: 6px;
-                margin-top: 10px;
-                padding-top: 6px;
+                margin-top: 0;
+                padding-top: 0;
             }
             QGroupBox::title {
                 color: #FFFFFF;
@@ -1305,10 +2105,10 @@ class PlantLayoutWindow(QDialog):
                 padding: 0 4px;
             }
             QPushButton#plotToolButton {
-                min-width: 42px;
-                max-width: 42px;
-                min-height: 42px;
-                max-height: 42px;
+                min-width: 63px;
+                max-width: 63px;
+                min-height: 63px;
+                max-height: 63px;
                 padding: 0;
                 border: 0;
                 border-bottom: 1px solid #D5DEE5;
@@ -1317,6 +2117,12 @@ class PlantLayoutWindow(QDialog):
             }
             QPushButton#plotToolButton:hover { background: #EAF7F8; }
             QPushButton#plotToolButton:pressed { background: #D6ECEF; }
+            QLabel#toolRailTitle {
+                color: #FFFFFF;
+                background: #073E68;
+                font-weight: 700;
+                border: 0;
+            }
         """)
 
     def applyPlotStyle(self):
@@ -1328,6 +2134,8 @@ class PlantLayoutWindow(QDialog):
                 font-family: "Segoe UI", sans-serif;
                 font-size: 12px;
             }
+            QLabel#dialogTitle { color: #0B326C; font-size: 20px; font-weight: 700; }
+            QLabel#dialogSubtitle { color: #5F6F7A; }
             QGroupBox {
                 background: #FFFFFF;
                 border: 1px solid #D5DEE5;
@@ -1353,6 +2161,14 @@ class PlantLayoutWindow(QDialog):
                 border-radius: 6px;
             }
             QGroupBox#plotToolRail::title { color: #FFFFFF; background: #073E68; }
+            QGroupBox#workerSubgroup {
+                background: #F8FBFC;
+                border: 1px solid #D5DEE5;
+                border-radius: 5px;
+                margin-top: 10px;
+                color: #0B326C;
+                font-weight: 700;
+            }
             QGroupBox QLabel, QGroupBox QCheckBox, QGroupBox QRadioButton {
                 color: #1B2933;
                 font-weight: 400;
@@ -1362,8 +2178,69 @@ class PlantLayoutWindow(QDialog):
                 font-weight: 700;
             }
             QLabel#workplaceFilterSummary { color: #304652; font-weight: 600; }
+            QFrame#workplacePlantScope {
+                background: #EAF7F8;
+                border: 1px solid #08A9B5;
+                border-radius: 4px;
+            }
+            QFrame#workplaceScopeBlock { background: transparent; border: 0; }
+            QLabel#workplaceScopeType {
+                color: #607785;
+                font-size: 9px;
+                font-weight: 600;
+            }
+            QLabel#workplaceScopeValue {
+                color: #304652;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QLabel#workplacePlantValue {
+                color: #087E91;
+                font-size: 13px;
+                font-weight: 700;
+            }
+            QLabel#workerAssignmentContext {
+                color: #304652;
+                background: #F4F7F9;
+                border: 1px solid #D5DEE5;
+                border-radius: 4px;
+                padding: 6px 8px;
+                font-weight: 600;
+            }
+            QLabel#rangeFieldLabel, QLabel#plotDescription {
+                color: #506273;
+                font-size: 11px;
+                font-weight: 600;
+            }
+            QLabel#outcomeSectionHeading {
+                color: #0B326C;
+                font-size: 13px;
+                font-weight: 700;
+            }
+            QLabel#outcomeGaugeCaption, QLabel#outcomeRiskLabel {
+                color: #0B326C;
+                font-weight: 700;
+                font-size: 13px;
+            }
+            QLabel#outcomeRangeLabel { color: #304652; font-weight: 600; }
+            QFrame#riskClusterDivider { background: #D5DEE5; border: 0; }
+            QWidget#outcomeSummaryPanel, QFrame#outcomeRiskCluster {
+                background: #F8FBFC;
+                border: 1px solid #D5DEE5;
+                border-radius: 5px;
+            }
+            QWidget#outcomeSummaryPanel QLabel, QFrame#outcomeRiskCluster QLabel {
+                border: 0;
+                background: transparent;
+            }
+            QFrame#mapScopeFooter {
+                background: #F4F7F9;
+                border: 1px solid #D5DEE5;
+                border-radius: 4px;
+            }
+            QLabel#mapScopeLabel { color: #405462; font-weight: 600; }
             QWidget#plotCanvasPanel { background: #FFFFFF; }
-            QGraphicsView, QComboBox, QLineEdit {
+            QGraphicsView, QComboBox, QLineEdit, QDoubleSpinBox, QSpinBox {
                 background: #FFFFFF;
                 color: #1B2933;
                 border: 1px solid #BCC9D3;
@@ -1372,8 +2249,8 @@ class PlantLayoutWindow(QDialog):
                 selection-background-color: #087E91;
                 selection-color: #FFFFFF;
             }
-            QComboBox, QLineEdit { padding: 0 8px; }
-            QComboBox:focus, QLineEdit:focus { border: 2px solid #08A9B5; }
+            QComboBox, QLineEdit, QDoubleSpinBox, QSpinBox { padding: 0 8px; }
+            QComboBox:focus, QLineEdit:focus, QDoubleSpinBox:focus, QSpinBox:focus { border: 2px solid #08A9B5; }
             QTreeWidget {
                 background: #FFFFFF;
                 color: #1B2933;
@@ -1402,16 +2279,22 @@ class PlantLayoutWindow(QDialog):
             }
             QPushButton:hover { background: #EAF7F8; border-color: #08A9B5; }
             QPushButton:pressed { background: #D6ECEF; }
+            QPushButton#primaryButton {
+                background: #087E91;
+                color: #FFFFFF;
+                border-color: #087E91;
+            }
+            QPushButton#primaryButton:hover { background: #096D7C; }
             QPushButton#applyfilter_button {
                 background: #087E91;
                 color: #FFFFFF;
                 border-color: #087E91;
             }
             QPushButton#plotToolButton {
-                min-width: 42px;
-                max-width: 42px;
-                min-height: 42px;
-                max-height: 42px;
+                min-width: 63px;
+                max-width: 63px;
+                min-height: 63px;
+                max-height: 63px;
                 padding: 0;
                 border: 0;
                 border-bottom: 1px solid #D5DEE5;
@@ -1452,13 +2335,31 @@ class PlantLayoutWindow(QDialog):
     def updateWorkerFilterDisclosure(self, expanded):
         """Collapse demographic fields completely instead of merely disabling them."""
         self.worker_filter_container.setVisible(expanded)
-        self.filters_group.setMinimumHeight(265 if expanded else 205)
+        self.workerfilter_group.setFixedHeight(94 if expanded else 42)
+        self.filters_group.setFixedHeight(235 if expanded else 183)
 
     def openWorkplaceFilter(self):
         dialog = PlotWorkplaceFilterDialog(self)
         if dialog.exec_() != QDialog.Accepted:
             return
         self.applyWorkplaceScope(dialog.selected_path, dialog.shift_combo.currentText())
+
+    def restoreDefaultPlantScope(self):
+        """Restore the first plant, all descendants, and shift 1."""
+        if self.plant_combo.count():
+            self.plant_combo.setCurrentIndex(0)
+        self.loadSections()
+        self.setMultiFilterValue(self.section_combo, "All")
+        self.loadLines()
+        self.setMultiFilterValue(self.line_combo, "All")
+        self.loadStations()
+        self.setMultiFilterValue(self.station_combo, "All")
+        self.loadShifts()
+        default_shift = "1" if self.shift_combo.findText("1", Qt.MatchFixedString) >= 0 else (
+            self.shift_combo.itemText(1) if self.shift_combo.count() > 1 else "All"
+        )
+        self.setMultiFilterValue(self.shift_combo, default_shift)
+        self.updateWorkplaceSummary()
 
     def applyWorkplaceScope(self, path, shift):
         """Map a hierarchy selection into the existing PLOT filter widgets."""
@@ -1473,8 +2374,22 @@ class PlantLayoutWindow(QDialog):
         self.setMultiFilterValue(self.station_combo, path[3] if len(path) > 3 else "All")
         self.loadShifts()
         self.setMultiFilterValue(self.shift_combo, shift or "All")
-        scope = "  >  ".join(path)
-        self.workplace_summary_label.setText(f"{scope}  |  Shift: {shift or 'All'}")
+        self.updateWorkplaceSummary()
+
+    def updateWorkplaceSummary(self):
+        values = (
+            ("Plant", self.plant_combo.currentText().strip() or "–"),
+            ("Section", self.section_combo.currentText().strip() or "All"),
+            ("Line", self.line_combo.currentText().strip() or "All"),
+            ("Station", self.station_combo.currentText().strip() or "All"),
+        )
+        scope = "  ›  ".join(f"{label}: {value}" for label, value in values)
+        shift = self.shift_combo.currentText().strip() or "All"
+        self.workplace_summary_label.setText(f"{scope}\nShift: {shift}")
+        if hasattr(self, "workplace_scope_values"):
+            for label, value in values:
+                self.workplace_scope_values[label].setText(value)
+            self.workplace_scope_values["Shift"].setText(shift)
 
     @staticmethod
     def setMultiFilterValue(combo, value):
@@ -1483,7 +2398,8 @@ class PlantLayoutWindow(QDialog):
         for index in range(combo.count()):
             item = combo.model().item(index)
             if item:
-                item.setCheckState(Qt.Checked if combo.itemText(index) == target else Qt.Unchecked)
+                checked = target == "All" or combo.itemText(index) == target
+                item.setCheckState(Qt.Checked if checked else Qt.Unchecked)
         combo.updateText()
         combo.blockSignals(False)
 
@@ -1495,6 +2411,13 @@ class PlantLayoutWindow(QDialog):
         selected = aliases.get(normalized)
         for key, button in self.plot_tool_buttons.items():
             button.setChecked(key == selected)
+
+    def updateMapScopeFooter(self):
+        count = len(getattr(self, "visual_worker_tools", []))
+        workplace = self.workplace_summary_label.text() if hasattr(self, "workplace_summary_label") else ""
+        self.map_scope_label.setText(
+            f"Displayed results: {count}  |  Tool: {self.tool_combo.currentText()}  |  {workplace}"
+        )
         
         
 
@@ -1510,6 +2433,81 @@ class PlantLayoutWindow(QDialog):
     def saveVars(self):
         """Extracts values from PlantLayout window controls and stores them in the parent variables."""
     
+        if not self.parent():
+            return
+
+        self.parent().editPlantName = ""
+        self.parent().editSectionName = ""
+        self.parent().editLineName = ""
+        self.parent().editStationName = ""
+        self.parent().editShiftName = ""
+        self.parent().editToolID = ""
+        self.parent().editWorkerID = ""
+
+        if not any(worker.getLoadIntoTool() for worker in getattr(self, "visual_worker_tools", [])):
+            return
+
+        selected_worker_tool = next(
+            (worker for worker in getattr(self, "visual_worker_tools", []) if worker.getLoadIntoTool()),
+            None
+        )
+
+        if not selected_worker_tool:
+            return
+
+        unit = selected_worker_tool.getUnit()
+
+        current_index = self.workerComboBox.currentIndex()
+        if current_index < 0 or not hasattr(self, "workerstationshifttool_dataset") or current_index >= len(self.workerstationshifttool_dataset):
+            return
+
+        worker_data = self.workerstationshifttool_dataset[current_index]
+
+        worker_combo_text = self.workerComboBox.currentText().strip()
+        #worker_text = self.workerComboBox.currentText().strip()
+        #worker_id = worker_text.split("|")[0].strip() if worker_text else ""
+        worker_text = self.workerComboBox.currentText().strip()
+        worker_id = worker_text.split("|", 1)[0].strip() if worker_text else ""
+
+
+        # Plant comes from the separate combo, as you indicated
+        plant_name = self.plant_combo.currentText().strip()
+
+        # These come from the selected worker dataset row
+        section_name = str(worker_data.get("section_name", "")).strip()
+        line_name = str(worker_data.get("line_name", "")).strip()
+        station_id = str(worker_data.get("station_id", "")).strip()
+        shift_id = str(worker_data.get("shift_id", "")).strip()
+
+        tool_id = self.tool_combo.currentText().strip()
+
+        # Extract worker ID with formatted display if available
+        #worker_id = "SSN002 (Nail, Ivan)" #self.workerComboBox.currentText().strip()
+
+        self.parent().editPlantName = plant_name
+        self.parent().editSectionName = section_name
+        self.parent().editLineName = line_name
+        self.parent().editStationName = station_id
+        self.parent().editShiftName = shift_id
+        self.parent().editToolID = tool_id
+        self.parent().editWorkerID = worker_id
+        self.parent().editUnit = unit
+
+        print("\n[saveVars] Final values before leaving function:")
+        print(f"  self.parent().editPlantName   = '{self.parent().editPlantName}'")
+        print(f"  self.parent().editSectionName = '{self.parent().editSectionName}'")
+        print(f"  self.parent().editLineName    = '{self.parent().editLineName}'")
+        print(f"  self.parent().editStationName = '{self.parent().editStationName}'")
+        print(f"  self.parent().editShiftName   = '{self.parent().editShiftName}'")
+        print(f"  self.parent().editToolID      = '{self.parent().editToolID}'")
+        print(f"  self.parent().editWorkerID    = '{self.parent().editWorkerID}'")
+        print(f"  self.parent().editUnit        = '{self.parent().editUnit}'")
+
+
+
+    def saveVarsOld(self):
+        """Extracts values from PlantLayout window controls and stores them in the parent variables."""
+
         # Ensure parent exists before proceeding
         if not self.parent():
             #print("Error: No parent window found.")
@@ -1641,7 +2639,7 @@ class PlantLayoutWindow(QDialog):
         self.summarytitle_label.setText("<b>Summary:</b>")
         self.summaryresult1_label.setText("<b>Total Workers:</b> 0")
         self.summaryresult2_label.setText("<b>Average Age:</b> 0 ")
-        self.summarysettings_button.setText("Settings")
+        self.summarysettings_button.setText("Graph Settings")
         self.summaryresult3_label.setText("<b>Males:</b> 0")
         self.summaryresult4_label.setText("<b>Females:</b> 0")
         self.summaryresult5_label.setText("<b>Avg. Cumulative Damage:</b>  0%")
@@ -1790,6 +2788,7 @@ class PlantLayoutWindow(QDialog):
         # **Ensure loadVisualWorkerTools only runs after the window is fully loaded**
         #QTimer.singleShot(0, self.loadVisualWorkerTools)
         self.loadVisualWorkerTools()
+        self.updateMapScopeFooter()
         
         self.updateWorkerBorders()
         
@@ -1816,22 +2815,7 @@ class PlantLayoutWindow(QDialog):
     def resetFilters(self):
         """Reset all filter controls to their default values in the Plant Layout Window."""
     
-        # **Reset Plant Name ComboBox**
-        if self.plant_combo.count() > 0:
-            self.plant_combo.setCurrentIndex(0)
-        
-        if self.section_combo.count() > 0:
-            self.section_combo.setCurrentIndex(0)
-            
-        if self.line_combo.count() > 0:
-            self.line_combo.setCurrentIndex(0)
-    
-        if self.station_combo.count() > 0:
-            self.station_combo.setCurrentIndex(0)
-            
-        # **Reset Shift ComboBox**
-        if self.shift_combo.count() > 1:
-            self.shift_combo.setCurrentIndex(1)
+        self.restoreDefaultPlantScope()
     
         # **Reset Tool ComboBox (Default: LiFFT)**
         index = self.tool_combo.findText("LiFFT")
@@ -1843,17 +2827,14 @@ class PlantLayoutWindow(QDialog):
             self.gender_combo.setCurrentIndex(0)  # Assuming "Both" is at index 0
     
         # **Clear Age, Weight, and Height Inputs**
-        self.agefrom_edit.clear()
-        self.ageto_edit.clear()
-        self.weightfrom_edit.clear()
-        self.weightto_edit.clear()
-        self.heightfrom_edit.clear()
-        self.heightto_edit.clear()
+        for field in (
+            self.agefrom_edit, self.ageto_edit, self.weightfrom_edit,
+            self.weightto_edit, self.heightfrom_edit, self.heightto_edit,
+        ):
+            field.setValue(field.minimum())
     
         # **Uncheck Worker Filter Group**
         self.workerfilter_group.setChecked(False)    
-        if hasattr(self, "workplace_summary_label"):
-            self.workplace_summary_label.setText("All available workplaces")
 
     
     
@@ -1891,81 +2872,27 @@ class PlantLayoutWindow(QDialog):
     
     
     def searchInfoWorkerClicked(self):
-        """
-        Search for a worker in the preloaded dataset and set the matching worker in the combo box.
-        """
-        # Ensure there is data loaded
+        """Open a live picker for worker results in the current filter scope."""
         if not self.workerstationshifttool_dataset:
             QMessageBox.warning(self, "Error", "No workers available to search.")
-            return 
-    
-        # Create the search dialog
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Search Worker")
-        dialog.setFixedSize(400, 200)
-        layout = QVBoxLayout(dialog)
-
-        # ID Search
-        id_layout = QHBoxLayout()
-        id_label = QLabel("Search by ID:")
-        id_input = QLineEdit()
-        id_layout.addWidget(id_label)
-        id_layout.addWidget(id_input)
-        layout.addLayout(id_layout)
-
-        # Name Search
-        name_layout = QHBoxLayout()
-        name_label = QLabel("Search by Name:")
-        first_name_input = QLineEdit()
-        first_name_input.setPlaceholderText("First Name")
-        last_name_input = QLineEdit()
-        last_name_input.setPlaceholderText("Last Name")
-        name_layout.addWidget(name_label)
-        name_layout.addWidget(last_name_input)
-        name_layout.addWidget(first_name_input)
-        layout.addLayout(name_layout)
-
-        # Dialog buttons
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        layout.addWidget(button_box)
-
-        # **Search Logic (No DB Query)**
-        def performSearch():
-            worker_id = id_input.text().strip()
-            first_name = first_name_input.text().strip()
-            last_name = last_name_input.text().strip()
-            
-            matched_index = -1  # Store the index of the matching item
-    
-            for i, row in enumerate(self.workerstationshifttool_dataset):
-                row_worker_id = row.get("worker_id", "").strip()
-                row_first_name = row.get("first_name", "").strip()
-                row_last_name = row.get("last_name", "").strip()
-    
-                # **Match by Worker ID**
-                if worker_id and row_worker_id == worker_id:
-                    matched_index = i
-                    break  # Stop searching after finding a match
-                
-                # **Match by Full Name**
-                if first_name and last_name:
-                    if row_first_name.lower() == first_name.lower() and row_last_name.lower() == last_name.lower():
-                        matched_index = i
-                        break  # Stop searching after finding a match
-
-            if matched_index != -1:
-                self.workerComboBox.setCurrentIndex(matched_index)
-            else:
-                QMessageBox.warning(self, "Not Found", "Worker not found in the dataset.")
-    
-            dialog.accept()
-    
-        # Connect buttons to actions
-        button_box.accepted.connect(performSearch)
-        button_box.rejected.connect(dialog.reject)
-
-        # Show the dialog
-        dialog.exec_()
+            return
+        search_rows = self.workerstationshifttool_dataset
+        dialog = PlotWorkerPickerDialog(search_rows, self)
+        if dialog.exec_() == QDialog.Accepted and dialog.selected_index is not None:
+            selected = search_rows[dialog.selected_index]
+            identity = tuple(str(selected.get(key, "")) for key in (
+                "worker_id", "plant_name", "section_name", "line_name",
+                "station_id", "shift_id", "tool_id",
+            ))
+            current_index = next((
+                index for index, row in enumerate(self.workerstationshifttool_dataset)
+                if tuple(str(row.get(key, "")) for key in (
+                    "worker_id", "plant_name", "section_name", "line_name",
+                    "station_id", "shift_id", "tool_id",
+                )) == identity
+            ), -1)
+            if current_index >= 0:
+                self.workerComboBox.setCurrentIndex(current_index)
 
     
     
@@ -1975,6 +2902,92 @@ class PlantLayoutWindow(QDialog):
         if hasattr(self, "current_plot_figure") and self.current_plot_figure:
             dialog = PlotViewerDialog(self.current_plot_figure, self)
             dialog.exec_()  # Open dialog modally
+
+    @staticmethod
+    def defaultGraphSettings():
+        return {
+            "show_title": True,
+            "show_legend": True,
+            "show_grid": False,
+            "show_bar_values": False,
+            "y_axis_mode": "default",
+            "y_axis_max": 100.0,
+            "text_scale": 100,
+        }
+
+    def openGraphSettings(self):
+        dialog = PlotGraphSettingsDialog(self.graph_settings, self)
+        if dialog.exec_() != QDialog.Accepted:
+            return
+        self.graph_settings = dialog.settings()
+        self.onSummaryPlotChanged()
+
+    def openHighlightDetails(self):
+        details = getattr(self, "highlight_details", [])
+        if not details:
+            return
+        PlotHighlightDetailsDialog(details, self).exec_()
+
+    def applyGraphSettings(self, figure):
+        """Apply shared presentation preferences to a newly generated figure."""
+        settings = self.graph_settings
+        if not figure.axes:
+            return
+        primary_axis = figure.axes[0]
+
+        primary_axis.title.set_visible(settings["show_title"])
+        legend = primary_axis.get_legend()
+        if legend is not None:
+            legend.set_visible(settings["show_legend"])
+
+        is_heatmap = bool(primary_axis.images)
+        if settings["show_grid"] and not is_heatmap:
+            primary_axis.grid(
+                True,
+                axis="y",
+                color="#C7D2DA",
+                linestyle="--",
+                linewidth=0.7,
+                alpha=0.7,
+            )
+        else:
+            primary_axis.grid(False)
+
+        mode = settings["y_axis_mode"]
+        if mode == "risk":
+            primary_axis.set_ylim(0.0, 100.0)
+        elif mode == "custom":
+            primary_axis.set_ylim(0.0, settings["y_axis_max"])
+
+        if settings["show_bar_values"]:
+            for container in primary_axis.containers:
+                if container.__class__.__name__ == "BarContainer":
+                    primary_axis.bar_label(container, fmt="%.1f", padding=2, fontsize=6)
+
+        scale = settings["text_scale"] / 100.0
+        for axis in figure.axes:
+            for text_item in axis.findobj(match=lambda item: hasattr(item, "get_fontsize")):
+                size = text_item.get_fontsize()
+                if isinstance(size, (int, float)):
+                    text_item.set_fontsize(max(5.0, size * scale))
+        figure.tight_layout(pad=0.6)
+
+    def setSummaryFigure(self, figure):
+        """Attach a new Matplotlib figure without leaving stale canvas pixels."""
+        old_figure = self.summaryplot_canvas.figure
+        if old_figure is not figure:
+            old_figure.clear()
+        figure.set_canvas(self.summaryplot_canvas)
+        figure.patch.set_facecolor("#FFFFFF")
+        width = max(1, self.summaryplot_canvas.width())
+        height = max(1, self.summaryplot_canvas.height())
+        figure.set_size_inches(width / figure.dpi, height / figure.dpi, forward=False)
+        self.applyGraphSettings(figure)
+        self.summaryplot_canvas.figure = figure
+        self.summaryplot_canvas.setStyleSheet("background: #FFFFFF;")
+        self.summaryplot_canvas.updateGeometry()
+        self.summaryplot_canvas.draw()
+        self.summaryplot_canvas.update()
             #self.openPlotWindow(self.current_plot_figure)   	
             
             
@@ -1988,14 +3001,28 @@ class PlantLayoutWindow(QDialog):
     def onSummaryPlotChanged(self):
         """Handles summary plot selection and calls the corresponding function."""
         selected_index = self.summaryplot_combo.currentIndex()
+        if hasattr(self, "plot_description_label"):
+            descriptions = (
+                (
+                    "<b>What this shows:</b> Average outcome probability for each ergonomic tool. "
+                    "Error bars show one standard deviation.<br><b>Scale:</b> 0–100%; higher values indicate greater risk."
+                ),
+                (
+                    "<b>What this shows:</b> Average outcome probability by sex for each ergonomic tool. "
+                    "Error bars show one standard deviation.<br><b>Compare:</b> Differences within and across tools."
+                ),
+                (
+                    "<b>What this shows:</b> Average outcome probability by worker age range and ergonomic tool. "
+                    "Error bars show one standard deviation.<br><b>Compare:</b> Risk patterns between age groups."
+                ),
+            )
+            self.plot_description_label.setText(descriptions[selected_index] if 0 <= selected_index < 3 else "")
     
         # **Ensure workers dataset is available**
         if not hasattr(self, "workerstationshifttool_dataset") or not self.workerstationshifttool_dataset:
             print("Error: No worker data available for plotting.")
             return
     
-        enabled_workers = [worker for worker in self.workerstationshifttool_dataset if worker.get("enable", 0) == 1]
-        
         enabled_workersAllTools = [worker for worker in self.workerstationshiftAlltools_dataset if worker.get("enable", 0) == 1]
             
         # **Call the appropriate function based on selection**
@@ -2005,17 +3032,6 @@ class PlantLayoutWindow(QDialog):
             self.generateWorkerRiskDistributionPlot(enabled_workersAllTools)
         elif selected_index == 2:
             self.generateWorkerRiskByAgePlot(enabled_workersAllTools)
-        elif selected_index == 3:
-            self.generateWorkerRiskHeatmap(enabled_workers)
-        elif selected_index == 4:
-            self.generateRiskHeatmap(enabled_workers)
-        elif selected_index == 5:
-            self.generateWorkerDistributionPlot(enabled_workersAllTools)
-        elif selected_index == 6:
-            self.generateRiskVsAgePlot(enabled_workers)
-        elif selected_index == 7:
-        
-            self.generateCumulativeRiskOverTimePlot(enabled_workersAllTools)
    	
        	
     
@@ -2343,7 +3359,9 @@ class PlantLayoutWindow(QDialog):
         # Build a default filename using the plant name and the current date/time.
         # Assumes you have a QComboBox named self.plant_combo with the plant name.
         plant_name = self.plant_combo.currentText()
-        current_datetime = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        #current_datetime = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        current_datetime = datetime.now().strftime("%Y%m%d_%H%M%S")
+
         default_filename = f"{plant_name}_{current_datetime}.png"
     
         fileName, _ = QFileDialog.getSaveFileName(
@@ -2550,7 +3568,9 @@ class PlantLayoutWindow(QDialog):
                 if hasattr(worker_tool, "saveData") and callable(worker_tool.saveData):
                     worker_tool.setScale(self.scaleallinfo_input.text().strip())
                     worker_tool.saveData()
-                    worker_tool.initShape()
+                    #worker_tool.initShape()
+                    if worker_tool.isVisible():
+                        worker_tool.initShape()
                 
                     # Process pending events and wait briefly before next iteration
                     QApplication.processEvents()
@@ -2825,8 +3845,53 @@ class PlantLayoutWindow(QDialog):
             image.verticalScrollBar().setValue(0)
             
             
-            
     def findVisualWorkerTool(self):
+        print(f"Here1.1")
+        """Finds the corresponding VisualWorkerTool object based on UI selections."""
+        current_index = self.workerComboBox.currentIndex()
+        if current_index < 0 or not hasattr(self, "workerstationshifttool_dataset") or current_index >= len(self.workerstationshifttool_dataset):
+            return None
+
+        worker_data = self.workerstationshifttool_dataset[current_index]
+
+        worker_text = self.workerComboBox.currentText().strip()
+        worker_display = worker_text.split("|", 1)[0].strip() if worker_text else ""
+        worker_id = worker_display.split(" ", 1)[0].strip() if worker_display else ""
+
+        plant_name = self.plant_combo.currentText().strip()
+        section_name = str(worker_data.get("section_name", "")).strip()
+        line_name = str(worker_data.get("line_name", "")).strip()
+        station_id = str(worker_data.get("station_id", "")).strip()
+        shift_id = str(worker_data.get("shift_id", "")).strip()
+        tool_id = self.tool_combo.currentText().strip()
+
+        print("\n[findVisualWorkerTool] Values used for search:")
+        print(f"  worker_id    = '{worker_id}'")
+        print(f"  plant_name   = '{plant_name}'")
+        print(f"  section_name = '{section_name}'")
+        print(f"  line_name    = '{line_name}'")
+        print(f"  station_id   = '{station_id}'")
+        print(f"  shift_id     = '{shift_id}'")
+        print(f"  tool_id      = '{tool_id}'")
+
+        print(f"Here1.2")
+        # Search for the matching worker tool object
+        for worker_tool in self.visual_worker_tools:
+            if (worker_tool.getWorkerID() == worker_id and
+                worker_tool.getPlantName() == plant_name and
+                worker_tool.getSectionName() == section_name and
+                worker_tool.getLineName() == line_name and
+                worker_tool.getStationID() == station_id and
+                worker_tool.getShiftID() == shift_id and
+                worker_tool.getToolID() == tool_id):
+                print(f"Here1.3")
+                return worker_tool
+
+        print(f"Here1.4")
+        return None
+
+
+    def findVisualWorkerToolOld(self):
         """Finds the corresponding VisualWorkerTool object based on UI selections."""
         worker_id = self.workerComboBox.currentText().split(" ")[0]  # Extract Worker ID
         plant_name = self.plantinfo_label.text().strip()
@@ -2850,13 +3915,18 @@ class PlantLayoutWindow(QDialog):
         return None  # Return None if no match is found
 
     def visibleCheckChanged(self, state):
+        print(f"Here0")
         if not hasattr(self, 'visual_worker_tools'):
             return
             
+        print(f"Here1")
         """Handles changes to the visibility checkbox."""
         worker_tool = self.findVisualWorkerTool()
+        print(f"Here2")
         if worker_tool:
+            print(f"Here3")
             worker_tool.setVisible(state == Qt.Checked)
+        print(f"Here4")
     
     def enableCheckChanged(self, state):
         if not hasattr(self, 'visual_worker_tools'):
@@ -2898,20 +3968,12 @@ class PlantLayoutWindow(QDialog):
         #    for row in self.workerstationshifttool_dataset
         #])
         
-        # **Populate ComboBox with Formatted Entries**
+        # Keep selection focused on worker identity. Workplace and tool context
+        # are shown separately in the Worker tab instead of concatenated here.
         self.workerComboBox.addItems([
-            (f"{row['worker_id']} ({row['last_name']}, {row['first_name']}) | " 
-             f"Section: {row['section_name']} → "
-             f"Line: {row['line_name']} → "
-             f"Station: {row['station_id']} | "
-             f"Shift: {row['shift_id']}")
+            (f"{row['worker_id']} ({row['last_name']}, {row['first_name']})")
             if row['last_name'] and row['first_name']
-            else
-            (f"{row['worker_id']} | "
-             f"Section: {row['section_name']} → "
-             f"Line: {row['line_name']} → "
-             f"Station: {row['station_id']} | "
-             f"Shift: {row['shift_id']}")
+            else row['worker_id']
             for row in self.workerstationshifttool_dataset
         ])
     
@@ -2923,7 +3985,7 @@ class PlantLayoutWindow(QDialog):
         self.workerComboBox.blockSignals(False)
 
 
-    def getWorkers(self, order_by, tid=None):
+    def getWorkers(self, order_by, tid=None, ignore_workplace=False):
         """
         Retrieves workers from WorkerStationShiftErgoTool with additional worker details.
     
@@ -2984,14 +4046,14 @@ class PlantLayoutWindow(QDialog):
         #  f"Tool: {self.tool_combo.currentText().strip()}")
 
 
-        if plant_name != "All":
+        if not ignore_workplace and plant_name != "All":
             filters.append("ws.plant_name = ?")
             params.append(plant_name)
     
         #if section_name != "All":
         #    filters.append("ws.section_name = ?")
         #    params.append(section_name)
-        selected_sections = [self.section_combo.itemText(i) for i in range(self.section_combo.count())
+        selected_sections = [] if ignore_workplace else [self.section_combo.itemText(i) for i in range(self.section_combo.count())
                              if self.section_combo.model().item(i).checkState() == Qt.Checked and self.section_combo.itemText(i) != "All"]
 
         if selected_sections:
@@ -2999,7 +4061,7 @@ class PlantLayoutWindow(QDialog):
             placeholders = ", ".join(["?"] * len(selected_sections))
             filters.append(f"ws.section_name IN ({placeholders})")
             params.extend(selected_sections)
-        elif section_name != "All":
+        elif not ignore_workplace and section_name != "All":
             # If a single section is selected
             filters.append("ws.section_name = ?")
             params.append(section_name)
@@ -3009,7 +4071,7 @@ class PlantLayoutWindow(QDialog):
         #if line_name != "All":
         #    filters.append("ws.line_name = ?")
         #    params.append(line_name)
-        selected_lines = [self.line_combo.itemText(i) for i in range(self.line_combo.count())
+        selected_lines = [] if ignore_workplace else [self.line_combo.itemText(i) for i in range(self.line_combo.count())
                           if self.line_combo.model().item(i).checkState() == Qt.Checked and self.line_combo.itemText(i) != "All"]
 
         if selected_lines:
@@ -3017,7 +4079,7 @@ class PlantLayoutWindow(QDialog):
             placeholders = ", ".join(["?"] * len(selected_lines))
             filters.append(f"ws.line_name IN ({placeholders})")
             params.extend(selected_lines)
-        elif line_name != "All":
+        elif not ignore_workplace and line_name != "All":
             # If a single line is selected
             filters.append("ws.line_name = ?")
             params.append(line_name)
@@ -3028,7 +4090,7 @@ class PlantLayoutWindow(QDialog):
         #    params.append(station_id)
             
         # **Station Filter Handling (Multi-Selection)**
-        selected_stations = [self.station_combo.itemText(i) for i in range(self.station_combo.count())
+        selected_stations = [] if ignore_workplace else [self.station_combo.itemText(i) for i in range(self.station_combo.count())
                              if self.station_combo.model().item(i).checkState() == Qt.Checked and self.station_combo.itemText(i) != "All"]
 
         if selected_stations:
@@ -3036,7 +4098,7 @@ class PlantLayoutWindow(QDialog):
             placeholders = ", ".join(["?"] * len(selected_stations))
             filters.append(f"ws.station_id IN ({placeholders})")
             params.extend(selected_stations)
-        elif station_id != "All":
+        elif not ignore_workplace and station_id != "All":
             # If a single station is selected
             filters.append("ws.station_id = ?")
             params.append(station_id)
@@ -3062,11 +4124,14 @@ class PlantLayoutWindow(QDialog):
         # **Apply Numeric Filters (Age, Weight, Height)**
         if self.workerfilter_group.isChecked():
             try:
+                def optional_value(field):
+                    return None if field.value() == field.minimum() else field.value()
+
                 # **AGE FILTER**
-                age_from = self.agefrom_edit.text().strip()
-                age_to = self.ageto_edit.text().strip()
+                age_from = optional_value(self.agefrom_edit)
+                age_to = optional_value(self.ageto_edit)
     
-                if age_from.isdigit() and age_to.isdigit():
+                if age_from is not None and age_to is not None:
                     age_from = int(age_from)
                     age_to = int(age_to)
     
@@ -3079,25 +4144,19 @@ class PlantLayoutWindow(QDialog):
                         params.extend([min_year_of_birth, max_year_of_birth])
     
                 # **WEIGHT FILTER**
-                weight_from = self.weightfrom_edit.text().strip()
-                weight_to = self.weightto_edit.text().strip()
+                weight_from = optional_value(self.weightfrom_edit)
+                weight_to = optional_value(self.weightto_edit)
     
-                if weight_from.isdigit() and weight_to.isdigit():
-                    weight_from = int(weight_from)
-                    weight_to = int(weight_to)
-    
+                if weight_from is not None and weight_to is not None:
                     if weight_from <= weight_to:
                         filters.append("worker_weight BETWEEN ? AND ?")
                         params.extend([weight_from, weight_to])
     
                 # **HEIGHT FILTER**
-                height_from = self.heightfrom_edit.text().strip()
-                height_to = self.heightto_edit.text().strip()
+                height_from = optional_value(self.heightfrom_edit)
+                height_to = optional_value(self.heightto_edit)
     
-                if height_from.isdigit() and height_to.isdigit():
-                    height_from = int(height_from)
-                    height_to = int(height_to)
-    
+                if height_from is not None and height_to is not None:
                     if height_from <= height_to:
                         filters.append("worker_height BETWEEN ? AND ?")
                         params.extend([height_from, height_to])
@@ -3194,6 +4253,24 @@ class PlantLayoutWindow(QDialog):
         self.stationinfo = f"{worker_data.get('station_id', 'N/A')}"
         self.shiftinfo = f"{worker_data.get('shift_id', 'N/A')}"
         self.toolinfo = f"{worker_data.get('tool_id', 'N/A')}"
+
+        if hasattr(self, "worker_assignment_label"):
+            assignment = (
+                f"{self.plantinfo}  ›  {self.sectioninfo}  ›  {self.lineinfo}  ›  "
+                f"{self.stationinfo}   •   Shift {self.shiftinfo}   •   {self.toolinfo}"
+            )
+            self.worker_assignment_label.setText(assignment)
+        if hasattr(self, "worker_tool_value"):
+            self.worker_tool_value.setText(self.toolinfo)
+            self.worker_damage_value.setText(
+                f"{float(worker_data.get('total_cumulative_damage', 0.0) or 0.0):.4f}"
+            )
+            self.worker_risk_value.setText(
+                f"{float(worker_data.get('probability_outcome', 0.0) or 0.0):.1f}%"
+            )
+            self.worker_marker_preview.setWorker(
+                worker_data.get("gender", ""), worker_data.get("color", "#19B83F")
+            )
 
         self.xinfo_input.setText(f"{int(worker_data.get('x', 0))}")
         self.yinfo_input.setText(f"{int(worker_data.get('y', 0))}")
@@ -3998,6 +5075,12 @@ class PlantLayoutWindow(QDialog):
         
         if not hasattr(self, "workerstationshifttool_dataset") or not self.workerstationshifttool_dataset:
             print("Error: workerstationshifttool_dataset is empty or not available.")
+            if hasattr(self, "plot_risk_gauge"):
+                self.plot_risk_gauge.setValue(0.0)
+                self.outcome_risk_label.setText("<span style='color:#19B83F;'>●</span> Low Risk  ·  0.0%")
+                self.outcomeresult1_label.setText("No enabled worker results match the current filters.")
+                self.highlight_details = []
+                self.outcomemore_button.hide()
             return
 
         # **Filter dataset to only include enabled workers**
@@ -4151,8 +5234,7 @@ class PlantLayoutWindow(QDialog):
         self.current_plot_figure = fig  
 
         # **Clear Canvas and Render New Plot**
-        self.summaryplot_canvas.figure = fig
-        self.summaryplot_canvas.draw()
+        self.setSummaryFigure(fig)
 
     
     
@@ -4221,8 +5303,7 @@ class PlantLayoutWindow(QDialog):
         self.current_plot_figure = fig  
     
         # **Clear Canvas and Render New Plot**
-        self.summaryplot_canvas.figure = fig
-        self.summaryplot_canvas.draw()
+        self.setSummaryFigure(fig)
 
     
     
@@ -4319,8 +5400,7 @@ class PlantLayoutWindow(QDialog):
         self.current_plot_figure = fig  
     
         # **Clear Canvas and Render New Plot**
-        self.summaryplot_canvas.figure = fig
-        self.summaryplot_canvas.draw()
+        self.setSummaryFigure(fig)
 
     
     
@@ -4373,8 +5453,7 @@ class PlantLayoutWindow(QDialog):
         self.current_plot_figure = fig  # Track the last generated figure
     
         # **Clear Canvas and Render New Plot**
-        self.summaryplot_canvas.figure = fig
-        self.summaryplot_canvas.draw()
+        self.setSummaryFigure(fig)
 
 
 
@@ -4447,8 +5526,7 @@ class PlantLayoutWindow(QDialog):
         self.current_plot_figure = fig  # Track last generated figure
     
         # **Clear Canvas and Render New Plot**
-        self.summaryplot_canvas.figure = fig
-        self.summaryplot_canvas.draw()
+        self.setSummaryFigure(fig)
     
 
         
@@ -4522,8 +5600,7 @@ class PlantLayoutWindow(QDialog):
         self.current_plot_figure = fig  # Store last generated figure
     
         # **Clear Canvas and Render New Plot**
-        self.summaryplot_canvas.figure = fig
-        self.summaryplot_canvas.draw()
+        self.setSummaryFigure(fig)
 
 
     def generateWorkerDistributionPlot(self, workers):
@@ -4589,8 +5666,7 @@ class PlantLayoutWindow(QDialog):
         self.current_plot_figure = fig  
     
         # **Clear Canvas and Render New Plot**
-        self.summaryplot_canvas.figure = fig
-        self.summaryplot_canvas.draw()
+        self.setSummaryFigure(fig)
 
 
         
@@ -4654,8 +5730,7 @@ class PlantLayoutWindow(QDialog):
         self.current_plot_figure = fig  
     
         # **Clear Canvas and Render New Plot**
-        self.summaryplot_canvas.figure = fig
-        self.summaryplot_canvas.draw()
+        self.setSummaryFigure(fig)
 
     
     
@@ -4722,15 +5797,14 @@ class PlantLayoutWindow(QDialog):
         self.current_plot_figure = fig  
     
         # **Clear Canvas and Render New Plot**
-        self.summaryplot_canvas.figure = fig
-        self.summaryplot_canvas.draw()
+        self.setSummaryFigure(fig)
 
 
     
     
     
     def loadOutcome(self):
-        """Calculates the average color from the dataset and applies it to self.outcome_image."""
+        """Update aggregate risk and highlights for the current PLOT scope."""
     
         if not hasattr(self, "workerstationshifttool_dataset") or not self.workerstationshifttool_dataset:
             print("Error: workerstationshifttool_dataset is empty or not available.")
@@ -4738,6 +5812,17 @@ class PlantLayoutWindow(QDialog):
     
         # **Filter dataset to only include enabled workers**
         enabled_workers = [worker for worker in self.workerstationshifttool_dataset if worker.get("enable", 0) == 1]
+        average_probability = (
+            sum(float(worker.get("probability_outcome", 0.0) or 0.0) for worker in enabled_workers)
+            / len(enabled_workers)
+            if enabled_workers else 0.0
+        )
+        if hasattr(self, "plot_risk_gauge"):
+            self.plot_risk_gauge.setValue(average_probability)
+            _start, _end, band_label, band_color, _range_text = risk_band(average_probability)
+            self.outcome_risk_label.setText(
+                f"<span style='color:{band_color};'>●</span> {band_label}  ·  {average_probability:.1f}%"
+            )
         
         
         # ** Initialize Color Accumulators**
@@ -4781,34 +5866,41 @@ class PlantLayoutWindow(QDialog):
         
         
         # **Check for High-Risk Stations**
-        high_risk_threshold = 50  # TODO: set in another way...
-        station_risk_count = {}
+        high_risk_threshold = 50
+        station_risk_values = {}
 
         for worker in enabled_workers:  # Use only enabled workers
             station_id = worker.get("station_id", "")
             probability_outcome = worker.get("probability_outcome", 0.0)  # Ensure it's a float
 
             if probability_outcome >= high_risk_threshold:
-                if station_id in station_risk_count:
-                    station_risk_count[station_id] += 1
-                else:
-                    station_risk_count[station_id] = 1
+                station_risk_values.setdefault(station_id, []).append(float(probability_outcome))
 
         # **Identify Stations with 2+ High-Risk Workers**
-        high_risk_stations = [station for station, count in station_risk_count.items() if count >= 2]
+        self.highlight_details = [
+            {
+                "station": station or "Unspecified",
+                "count": len(values),
+                "average": sum(values) / len(values),
+                "maximum": max(values),
+            }
+            for station, values in sorted(station_risk_values.items())
+            if len(values) >= 2
+        ]
 
         # **Update the Outcome Label Based on Results**
-        if high_risk_stations:
-            station_list_str = ", ".join(high_risk_stations)
-            warning_message = f"Warning: Stations with multiple high-risk workers (>{high_risk_threshold}%): {station_list_str}"
+        if self.highlight_details:
+            warning_message = f"Warning: Stations with multiple high-risk workers (>{high_risk_threshold}%)."
 
             self.outcomeresult1_label.setText(warning_message)
             self.outcomeresult1_label.setStyleSheet("color: red; font-weight: bold;")  # Highlight warning
             self.outcomeresult1_label.setToolTip(warning_message)
+            self.outcomemore_button.show()
             
         else:
             self.outcomeresult1_label.setText("")  # Clear message if no issues found
             self.outcomeresult1_label.setToolTip("")
+            self.outcomemore_button.hide()
 
 
     
@@ -5059,5 +6151,3 @@ if __name__ == "__main__":
     sys.exit(app.exec_())
 
  
-
-
