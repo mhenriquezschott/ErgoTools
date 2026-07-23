@@ -30,7 +30,7 @@ from matplotlib.cm import ScalarMappable
 
 from PyQt5.QtWidgets import (QApplication, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QDateEdit,
                              QPushButton, QFrame, QGraphicsView, QGraphicsScene, QToolButton, QCheckBox, QGroupBox, QGridLayout, QStatusBar, QGraphicsPixmapItem, QMenu, QAction, QSpinBox, QGraphicsRectItem, QFileDialog)
-from PyQt5.QtGui import QStandardItemModel, QStandardItem, QPixmap, QCursor, QPen, QIcon, QBrush, QColor, QPolygonF, QFont, QPainter, QFontMetrics, QTransform
+from PyQt5.QtGui import QStandardItemModel, QStandardItem, QPixmap, QCursor, QPen, QIcon, QBrush, QColor, QPolygonF, QFont, QPainter, QFontMetrics, QTransform, QPalette
 from PyQt5.QtCore import (
     Qt, QDate, QSize, QPointF, QRectF, QTimer, QEasingCurve,
     QPropertyAnimation,
@@ -2180,6 +2180,11 @@ class PlantLayoutWindow(QDialog):
 
     def applyPlotStyle(self):
         self.setObjectName("plotDialog")
+        tooltip_palette = QtWidgets.QToolTip.palette()
+        for color_group in (QPalette.Active, QPalette.Inactive, QPalette.Disabled):
+            tooltip_palette.setColor(color_group, QPalette.ToolTipBase, QColor("#1B2933"))
+            tooltip_palette.setColor(color_group, QPalette.ToolTipText, QColor("#FFFFFF"))
+        QtWidgets.QToolTip.setPalette(tooltip_palette)
         self.setStyleSheet("""
             QDialog#plotDialog {
                 background: #F4F7F9;

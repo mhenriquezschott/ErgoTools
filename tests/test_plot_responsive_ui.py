@@ -6,9 +6,9 @@ os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 sys.path.insert(0, os.path.abspath("src"))
 
 from PyQt5.QtCore import QPoint, QTimer, Qt
-from PyQt5.QtGui import QImage
+from PyQt5.QtGui import QImage, QPalette
 from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox, QToolTip
 
 from main import ErgoTools
 from plant_layout import (
@@ -43,6 +43,12 @@ assert window.minimumSizeHint().height() <= 1060
 assert default_canvas_size.width() >= 960
 assert default_canvas_size.height() >= 575
 assert window.summaryplot_canvas.geometry().bottom() <= window.summaryplot_combo.geometry().top()
+tooltip_palette = window.summaryplot_canvas.toolTip()
+assert tooltip_palette == "Click the chart to open a larger interactive view."
+assert window.palette().color(QPalette.WindowText) != window.palette().color(QPalette.Window)
+assert QToolTip.palette().color(QPalette.ToolTipText).name().upper() == "#FFFFFF"
+assert QToolTip.palette().color(QPalette.ToolTipBase).name().upper() == "#1B2933"
+assert QToolTip.palette().color(QPalette.ToolTipText) != QToolTip.palette().color(QPalette.ToolTipBase)
 assert window.otheroptionsfilter_group.isHidden()
 assert window.shiftfilter_group.isHidden()
 assert window.toolsfiltersettings_button.isHidden()
