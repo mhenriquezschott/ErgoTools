@@ -119,17 +119,48 @@ workplace_dialog.show()
 app.processEvents()
 workplace_dialog.grab().save("/tmp/plot_workplace_filter.png")
 assert workplace_dialog.tree.topLevelItemCount() > 0
-assert tuple(workplace_dialog.tree.topLevelItem(0).data(0, Qt.UserRole)) == ("Default",)
+assert tuple(workplace_dialog.tree.topLevelItem(0).data(1, Qt.UserRole)) == ("Default",)
 assert all(
-    tuple(workplace_dialog.tree.topLevelItem(i).data(0, Qt.UserRole)) != ("__ALL__",)
+    tuple(workplace_dialog.tree.topLevelItem(i).data(1, Qt.UserRole)) != ("__ALL__",)
     for i in range(workplace_dialog.tree.topLevelItemCount())
 )
 assert all(not workplace_dialog.tree.topLevelItem(i).isExpanded()
            for i in range(workplace_dialog.tree.topLevelItemCount()))
 assert "Plant: Default" in workplace_dialog.path_label.text()
-assert "Section: All" in workplace_dialog.path_label.text()
+assert "Included: All locations" in workplace_dialog.path_label.text()
 assert "Shift: 1" in workplace_dialog.path_label.text()
+
+items_by_path = {
+    tuple(item.data(1, Qt.UserRole) or ()): item
+    for item in workplace_dialog.iterItems()
+}
+items_by_path[("Default", "SecondSection")].setCheckState(0, Qt.Checked)
+items_by_path[("Default", "ThirdSection")].setCheckState(0, Qt.Checked)
+items_by_path[("Default",)].setExpanded(True)
+app.processEvents()
+assert workplace_dialog.selected_paths == [
+    ("Default", "SecondSection"),
+    ("Default", "ThirdSection"),
+]
+assert items_by_path[("Default",)].checkState(0) == Qt.Unchecked
+assert "SecondSection" in workplace_dialog.path_label.text()
+assert "ThirdSection" in workplace_dialog.path_label.text()
+workplace_dialog.grab().save("/tmp/plot_workplace_multiselect.png")
+items_by_path[("TheRenewPlant",)].setCheckState(0, Qt.Checked)
+assert workplace_dialog.selected_paths == [("TheRenewPlant",)]
+assert items_by_path[("Default", "SecondSection")].checkState(0) == Qt.Unchecked
+assert items_by_path[("Default", "ThirdSection")].checkState(0) == Qt.Unchecked
 workplace_dialog.close()
+window.applyWorkplaceScopes([
+    ("Default", "SecondSection"),
+    ("Default", "ThirdSection"),
+], "1")
+multi_scope_workers = window.getWorkers(0)
+assert multi_scope_workers
+assert {
+    worker["section_name"] for worker in multi_scope_workers
+} <= {"SecondSection", "ThirdSection"}
+assert "2 selected" in window.workplace_summary_label.text()
 window.applyWorkplaceScope(("Default", "Default", "Default", "ST02"), "1")
 assert "ST02" in window.workplace_summary_label.text()
 window.applyfilterButtonClicked()

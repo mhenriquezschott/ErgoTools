@@ -560,6 +560,8 @@ class PlotWorkplaceFilterDialog(QDialog):
         super().__init__(plot_window)
         self.plot_window = plot_window
         self.selected_path = None
+        self.selected_paths = []
+        self._updating_checks = False
         self.setWindowTitle("Filter by Workplace")
         self.setMinimumSize(570, 540)
         self.setObjectName("plotWorkplaceDialog")
@@ -571,21 +573,28 @@ class PlotWorkplaceFilterDialog(QDialog):
         title.setObjectName("dialogTitle")
         layout.addWidget(title)
         description = QLabel(
-            "Select a plant, section, line, or station. Higher levels include every location beneath them."
+            "Choose one plant, then check one or more sections, lines, or stations. "
+            "A checked higher level includes every location beneath it."
         )
         description.setWordWrap(True)
         description.setObjectName("supportingText")
         layout.addWidget(description)
         self.tree = QtWidgets.QTreeWidget()
-        self.tree.setHeaderLabels(["Workplace hierarchy", "Scope"])
+        self.tree.setColumnCount(3)
+        self.tree.setHeaderLabels(["Include", "Workplace hierarchy", "Scope"])
         self.tree.setAlternatingRowColors(True)
         self.tree.setIconSize(QSize(22, 22))
         self.tree.header().setStretchLastSection(False)
-        self.tree.header().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
-        self.tree.header().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
+        self.tree.header().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
+        self.tree.header().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
+        self.tree.header().setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeToContents)
         self.tree.currentItemChanged.connect(self.selectionChanged)
-        self.tree.itemDoubleClicked.connect(lambda *_: self.acceptSelection())
-        self.tree.setToolTip("Expand the organization hierarchy and select the workplace scope to display.")
+        self.tree.itemChanged.connect(self.checkStateChanged)
+        self.tree.itemDoubleClicked.connect(self.toggleItemCheck)
+        self.tree.setToolTip(
+            "Expand the hierarchy and use the Include checkboxes. "
+            "Selections are limited to one plant."
+        )
         layout.addWidget(self.tree, 1)
         shift_row = QHBoxLayout()
         shift_row.addWidget(QLabel("Shift"))
@@ -594,14 +603,14 @@ class PlotWorkplaceFilterDialog(QDialog):
         self.shift_combo.currentTextChanged.connect(self.updatePathLabel)
         shift_row.addWidget(self.shift_combo, 1)
         layout.addLayout(shift_row)
-        self.path_label = QLabel("Select a workplace scope.")
+        self.path_label = QLabel("Check at least one workplace scope.")
         self.path_label.setWordWrap(True)
         self.path_label.setObjectName("contextSummary")
         layout.addWidget(self.path_label)
         buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
         icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
         self.use_button = buttons.button(QDialogButtonBox.Ok)
-        self.use_button.setText("Use workplace")
+        self.use_button.setText("Use workplaces")
         self.use_button.setIcon(QIcon(os.path.join(icon_root, "station.png")))
         self.use_button.setIconSize(QSize(24, 24))
         self.use_button.setEnabled(False)
@@ -635,9 +644,11 @@ class PlotWorkplaceFilterDialog(QDialog):
             for depth, value in enumerate(normalized, start=1):
                 partial = normalized[:depth]
                 if partial not in item_cache:
-                    item = QtWidgets.QTreeWidgetItem([value, entity_names[depth - 1]])
-                    item.setData(0, Qt.UserRole, partial)
-                    item.setIcon(0, QIcon(os.path.join(icon_root, entity_names[depth - 1].lower() + ".png")))
+                    item = QtWidgets.QTreeWidgetItem(["", value, entity_names[depth - 1]])
+                    item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+                    item.setCheckState(0, Qt.Unchecked)
+                    item.setData(1, Qt.UserRole, partial)
+                    item.setIcon(1, QIcon(os.path.join(icon_root, entity_names[depth - 1].lower() + ".png")))
                     (self.tree.addTopLevelItem if parent is None else parent.addChild)(item)
                     item_cache[partial] = item
                 parent = item_cache[partial]
@@ -651,7 +662,17 @@ class PlotWorkplaceFilterDialog(QDialog):
             if not value or value == "All":
                 break
             current_path.append(value)
-        current_item = item_cache.get(tuple(current_path))
+        initial_paths = getattr(self.plot_window, "workplace_scope_paths", None)
+        if not initial_paths:
+            initial_paths = [tuple(current_path)]
+        self._updating_checks = True
+        for path in initial_paths:
+            item = item_cache.get(tuple(path))
+            if item is not None:
+                item.setCheckState(0, Qt.Checked)
+        self._updating_checks = False
+        self.refreshSelectedPaths()
+        current_item = item_cache.get(tuple(initial_paths[0])) if initial_paths else None
         if current_item is None and self.tree.topLevelItemCount():
             current_item = self.tree.topLevelItem(0)
         if current_item is not None:
@@ -662,21 +683,75 @@ class PlotWorkplaceFilterDialog(QDialog):
         self.shift_combo.setCurrentText(current_shift if current_shift in shifts else "All")
 
     def selectionChanged(self, current, previous=None):
-        self.selected_path = current.data(0, Qt.UserRole) if current else None
-        self.use_button.setEnabled(bool(self.selected_path))
+        if current is not None:
+            self.tree.scrollToItem(current)
+
+    def iterItems(self):
+        iterator = QtWidgets.QTreeWidgetItemIterator(self.tree)
+        while iterator.value():
+            yield iterator.value()
+            iterator += 1
+
+    def toggleItemCheck(self, item, _column=0):
+        item.setCheckState(0, Qt.Unchecked if item.checkState(0) == Qt.Checked else Qt.Checked)
+
+    def checkStateChanged(self, item, column):
+        if self._updating_checks or column != 0:
+            return
+        path = tuple(item.data(1, Qt.UserRole) or ())
+        if item.checkState(0) == Qt.Checked and path:
+            selected_plant = path[0]
+            self._updating_checks = True
+            ancestor = item.parent()
+            while ancestor is not None:
+                ancestor.setCheckState(0, Qt.Unchecked)
+                ancestor = ancestor.parent()
+            for candidate in self.iterItems():
+                candidate_path = tuple(candidate.data(1, Qt.UserRole) or ())
+                if candidate_path and candidate_path[0] != selected_plant:
+                    candidate.setCheckState(0, Qt.Unchecked)
+                elif (
+                    candidate is not item
+                    and len(candidate_path) > len(path)
+                    and candidate_path[:len(path)] == path
+                ):
+                    candidate.setCheckState(0, Qt.Unchecked)
+            self._updating_checks = False
+        self.refreshSelectedPaths()
+
+    def refreshSelectedPaths(self):
+        checked = [
+            tuple(item.data(1, Qt.UserRole) or ())
+            for item in self.iterItems()
+            if item.checkState(0) == Qt.Checked
+        ]
+        # An ancestor already includes its descendants, so omit redundant paths.
+        normalized = []
+        for path in sorted(checked, key=lambda value: (len(value), value)):
+            if not any(path[:len(parent)] == parent for parent in normalized):
+                normalized.append(path)
+        self.selected_paths = normalized
+        self.selected_path = normalized[0] if len(normalized) == 1 else None
+        self.use_button.setEnabled(bool(normalized))
         self.updatePathLabel()
 
     def updatePathLabel(self):
-        if not self.selected_path:
-            self.path_label.setText("Select a workplace scope.")
+        if not self.selected_paths:
+            self.path_label.setText("Check at least one workplace scope.")
             return
-        labels = ("Plant", "Section", "Line", "Station")
-        values = list(self.selected_path) + ["All"] * (4 - len(self.selected_path))
-        scope = "  ›  ".join(f"{label}: {value}" for label, value in zip(labels, values))
-        self.path_label.setText(f"{scope}   |   Shift: {self.shift_combo.currentText() or 'All'}")
+        plant = self.selected_paths[0][0]
+        descriptions = [
+            " › ".join(path[1:]) if len(path) > 1 else "All locations"
+            for path in self.selected_paths
+        ]
+        scope_text = "; ".join(descriptions)
+        self.path_label.setText(
+            f"Plant: {plant}  |  Included: {scope_text}  |  "
+            f"Shift: {self.shift_combo.currentText() or 'All'}"
+        )
 
     def acceptSelection(self):
-        if self.selected_path:
+        if self.selected_paths:
             self.accept()
 
 
@@ -2587,7 +2662,7 @@ class PlantLayoutWindow(QDialog):
         dialog = PlotWorkplaceFilterDialog(self)
         if dialog.exec_() != QDialog.Accepted:
             return
-        self.applyWorkplaceScope(dialog.selected_path, dialog.shift_combo.currentText())
+        self.applyWorkplaceScopes(dialog.selected_paths, dialog.shift_combo.currentText())
 
     def restoreDefaultPlantScope(self):
         """Restore the first plant, all descendants, and shift 1."""
@@ -2604,29 +2679,71 @@ class PlantLayoutWindow(QDialog):
             self.shift_combo.itemText(1) if self.shift_combo.count() > 1 else "All"
         )
         self.setMultiFilterValue(self.shift_combo, default_shift)
+        plant = self.plant_combo.currentText().strip()
+        self.workplace_scope_paths = [(plant,)] if plant else []
         self.updateWorkplaceSummary()
 
     def applyWorkplaceScope(self, path, shift):
-        """Map a hierarchy selection into the existing PLOT filter widgets."""
-        if not path:
+        """Backward-compatible wrapper for a single hierarchy selection."""
+        self.applyWorkplaceScopes([path] if path else [], shift)
+
+    def applyWorkplaceScopes(self, paths, shift):
+        """Apply one or more hierarchy branches belonging to the same plant."""
+        normalized = []
+        for path in sorted(
+            {tuple(str(value) for value in path if str(value)) for path in paths if path},
+            key=lambda value: (len(value), value),
+        ):
+            if not any(path[:len(parent)] == parent for parent in normalized):
+                normalized.append(path)
+        if not normalized:
             return
-        self.plant_combo.setCurrentText(path[0])
+        plant = normalized[0][0]
+        normalized = [path for path in normalized if path[0] == plant]
+        self.workplace_scope_paths = normalized
+        self.plant_combo.setCurrentText(plant)
         self.loadSections()
-        self.setMultiFilterValue(self.section_combo, path[1] if len(path) > 1 else "All")
+        section_values = sorted({path[1] for path in normalized if len(path) > 1})
+        self.setMultiFilterValues(self.section_combo, section_values or ["All"])
         self.loadLines()
-        self.setMultiFilterValue(self.line_combo, path[2] if len(path) > 2 else "All")
+        line_values = sorted({path[2] for path in normalized if len(path) > 2})
+        self.setMultiFilterValues(self.line_combo, line_values or ["All"])
         self.loadStations()
-        self.setMultiFilterValue(self.station_combo, path[3] if len(path) > 3 else "All")
+        station_values = sorted({path[3] for path in normalized if len(path) > 3})
+        self.setMultiFilterValues(self.station_combo, station_values or ["All"])
         self.loadShifts()
         self.setMultiFilterValue(self.shift_combo, shift or "All")
         self.updateWorkplaceSummary()
 
+    def setMultiFilterValues(self, combo, values):
+        """Check a set of values in an existing MultiSelectComboBox."""
+        requested = set(values)
+        was_blocked = combo.blockSignals(True)
+        for index in range(combo.count()):
+            item = combo.model().item(index)
+            if item is not None:
+                item.setCheckState(
+                    Qt.Checked if combo.itemText(index) in requested else Qt.Unchecked
+                )
+        if hasattr(combo, "updateText"):
+            combo.updateText()
+        combo.blockSignals(was_blocked)
+
     def updateWorkplaceSummary(self):
+        paths = getattr(self, "workplace_scope_paths", [])
+        plant = self.plant_combo.currentText().strip() or "–"
+
+        def scopeValue(depth):
+            explicit = sorted({path[depth] for path in paths if len(path) > depth})
+            if not explicit:
+                return "All"
+            return explicit[0] if len(explicit) == 1 else f"{len(explicit)} selected"
+
         values = (
-            ("Plant", self.plant_combo.currentText().strip() or "–"),
-            ("Section", self.section_combo.currentText().strip() or "All"),
-            ("Line", self.line_combo.currentText().strip() or "All"),
-            ("Station", self.station_combo.currentText().strip() or "All"),
+            ("Plant", plant),
+            ("Section", scopeValue(1)),
+            ("Line", scopeValue(2)),
+            ("Station", scopeValue(3)),
         )
         scope = "  ›  ".join(f"{label}: {value}" for label, value in values)
         shift = self.shift_combo.currentText().strip() or "All"
@@ -2661,6 +2778,12 @@ class PlantLayoutWindow(QDialog):
                     "Shift scope is applied independently to the selected workplace hierarchy."
                 ),
             }
+            if paths:
+                scope_details = "\n".join(
+                    " › ".join(path) for path in paths
+                )
+                for key in ("Section", "Line", "Station"):
+                    tooltips[key] += f"\n\nIncluded scopes:\n{scope_details}"
             for label, tooltip in tooltips.items():
                 self.workplace_scope_values[label].setToolTip(tooltip)
                 self.workplace_scope_blocks[label].setToolTip(tooltip)
@@ -4423,14 +4546,37 @@ class PlantLayoutWindow(QDialog):
         #  f"Tool: {self.tool_combo.currentText().strip()}")
 
 
-        if not ignore_workplace and plant_name != "All":
+        scope_paths = [] if ignore_workplace else list(
+            getattr(self, "workplace_scope_paths", []) or []
+        )
+        use_path_scopes = bool(scope_paths)
+        if use_path_scopes:
+            scope_filters = []
+            hierarchy_columns = (
+                "ws.plant_name", "ws.section_name", "ws.line_name", "ws.station_id",
+            )
+            for path in scope_paths:
+                normalized_path = tuple(str(value) for value in path if str(value))
+                if not normalized_path:
+                    continue
+                branch = []
+                for column, value in zip(hierarchy_columns, normalized_path):
+                    branch.append(f"{column} = ?")
+                    params.append(value)
+                scope_filters.append("(" + " AND ".join(branch) + ")")
+            if scope_filters:
+                filters.append("(" + " OR ".join(scope_filters) + ")")
+            else:
+                use_path_scopes = False
+
+        if not use_path_scopes and not ignore_workplace and plant_name != "All":
             filters.append("ws.plant_name = ?")
             params.append(plant_name)
     
         #if section_name != "All":
         #    filters.append("ws.section_name = ?")
         #    params.append(section_name)
-        selected_sections = [] if ignore_workplace else [self.section_combo.itemText(i) for i in range(self.section_combo.count())
+        selected_sections = [] if ignore_workplace or use_path_scopes else [self.section_combo.itemText(i) for i in range(self.section_combo.count())
                              if self.section_combo.model().item(i).checkState() == Qt.Checked and self.section_combo.itemText(i) != "All"]
 
         if selected_sections:
@@ -4438,7 +4584,7 @@ class PlantLayoutWindow(QDialog):
             placeholders = ", ".join(["?"] * len(selected_sections))
             filters.append(f"ws.section_name IN ({placeholders})")
             params.extend(selected_sections)
-        elif not ignore_workplace and section_name != "All":
+        elif not use_path_scopes and not ignore_workplace and section_name != "All":
             # If a single section is selected
             filters.append("ws.section_name = ?")
             params.append(section_name)
@@ -4448,7 +4594,7 @@ class PlantLayoutWindow(QDialog):
         #if line_name != "All":
         #    filters.append("ws.line_name = ?")
         #    params.append(line_name)
-        selected_lines = [] if ignore_workplace else [self.line_combo.itemText(i) for i in range(self.line_combo.count())
+        selected_lines = [] if ignore_workplace or use_path_scopes else [self.line_combo.itemText(i) for i in range(self.line_combo.count())
                           if self.line_combo.model().item(i).checkState() == Qt.Checked and self.line_combo.itemText(i) != "All"]
 
         if selected_lines:
@@ -4456,7 +4602,7 @@ class PlantLayoutWindow(QDialog):
             placeholders = ", ".join(["?"] * len(selected_lines))
             filters.append(f"ws.line_name IN ({placeholders})")
             params.extend(selected_lines)
-        elif not ignore_workplace and line_name != "All":
+        elif not use_path_scopes and not ignore_workplace and line_name != "All":
             # If a single line is selected
             filters.append("ws.line_name = ?")
             params.append(line_name)
@@ -4467,7 +4613,7 @@ class PlantLayoutWindow(QDialog):
         #    params.append(station_id)
             
         # **Station Filter Handling (Multi-Selection)**
-        selected_stations = [] if ignore_workplace else [self.station_combo.itemText(i) for i in range(self.station_combo.count())
+        selected_stations = [] if ignore_workplace or use_path_scopes else [self.station_combo.itemText(i) for i in range(self.station_combo.count())
                              if self.station_combo.model().item(i).checkState() == Qt.Checked and self.station_combo.itemText(i) != "All"]
 
         if selected_stations:
@@ -4475,7 +4621,7 @@ class PlantLayoutWindow(QDialog):
             placeholders = ", ".join(["?"] * len(selected_stations))
             filters.append(f"ws.station_id IN ({placeholders})")
             params.extend(selected_stations)
-        elif not ignore_workplace and station_id != "All":
+        elif not use_path_scopes and not ignore_workplace and station_id != "All":
             # If a single station is selected
             filters.append("ws.station_id = ?")
             params.append(station_id)
