@@ -17,24 +17,61 @@ from worker_window import WorkerWindow
 app = QApplication.instance() or QApplication([])
 QMessageBox.information = staticmethod(lambda *args, **kwargs: QMessageBox.Ok)
 QMessageBox.warning = staticmethod(lambda *args, **kwargs: QMessageBox.Ok)
+QMessageBox.critical = staticmethod(lambda *args, **kwargs: QMessageBox.Ok)
 
 parent = ErgoTools(disable_vtk=True)
 parent.openFilePath(os.path.abspath("tests/test3.ergprj"))
 
 parent.tabWidget.setCurrentIndex(0)
+parent.lifft_repetitions_inputs[0].setText("10")
 parent.lifft_total_damage_value_label.setText("2.1000")
 parent.lifft_probability_value_label.setText("50.1")
+parent.lifft_total_risk_color = "#FF3B30"
 parent.refreshAssessmentSummary()
 assert parent.damage_value_label.text() == ">2.0"
 assert parent.damage_progress.target_value == 2.0
 assert parent.risk_severity_label.text().endswith("High")
 assert "background: #" in parent.damage_value_label.styleSheet()
+assert parent.body_risk_title.text() == "LiFFT Individual Risk Score"
+assert parent.project_header_label.text().startswith("Current Project: ")
+
+parent.tabWidget.blockSignals(True)
+parent.tabWidget.setCurrentIndex(1)
+parent.tabWidget.blockSignals(False)
+for field in parent.duet_repetitions_inputs:
+    field.clear()
+parent.duet_total_damage_value_label.setText("0.0")
+parent.duet_probability_value_label.setText("0.0")
+parent.duet_total_risk_color = "none"
+parent.refreshAssessmentSummary()
+assert parent.risk_severity_label.text() == "● Not available"
+assert parent.risk_gauge.target_value == 0.0
+assert "#d9e1e6" in parent.damage_value_label.styleSheet().lower()
+assert "#d9e1e6" in parent.duet_total_damage_value_label.styleSheet().lower()
+assert "#d9e1e6" in parent.duet_probability_value_label.styleSheet().lower()
+assert parent.body_risk_title.text() == "DUET Individual Risk Score"
+parent.tabWidget.blockSignals(True)
+parent.tabWidget.setCurrentIndex(0)
+parent.tabWidget.blockSignals(False)
+parent.any_lifft_input_changed = False
+parent.any_duet_input_changed = False
 parent.resize(1550, 1015)
 parent.show()
 app.processEvents()
 QTest.qWait(800)
 app.processEvents()
+parent.refreshAssessmentSummary()
 parent.grab().save("/tmp/main_damage_over_two.png")
+parent.tabWidget.blockSignals(True)
+parent.tabWidget.setCurrentIndex(1)
+parent.tabWidget.blockSignals(False)
+parent.refreshAssessmentSummary()
+app.processEvents()
+parent.grab().save("/tmp/main_missing_analysis.png")
+parent.tabWidget.blockSignals(True)
+parent.tabWidget.setCurrentIndex(0)
+parent.tabWidget.blockSignals(False)
+parent.refreshAssessmentSummary()
 assert parent.toolbar.iconSize().width() == 38
 assert parent.toolbar.iconSize().height() == 38
 assert parent.toolbar.height() == 90

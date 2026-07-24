@@ -1,16 +1,18 @@
 import os
 import sys
+import numpy as np
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 sys.path.insert(0, os.path.abspath("src"))
 
 from PyQt5.QtCore import QPoint, QTimer, Qt
-from PyQt5.QtGui import QImage, QPalette
+from PyQt5.QtGui import QColor, QImage, QPalette
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox, QToolTip
 
 from main import ErgoTools
+from risk_ranges import risk_band
 from plant_layout import (
     PlantLayoutWindow, PlotGraphSettingsDialog, PlotHighlightDetailsDialog,
     PlotWorkerPickerDialog, PlotWorkplaceFilterDialog,
@@ -65,6 +67,7 @@ assert set(window.plot_tool_buttons) == {"LiFFT", "DUET", "ST"}
 assert window.summaryplot_combo.count() == 3
 assert window.plot_tool_buttons["LiFFT"].isChecked()
 assert window.outcome_group.title() == "LiFFT Tool Outcome"
+assert window.outcome_risk_title.text() == "LiFFT Group Risk Score:"
 assert len(window.findChildren(type(window.genderflt_label), "workplaceScopeType")) == 5
 for label in (
     window.genderflt_label, window.ageflt_label,
@@ -178,6 +181,21 @@ assert any(line.get_visible() for line in window.current_plot_figure.axes[0].get
 assert window.current_plot_figure.axes[0].texts
 window.graph_settings = window.defaultGraphSettings()
 window.onSummaryPlotChanged()
+expected_bar_colors = [
+    QColor(risk_band(value)[3]).name()
+    for value in (
+        np.mean([
+            row["probability_outcome"] for row in window.workerstationshiftAlltools_dataset
+            if row.get("enable", 0) == 1 and row.get("tool_id") == tool
+        ])
+        for tool in ("LiFFT", "DUET", "ST")
+    )
+]
+actual_bar_colors = [
+    QColor.fromRgbF(*patch.get_facecolor()[:3]).name()
+    for patch in window.current_plot_figure.axes[0].patches[:3]
+]
+assert actual_bar_colors == expected_bar_colors
 for chart_index in range(min(4, window.summaryplot_combo.count())):
     window.summaryplot_combo.setCurrentIndex(chart_index)
     app.processEvents()
@@ -259,15 +277,18 @@ window.grab().save("/tmp/plot_responsive_filters_expanded.png")
 window.selectPlotTool("DUET")
 app.processEvents()
 assert window.outcome_group.title() == "LiFFT Tool Outcome"
+assert window.outcome_risk_title.text() == "LiFFT Group Risk Score:"
 window.applyfilterButtonClicked()
 app.processEvents()
 assert window.outcome_group.title() == "DUET Tool Outcome"
+assert window.outcome_risk_title.text() == "DUET Group Risk Score:"
 window.selectPlotTool("ST")
 app.processEvents()
 assert window.outcome_group.title() == "DUET Tool Outcome"
 window.applyfilterButtonClicked()
 app.processEvents()
 assert window.outcome_group.title() == "Shoulder Tool Outcome"
+assert window.outcome_risk_title.text() == "ST Group Risk Score:"
 window.selectPlotTool("LiFFT")
 app.processEvents()
 assert window.outcome_group.title() == "Shoulder Tool Outcome"

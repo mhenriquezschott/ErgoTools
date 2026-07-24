@@ -3990,13 +3990,27 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.syncStickyHeaders()
         summary = self.activeToolSummaryWidgets()
         self.styleAssessmentControls()
+        lever_inputs, load_inputs, repetition_inputs = summary["inputs"]
+        repetition_values = [float(field.text()) for field in repetition_inputs if field.text().strip()]
+        task_count = sum(1 for value in repetition_values if value > 0)
+        repetitions = sum(int(value) for value in repetition_values if value > 0)
+        source_color = QColor(summary["color"])
+        ready = bool(task_count and self.projectFileCreated and source_color.isValid())
         probability = self.numericLabelValue(summary["probability"])
         damage = self.numericLabelValue(summary["damage"])
-        self.risk_gauge.setValue(probability, summary["color"])
+        if not ready:
+            probability = 0.0
+            damage = 0.0
+        display_color = source_color if ready else QColor("#D9E1E6")
+        self.risk_gauge.setValue(probability, display_color.name())
         _start, _end, severity_name, severity_color, _range_text = risk_band(probability)
-        severity = severity_name.removesuffix(" Risk")
-        self.risk_severity_label.setText("● " + severity)
-        self.risk_severity_label.setStyleSheet(f"color: {severity_color}; font-weight: 700;")
+        if ready:
+            severity = severity_name.removesuffix(" Risk")
+            self.risk_severity_label.setText("● " + severity)
+            self.risk_severity_label.setStyleSheet(f"color: {severity_color}; font-weight: 700;")
+        else:
+            self.risk_severity_label.setText("● Not available")
+            self.risk_severity_label.setStyleSheet("color: #6F7E88; font-weight: 700;")
         outcome_text = {
             "LiFFT": "Probability of high-risk\njob",
             "DUET": "Probability of distal upper-\nextremity outcome",
@@ -4009,10 +4023,9 @@ class ErgoTools(QtWidgets.QMainWindow):
         }[summary["name"]]
         self.body_region_title.setText(region_context[0])
         self.active_region_label.setText(region_context[1])
+        self.body_risk_title.setText(f"{summary['name']} Individual Risk Score")
         self.risk_gauge.setOutcomeText(outcome_text)
-        damage_color = QColor(summary["color"])
-        if not damage_color.isValid():
-            damage_color = QColor("#F97316")
+        damage_color = display_color
         red = damage_color.redF()
         green = damage_color.greenF()
         blue = damage_color.blueF()
@@ -4026,17 +4039,12 @@ class ErgoTools(QtWidgets.QMainWindow):
         )
         self.damage_progress.setValue(damage, damage_color.name())
         self.styleToolResultSummary(summary, damage_color)
-        lever_inputs, load_inputs, repetition_inputs = summary["inputs"]
-        repetition_values = [float(field.text()) for field in repetition_inputs if field.text().strip()]
-        task_count = sum(1 for value in repetition_values if value > 0)
-        repetitions = sum(int(value) for value in repetition_values if value > 0)
         loads = [float(field.text()) for field in load_inputs if field.text().strip()]
         moments = [self.numericLabelValue(label) for label in summary["moments"] if label]
         self.metric_labels["tasks"].setText(str(task_count))
         self.metric_labels["repetitions"].setText(f"{repetitions:,}")
         self.metric_labels["average_load"].setText(f"{sum(loads) / len(loads):.1f}" if loads else "-")
         self.metric_labels["max_moment"].setText(f"{max(moments):.1f}" if moments else "-")
-        ready = bool(task_count and self.projectFileCreated)
         self.assessment_status_label.setText("Ready" if ready else "Incomplete")
         self.assessment_status_label.setProperty("ready", ready)
         self.assessment_status_label.style().unpolish(self.assessment_status_label)
@@ -4048,7 +4056,9 @@ class ErgoTools(QtWidgets.QMainWindow):
             project_text = self.projectName or os.path.splitext(os.path.basename(self.projectFilePath))[0] or "Untitled project"
         else:
             project_text = "No project loaded"
-        self.project_header_label.setText(project_text + ("  •  Loaded" if self.projectFileCreated else ""))
+        self.project_header_label.setText(
+            f"Current Project: {project_text}" + ("  •  Loaded" if self.projectFileCreated else "")
+        )
         self.footer_tool_label.setText(f"Tool: {summary['name']}")
         units = getattr(self, "selectedMeasurementSystem", "Imperial")
         self.footer_unit_label.setText(f"Units: {units}")
@@ -4291,7 +4301,7 @@ class ErgoTools(QtWidgets.QMainWindow):
             QMainWindow, QWidget#mainWorkspace { background: #F4F7F9; color: #1B2933; font: 12px "Segoe UI"; }
             QFrame#brandHeader { background: #073E68; border-radius: 7px; }
             QLabel#brandName { color: white; font-size: 36px; font-weight: 700; }
-            QLabel#projectName { color: #D9EDF5; font-size: 14px; font-weight: 700; }
+            QLabel#projectName { color: #D9EDF5; font-size: 16px; font-weight: 700; }
             QToolBar#mainToolbar { background: white; border: 0; border-radius: 6px; padding: 5px 7px; spacing: 3px; }
             QToolBar#mainToolbar QToolButton { color: #0B326C; min-width: 63px; padding: 6px 5px; border: 0; }
             QToolBar#mainToolbar QToolButton:hover { background: #EAF7F8; border-radius: 5px; }
@@ -7416,9 +7426,9 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.leftLayout.addWidget(active_region_frame)
 
         self.leftLayout.addWidget(self.bodyPanelDivider())
-        legend_title = QLabel("Risk Legend")
-        legend_title.setObjectName("bodySectionTitle")
-        self.leftLayout.addWidget(legend_title)
+        self.body_risk_title = QLabel("LiFFT Individual Risk Score")
+        self.body_risk_title.setObjectName("bodySectionTitle")
+        self.leftLayout.addWidget(self.body_risk_title)
         for _start, _end, label, color, range_text in RISK_BANDS:
             row = QHBoxLayout()
             swatch = QLabel()

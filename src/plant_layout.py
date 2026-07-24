@@ -2086,13 +2086,13 @@ class PlantLayoutWindow(QDialog):
         result_layout.setContentsMargins(0, 0, 0, 0)
         result_layout.setSpacing(3)
         risk_header = QHBoxLayout()
-        risk_title = QLabel("Risk level", result_panel)
-        risk_title.setObjectName("outcomeSectionHeading")
+        self.outcome_risk_title = QLabel("LiFFT Group Risk Score:", result_panel)
+        self.outcome_risk_title.setObjectName("outcomeSectionHeading")
         self.outcome_risk_label = QLabel("Low Risk", result_panel)
         self.outcome_risk_label.setObjectName("outcomeRiskLabel")
         self.outcome_risk_label.setAlignment(Qt.AlignCenter)
         risk_header.addStretch(1)
-        risk_header.addWidget(risk_title)
+        risk_header.addWidget(self.outcome_risk_title)
         risk_header.addSpacing(12)
         risk_header.addWidget(self.outcome_risk_label)
         risk_header.addStretch(1)
@@ -2105,9 +2105,9 @@ class PlantLayoutWindow(QDialog):
         gauge_caption.setAlignment(Qt.AlignCenter)
         result_layout.addWidget(gauge_caption)
         result_layout.addStretch(1)
-        result_panel.setFixedWidth(330)
+        result_panel.setFixedWidth(360)
         risk_cluster_layout.addWidget(result_panel)
-        risk_cluster.setFixedWidth(671)
+        risk_cluster.setFixedWidth(701)
         outcome_layout.addWidget(risk_cluster)
         self.outcome_group.setMinimumWidth(700)
         self.outcome_group.setFixedHeight(220)
@@ -2513,6 +2513,11 @@ class PlantLayoutWindow(QDialog):
             selected, selected or "Selected"
         )
         self.outcome_group.setTitle(f"{tool_name} Tool Outcome")
+        if hasattr(self, "outcome_risk_title"):
+            score_name = {"LiFFT": "LiFFT", "DUET": "DUET", "ST": "ST"}.get(
+                selected, selected or "Selected"
+            )
+            self.outcome_risk_title.setText(f"{score_name} Group Risk Score:")
 
     def updateMapScopeFooter(self):
         count = len(getattr(self, "visual_worker_tools", []))
@@ -5384,7 +5389,7 @@ class PlantLayoutWindow(QDialog):
         # **Create the Figure**
         fig, ax = plt.subplots(figsize=(3.1 * scale_factor, 2.3 * scale_factor))
     
-        colors = ["#4682B4", "#8B4513", "#9370DB"]
+        colors = [risk_band(value)[3] for value in avg_risk]
         # **Plot Bars with Error Bars**
         #bars = ax.bar(x, avg_risk, width, yerr=std_risk, 
         #              color=cm.Set2(2), alpha=0.75, capsize=3)
