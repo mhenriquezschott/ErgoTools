@@ -329,9 +329,11 @@ class PlotWorkerMarkerPreview(QWidget):
 class PlotHighlightDetailsDialog(QDialog):
     """Display actionable details behind the compact PLOT warning."""
 
-    def __init__(self, details, parent=None):
+    def __init__(self, details, parent=None, tool_id=None):
         super().__init__(parent)
-        self.setWindowTitle("PLOT Highlight Details")
+        active_tool = tool_id or getattr(parent, "applied_plot_tool", "LiFFT")
+        tool_name = "Shoulder" if active_tool == "ST" else active_tool
+        self.setWindowTitle(f"PLOT {tool_name} Highlight Details")
         self.resize(760, 420)
         self.setMinimumSize(720, 390)
         if parent is not None:
@@ -339,9 +341,9 @@ class PlotHighlightDetailsDialog(QDialog):
         root = QVBoxLayout(self)
         root.setContentsMargins(20, 18, 20, 16)
         root.setSpacing(10)
-        title = QLabel("High-risk station details")
-        title.setObjectName("dialogTitle")
-        root.addWidget(title)
+        self.title_label = QLabel(f"{tool_name} High-risk station details")
+        self.title_label.setObjectName("dialogTitle")
+        root.addWidget(self.title_label)
         subtitle = QLabel(
             "Stations containing two or more enabled worker results above 50% in the current filter scope."
         )
@@ -364,6 +366,18 @@ class PlotHighlightDetailsDialog(QDialog):
             item.setTextAlignment(1, Qt.AlignCenter)
             item.setTextAlignment(2, Qt.AlignRight | Qt.AlignVCenter)
             item.setTextAlignment(3, Qt.AlignRight | Qt.AlignVCenter)
+            for column, value in ((2, detail["average"]), (3, detail["maximum"])):
+                _start, _end, severity, color_name, _range_text = risk_band(value)
+                color = QColor(color_name)
+                luminance = (
+                    0.2126 * color.redF()
+                    + 0.7152 * color.greenF()
+                    + 0.0722 * color.blueF()
+                )
+                foreground = QColor("#102A43" if luminance > 0.58 else "#FFFFFF")
+                item.setBackground(column, QBrush(color))
+                item.setForeground(column, QBrush(foreground))
+                item.setToolTip(column, f"{severity}: {float(value):.1f}%")
             self.table.addTopLevelItem(item)
         root.addWidget(self.table, 1)
         close_row = QHBoxLayout()
@@ -1464,9 +1478,9 @@ class PlantLayoutWindow(QDialog):
                 arrow = QLabel(workplace_path)
                 arrow_source = QPixmap(os.path.join(icon_root, "next.png"))
                 arrow.setPixmap(arrow_source.scaled(
-                    14, 36, Qt.IgnoreAspectRatio, Qt.SmoothTransformation
+                    14, 24, Qt.IgnoreAspectRatio, Qt.SmoothTransformation
                 ))
-                arrow.setFixedSize(16, 38)
+                arrow.setFixedSize(16, 26)
                 arrow.setToolTip("The next level is contained within the preceding workplace level.")
                 workplace_path_layout.addWidget(arrow, 0, Qt.AlignVCenter)
             block = QFrame(workplace_path)
@@ -3162,7 +3176,9 @@ class PlantLayoutWindow(QDialog):
         details = getattr(self, "highlight_details", [])
         if not details:
             return
-        PlotHighlightDetailsDialog(details, self).exec_()
+        PlotHighlightDetailsDialog(
+            details, self, getattr(self, "applied_plot_tool", "LiFFT")
+        ).exec_()
 
     def applyGraphSettings(self, figure):
         """Apply shared presentation preferences to a newly generated figure."""

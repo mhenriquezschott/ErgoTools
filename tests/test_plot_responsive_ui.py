@@ -92,7 +92,7 @@ workplace_arrows = [
     if label.toolTip().startswith("The next level")
 ]
 assert len(workplace_arrows) == 4
-assert all(label.pixmap().width() == 14 and label.pixmap().height() == 36 for label in workplace_arrows)
+assert all(label.pixmap().width() == 14 and label.pixmap().height() == 24 for label in workplace_arrows)
 assert window.workplace_scope_blocks["Plant"].minimumWidth() >= 118
 assert "Plant ID: Default" in window.workplace_scope_values["Plant"].toolTip()
 assert "Plant: Default" in window.workplace_scope_values["Section"].toolTip()
@@ -362,7 +362,16 @@ highlight_dialog = PlotHighlightDetailsDialog(window.highlight_details, window)
 highlight_dialog.show()
 app.processEvents()
 highlight_dialog.grab().save("/tmp/plot_highlight_details.png")
+assert highlight_dialog.windowTitle() == "PLOT LiFFT Highlight Details"
+assert highlight_dialog.title_label.text() == "LiFFT High-risk station details"
 assert highlight_dialog.table.topLevelItemCount() == len(window.highlight_details)
+for row in range(highlight_dialog.table.topLevelItemCount()):
+    item = highlight_dialog.table.topLevelItem(row)
+    for column in (2, 3):
+        assert item.background(column).color().isValid()
+        assert item.background(column).color().name().upper() != "#FFFFFF"
+        assert item.foreground(column).color().isValid()
+        assert "%" in item.toolTip(column)
 for column in range(highlight_dialog.table.columnCount()):
     assert highlight_dialog.table.columnWidth(column) >= highlight_dialog.table.fontMetrics().horizontalAdvance(
         highlight_dialog.table.headerItem().text(column)
