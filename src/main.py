@@ -3846,8 +3846,8 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.results_sidebar.setMinimumWidth(230)
         self.results_sidebar.setMaximumWidth(260)
         layout = QVBoxLayout(self.results_sidebar)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(10)
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setSpacing(5)
 
         risk_card = QFrame()
         risk_card.setObjectName("summaryCard")
@@ -3858,22 +3858,27 @@ class ErgoTools(QtWidgets.QMainWindow):
         risk_layout.setContentsMargins(10, 10, 10, 10)
         risk_layout.setSpacing(4)
         risk_header_widget = QWidget()
+        self.risk_header_widget = risk_header_widget
         risk_header_widget.setFixedHeight(42)
-        risk_header = QHBoxLayout(risk_header_widget)
+        risk_header = QGridLayout(risk_header_widget)
         risk_header.setContentsMargins(0, 0, 0, 0)
-        risk_header.setSpacing(4)
-        self.individual_risk_title = QLabel("Individual LiFFT\nRisk Level")
+        risk_header.setHorizontalSpacing(4)
+        risk_header.setVerticalSpacing(0)
+        self.individual_risk_title = QLabel("Individual LiFFT")
         self.individual_risk_title.setObjectName("summaryTitle")
         self.individual_risk_title.setToolTip(
             "Estimated individual probability for the adverse outcome calculated by the active ergonomic tool."
         )
+        self.risk_level_title = QLabel("Risk Level")
+        self.risk_level_title.setObjectName("summaryTitle")
         self.risk_severity_label = QLabel("Low")
         self.risk_severity_label.setObjectName("riskSeverity")
-        self.risk_severity_label.setMinimumWidth(72)
+        self.risk_severity_label.setMinimumWidth(0)
         self.risk_severity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        risk_header.addWidget(self.individual_risk_title)
-        risk_header.addStretch()
-        risk_header.addWidget(self.risk_severity_label)
+        risk_header.addWidget(self.individual_risk_title, 0, 0, 1, 2)
+        risk_header.addWidget(self.risk_level_title, 1, 0)
+        risk_header.addWidget(self.risk_severity_label, 1, 1)
+        risk_header.setColumnStretch(0, 1)
         self.risk_gauge = RiskGauge()
         risk_layout.addWidget(risk_header_widget)
         risk_layout.addWidget(self.risk_gauge)
@@ -3883,6 +3888,8 @@ class ErgoTools(QtWidgets.QMainWindow):
         damage_card = QFrame()
         damage_card.setObjectName("summaryCard")
         damage_layout = QVBoxLayout(damage_card)
+        damage_layout.setContentsMargins(8, 6, 8, 6)
+        damage_layout.setSpacing(4)
         damage_title = QLabel("Cumulative damage")
         damage_title.setObjectName("summaryTitle")
         damage_title.setToolTip("Combined cumulative damage contribution from the entered tasks.")
@@ -3900,6 +3907,9 @@ class ErgoTools(QtWidgets.QMainWindow):
         metrics_card = QFrame()
         metrics_card.setObjectName("summaryCard")
         metrics_layout = QGridLayout(metrics_card)
+        metrics_layout.setContentsMargins(8, 6, 8, 6)
+        metrics_layout.setHorizontalSpacing(6)
+        metrics_layout.setVerticalSpacing(4)
         metrics_title = QLabel("Key metrics")
         metrics_title.setObjectName("summaryTitle")
         metrics_title.setToolTip("A live summary of the task data entered for the active tool.")
@@ -3918,8 +3928,11 @@ class ErgoTools(QtWidgets.QMainWindow):
         layout.addWidget(metrics_card)
 
         status_card = QFrame()
+        self.status_card = status_card
         status_card.setObjectName("summaryCard")
         status_layout = QVBoxLayout(status_card)
+        status_layout.setContentsMargins(8, 6, 8, 6)
+        status_layout.setSpacing(3)
         status_title = QLabel("Status")
         status_title.setObjectName("summaryTitle")
         status_title.setToolTip("Indicates whether the active assessment contains data that can be evaluated.")
@@ -3991,7 +4004,7 @@ class ErgoTools(QtWidgets.QMainWindow):
             return
         self.syncStickyHeaders()
         summary = self.activeToolSummaryWidgets()
-        self.individual_risk_title.setText(f"Individual {summary['name']}\nRisk Level")
+        self.individual_risk_title.setText(f"Individual {summary['name']}")
         self.styleAssessmentControls()
         lever_inputs, load_inputs, repetition_inputs = summary["inputs"]
         repetition_values = [float(field.text()) for field in repetition_inputs if field.text().strip()]
@@ -4053,7 +4066,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.assessment_status_label.style().unpolish(self.assessment_status_label)
         self.assessment_status_label.style().polish(self.assessment_status_label)
         self.assessment_status_detail.setText(
-            "Assessment data is available." if ready else "Select a project context and enter task data."
+            "Assessment data is available." if ready else "Enter context and task data."
         )
         if self.projectFileCreated:
             project_text = self.projectName or os.path.splitext(os.path.basename(self.projectFilePath))[0] or "Untitled project"

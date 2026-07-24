@@ -1446,6 +1446,7 @@ class PlantLayoutWindow(QDialog):
         workplace_path_layout.setContentsMargins(0, 0, 0, 0)
         workplace_path_layout.setSpacing(5)
         self.workplace_scope_values = {}
+        self.workplace_scope_blocks = {}
         scope_icon_names = {
             "Section": "section.png",
             "Line": "line.png",
@@ -1467,6 +1468,8 @@ class PlantLayoutWindow(QDialog):
                 workplace_path_layout.addWidget(arrow, 0, Qt.AlignVCenter)
             block = QFrame(workplace_path)
             block.setObjectName("workplacePlantScope" if label == "Plant" else "workplaceScopeBlock")
+            if label == "Plant":
+                block.setMinimumWidth(118)
             block_layout = QVBoxLayout(block)
             block_layout.setContentsMargins(6, 2, 6, 2)
             block_layout.setSpacing(0)
@@ -1490,15 +1493,16 @@ class PlantLayoutWindow(QDialog):
             value_label.setToolTip(tooltip)
             block_layout.addLayout(heading_layout)
             block_layout.addWidget(value_label)
-            workplace_path_layout.addWidget(block)
+            workplace_path_layout.addWidget(block, 2 if label == "Plant" else 1)
             self.workplace_scope_values[label] = value_label
+            self.workplace_scope_blocks[label] = block
         workplace_path_layout.addStretch(1)
         self.workplace_button = QPushButton("Choose\nWorkplace")
         self.workplace_button.setIcon(QIcon(os.path.join(icon_root, "station.png")))
         self.workplace_button.setIconSize(QSize(34, 34))
         self.workplace_button.setToolTip("Choose a workplace scope and shift from the organization hierarchy.")
         self.workplace_button.clicked.connect(self.openWorkplaceFilter)
-        self.workplace_button.setFixedSize(150, 52)
+        self.workplace_button.setFixedSize(132, 52)
         plant_layout.addWidget(workplace_icon)
         plant_layout.addWidget(workplace_path, 1)
         plant_layout.addWidget(self.workplace_button)
@@ -2575,6 +2579,35 @@ class PlantLayoutWindow(QDialog):
             for label, value in values:
                 self.workplace_scope_values[label].setText(value)
             self.workplace_scope_values["Shift"].setText(shift)
+            plant = dict(values)["Plant"]
+            section = dict(values)["Section"]
+            line = dict(values)["Line"]
+            station = dict(values)["Station"]
+            tooltips = {
+                "Plant": (
+                    f"Plant ID: {plant}\n"
+                    "This plant supplies the layout image displayed in PLOT."
+                ),
+                "Section": (
+                    f"{'All sections' if section == 'All' else 'Section ID: ' + section}\n"
+                    f"Plant: {plant}"
+                ),
+                "Line": (
+                    f"{'All lines' if line == 'All' else 'Line ID: ' + line}\n"
+                    f"Plant: {plant}  •  Section: {section}"
+                ),
+                "Station": (
+                    f"{'All stations' if station == 'All' else 'Station ID: ' + station}\n"
+                    f"Plant: {plant}  •  Section: {section}  •  Line: {line}"
+                ),
+                "Shift": (
+                    f"{'All shifts' if shift == 'All' else 'Shift ID: ' + shift}\n"
+                    "Shift scope is applied independently to the selected workplace hierarchy."
+                ),
+            }
+            for label, tooltip in tooltips.items():
+                self.workplace_scope_values[label].setToolTip(tooltip)
+                self.workplace_scope_blocks[label].setToolTip(tooltip)
 
     @staticmethod
     def setMultiFilterValue(combo, value):

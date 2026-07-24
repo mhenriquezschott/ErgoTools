@@ -31,7 +31,8 @@ parent.refreshAssessmentSummary()
 assert parent.damage_value_label.text() == ">2.0"
 assert parent.damage_progress.target_value == 2.0
 assert parent.risk_severity_label.text().endswith("High")
-assert parent.individual_risk_title.text() == "Individual LiFFT\nRisk Level"
+assert parent.individual_risk_title.text() == "Individual LiFFT"
+assert parent.risk_level_title.text() == "Risk Level"
 assert "background: #" in parent.damage_value_label.styleSheet()
 assert parent.body_risk_title.text() == "LiFFT Individual Risk Score"
 assert parent.project_header_label.text().startswith("Current Project: ")
@@ -46,12 +47,51 @@ parent.duet_probability_value_label.setText("0.0")
 parent.duet_total_risk_color = "none"
 parent.refreshAssessmentSummary()
 assert parent.risk_severity_label.text() == "● Not available"
-assert parent.individual_risk_title.text() == "Individual DUET\nRisk Level"
+assert parent.individual_risk_title.text() == "Individual DUET"
+assert parent.risk_level_title.text() == "Risk Level"
 assert parent.risk_gauge.target_value == 0.0
 assert "#d9e1e6" in parent.damage_value_label.styleSheet().lower()
 assert "#d9e1e6" in parent.duet_total_damage_value_label.styleSheet().lower()
 assert "#d9e1e6" in parent.duet_probability_value_label.styleSheet().lower()
 assert parent.body_risk_title.text() == "DUET Individual Risk Score"
+
+parent.tabWidget.blockSignals(True)
+parent.tabWidget.setCurrentIndex(2)
+parent.tabWidget.blockSignals(False)
+parent.tst_repetitions_inputs[0].setText("100")
+parent.tst_total_damage_value_label.setText("0.0001")
+parent.tst_probability_value_label.setText("5.5")
+parent.tst_total_risk_color = "#19B83F"
+parent.refreshAssessmentSummary()
+parent.any_tst_input_changed = False
+parent.resize(1550, 1015)
+parent.show()
+app.processEvents()
+assert parent.individual_risk_title.text() == "Individual Shoulder"
+assert parent.risk_level_title.text() == "Risk Level"
+assert parent.risk_severity_label.text().endswith("Low")
+parent.grab().save("/tmp/main_shoulder_ready.png")
+assert parent.individual_risk_title.geometry().right() <= parent.risk_header_widget.contentsRect().right()
+assert parent.risk_level_title.geometry().right() <= parent.risk_severity_label.geometry().left()
+
+parent.tst_repetitions_inputs[0].clear()
+parent.tst_total_risk_color = "none"
+parent.refreshAssessmentSummary()
+parent.any_tst_input_changed = False
+app.processEvents()
+assert parent.risk_severity_label.text() == "● Not available"
+parent.grab().save("/tmp/main_shoulder_unavailable.png")
+assert parent.risk_level_title.geometry().right() <= parent.risk_severity_label.geometry().left()
+status_detail_bottom = parent.assessment_status_detail.mapTo(
+    parent.status_card, parent.assessment_status_detail.rect().bottomLeft()
+).y()
+assert status_detail_bottom <= parent.status_card.contentsRect().bottom()
+status_text_height = parent.assessment_status_detail.fontMetrics().boundingRect(
+    0, 0, parent.assessment_status_detail.width(), 1000,
+    Qt.TextWordWrap, parent.assessment_status_detail.text()
+).height()
+assert status_text_height <= parent.assessment_status_detail.height()
+
 parent.tabWidget.blockSignals(True)
 parent.tabWidget.setCurrentIndex(0)
 parent.tabWidget.blockSignals(False)

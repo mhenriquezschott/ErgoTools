@@ -81,11 +81,18 @@ assert not window.agefrom_edit.isVisible()
 assert not window.xview_input.isVisible()
 assert window.workplace_button.isVisible()
 assert window.workplace_button.height() == 52
+assert window.workplace_button.width() == 132
 assert window.workplace_button.text().replace("\n", " ") == "Choose Workplace"
 assert window.workplace_button.iconSize().width() == 34
 assert window.workplace_button.iconSize().height() == 34
 assert window.workplace_scope_values["Plant"].text() == "Default"
 assert window.workplace_scope_values["Section"].text() == "All"
+assert window.workplace_scope_blocks["Plant"].minimumWidth() >= 118
+assert "Plant ID: Default" in window.workplace_scope_values["Plant"].toolTip()
+assert "Plant: Default" in window.workplace_scope_values["Section"].toolTip()
+assert "Section: All" in window.workplace_scope_values["Line"].toolTip()
+assert "Line: All" in window.workplace_scope_values["Station"].toolTip()
+assert "applied independently" in window.workplace_scope_values["Shift"].toolTip()
 assert not window.grtool8_button.isVisible()
 assert sum(button.isVisible() for button in (
     window.grtool1_button, window.grtool2_button, window.grtool3_button,
