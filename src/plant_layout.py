@@ -303,9 +303,18 @@ class PlotWorkerMarkerPreview(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
+        center = QPointF(self.width() / 2.0, self.height() / 2.0 + 2.0)
+        selection_size = 84.0
+        painter.setPen(QPen(Qt.blue, 3, Qt.SolidLine))
+        painter.setBrush(Qt.NoBrush)
+        painter.drawRect(QRectF(
+            center.x() - selection_size / 2.0,
+            center.y() - selection_size / 2.0,
+            selection_size,
+            selection_size,
+        ))
         painter.setPen(QPen(QColor("#FFFFFF"), 2))
         painter.setBrush(self.color)
-        center = QPointF(self.width() / 2.0, self.height() / 2.0 + 2.0)
         size = 36.0
         if self.gender == "male":
             painter.drawPolygon(QPolygonF([
@@ -1819,7 +1828,7 @@ class PlantLayoutWindow(QDialog):
         # compact side-panel layout; the original form assumed 1031 px of width.
         worker_layout = QVBoxLayout(self.workerinfo_group)
         worker_layout.setContentsMargins(10, 14, 10, 10)
-        worker_layout.setSpacing(7)
+        worker_layout.setSpacing(5)
 
         worker_widgets = (
             self.workeridinfolbl_label, self.workerComboBox, self.orderInfo_button,
@@ -1856,10 +1865,48 @@ class PlantLayoutWindow(QDialog):
             worker_selector.addWidget(button)
         worker_layout.addLayout(worker_selector)
 
+        alphabet_layout = QHBoxLayout()
+        alphabet_layout.setContentsMargins(0, 0, 0, 0)
+        alphabet_layout.setSpacing(1)
+        self.plot_worker_alphabet_group = QtWidgets.QButtonGroup(self)
+        self.plot_worker_alphabet_group.setExclusive(True)
+        self.plot_worker_alphabet_buttons = {}
+        self.plot_worker_alphabet_letter = "All"
+        for value in ["All"] + [chr(code) for code in range(ord("A"), ord("Z") + 1)]:
+            button = QPushButton(value, self.workerinfo_group)
+            button.setObjectName("plotAlphabetButton")
+            button.setFixedSize(26 if value == "All" else 15, 20)
+            button.setStyleSheet("""
+                QPushButton {
+                    padding: 0; border: 0; background: transparent;
+                    color: #5F7180; font-size: 9px; font-weight: 600;
+                }
+                QPushButton:hover {
+                    color: #0B326C; background: #DDF3F5; font-size: 13px;
+                }
+                QPushButton:checked {
+                    color: #FFFFFF; background: #0B326C; border-radius: 3px;
+                }
+                QPushButton:disabled { color: #C7D0D7; }
+            """)
+            button.setCheckable(True)
+            button.setChecked(value == "All")
+            button.setToolTip(
+                "Show every worker" if value == "All"
+                else f"Show last names beginning with {value}"
+            )
+            button.clicked.connect(
+                lambda checked, letter=value: self.setPlotWorkerAlphabetFilter(letter)
+            )
+            self.plot_worker_alphabet_group.addButton(button)
+            self.plot_worker_alphabet_buttons[value] = button
+            alphabet_layout.addWidget(button)
+        worker_layout.addLayout(alphabet_layout)
+
         self.worker_assignment_label = QLabel("No workplace assignment selected", self.workerinfo_group)
         self.worker_assignment_label.setObjectName("workerAssignmentContext")
         self.worker_assignment_label.setWordWrap(True)
-        self.worker_assignment_label.setMinimumHeight(42)
+        self.worker_assignment_label.setMinimumHeight(39)
         self.worker_assignment_label.setToolTip(
             "Plant, section, line, station, shift, and ergonomic tool for the selected result."
         )
@@ -1903,9 +1950,23 @@ class PlantLayoutWindow(QDialog):
         assessment_grid.addWidget(QLabel("Outcome probability", assessment_group), 2, 0)
         assessment_grid.addWidget(self.worker_risk_value, 2, 1)
         self.worker_marker_preview = PlotWorkerMarkerPreview(assessment_group)
-        assessment_grid.addWidget(self.worker_marker_preview, 0, 2, 3, 1, Qt.AlignCenter)
+        self.locate_worker_button = QPushButton("Locate", assessment_group)
+        self.locate_worker_button.setObjectName("locateWorkerButton")
+        self.locate_worker_button.setToolTip(
+            "Blink the selected worker's blue frame on the plant layout."
+        )
+        self.locate_worker_button.clicked.connect(self.locateSelectedWorker)
+        assessment_grid.addWidget(self.locate_worker_button, 3, 0, 1, 2)
+        assessment_grid.addWidget(self.worker_marker_preview, 0, 2, 4, 1, Qt.AlignCenter)
         assessment_grid.setColumnStretch(1, 1)
         worker_layout.addWidget(assessment_group)
+
+        self._locate_worker = None
+        self._locate_pulse_visible = True
+        self._locate_pulses_remaining = 0
+        self._locate_pulse_timer = QTimer(self)
+        self._locate_pulse_timer.setInterval(190)
+        self._locate_pulse_timer.timeout.connect(self.advanceLocatePulse)
 
         worker_layout.addStretch(1)
         visual_group = QGroupBox("Visual controls", self.workerinfo_group)
@@ -2282,6 +2343,36 @@ class PlantLayoutWindow(QDialog):
                 padding: 6px 8px;
                 font-weight: 600;
             }
+            QPushButton#plotAlphabetButton {
+                padding: 0;
+                border: 0;
+                background: transparent;
+                color: #5F7180;
+                font-size: 9px;
+                font-weight: 600;
+            }
+            QPushButton#plotAlphabetButton:hover {
+                color: #0B326C;
+                background: #DDF3F5;
+                font-size: 13px;
+            }
+            QPushButton#plotAlphabetButton:checked {
+                color: #FFFFFF;
+                background: #0B326C;
+                border-radius: 3px;
+            }
+            QPushButton#plotAlphabetButton:disabled {
+                color: #C7D0D7;
+            }
+            QPushButton#locateWorkerButton {
+                min-height: 24px;
+                max-height: 24px;
+                padding: 0 14px;
+                background: #EAF7F8;
+                border: 1px solid #08A9B5;
+                color: #0B326C;
+                font-weight: 700;
+            }
             QLabel#rangeFieldLabel, QLabel#plotDescription {
                 color: #506273;
                 font-size: 12px;
@@ -2564,11 +2655,9 @@ class PlantLayoutWindow(QDialog):
 
         unit = selected_worker_tool.getUnit()
 
-        current_index = self.workerComboBox.currentIndex()
-        if current_index < 0 or not hasattr(self, "workerstationshifttool_dataset") or current_index >= len(self.workerstationshifttool_dataset):
+        worker_data = self.selectedWorkerData()
+        if not worker_data:
             return
-
-        worker_data = self.workerstationshifttool_dataset[current_index]
 
         worker_combo_text = self.workerComboBox.currentText().strip()
         #worker_text = self.workerComboBox.currentText().strip()
@@ -3511,6 +3600,12 @@ class PlantLayoutWindow(QDialog):
         Triggered when the workerComboBox index changes.
         Retrieves the selected worker's ID and loads the worker's details.
         """
+        if hasattr(self, "_locate_pulse_timer") and self._locate_pulse_timer.isActive():
+            self._locate_pulse_timer.stop()
+            if self._locate_worker is not None:
+                self._locate_worker.setBorder(False)
+            self._locate_worker = None
+            self._locate_pulses_remaining = 0
         selected_worker = self.workerComboBox.currentText().strip()
     
         # Extract worker ID (format: "<worker_id> (Last, First)")
@@ -3961,11 +4056,9 @@ class PlantLayoutWindow(QDialog):
     def findVisualWorkerTool(self):
         print(f"Here1.1")
         """Finds the corresponding VisualWorkerTool object based on UI selections."""
-        current_index = self.workerComboBox.currentIndex()
-        if current_index < 0 or not hasattr(self, "workerstationshifttool_dataset") or current_index >= len(self.workerstationshifttool_dataset):
+        worker_data = self.selectedWorkerData()
+        if not worker_data:
             return None
-
-        worker_data = self.workerstationshifttool_dataset[current_index]
 
         worker_text = self.workerComboBox.currentText().strip()
         worker_display = worker_text.split("|", 1)[0].strip() if worker_text else ""
@@ -4002,6 +4095,32 @@ class PlantLayoutWindow(QDialog):
 
         print(f"Here1.4")
         return None
+
+    def locateSelectedWorker(self):
+        """Pulse the selected worker's existing canvas selection frame."""
+        worker_tool = self.findVisualWorkerTool()
+        if worker_tool is None:
+            return
+        if self._locate_worker is not None and self._locate_worker is not worker_tool:
+            self._locate_worker.setBorder(False)
+        self._locate_worker = worker_tool
+        self._locate_pulses_remaining = 10
+        self._locate_pulse_visible = True
+        worker_tool.setBorder(True)
+        self._locate_pulse_timer.start()
+
+    def advanceLocatePulse(self):
+        if self._locate_worker is None or self._locate_pulses_remaining <= 0:
+            self._locate_pulse_timer.stop()
+            if self._locate_worker is not None:
+                self._locate_worker.setBorder(True)
+            return
+        self._locate_pulse_visible = not self._locate_pulse_visible
+        self._locate_worker.setBorder(self._locate_pulse_visible)
+        self._locate_pulses_remaining -= 1
+        if self._locate_pulses_remaining <= 0:
+            self._locate_pulse_timer.stop()
+            self._locate_worker.setBorder(True)
 
 
     def findVisualWorkerToolOld(self):
@@ -4073,29 +4192,71 @@ class PlantLayoutWindow(QDialog):
         # Suspend signals to prevent unwanted events
         self.workerComboBox.blockSignals(True)
         
-        # Clear and populate the combobox
-        self.workerComboBox.clear()
-        #self.workerComboBox.addItems([
-        #    f"{row['worker_id']} ({row['last_name']}, {row['first_name']})" if row['last_name'] and row['first_name']
-        #    else row['worker_id']
-        #    for row in self.workerstationshifttool_dataset
-        #])
-        
-        # Keep selection focused on worker identity. Workplace and tool context
-        # are shown separately in the Worker tab instead of concatenated here.
-        self.workerComboBox.addItems([
-            (f"{row['worker_id']} ({row['last_name']}, {row['first_name']})")
-            if row['last_name'] and row['first_name']
-            else row['worker_id']
-            for row in self.workerstationshifttool_dataset
-        ])
+        self.refreshPlotWorkerAlphabetAvailability()
+        self.populatePlotWorkerCombo()
     
- 
-       
-
-
         # Restore signals
         self.workerComboBox.blockSignals(False)
+
+    def workerDisplayText(self, row):
+        if row.get("last_name") and row.get("first_name"):
+            return f"{row['worker_id']} ({row['last_name']}, {row['first_name']})"
+        return str(row.get("worker_id", ""))
+
+    def populatePlotWorkerCombo(self, preferred_dataset_index=None):
+        """Populate the selector while retaining the source dataset index."""
+        if not hasattr(self, "workerComboBox"):
+            return
+        was_blocked = self.workerComboBox.blockSignals(True)
+        if preferred_dataset_index is None:
+            preferred_dataset_index = self.workerComboBox.currentData()
+        self.workerComboBox.clear()
+        active_letter = getattr(self, "plot_worker_alphabet_letter", "All")
+        for dataset_index, row in enumerate(getattr(self, "workerstationshifttool_dataset", [])):
+            last_name = str(row.get("last_name", "")).strip()
+            if active_letter != "All" and not last_name.upper().startswith(active_letter):
+                continue
+            self.workerComboBox.addItem(self.workerDisplayText(row), dataset_index)
+        combo_index = self.workerComboBox.findData(preferred_dataset_index)
+        if combo_index < 0 and self.workerComboBox.count():
+            combo_index = 0
+        self.workerComboBox.setCurrentIndex(combo_index)
+        self.workerComboBox.blockSignals(was_blocked)
+        if combo_index >= 0:
+            self.workerComboIndexChanged()
+
+    def selectedWorkerDatasetIndex(self):
+        index = self.workerComboBox.currentData()
+        if index is None:
+            index = self.workerComboBox.currentIndex()
+        try:
+            return int(index)
+        except (TypeError, ValueError):
+            return -1
+
+    def selectedWorkerData(self):
+        index = self.selectedWorkerDatasetIndex()
+        dataset = getattr(self, "workerstationshifttool_dataset", [])
+        return dataset[index] if 0 <= index < len(dataset) else None
+
+    def refreshPlotWorkerAlphabetAvailability(self):
+        buttons = getattr(self, "plot_worker_alphabet_buttons", {})
+        initials = {
+            str(row.get("last_name", "")).strip()[:1].upper()
+            for row in getattr(self, "workerstationshifttool_dataset", [])
+            if str(row.get("last_name", "")).strip()
+        }
+        for value, button in buttons.items():
+            button.setEnabled(value == "All" or value in initials)
+        active = getattr(self, "plot_worker_alphabet_letter", "All")
+        if active != "All" and active not in initials:
+            self.plot_worker_alphabet_letter = "All"
+            if "All" in buttons:
+                buttons["All"].setChecked(True)
+
+    def setPlotWorkerAlphabetFilter(self, letter):
+        self.plot_worker_alphabet_letter = letter
+        self.populatePlotWorkerCombo()
 
 
     def getWorkers(self, order_by, tid=None, ignore_workplace=False):
@@ -4332,7 +4493,7 @@ class PlantLayoutWindow(QDialog):
         # Search for the worker's details in the dataset
         #worker_data = next((row for row in self.workerstationshifttool_dataset if row["worker_id"] == workerid), None)
         # **Retrieve worker data based on ComboBox index**
-        worker_data = self.workerstationshifttool_dataset[self.workerComboBox.currentIndex()]
+        worker_data = self.selectedWorkerData()
 
         if not worker_data:
             QMessageBox.warning(self, "Error", f"Worker ID {workerid} not found in dataset.")
@@ -4422,7 +4583,7 @@ class PlantLayoutWindow(QDialog):
         # Search for the worker's details in the dataset
         #worker_data = next((row for row in self.workerstationshifttool_dataset if row["worker_id"] == workerid), None)
         # **Retrieve worker data based on ComboBox index**
-        worker_data = self.workerstationshifttool_dataset[self.workerComboBox.currentIndex()]
+        worker_data = self.selectedWorkerData()
 
         if not worker_data:
             QMessageBox.warning(self, "Error", f"Worker ID {workerid} not found in dataset.")
@@ -5394,8 +5555,11 @@ class PlantLayoutWindow(QDialog):
         #bars = ax.bar(x, avg_risk, width, yerr=std_risk, 
         #              color=cm.Set2(2), alpha=0.75, capsize=3)
     
-        bars = ax.bar(x, avg_risk, width, yerr=std_risk, 
-                      color=colors, alpha=0.75, capsize=3)
+        bars = ax.bar(
+            x, avg_risk, width, yerr=std_risk,
+            color=colors, edgecolor="#111111", linewidth=0.8,
+            alpha=0.75, capsize=3,
+        )
                       
         # **Labels & Titles (Bold Font, Adjusted Sizes)**
         ax.set_xlabel("Tool Type", fontsize=8, fontweight="bold")

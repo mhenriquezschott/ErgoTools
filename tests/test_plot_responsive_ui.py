@@ -237,6 +237,39 @@ assert window.worker_marker_preview.isVisible()
 assert window.worker_marker_preview.size().width() == 108
 assert window.worker_marker_preview.size().height() == 108
 assert window.worker_marker_preview.gender in ("male", "female")
+marker_image = window.worker_marker_preview.grab().toImage()
+selection_pixel = marker_image.pixelColor(12, marker_image.height() // 2)
+assert selection_pixel.blue() > 200 and selection_pixel.red() < 80
+assert window.locate_worker_button.text() == "Locate"
+assert window.locate_worker_button.isVisible()
+assert len(window.plot_worker_alphabet_buttons) == 27
+available_letter = next((
+    letter for letter, button in window.plot_worker_alphabet_buttons.items()
+    if letter != "All" and button.isEnabled()
+), None)
+if available_letter:
+    window.plot_worker_alphabet_buttons[available_letter].click()
+    app.processEvents()
+    assert window.workerComboBox.count() > 0
+    for combo_index in range(window.workerComboBox.count()):
+        dataset_index = int(window.workerComboBox.itemData(combo_index))
+        assert window.workerstationshifttool_dataset[dataset_index]["last_name"].upper().startswith(
+            available_letter
+        )
+    assert window.selectedWorkerData() is window.workerstationshifttool_dataset[
+        int(window.workerComboBox.currentData())
+    ]
+    window.plot_worker_alphabet_buttons["All"].click()
+    app.processEvents()
+selected_visual_worker = window.findVisualWorkerTool()
+if selected_visual_worker is not None:
+    window.locateSelectedWorker()
+    assert selected_visual_worker.border
+    window.advanceLocatePulse()
+    assert not selected_visual_worker.border
+    while window._locate_pulses_remaining:
+        window.advanceLocatePulse()
+    assert selected_visual_worker.border
 male_index = next((
     index for index, row in enumerate(window.workerstationshifttool_dataset)
     if str(row.get("gender", "")).casefold() == "male"
@@ -258,6 +291,11 @@ for control in (
     assert control_bottom_right.x() <= window.workerinfo_group.contentsRect().right()
     assert control_bottom_right.y() <= window.workerinfo_group.contentsRect().bottom()
 window.details_tabs.setCurrentWidget(window.summary_group)
+window.generateTotalWorkerRiskDistributionPlot(window.workerstationshiftAlltools_dataset)
+chart_bars = window.summaryplot_canvas.figure.axes[0].patches
+assert chart_bars
+assert all(patch.get_linewidth() >= 0.8 for patch in chart_bars)
+assert all(max(patch.get_edgecolor()[:3]) < 0.1 for patch in chart_bars)
 
 initial_worker_index = window.workerComboBox.currentIndex()
 window.nextInfoButtonClicked()

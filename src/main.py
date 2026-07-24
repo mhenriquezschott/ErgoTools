@@ -3858,18 +3858,20 @@ class ErgoTools(QtWidgets.QMainWindow):
         risk_layout.setContentsMargins(10, 10, 10, 10)
         risk_layout.setSpacing(4)
         risk_header_widget = QWidget()
-        risk_header_widget.setFixedHeight(25)
+        risk_header_widget.setFixedHeight(42)
         risk_header = QHBoxLayout(risk_header_widget)
         risk_header.setContentsMargins(0, 0, 0, 0)
         risk_header.setSpacing(4)
-        risk_title = QLabel("Risk level")
-        risk_title.setObjectName("summaryTitle")
-        risk_title.setToolTip("Estimated probability for the adverse outcome calculated by the active ergonomic tool.")
+        self.individual_risk_title = QLabel("Individual LiFFT\nRisk Level")
+        self.individual_risk_title.setObjectName("summaryTitle")
+        self.individual_risk_title.setToolTip(
+            "Estimated individual probability for the adverse outcome calculated by the active ergonomic tool."
+        )
         self.risk_severity_label = QLabel("Low")
         self.risk_severity_label.setObjectName("riskSeverity")
-        self.risk_severity_label.setMinimumWidth(120)
+        self.risk_severity_label.setMinimumWidth(72)
         self.risk_severity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        risk_header.addWidget(risk_title)
+        risk_header.addWidget(self.individual_risk_title)
         risk_header.addStretch()
         risk_header.addWidget(self.risk_severity_label)
         self.risk_gauge = RiskGauge()
@@ -3989,6 +3991,7 @@ class ErgoTools(QtWidgets.QMainWindow):
             return
         self.syncStickyHeaders()
         summary = self.activeToolSummaryWidgets()
+        self.individual_risk_title.setText(f"Individual {summary['name']}\nRisk Level")
         self.styleAssessmentControls()
         lever_inputs, load_inputs, repetition_inputs = summary["inputs"]
         repetition_values = [float(field.text()) for field in repetition_inputs if field.text().strip()]

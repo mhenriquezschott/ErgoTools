@@ -31,6 +31,7 @@ parent.refreshAssessmentSummary()
 assert parent.damage_value_label.text() == ">2.0"
 assert parent.damage_progress.target_value == 2.0
 assert parent.risk_severity_label.text().endswith("High")
+assert parent.individual_risk_title.text() == "Individual LiFFT\nRisk Level"
 assert "background: #" in parent.damage_value_label.styleSheet()
 assert parent.body_risk_title.text() == "LiFFT Individual Risk Score"
 assert parent.project_header_label.text().startswith("Current Project: ")
@@ -45,6 +46,7 @@ parent.duet_probability_value_label.setText("0.0")
 parent.duet_total_risk_color = "none"
 parent.refreshAssessmentSummary()
 assert parent.risk_severity_label.text() == "● Not available"
+assert parent.individual_risk_title.text() == "Individual DUET\nRisk Level"
 assert parent.risk_gauge.target_value == 0.0
 assert "#d9e1e6" in parent.damage_value_label.styleSheet().lower()
 assert "#d9e1e6" in parent.duet_total_damage_value_label.styleSheet().lower()
