@@ -1,5 +1,8 @@
 import os
+import shutil
+import sqlite3
 import sys
+import tempfile
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
@@ -194,7 +197,35 @@ assert any(label in form_labels for label in ("Height (in)", "Height (cm)"))
 assert any(label in form_labels for label in ("Weight (lb)", "Weight (kg)"))
 assert "Date of hiring" in form_labels
 assert "Date of birth" in form_labels
+assert worker.optional_details.isAncestorOf(worker.first_name_input)
+assert worker.optional_details.isAncestorOf(worker.last_name_input)
+assert worker.optional_details.isAncestorOf(worker.gender_combo)
+assert worker.optional_details.isAncestorOf(worker.dob_input)
+assert worker.optional_details.isAncestorOf(worker.age_label)
+assert worker.gender_combo.itemText(0) == "Not provided"
+assert worker.dob_input.specialValueText() == "Not provided"
+assert worker.dob_input.displayFormat() == worker.date_of_hiring_input.displayFormat() == "dd MMM yyyy"
 assert worker.dob_input.calendarPopup()
+
+original_database = parent.projectdatabasePath
+with tempfile.NamedTemporaryFile(suffix=".db") as temporary_database:
+    shutil.copyfile(original_database, temporary_database.name)
+    parent.projectdatabasePath = temporary_database.name
+    worker.worker_id_combo.setEditText("__optional_test__")
+    worker.first_name_input.clear()
+    worker.last_name_input.clear()
+    worker.gender_combo.setCurrentIndex(0)
+    worker.dob_input.setDate(worker.dob_input.minimumDate())
+    worker.saveWorker()
+    with sqlite3.connect(temporary_database.name) as connection:
+        saved_optional_values = connection.execute(
+            "SELECT first_name, last_name, year_of_birth, month_of_birth, "
+            "day_of_birth, gender FROM Worker WHERE id = ?",
+            ("__optional_test__",),
+        ).fetchone()
+    assert saved_optional_values == ("", "", None, None, None, None)
+parent.projectdatabasePath = original_database
+
 worker.dob_input.setDate(QDate.currentDate().addYears(-20).addDays(1))
 assert worker.age_label.text() == "19 years"
 QTest.mouseClick(

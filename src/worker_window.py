@@ -57,7 +57,7 @@ class WorkerWindow(QDialog):
 
         title = QLabel("Worker Management")
         title.setObjectName("dialogTitle")
-        subtitle = QLabel("Find a worker or create a new record. Required identity fields are shown first.")
+        subtitle = QLabel("Find a worker or create a new record. Worker ID is required; all other details are optional.")
         subtitle.setObjectName("dialogSubtitle")
         main_layout.addWidget(title)
         main_layout.addWidget(subtitle)
@@ -510,9 +510,10 @@ class WorkerWindow(QDialog):
 
         self.first_name_input.clear()
         self.last_name_input.clear()
-        self.dob_input.setDate(QDate.currentDate())
+        self.dob_input.setDate(self.dob_input.minimumDate())
         self.year_of_birth_input.setValue(QDate.currentDate().year())
-        self.age_label.setText("0 years")
+        self.age_label.setText("Not available")
+        self.gender_combo.setCurrentIndex(0)
         self.height_input.clear()
         self.weight_input.clear()
         self.address_input.clear()
@@ -593,7 +594,7 @@ class WorkerWindow(QDialog):
         self.worker_search_input.setEnabled(False)
         self.cancel_button.setEnabled(True)
         self.setNotification(
-            "Add height and weight when available. Year of birth and sex improve advanced filtering in PLOT and other tools.",
+            "Only Worker ID is required. Optional birth date, sex, height, and weight improve advanced filtering in PLOT and other tools.",
             "warning",
         )
 
@@ -679,7 +680,7 @@ class WorkerWindow(QDialog):
         heading.setObjectName("sectionTitle")
         page_layout.addWidget(heading)
 
-        required_note = QLabel("Required identity information")
+        required_note = QLabel("Required information")
         required_note.setObjectName("eyebrow")
         page_layout.addWidget(required_note)
 
@@ -696,9 +697,9 @@ class WorkerWindow(QDialog):
         self.worker_id_combo.setToolTip("Required. Enter a unique Worker ID without spaces.")
 
         self.first_name_input = QLineEdit()
-        self.first_name_input.setToolTip("Worker's first name. If used, a last name is also required.")
+        self.first_name_input.setToolTip("Optional worker first name.")
         self.last_name_input = QLineEdit()
-        self.last_name_input.setToolTip("Worker's last name. If used, a first name is also required.")
+        self.last_name_input.setToolTip("Optional worker last name.")
 
         self.year_of_birth_input = QSpinBox()
         self.year_of_birth_input.setRange(1900, QDate.currentDate().year())
@@ -710,27 +711,23 @@ class WorkerWindow(QDialog):
         self.dob_input = QDateEdit()
         self.dob_input.setCalendarPopup(True)
         self.dob_input.setDisplayFormat("dd MMM yyyy")
-        self.dob_input.setMinimumDate(QDate(1900, 1, 1))
+        self.dob_input.setMinimumDate(QDate(1899, 12, 31))
         self.dob_input.setMaximumDate(QDate.currentDate())
-        self.dob_input.setDate(QDate.currentDate())
-        self.dob_input.setToolTip("Required. Select the worker's complete date of birth. Age is calculated automatically.")
+        self.dob_input.setSpecialValueText("Not provided")
+        self.dob_input.setDate(self.dob_input.minimumDate())
+        self.dob_input.setToolTip("Optional complete date of birth. Age is calculated automatically when provided.")
         self.dob_input.dateChanged.connect(self.dateOfBirthChanged)
 
-        self.age_label = QLabel("0 years")
+        self.age_label = QLabel("Not available")
         self.age_label.setObjectName("calculatedValue")
-        self.age_label.setToolTip("Calculated from the year of birth and the current year.")
+        self.age_label.setToolTip("Calculated automatically when a date of birth is provided.")
 
         self.gender_combo = QComboBox()
-        self.gender_combo.addItems(["Female", "Male"])
-        self.gender_combo.setToolTip("Worker sex used for worker records and layout marker shape.")
+        self.gender_combo.addItems(["Not provided", "Female", "Male"])
+        self.gender_combo.setToolTip("Optional worker sex used for filtering and the PLOT marker shape.")
 
         required_fields = (
             (0, 0, "Worker ID", self.worker_id_combo),
-            (0, 2, "Sex", self.gender_combo),
-            (1, 0, "First name", self.first_name_input),
-            (1, 2, "Last name", self.last_name_input),
-            (2, 0, "Date of birth", self.dob_input),
-            (2, 2, "Calculated age", self.age_label),
         )
         for row, column, label_text, field in required_fields:
             label = QLabel(label_text)
@@ -751,7 +748,7 @@ class WorkerWindow(QDialog):
         self.optional_toggle.setChecked(False)
         self.optional_toggle.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.optional_toggle.setArrowType(Qt.RightArrow)
-        self.optional_toggle.setToolTip("Show or hide optional employment and body measurement fields.")
+        self.optional_toggle.setToolTip("Show or hide optional identity, employment, and body measurement fields.")
         self.optional_toggle.toggled.connect(self.setOptionalDetailsVisible)
         page_layout.addWidget(self.optional_toggle)
 
@@ -795,6 +792,7 @@ class WorkerWindow(QDialog):
         self.state_combo.setCurrentIndex(-1)
         self.date_of_hiring_input = QDateEdit()
         self.date_of_hiring_input.setCalendarPopup(True)
+        self.date_of_hiring_input.setDisplayFormat("dd MMM yyyy")
         self.date_of_hiring_input.setDate(QDate.currentDate())
         self.date_of_hiring_input.setMinimumDate(QDate(1950, 1, 1))
         self.date_of_hiring_input.setMaximumDate(QDate.currentDate())
@@ -820,9 +818,14 @@ class WorkerWindow(QDialog):
         height_label = "Height (cm)" if metric_units else "Height (in)"
         weight_label = "Weight (kg)" if metric_units else "Weight (lb)"
         optional_fields = (
-            (0, 0, height_label, self.height_input),
-            (0, 2, weight_label, self.weight_input),
-            (1, 0, "Date of hiring", self.date_of_hiring_input),
+            (0, 0, "First name", self.first_name_input),
+            (0, 2, "Last name", self.last_name_input),
+            (1, 0, "Sex", self.gender_combo),
+            (1, 2, "Date of birth", self.dob_input),
+            (2, 0, "Calculated age", self.age_label),
+            (2, 2, "Date of hiring", self.date_of_hiring_input),
+            (3, 0, height_label, self.height_input),
+            (3, 2, weight_label, self.weight_input),
         )
         for row, column, label_text, field in optional_fields:
             label = QLabel(label_text)
@@ -1108,6 +1111,9 @@ class WorkerWindow(QDialog):
         self.calculateAge()
 
     def dateOfBirthChanged(self, date):
+        if date == self.dob_input.minimumDate():
+            self.age_label.setText("Not available")
+            return
         self.year_of_birth_input.blockSignals(True)
         self.year_of_birth_input.setValue(date.year())
         self.year_of_birth_input.blockSignals(False)
@@ -1381,19 +1387,21 @@ class WorkerWindow(QDialog):
                 self.last_name_input.setText(worker_data[2])  # Last Name
     
                 # Reconstruct Date of Birth from Year, Month, Day
-                dob_year = int(worker_data[3]) if worker_data[3] else QDate.currentDate().year()
-                dob_month = int(worker_data[4]) if worker_data[4] else QDate.currentDate().month()
-                dob_day = int(worker_data[5]) if worker_data[5] else QDate.currentDate().day()
-                dob = QDate(dob_year, dob_month, dob_day)
+                dob = self.dob_input.minimumDate()
+                if worker_data[3] and worker_data[4] and worker_data[5]:
+                    candidate = QDate(int(worker_data[3]), int(worker_data[4]), int(worker_data[5]))
+                    if candidate.isValid():
+                        dob = candidate
                 self.dob_input.setDate(dob)
-                self.year_of_birth_input.blockSignals(True)
-                self.year_of_birth_input.setValue(dob_year)
-                self.year_of_birth_input.blockSignals(False)
+                if dob != self.dob_input.minimumDate():
+                    self.year_of_birth_input.blockSignals(True)
+                    self.year_of_birth_input.setValue(dob.year())
+                    self.year_of_birth_input.blockSignals(False)
                 self.calculateAge()
     
                 # Gender Mapping
-                gender_value = worker_data[6] if worker_data[6] else "Female"  # Default to Female
-                gender_index = self.gender_combo.findText(gender_value)  # Get index of "Female" or "Male"
+                gender_value = worker_data[6] if worker_data[6] else "Not provided"
+                gender_index = self.gender_combo.findText(gender_value)
                 if gender_index != -1:
                     self.gender_combo.setCurrentIndex(gender_index)
     
@@ -1432,14 +1440,8 @@ class WorkerWindow(QDialog):
                 self.populateStatesForUSA()
                 self.state_combo.setCurrentText(worker_data[15])  # Adjusted index for state
                 self.selectWorkerTableRow()
-                missing_identity = not self.first_name_input.text().strip() or not self.last_name_input.text().strip()
                 missing_filter_data = not self.height_input.text().strip() or not self.weight_input.text().strip()
-                if missing_identity:
-                    self.setNotification(
-                        "This legacy record is missing a first or last name. Add the missing identity information before saving changes.",
-                        "warning",
-                    )
-                elif missing_filter_data:
+                if missing_filter_data:
                     self.setNotification(
                         "Height or weight is missing. Adding both improves advanced filtering in PLOT and other tools.",
                         "warning",
@@ -1550,6 +1552,9 @@ class WorkerWindow(QDialog):
     def calculateAge(self):
         today = QDate.currentDate()
         birth_date = self.dob_input.date()
+        if birth_date == self.dob_input.minimumDate():
+            self.age_label.setText("Not available")
+            return
         age = today.year() - birth_date.year()
         if (today.month(), today.day()) < (birth_date.month(), birth_date.day()):
             age -= 1
@@ -2398,10 +2403,7 @@ class WorkerWindow(QDialog):
         # Validate Worker ID
         worker_id = self.worker_id_combo.currentText().strip()
         if not worker_id:
-            self.setNotification(
-                "Minimum information must include Worker ID, first name, last name, date of birth, and sex.",
-                "error",
-            )
+            self.setNotification("Worker ID is required.", "error")
             self.worker_id_combo.setFocus()
             return
         
@@ -2413,31 +2415,21 @@ class WorkerWindow(QDialog):
             return
     
         # Collect all fields
-        # Validate First Name and Last Name
         first_name = self.first_name_input.text().strip()
         last_name = self.last_name_input.text().strip()
-
-        if not first_name or not last_name:
-            self.setNotification(
-                "Minimum information must include Worker ID, first name, last name, year of birth, and sex.",
-                "error",
-            )
-            (self.first_name_input if not first_name else self.last_name_input).setFocus()
-            return
-    
-        # If both are empty, keep them as blank
-        first_name = first_name if first_name else ""
-        last_name = last_name if last_name else ""
 
     
         # Extract Date of Birth
         dob = self.dob_input.date()
-        year_of_birth = dob.year()
-        month_of_birth = dob.month()
-        day_of_birth = dob.day()
+        has_dob = dob != self.dob_input.minimumDate()
+        year_of_birth = dob.year() if has_dob else None
+        month_of_birth = dob.month() if has_dob else None
+        day_of_birth = dob.day() if has_dob else None
     
         # Extract Gender
         gender = self.gender_combo.currentText().strip()
+        if gender == "Not provided":
+            gender = None
     
         height = float(self.height_input.text()) if self.height_input.text() else None
         weight = float(self.weight_input.text()) if self.weight_input.text() else None
