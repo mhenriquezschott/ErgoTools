@@ -345,7 +345,7 @@ class PlotHighlightDetailsDialog(QDialog):
         self.title_label.setObjectName("dialogTitle")
         root.addWidget(self.title_label)
         subtitle = QLabel(
-            "Stations containing two or more enabled worker results above 50% in the current filter scope."
+            "Stations containing one or more enabled worker results above 50% in the current filter scope."
         )
         subtitle.setObjectName("dialogSubtitle")
         subtitle.setWordWrap(True)
@@ -964,6 +964,12 @@ class PlantLayoutWindow(QDialog):
         self.summaryresult7_label = QtWidgets.QLabel(self.summary_group)
         self.summaryresult7_label.setGeometry(QtCore.QRect(10, 460, 311, 21))
         self.summaryresult7_label.setObjectName("summaryresult7_label")
+        self.summaryresult8_label = QtWidgets.QLabel(self.summary_group)
+        self.summaryresult8_label.setObjectName("summaryresult8_label")
+        self.summaryresult9_label = QtWidgets.QLabel(self.summary_group)
+        self.summaryresult9_label.setObjectName("summaryresult9_label")
+        self.summaryresult10_label = QtWidgets.QLabel(self.summary_group)
+        self.summaryresult10_label.setObjectName("summaryresult10_label")
         
         self.summaryplot_combo = QtWidgets.QComboBox(self.summary_group)
         self.summaryplot_combo.setGeometry(QtCore.QRect(10, 270, 311, 25))
@@ -1730,10 +1736,10 @@ class PlantLayoutWindow(QDialog):
         tools_layout.setContentsMargins(0, 0, 0, 10)
         tools_layout.setSpacing(0)
         self.toolsgraphic_group.setTitle("")
-        self.tool_rail_title = QLabel("Tools", self.toolsgraphic_group)
+        self.tool_rail_title = QLabel("Plant\nView", self.toolsgraphic_group)
         self.tool_rail_title.setObjectName("toolRailTitle")
         self.tool_rail_title.setAlignment(Qt.AlignCenter)
-        self.tool_rail_title.setFixedHeight(30)
+        self.tool_rail_title.setFixedHeight(42)
         self.tool_rail_title.setToolTip("Plant layout viewing and export tools.")
         tools_layout.addWidget(self.tool_rail_title)
         for button, icon_path, tooltip in tool_actions:
@@ -1835,9 +1841,10 @@ class PlantLayoutWindow(QDialog):
         for label in (
             self.summaryresult1_label, self.summaryresult2_label, self.summaryresult3_label,
             self.summaryresult4_label, self.summaryresult5_label, self.summaryresult6_label,
-            self.summaryresult7_label,
+            self.summaryresult7_label, self.summaryresult8_label, self.summaryresult9_label,
+            self.summaryresult10_label,
         ):
-            label.setFixedHeight(20)
+            label.setFixedHeight(18)
         summary_layout.addWidget(self.summarysettings_button)
         self.summary_group.setMinimumWidth(330)
         self.summary_group.setMaximumWidth(420)
@@ -2101,38 +2108,45 @@ class PlantLayoutWindow(QDialog):
         summary_panel.setObjectName("outcomeSummaryPanel")
         summary_panel_layout = QVBoxLayout(summary_panel)
         summary_panel_layout.setContentsMargins(10, 8, 10, 8)
-        summary_panel_layout.setSpacing(3)
+        summary_panel_layout.setSpacing(0)
         summary_heading = QLabel("Filtered results", summary_panel)
         summary_heading.setObjectName("outcomeSectionHeading")
+        summary_heading.setFixedHeight(18)
         summary_panel_layout.addWidget(summary_heading)
         summary_metrics = QGridLayout()
         summary_metrics.setContentsMargins(0, 0, 0, 0)
         summary_metrics.setHorizontalSpacing(16)
-        summary_metrics.setVerticalSpacing(2)
+        summary_metrics.setVerticalSpacing(0)
         summary_metrics.addWidget(self.summaryresult1_label, 0, 0)
         summary_metrics.addWidget(self.summaryresult2_label, 0, 1)
-        summary_metrics.addWidget(self.summaryresult3_label, 0, 2)
-        summary_metrics.addWidget(self.summaryresult4_label, 1, 0)
-        summary_metrics.addWidget(self.summaryresult5_label, 1, 1)
-        summary_metrics.addWidget(self.summaryresult6_label, 1, 2)
-        summary_metrics.addWidget(self.summaryresult7_label, 2, 0, 1, 3)
+        summary_metrics.addWidget(self.summaryresult3_label, 1, 0)
+        summary_metrics.addWidget(self.summaryresult4_label, 1, 1)
+        summary_metrics.addWidget(self.summaryresult5_label, 2, 0)
+        summary_metrics.addWidget(self.summaryresult6_label, 2, 1)
+        summary_metrics.addWidget(self.summaryresult7_label, 3, 0)
+        summary_metrics.addWidget(self.summaryresult8_label, 3, 1)
+        summary_metrics.addWidget(self.summaryresult9_label, 4, 0)
+        summary_metrics.addWidget(self.summaryresult10_label, 4, 1)
+        summary_metrics.setColumnStretch(0, 1)
+        summary_metrics.setColumnStretch(1, 1)
         summary_panel_layout.addLayout(summary_metrics)
         self.outcometitle_label.setText("Highlights")
         highlight_header = QHBoxLayout()
-        highlight_header.setContentsMargins(0, 5, 0, 0)
+        highlight_header.setContentsMargins(0, 2, 0, 0)
         highlight_header.addWidget(self.outcometitle_label)
         highlight_header.addStretch(1)
         self.outcomemore_button.setText("View details")
         self.outcomemore_button.setIcon(QIcon(os.path.join(icon_root, "view.png")))
         self.outcomemore_button.setIconSize(QSize(20, 20))
+        self.outcomemore_button.setFixedHeight(30)
         self.outcomemore_button.setToolTip("Open station-level details for the current warning.")
         self.outcomemore_button.clicked.connect(self.openHighlightDetails)
         self.outcomemore_button.hide()
         highlight_header.addWidget(self.outcomemore_button)
         summary_panel_layout.addLayout(highlight_header)
         self.outcomeresult1_label.setWordWrap(True)
+        self.outcomeresult1_label.setFixedHeight(24)
         summary_panel_layout.addWidget(self.outcomeresult1_label)
-        summary_panel_layout.addStretch(1)
         summary_panel.setMinimumWidth(600)
         outcome_layout.addWidget(summary_panel, 1)
         outcome_layout.addStretch(1)
@@ -2873,7 +2887,7 @@ class PlantLayoutWindow(QDialog):
         self.heightflt_label.setText("Height:")
         self.label_12.setText("to")
         self.genderflt_label.setText("Sex :")
-        self.toolfilter_group.setTitle("Tool")
+        self.toolfilter_group.setTitle("Ergonomic Tool")
         self.toolsid_label.setText("Tool ID:")
         self.toolsfiltersettings_button.setText("Settings")
         self.otheroptionsfilter_group.setTitle("Other Options")
@@ -2890,9 +2904,12 @@ class PlantLayoutWindow(QDialog):
         self.summarysettings_button.setText("Graph Settings")
         self.summaryresult3_label.setText("<b>Males:</b> 0")
         self.summaryresult4_label.setText("<b>Females:</b> 0")
-        self.summaryresult5_label.setText("<b>Avg. Cumulative Damage:</b>  0%")
-        self.summaryresult6_label.setText("<b>Risk job:</b> 0%")
-        self.summaryresult7_label.setText("<b>Avg. Job Risk:</b> 0%")
+        self.summaryresult5_label.setText("<b>Male avg. damage:</b> 0.0000")
+        self.summaryresult6_label.setText("<b>Female avg. damage:</b> 0.0000")
+        self.summaryresult7_label.setText("<b>Male avg. risk:</b> 0.0%")
+        self.summaryresult8_label.setText("<b>Female avg. risk:</b> 0.0%")
+        self.summaryresult9_label.setText("<b>Overall avg. damage:</b> 0.0000")
+        self.summaryresult10_label.setText("<b>Overall avg. risk:</b> 0.0%")
         self.toolsgraphic_group.setTitle("Tools")
         
         self.workerinfo_group.setTitle("Worker")
@@ -5429,46 +5446,56 @@ class PlantLayoutWindow(QDialog):
     
         # **Initialize Counters**
         total_workers = len(enabled_workers)
-        total_age = 0
+        ages = []
         male_count = 0
         female_count = 0
         total_cumulative_damage = 0
-        total_risk_job = 0
         total_probability_outcome = 0
+        gender_values = {
+            "male": {"damage": [], "risk": []},
+            "female": {"damage": [], "risk": []},
+        }
     
         # **Loop Through Enabled Workers**
         for worker in enabled_workers:
-            age = 0
             if worker.get("year_of_birth"):
-                age = QDate.currentDate().year() - worker["year_of_birth"]  # Calculate age
-            total_age += age
+                ages.append(QDate.currentDate().year() - worker["year_of_birth"])
     
             gender = worker.get("gender", "").strip().lower() if worker.get("gender") else "other"
+            cumulative_damage = float(worker.get("total_cumulative_damage", 0.0) or 0.0)
+            probability_outcome = float(worker.get("probability_outcome", 0.0) or 0.0)
 
             if gender == "male":
                 male_count += 1
             elif gender == "female":
                 female_count += 1
+            if gender in gender_values:
+                gender_values[gender]["damage"].append(cumulative_damage)
+                gender_values[gender]["risk"].append(probability_outcome)
     
-            total_cumulative_damage += worker.get("total_cumulative_damage", 0.0)
-            total_risk_job += worker.get("probability_outcome", 0.0)  # Risk job is probability_outcome
-            total_probability_outcome += worker.get("probability_outcome", 0.0)  # Avg. Job Risk
+            total_cumulative_damage += cumulative_damage
+            total_probability_outcome += probability_outcome
 
         # **Calculate Averages**
-        avg_age = total_age / total_workers if total_workers > 0 else 0
+        avg_age = sum(ages) / len(ages) if ages else 0
         avg_cumulative_damage = (total_cumulative_damage / total_workers) if total_workers > 0 else 0
-        #avg_cumulative_damage = round((total_cumulative_damage / total_workers), 4) if total_workers > 0 else 0.0000
         avg_job_risk = (total_probability_outcome / total_workers) if total_workers > 0 else 0
-        risk_job = min(total_risk_job, 100)  # Assuming Risk Job is a maximum probability metric (bounded to 100%)
+        male_damage = np.mean(gender_values["male"]["damage"]) if gender_values["male"]["damage"] else 0
+        female_damage = np.mean(gender_values["female"]["damage"]) if gender_values["female"]["damage"] else 0
+        male_risk = np.mean(gender_values["male"]["risk"]) if gender_values["male"]["risk"] else 0
+        female_risk = np.mean(gender_values["female"]["risk"]) if gender_values["female"]["risk"] else 0
     
         # **Update UI Labels**
         self.summaryresult1_label.setText(f"<b>Total Workers:</b> {total_workers}")
         self.summaryresult2_label.setText(f"<b>Average Age:</b> {int(avg_age)}")
         self.summaryresult3_label.setText(f"<b>Males:</b> {male_count}")
         self.summaryresult4_label.setText(f"<b>Females:</b> {female_count}")
-        self.summaryresult5_label.setText(f"<b>Avg. Cumulative Damage:</b> {avg_cumulative_damage:.4f}")
-        self.summaryresult6_label.setText(f"<b>Risk Job:</b> {risk_job:.1f}%")
-        self.summaryresult7_label.setText(f"<b>Avg. Job Risk:</b> {avg_job_risk:.1f}%")
+        self.summaryresult5_label.setText(f"<b>Male avg. damage:</b> {male_damage:.4f}")
+        self.summaryresult6_label.setText(f"<b>Female avg. damage:</b> {female_damage:.4f}")
+        self.summaryresult7_label.setText(f"<b>Male avg. risk:</b> {male_risk:.1f}%")
+        self.summaryresult8_label.setText(f"<b>Female avg. risk:</b> {female_risk:.1f}%")
+        self.summaryresult9_label.setText(f"<b>Overall avg. damage:</b> {avg_cumulative_damage:.4f}")
+        self.summaryresult10_label.setText(f"<b>Overall avg. risk:</b> {avg_job_risk:.1f}%")
 
         # **Generate and Display Risk Distribution Plot**
         #self.generateRiskDistributionPlot(enabled_workers)
@@ -5532,9 +5559,11 @@ class PlantLayoutWindow(QDialog):
         #bars2 = ax.bar(x + width/2, female_avg_risk, width, yerr=female_std_risk, label="Female", color="lightcoral", alpha=0.75, capsize=3)
 
         bars1 = ax.bar(x - width/2, male_avg_risk, width, yerr=male_std_risk, 
-               label="Male", color=cm.Set2(1), alpha=0.75, capsize=3)
+               label="Male", color=cm.Set2(1), edgecolor="#111111",
+               linewidth=0.8, alpha=0.75, capsize=3)
         bars2 = ax.bar(x + width/2, female_avg_risk, width, yerr=female_std_risk, 
-               label="Female", color=cm.Set2(2), alpha=0.75, capsize=3)
+               label="Female", color=cm.Set2(2), edgecolor="#111111",
+               linewidth=0.8, alpha=0.75, capsize=3)
 
 
         # **Labels & Titles (Bold Font, Adjusted Sizes)**
@@ -5707,7 +5736,8 @@ class PlantLayoutWindow(QDialog):
         # **Plot Bars for Each Tool with Error Bars**
         for i, tool in enumerate(tools):
             ax.bar(x + (i - 1) * width, avg_risk_values[tool], width, 
-                   yerr=std_risk_values[tool], label=tool, alpha=0.75, capsize=3, color=cm.Set2(i))
+                   yerr=std_risk_values[tool], label=tool, alpha=0.75, capsize=3,
+                   color=cm.Set2(i), edgecolor="#111111", linewidth=0.8)
     
         # **Labels & Titles (Bold Font, Adjusted Sizes)**
         ax.set_xlabel("Age Range", fontsize=8, fontweight="bold")
@@ -6204,10 +6234,11 @@ class PlantLayoutWindow(QDialog):
             station_id = worker.get("station_id", "")
             probability_outcome = worker.get("probability_outcome", 0.0)  # Ensure it's a float
 
-            if probability_outcome >= high_risk_threshold:
+            if probability_outcome > high_risk_threshold:
                 station_risk_values.setdefault(station_id, []).append(float(probability_outcome))
 
-        # **Identify Stations with 2+ High-Risk Workers**
+        # Keep every affected station. The count communicates whether the issue
+        # is isolated or repeated without hiding single high-risk results.
         self.highlight_details = [
             {
                 "station": station or "Unspecified",
@@ -6216,12 +6247,17 @@ class PlantLayoutWindow(QDialog):
                 "maximum": max(values),
             }
             for station, values in sorted(station_risk_values.items())
-            if len(values) >= 2
         ]
 
         # **Update the Outcome Label Based on Results**
         if self.highlight_details:
-            warning_message = f"Warning: Stations with multiple high-risk workers (>{high_risk_threshold}%)."
+            high_risk_workers = sum(detail["count"] for detail in self.highlight_details)
+            warning_message = (
+                f"Warning: {high_risk_workers} high-risk worker "
+                f"{'result' if high_risk_workers == 1 else 'results'} found "
+                f"across {len(self.highlight_details)} "
+                f"{'station' if len(self.highlight_details) == 1 else 'stations'} (>{high_risk_threshold}%)."
+            )
 
             self.outcomeresult1_label.setText(warning_message)
             self.outcomeresult1_label.setStyleSheet("color: red; font-weight: bold;")  # Highlight warning
@@ -6229,8 +6265,10 @@ class PlantLayoutWindow(QDialog):
             self.outcomemore_button.show()
             
         else:
-            self.outcomeresult1_label.setText("")  # Clear message if no issues found
-            self.outcomeresult1_label.setToolTip("")
+            neutral_message = "No high-risk worker results were found in the current filter scope."
+            self.outcomeresult1_label.setText(neutral_message)
+            self.outcomeresult1_label.setStyleSheet("color: #526777; font-weight: 600;")
+            self.outcomeresult1_label.setToolTip(neutral_message)
             self.outcomemore_button.hide()
 
 

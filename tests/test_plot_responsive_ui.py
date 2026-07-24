@@ -213,6 +213,12 @@ for chart_index in range(min(4, window.summaryplot_combo.count())):
     window.summaryplot_combo.setCurrentIndex(chart_index)
     app.processEvents()
     assert window.summaryplot_canvas.figure.canvas is window.summaryplot_canvas
+    assert window.current_plot_figure.axes[0].patches
+    assert all(
+        patch.get_linewidth() >= 0.8
+        and max(patch.get_edgecolor()[:3]) < 0.1
+        for patch in window.current_plot_figure.axes[0].patches
+    )
     assert "What this shows:" in window.plot_description_label.text()
     assert window.plot_compare_label.text().startswith(("<b>Compare:</b>", "<b>Scale:</b>"))
 window.summaryplot_canvas.grab().save("/tmp/plot_summary_after_switching.png")
@@ -338,6 +344,13 @@ window.applyfilterButtonClicked()
 app.processEvents()
 assert window.outcome_group.title() == "DUET Tool Outcome"
 assert window.outcome_risk_title.text() == "DUET Group Risk Score:"
+assert window.highlight_details
+assert window.outcomemore_button.isVisible()
+assert "high-risk worker" in window.outcomeresult1_label.text()
+window.grab().save("/tmp/plot_duet_outcome.png")
+duet_highlight_dialog = PlotHighlightDetailsDialog(window.highlight_details, window)
+assert duet_highlight_dialog.windowTitle() == "PLOT DUET Highlight Details"
+assert duet_highlight_dialog.table.topLevelItemCount() == len(window.highlight_details)
 window.selectPlotTool("ST")
 app.processEvents()
 assert window.outcome_group.title() == "DUET Tool Outcome"
@@ -345,6 +358,8 @@ window.applyfilterButtonClicked()
 app.processEvents()
 assert window.outcome_group.title() == "Shoulder Tool Outcome"
 assert window.outcome_risk_title.text() == "ST Group Risk Score:"
+assert window.outcomeresult1_label.text()
+window.grab().save("/tmp/plot_shoulder_outcome.png")
 window.selectPlotTool("LiFFT")
 app.processEvents()
 assert window.outcome_group.title() == "Shoulder Tool Outcome"
