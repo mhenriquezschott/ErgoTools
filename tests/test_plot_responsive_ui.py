@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.abspath("src"))
 from PyQt5.QtCore import QPoint, QTimer, Qt
 from PyQt5.QtGui import QColor, QImage, QPalette
 from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox, QToolTip
+from PyQt5.QtWidgets import QApplication, QFileDialog, QLabel, QMessageBox, QToolTip
 
 from main import ErgoTools
 from risk_ranges import risk_band
@@ -87,6 +87,12 @@ assert window.workplace_button.iconSize().width() == 34
 assert window.workplace_button.iconSize().height() == 34
 assert window.workplace_scope_values["Plant"].text() == "Default"
 assert window.workplace_scope_values["Section"].text() == "All"
+workplace_arrows = [
+    label for label in window.plantfilter_group.findChildren(QLabel)
+    if label.toolTip().startswith("The next level")
+]
+assert len(workplace_arrows) == 4
+assert all(label.pixmap().width() == 14 and label.pixmap().height() == 36 for label in workplace_arrows)
 assert window.workplace_scope_blocks["Plant"].minimumWidth() >= 118
 assert "Plant ID: Default" in window.workplace_scope_values["Plant"].toolTip()
 assert "Plant: Default" in window.workplace_scope_values["Section"].toolTip()
@@ -249,6 +255,11 @@ selection_pixel = marker_image.pixelColor(12, marker_image.height() // 2)
 assert selection_pixel.blue() > 200 and selection_pixel.red() < 80
 assert window.locate_worker_button.text() == "Locate"
 assert window.locate_worker_button.isVisible()
+assert not window.locate_worker_button.icon().isNull()
+assert window.locate_worker_button.iconSize().width() == 22
+locate_asset = QImage(os.path.join("assets", "ui-icons", "locate.png"))
+assert locate_asset.size().width() == 256 and locate_asset.size().height() == 256
+assert locate_asset.hasAlphaChannel()
 assert len(window.plot_worker_alphabet_buttons) == 27
 available_letter = next((
     letter for letter, button in window.plot_worker_alphabet_buttons.items()

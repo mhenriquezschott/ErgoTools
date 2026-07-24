@@ -4078,7 +4078,14 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.footer_tool_label.setText(f"Tool: {summary['name']}")
         units = getattr(self, "selectedMeasurementSystem", "Imperial")
         self.footer_unit_label.setText(f"Units: {units}")
-        self.footer_context_label.setText(project_text)
+        self.footer_context_label.setText(f"Current Project: {project_text}")
+        status_name = "Ready" if ready else "Incomplete"
+        status_detail = (
+            "Assessment data is available."
+            if ready else
+            "Enter context and task data."
+        )
+        self.statusBar().showMessage(f"Status: {status_name} - {status_detail}")
 
     def styleToolResultSummary(self, summary, result_color):
         name = summary["name"]

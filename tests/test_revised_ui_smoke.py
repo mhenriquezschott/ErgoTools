@@ -36,6 +36,8 @@ assert parent.risk_level_title.text() == "Risk Level"
 assert "background: #" in parent.damage_value_label.styleSheet()
 assert parent.body_risk_title.text() == "LiFFT Individual Risk Score"
 assert parent.project_header_label.text().startswith("Current Project: ")
+assert parent.footer_context_label.text().startswith("Current Project: ")
+assert parent.statusBar().currentMessage() == "Status: Ready - Assessment data is available."
 
 parent.tabWidget.blockSignals(True)
 parent.tabWidget.setCurrentIndex(1)
@@ -47,6 +49,7 @@ parent.duet_probability_value_label.setText("0.0")
 parent.duet_total_risk_color = "none"
 parent.refreshAssessmentSummary()
 assert parent.risk_severity_label.text() == "● Not available"
+assert parent.statusBar().currentMessage() == "Status: Incomplete - Enter context and task data."
 assert parent.individual_risk_title.text() == "Individual DUET"
 assert parent.risk_level_title.text() == "Risk Level"
 assert parent.risk_gauge.target_value == 0.0

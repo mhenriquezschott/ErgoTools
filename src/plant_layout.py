@@ -1462,8 +1462,11 @@ class PlantLayoutWindow(QDialog):
         )):
             if index:
                 arrow = QLabel(workplace_path)
-                arrow.setPixmap(QIcon(os.path.join(icon_root, "next.png")).pixmap(QSize(14, 14)))
-                arrow.setFixedSize(16, 18)
+                arrow_source = QPixmap(os.path.join(icon_root, "next.png"))
+                arrow.setPixmap(arrow_source.scaled(
+                    14, 36, Qt.IgnoreAspectRatio, Qt.SmoothTransformation
+                ))
+                arrow.setFixedSize(16, 38)
                 arrow.setToolTip("The next level is contained within the preceding workplace level.")
                 workplace_path_layout.addWidget(arrow, 0, Qt.AlignVCenter)
             block = QFrame(workplace_path)
@@ -1956,6 +1959,8 @@ class PlantLayoutWindow(QDialog):
         self.worker_marker_preview = PlotWorkerMarkerPreview(assessment_group)
         self.locate_worker_button = QPushButton("Locate", assessment_group)
         self.locate_worker_button.setObjectName("locateWorkerButton")
+        self.locate_worker_button.setIcon(QIcon(os.path.join(icon_root, "locate.png")))
+        self.locate_worker_button.setIconSize(QSize(22, 22))
         self.locate_worker_button.setToolTip(
             "Blink the selected worker's blue frame on the plant layout."
         )
