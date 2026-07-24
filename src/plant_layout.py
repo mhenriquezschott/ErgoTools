@@ -227,6 +227,7 @@ class PlotRiskGauge(QWidget):
         super().__init__(parent)
         self._display_value = 0.0
         self.target_value = 0.0
+        self.has_value = False
         self.animation = QPropertyAnimation(self, b"displayValue", self)
         self.animation.setDuration(700)
         self.animation.setEasingCurve(QEasingCurve.OutCubic)
@@ -244,11 +245,19 @@ class PlotRiskGauge(QWidget):
 
     def setValue(self, value):
         value = min(100.0, max(0.0, float(value)))
+        self.has_value = True
         self.target_value = value
         self.animation.stop()
         self.animation.setStartValue(self._display_value)
         self.animation.setEndValue(value)
         self.animation.start()
+
+    def resetValue(self):
+        """Clear an obsolete result immediately without animating through it."""
+        self.animation.stop()
+        self.has_value = False
+        self.target_value = 0.0
+        self.displayValue = 0.0
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -264,24 +273,26 @@ class PlotRiskGauge(QWidget):
                 -int((end - start) * 1.8 * 16),
             )
 
-        angle = math.radians(180.0 - self._display_value * 1.8)
-        tip = QPointF(
-            center.x() + math.cos(angle) * (radius - 10),
-            center.y() - math.sin(angle) * (radius - 10),
-        )
-        perpendicular = QPointF(math.sin(angle) * 5, math.cos(angle) * 5)
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor("#758590"))
-        painter.drawPolygon(QPolygonF([center + perpendicular, tip, center - perpendicular]))
-        painter.setBrush(QColor("#647580"))
-        painter.drawEllipse(center, 5.5, 5.5)
+        if self.has_value:
+            angle = math.radians(180.0 - self._display_value * 1.8)
+            tip = QPointF(
+                center.x() + math.cos(angle) * (radius - 10),
+                center.y() - math.sin(angle) * (radius - 10),
+            )
+            perpendicular = QPointF(math.sin(angle) * 5, math.cos(angle) * 5)
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QColor("#758590"))
+            painter.drawPolygon(QPolygonF([center + perpendicular, tip, center - perpendicular]))
+            painter.setBrush(QColor("#647580"))
+            painter.drawEllipse(center, 5.5, 5.5)
 
         painter.setPen(QColor("#0B326C"))
         value_font = painter.font()
         value_font.setPointSize(20)
         value_font.setBold(True)
         painter.setFont(value_font)
-        painter.drawText(QRectF(4, 80, self.width(), 36), Qt.AlignCenter, f"{self._display_value:.1f}%")
+        display_text = f"{self._display_value:.1f}%" if self.has_value else "N/A"
+        painter.drawText(QRectF(4, 80, self.width(), 36), Qt.AlignCenter, display_text)
 
 
 class PlotWorkerMarkerPreview(QWidget):
@@ -291,18 +302,30 @@ class PlotWorkerMarkerPreview(QWidget):
         super().__init__(parent)
         self.gender = ""
         self.color = QColor("#19B83F")
+        self.has_worker = False
         self.setFixedSize(108, 108)
         self.setToolTip("Marker shape identifies sex; color identifies the selected assessment risk.")
 
     def setWorker(self, gender, color):
+        self.has_worker = True
         self.gender = str(gender or "").strip().casefold()
         candidate = QColor(str(color or ""))
         self.color = candidate if candidate.isValid() else QColor("#19B83F")
         self.update()
 
+    def clearWorker(self):
+        self.has_worker = False
+        self.gender = ""
+        self.color = QColor("#D9E1E6")
+        self.update()
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
+        if not self.has_worker:
+            painter.setPen(QColor("#758590"))
+            painter.drawText(self.rect(), Qt.AlignCenter, "No worker\nselected")
+            return
         center = QPointF(self.width() / 2.0, self.height() / 2.0 + 2.0)
         selection_size = 84.0
         painter.setPen(QPen(Qt.blue, 3, Qt.SolidLine))
@@ -2986,6 +3009,9 @@ class PlantLayoutWindow(QDialog):
         
 
     def applyfilterButtonClicked(self):
+        # Filtering replaces graphics-scene objects; release any pulse target
+        # before Qt deletes those objects.
+        self.cancelLocatePulse()
        	#self.loadPlantImage()
        	
         self.applied_plot_tool = self.tool_combo.currentText().strip() or "LiFFT"
@@ -3671,13 +3697,11 @@ class PlantLayoutWindow(QDialog):
         Triggered when the workerComboBox index changes.
         Retrieves the selected worker's ID and loads the worker's details.
         """
-        if hasattr(self, "_locate_pulse_timer") and self._locate_pulse_timer.isActive():
-            self._locate_pulse_timer.stop()
-            if self._locate_worker is not None:
-                self._locate_worker.setBorder(False)
-            self._locate_worker = None
-            self._locate_pulses_remaining = 0
+        self.cancelLocatePulse()
         selected_worker = self.workerComboBox.currentText().strip()
+        if not selected_worker:
+            self.clearWorkerOverview()
+            return
     
         # Extract worker ID (format: "<worker_id> (Last, First)")
         worker_id = selected_worker.split(" ")[0] if " " in selected_worker else selected_worker
@@ -4173,12 +4197,20 @@ class PlantLayoutWindow(QDialog):
         if worker_tool is None:
             return
         if self._locate_worker is not None and self._locate_worker is not worker_tool:
-            self._locate_worker.setBorder(False)
+            self.cancelLocatePulse()
         self._locate_worker = worker_tool
         self._locate_pulses_remaining = 10
         self._locate_pulse_visible = True
         worker_tool.setBorder(True)
         self._locate_pulse_timer.start()
+
+    def cancelLocatePulse(self):
+        """Forget the pulse target before its QGraphicsItem can be destroyed."""
+        if hasattr(self, "_locate_pulse_timer"):
+            self._locate_pulse_timer.stop()
+        self._locate_worker = None
+        self._locate_pulses_remaining = 0
+        self._locate_pulse_visible = True
 
     def advanceLocatePulse(self):
         if self._locate_worker is None or self._locate_pulses_remaining <= 0:
@@ -4556,7 +4588,7 @@ class PlantLayoutWindow(QDialog):
         
         # Ensure dataset is available
         if not hasattr(self, "workerstationshifttool_dataset") or not self.workerstationshifttool_dataset:
-            QMessageBox.warning(self, "Error", "No worker data loaded.")
+            self.clearWorkerOverview()
             return
         
         
@@ -4567,8 +4599,10 @@ class PlantLayoutWindow(QDialog):
         worker_data = self.selectedWorkerData()
 
         if not worker_data:
-            QMessageBox.warning(self, "Error", f"Worker ID {workerid} not found in dataset.")
+            self.clearWorkerOverview()
             return
+
+        self.setWorkerOverviewEnabled(True)
     
         
         # Calculate age
@@ -4629,6 +4663,37 @@ class PlantLayoutWindow(QDialog):
         #self.enableinfo_check.setChecked(True)
         
         #print("Here3")
+
+    def setWorkerOverviewEnabled(self, enabled):
+        controls = (
+            self.firstinfo_button, self.previousinfo_button, self.nextinfo_button,
+            self.lastinfo_button, self.locate_worker_button, self.visibleinfo_check,
+            self.enableinfo_check, self.lockinfo_check, self.xinfo_input,
+            self.yinfo_input, self.scaleinfo_input, self.saveinfo_button,
+            self.saveallinfo_button, self.scaleallinfo_input,
+        )
+        for control in controls:
+            control.setEnabled(enabled)
+
+    def clearWorkerOverview(self):
+        """Clear selected-worker data when the active scope has no results."""
+        self.cancelLocatePulse()
+        self.worker_assignment_label.setText("No worker results match the current filters.")
+        self.ageinfo_label.setText("–")
+        self.sexinfo_label.setText("–")
+        self.weightinfo_label.setText("–")
+        self.heightinfo_label.setText("–")
+        self.worker_tool_value.setText("–")
+        self.worker_damage_value.setText("–")
+        self.worker_risk_value.setText("–")
+        self.worker_marker_preview.clearWorker()
+        for field in (self.xinfo_input, self.yinfo_input, self.scaleinfo_input):
+            field.clear()
+        for checkbox in (self.visibleinfo_check, self.enableinfo_check, self.lockinfo_check):
+            was_blocked = checkbox.blockSignals(True)
+            checkbox.setChecked(False)
+            checkbox.blockSignals(was_blocked)
+        self.setWorkerOverviewEnabled(False)
         
         
         
@@ -5351,6 +5416,7 @@ class PlantLayoutWindow(QDialog):
     
     def loadVisualWorkerTools(self):
         """Creates VisualWorkerTool objects from the workerstationshifttool_dataset and stores them in a list."""
+        self.cancelLocatePulse()
     
         # **Ensure the dataset is available**
         if not hasattr(self, 'workerstationshifttool_dataset'):
@@ -5415,23 +5481,62 @@ class PlantLayoutWindow(QDialog):
 
 
     
+    def clearOutcomeForEmptyScope(self):
+        """Remove stale aggregate state when no enabled results are available."""
+        if hasattr(self, "plot_risk_gauge"):
+            self.plot_risk_gauge.resetValue()
+            self.outcome_risk_label.setText(
+                "<span style='color:#758590;'>●</span> Not available"
+            )
+        self.highlight_details = []
+        self.outcomeresult1_label.setText(
+            "No enabled worker results match the current filters."
+        )
+        self.outcomeresult1_label.setStyleSheet("color: #526777; font-weight: 600;")
+        self.outcomeresult1_label.setToolTip(
+            "No enabled worker results match the current filters."
+        )
+        self.outcomemore_button.hide()
+
+    def clearSummaryForEmptyScope(self):
+        """Reset metrics and chart together so prior filter results cannot leak."""
+        self.summaryresult1_label.setText("<b>Total Workers:</b> 0")
+        self.summaryresult2_label.setText("<b>Average Age:</b> –")
+        self.summaryresult3_label.setText("<b>Males:</b> 0")
+        self.summaryresult4_label.setText("<b>Females:</b> 0")
+        self.summaryresult5_label.setText("<b>Male avg. damage:</b> –")
+        self.summaryresult6_label.setText("<b>Female avg. damage:</b> –")
+        self.summaryresult7_label.setText("<b>Male avg. risk:</b> –")
+        self.summaryresult8_label.setText("<b>Female avg. risk:</b> –")
+        self.summaryresult9_label.setText("<b>Overall avg. damage:</b> –")
+        self.summaryresult10_label.setText("<b>Overall avg. risk:</b> –")
+        self.clearOutcomeForEmptyScope()
+
+        figure, axis = plt.subplots(figsize=(3.1, 2.3))
+        axis.set_facecolor("#FFFFFF")
+        axis.text(
+            0.5, 0.5, "No worker results match\\nthe current filters.",
+            ha="center", va="center", color="#526777", fontsize=9,
+        )
+        axis.set_axis_off()
+        self.current_plot_figure = figure
+        self.setSummaryFigure(figure)
+
     def loadSummary(self):
         """Calculates and updates summary statistics from workerstationshifttool_dataset, considering only enabled workers."""
         
         if not hasattr(self, "workerstationshifttool_dataset") or not self.workerstationshifttool_dataset:
-            print("Error: workerstationshifttool_dataset is empty or not available.")
-            if hasattr(self, "plot_risk_gauge"):
-                self.plot_risk_gauge.setValue(0.0)
-                self.outcome_risk_label.setText("<span style='color:#19B83F;'>●</span> Low Risk  ·  0.0%")
-                self.outcomeresult1_label.setText("No enabled worker results match the current filters.")
-                self.highlight_details = []
-                self.outcomemore_button.hide()
+            self.clearSummaryForEmptyScope()
             return
 
         # **Filter dataset to only include enabled workers**
         enabled_workers = [worker for worker in self.workerstationshifttool_dataset if worker.get("enable", 0) == 1]
         
         enabled_workersAllTools = [worker for worker in self.workerstationshiftAlltools_dataset if worker.get("enable", 0) == 1]
+
+        if not enabled_workers:
+            self.clearSummaryForEmptyScope()
+            return
         
         #if not enabled_workers:
         #    print("Warning: No enabled workers found in dataset.")
@@ -6168,11 +6273,14 @@ class PlantLayoutWindow(QDialog):
         """Update aggregate risk and highlights for the current PLOT scope."""
     
         if not hasattr(self, "workerstationshifttool_dataset") or not self.workerstationshifttool_dataset:
-            print("Error: workerstationshifttool_dataset is empty or not available.")
+            self.clearOutcomeForEmptyScope()
             return
     
         # **Filter dataset to only include enabled workers**
         enabled_workers = [worker for worker in self.workerstationshifttool_dataset if worker.get("enable", 0) == 1]
+        if not enabled_workers:
+            self.clearOutcomeForEmptyScope()
+            return
         average_probability = (
             sum(float(worker.get("probability_outcome", 0.0) or 0.0) for worker in enabled_workers)
             / len(enabled_workers)

@@ -393,6 +393,45 @@ for column in range(highlight_dialog.table.columnCount()):
     )
 highlight_dialog.close()
 
+# A completed pulse retains the current marker for its selected border. Changing
+# scope must release that reference before the scene destroys its graphics item.
+window.locateSelectedWorker()
+while window._locate_pulses_remaining:
+    window.advanceLocatePulse()
+assert window._locate_worker is not None
+
+window.applyWorkplaceScope(("TheRenewPlant",), "1")
+window.selectPlotTool("DUET")
+window.applyfilterButtonClicked()
+app.processEvents()
+assert window.workerComboBox.count() == 0
+assert window.summaryresult1_label.text() == "<b>Total Workers:</b> 0"
+assert window.summaryresult9_label.text().endswith("–")
+assert window.outcome_risk_label.text().endswith("Not available")
+assert window.plot_risk_gauge.target_value == 0.0
+assert window.plot_risk_gauge.displayValue == 0.0
+assert window.worker_assignment_label.text() == "No worker results match the current filters."
+assert window.worker_tool_value.text() == "–"
+assert not window.worker_marker_preview.has_worker
+assert not window.locate_worker_button.isEnabled()
+assert window._locate_worker is None
+window.grab().save("/tmp/plot_empty_filter_scope.png")
+window.details_tabs.setCurrentWidget(window.workerinfo_group)
+app.processEvents()
+window.grab().save("/tmp/plot_empty_worker_overview.png")
+window.details_tabs.setCurrentWidget(window.summary_group)
+
+window.selectPlotTool("LiFFT")
+window.applyfilterButtonClicked()
+app.processEvents()
+assert window.workerComboBox.count() == 1
+assert window.locate_worker_button.isEnabled()
+window.locateSelectedWorker()
+assert window._locate_worker is not None
+while window._locate_pulses_remaining:
+    window.advanceLocatePulse()
+window.grab().save("/tmp/plot_single_worker_located.png")
+
 window.resize(1300, 1100)
 for _ in range(8):
     app.processEvents()
