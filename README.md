@@ -10,7 +10,7 @@
 [![Research software](https://img.shields.io/badge/status-research%20software-0A8A99)](#project-status)
 [![License not specified](https://img.shields.io/badge/license-not%20specified-lightgrey)](#license)
 
-[Overview](#overview) · [Capabilities](#key-capabilities) · [Scientific basis](#scientific-basis) · [Installation](#installation) · [Publications](#publications) · [Screenshots](#screenshots)
+[Overview](#overview) · [Capabilities](#key-capabilities) · [Scientific basis](#scientific-basis) · [Installation](#installation) · [Publications](#publications) · [Analytical views](#interface-and-analytical-views)
 </div>
 
 ![PLOT facility-wide ergonomic risk overview](docs/images/plot-overview.png)
@@ -21,7 +21,7 @@
 - [Key capabilities](#key-capabilities)
 - [Scientific basis](#scientific-basis)
 - [Workflow](#workflow)
-- [Screenshots](#screenshots)
+- [Interface and analytical views](#interface-and-analytical-views)
 - [Installation](#installation)
 - [Running ErgoTools](#running-ergotools)
 - [Project files and data](#project-files-and-data)
@@ -36,7 +36,7 @@
 
 ErgoTools is a desktop research application for evaluating cumulative work-related musculoskeletal disorder (MSD) risk. It brings three fatigue failure-based assessment methods into one workflow and connects individual results to workers, tasks, shifts, and a plant hierarchy.
 
-The Plant-Layout Organizational Tool (PLOT) extends those assessments to a facility view. Worker results can be positioned over a plant layout, filtered by organizational scope and demographics, summarized by tool, and inspected at either group or individual level. The intent is to help ergonomists move from task measurements to spatially informed intervention priorities.
+The Plant-Layout Organizational Tool (PLOT) extends individual assessments to the organizational and facility levels. It places worker results on a plant layout and supports analysis by ergonomic tool, section, line, station, shift, and worker demographics. PLOT combines spatial risk mapping with group summaries and individual-result inspection to support identification of elevated exposures and prioritization of ergonomic interventions.
 
 > [!IMPORTANT]
 > ErgoTools is research software and a decision-support aid. Results require appropriate ergonomic expertise and should not be treated as medical diagnosis or as a substitute for professional judgment.
@@ -53,7 +53,7 @@ The Plant-Layout Organizational Tool (PLOT) extends those assessments to a facil
 | PLOT risk mapping | Worker markers over a plant image, colored by the established risk scale |
 | Filtering | Tool, plant hierarchy, shift, sex, age, weight, and height filters |
 | Multi-scope analysis | Multiple sections, lines, or stations from one plant can be analyzed together |
-| Summaries | Group risk gauge, filtered metrics, demographic comparisons, charts, and high-risk station details |
+| Summaries | Mean outcome probability, cumulative-damage summaries, demographic comparisons, charts, and high-risk station details |
 | Data reuse | Search, copy, or transfer assessments where work is shared between workers or contexts |
 
 ## Scientific basis
@@ -84,11 +84,11 @@ Associate the assessment with workplace and shift
 Use PLOT to filter, map, compare, and prioritize results
 ```
 
-## Screenshots
+## Interface and analytical views
 
 ### Individual assessment
 
-The assessment workspace keeps task inputs, cumulative results, the animated risk gauge, key metrics, and data-quality status visible together.
+Each assessment workspace accepts the task variables required by the selected method and reports task-level damage contributions, total cumulative damage, and estimated outcome probability. The gauge represents the individual's outcome probability and corresponding risk category; cumulative damage is reported separately because it is a distinct quantity.
 
 ![Shoulder Tool assessment workspace](docs/images/assessment-workspace.png)
 
@@ -105,17 +105,21 @@ The assessment workspace keeps task inputs, cumulative results, the animated ris
   </tr>
 </table>
 
-### PLOT worker inspection and workplace filtering
+### Facility-level analysis with PLOT
+
+PLOT displays one plant layout at a time. Each marker represents a worker result at its assigned station: circles and triangles distinguish worker sex, marker color represents the applicable risk category, and a blue frame identifies the selected result. Filters define the analytical population by ergonomic tool, workplace hierarchy, shift, and optional demographic ranges.
+
+The **Tools Overview** summarizes the filtered population using comparative graphs. The **Worker Overview** reports the selected worker's assignment, cumulative damage, and outcome probability and can locate that marker within a dense plant layout.
 
 ![PLOT worker overview](docs/images/plot-worker-overview.png)
 
-The workplace selector keeps one plant active while allowing multiple branches within that plant. Checking a higher level includes its descendants; individual sections, lines, and stations can be combined without losing their hierarchy paths.
+The outcome panel is specific to the applied ergonomic-tool filter. Its group risk score is the mean outcome probability across enabled worker results that satisfy the active filters. The accompanying summary reports population counts and mean cumulative damage and outcome probability, including sex-specific estimates. High-risk station highlights identify locations containing results above the high-risk threshold and provide station-level counts, means, and maxima for follow-up. The gauge therefore describes the selected population; it is not an additional individual assessment and it does not represent cumulative damage.
+
+The workplace selector keeps one plant active while allowing multiple branches within that plant. Selecting a section, line, or station restricts the population to that organizational scope; selecting a higher-level node includes its descendants. Multiple branches can be combined while preserving their hierarchical relationships.
 
 <p align="center">
   <img src="docs/images/workplace-multiselect.png" alt="PLOT multi-workplace scope selector" width="570">
 </p>
-
-Screenshot sources are stored in [`docs/images`](docs/images/README.md). The individual assessment image is cropped around the assessment panels because automated documentation capture runs without production VTK rendering; it can be replaced by keeping the same filename.
 
 ## Installation
 
@@ -190,10 +194,7 @@ Do not commit operational or personally identifiable worker data to a public rep
 
 ## Documentation
 
-- [ErgoTools user manual (PDF)](docs/ErgoToolManual.pdf) — current functional reference; some screenshots reflect the earlier interface.
-- [PLOT responsive layout notes](docs/plot-responsive-layout.md) — layout constraints and responsive behavior.
-- [PLOT redesign roadmap](docs/plot-redesign-roadmap.md) — staged UI modernization notes.
-- [`docs/images`](docs/images/README.md) — replaceable screenshots used on this project page.
+- [ErgoTools user manual (PDF)](docs/ErgoToolManual.pdf)
 
 ## Publications
 
@@ -246,7 +247,7 @@ For UI changes:
 
 ## Project status
 
-ErgoTools/PLOT is active research software. The current branch focuses on a coherent PyQt5 interface, clearer information flow, responsive PLOT layouts, and preserving the existing `.ergprj` project format while larger architectural work is planned.
+ErgoTools/PLOT is active research software for integrating fatigue failure-based assessment methods with worker- and facility-level ergonomic analysis. Continued development includes validation with practitioner feedback, refinement of analytical and reporting functions, and improvement of software maintainability while preserving access to existing `.ergprj` projects.
 
 ## License
 
