@@ -8,7 +8,7 @@
 [![Python 3.10](https://img.shields.io/badge/Python-3.10-0B326C?logo=python&logoColor=white)](https://www.python.org/)
 [![PyQt5](https://img.shields.io/badge/UI-PyQt5-008C95)](https://www.riverbankcomputing.com/software/pyqt/)
 [![Research software](https://img.shields.io/badge/status-research%20software-0A8A99)](#project-status)
-[![License not specified](https://img.shields.io/badge/license-not%20specified-lightgrey)](#license)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-0B326C.svg)](LICENSE.txt)
 
 [Overview](#overview) · [Capabilities](#key-capabilities) · [Scientific basis](#scientific-basis) · [Installation](#installation) · [Publications](#publications) · [Analytical views](#interface-and-analytical-views)
 </div>
@@ -251,4 +251,4 @@ ErgoTools/PLOT is active research software for integrating fatigue failure-based
 
 ## License
 
-The repository does not currently contain a `LICENSE` file. Although the research publications describe ErgoTools as open-source software, an explicit license must be added before downstream users have clear permission to copy, modify, or redistribute the code. Project maintainers should select and add the intended license rather than relying on the repository's public visibility.
+ErgoTools is distributed under the [Apache License 2.0](LICENSE.txt). The license permits use, reproduction, modification, and distribution subject to its terms and conditions, including preservation of required notices and documentation of modified files.
