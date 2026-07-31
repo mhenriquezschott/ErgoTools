@@ -203,7 +203,15 @@ Do not commit operational or personally identifiable worker data to a public rep
 2. **Henriquez-Schott, M., Zabala, M., Gallagher, S., Kotowski, S., Jorgensen, M., Davis, K., & Nail-Ulloa, I. (2025).** ErgoTools: Software Platform Integrating Fatigue Failure-Based Risk Assessment Tools for Ergonomics Evaluation in Salmon Processing. *Ergonomics in Design*. OnlineFirst. [https://doi.org/10.1177/10648046251408207](https://doi.org/10.1177/10648046251408207)
 3. **Henríquez-Schott, M., Zabala, M., Mercado-Gallardo, V., Vásquez-Castillo, G., Gallagher, S., & Nail-Ulloa, I. (2025).** Integración de herramientas basadas en falla por fatiga para la evaluación ergonómica y productiva en la industria salmonera chilena: desarrollo de software y casos de estudio. *Ergonomía, Investigación y Desarrollo, 7*(2), 11–30. [https://doi.org/10.29393/EID7-11IHMI60011](https://doi.org/10.29393/EID7-11IHMI60011)
 
-The first publication appeared in the **Human Factors and Ergonomics Society Annual Meeting proceedings**. Additional conference presentations can be added when their official event name, year, title, and persistent link are available.
+### Conference presentations
+
+| Year and dates | Presentation | Event and location | Role | Program |
+| --- | --- | --- | --- | --- |
+| **2025** · October 12–17 | **PLOT: A Plant-Layout Organizational Tool Based on Fatigue Failure Theory for MSD Control and Mitigation** | HFES 69th International Annual Meeting (ASPIRE 2025), Chicago, Illinois, USA. Presented October 15 in the *Effort and Fatigue* session. | Author | [Official presentation record](https://hfesam2025.conference-program.com/presentation/?id=LECT420&sess=sess241) |
+| **2025** | ErgoTools/PLOT research dissemination at the Applied Human Factors and Ergonomics International Conference | Applied Human Factors and Ergonomics (AHFE 2025) | — | [Official AHFE 2025 program](https://www.ahfe.org/files/AHFE2025_FinalProgram.pdf) |
+| **2024** · September 9–13 | **Fatigue Failure Risk Assessment Tool: A Software for Integrated Approach to Ergonomic Analysis** | ASPIRE 2024 International Annual Meeting, Phoenix, Arizona, USA | Co-author | [Event information](https://iea.cc/event/aspire-the-hfes-international-annual-meeting/) |
+
+The AHFE 2025 row records the conference association supplied by the project team. Its presentation title, exact date, location, authorship role, and direct program entry remain to be added when those details are available.
 
 ### Citing the software
 
