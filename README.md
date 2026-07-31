@@ -233,28 +233,75 @@ cd ErgoTools
 
 conda create -n ergotools python=3.10
 conda activate ergotools
+python --version
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
+The version check must report `Python 3.10.x`. Conda supplies this interpreter inside the environment, independently of the system Python version. If `conda` is not available, install [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/) for the operating system and reopen the terminal before continuing.
+
 ### Option B: Python virtual environment
 
+#### Windows
+
+1. Install the **Windows installer (64-bit)** from the official [Python 3.10.11 release](https://www.python.org/downloads/release/python-31011/). Keep the Python Launcher enabled during installation; selecting **Add Python to PATH** is also recommended. Install [Git for Windows](https://git-scm.com/download/win) if `git --version` is not recognized.
+2. Open a new PowerShell window and list the interpreters registered with the launcher:
+
+   ```powershell
+   py -0p
+   py -3.10 --version
+   ```
+
+   The second command must report `Python 3.10.x`. Using `py -3.10` below explicitly selects that version even when another Python release is the system default.
+3. Clone ErgoTools and create the environment:
+
+   ```powershell
+   git clone https://github.com/mhenriquezschott/ErgoTools.git
+   cd ErgoTools
+   py -3.10 -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   python --version
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
+   ```
+
+After activation, `python --version` must still report `Python 3.10.x`. If `py -3.10` is not found, Python 3.10 is not installed or was not registered by the installer; reinstall it before creating the environment.
+
+#### macOS
+
+1. Install the **macOS 64-bit universal2 installer** from the official [Python 3.10.11 release](https://www.python.org/downloads/release/python-31011/). It supports Intel and Apple silicon Macs. Run `git --version`; if macOS prompts to install the Command Line Tools, complete that installation before cloning the repository.
+2. Open a new Terminal window and verify the executable before creating an environment:
+
+   ```bash
+   command -v python3.10
+   python3.10 --version
+   ```
+
+   The version must be `Python 3.10.x`. Do not use the macOS system Python or an unverified `python3` command to create the environment.
+3. Clone ErgoTools, create the environment with the verified interpreter, and install its dependencies:
+
+   ```bash
+   git clone https://github.com/mhenriquezschott/ErgoTools.git
+   cd ErgoTools
+
+   python3.10 -m venv .venv
+   source .venv/bin/activate
+   python --version
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
+   ```
+
+After activation, `python --version` must report `Python 3.10.x`. The application requires a logged-in graphical desktop session because PyQt5 and VTK create native windows and use OpenGL.
+
+#### Linux
+
 ```bash
+python3.10 --version
 git clone https://github.com/mhenriquezschott/ErgoTools.git
 cd ErgoTools
-
 python3.10 -m venv .venv
-```
-
-Activate the environment and install dependencies:
-
-```bash
-# Linux/macOS
 source .venv/bin/activate
-
-# Windows PowerShell
-.venv\Scripts\Activate.ps1
-
+python --version
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
