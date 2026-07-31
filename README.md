@@ -161,6 +161,16 @@ The workplace selector preserves the organizational hierarchy. Selecting a secti
   <img src="docs/images/workplace-multiselect.png" alt="PLOT multi-workplace scope selector" width="570">
 </p>
 
+#### Worker demographics
+
+Worker demographics is an optional filter applied in addition to the selected tool, workplace scope, and shift. Expanding the group provides a sex selector and minimum/maximum ranges for age, weight, and height. **Both** leaves sex unrestricted; choosing **Male** or **Female** retains only matching worker records.
+
+![PLOT worker-demographic filters with sex and numeric ranges](docs/images/plot-demographic-filter.png)
+
+Each numeric interval is inclusive and becomes active when both its minimum and maximum are supplied. An unset pair does not restrict that characteristic. The example above selects female workers aged 20–40 whose recorded weight is between 120 and 250 and recorded height is between 55 and 75. The criteria are combined, so a result must satisfy every enabled demographic condition as well as the tool, workplace, and shift filters. Workers without a value required by an active range are not included in that filtered population.
+
+**Apply Filters** recalculates the visible markers, graph populations, filtered summaries, high-risk highlights, and group outcome from the resulting worker set. **Clear Filters** removes the demographic restrictions and restores the default analytical scope.
+
 ### Tools Overview
 
 Tools Overview provides three complementary population summaries. Error bars show one standard deviation, and Graph Settings supports visual configuration and figure export.
