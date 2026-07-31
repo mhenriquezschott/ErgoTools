@@ -112,20 +112,23 @@ Cumulative damage and outcome probability are related outputs but are not interc
 
 ### Assessment methods
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/images/ergotools-lifft-full.png" alt="LiFFT assessment in the ErgoTools main window"></td>
-    <td width="50%"><img src="docs/images/ergotools-duet-full.png" alt="DUET assessment in the ErgoTools main window"></td>
-  </tr>
-  <tr>
-    <td valign="top"><strong>LiFFT</strong><br>Evaluates low-back loading from load, horizontal lever arm, and repetitions. ErgoTools calculates task moment, cumulative damage, percentage contribution, and probability of a high-risk job.</td>
-    <td valign="top"><strong>DUET</strong><br>Evaluates distal upper-extremity loading from OMNI-RES exertion ratings and repetitions. The task table shows which exertions dominate cumulative damage and the resulting distal upper-extremity outcome probability.</td>
-  </tr>
-</table>
+#### LiFFT
+
+LiFFT evaluates low-back loading from load, horizontal lever arm, and repetitions. ErgoTools calculates task moment, cumulative damage, percentage contribution, and probability of a high-risk job.
+
+![LiFFT assessment in the complete ErgoTools workspace](docs/images/ergotools-lifft-full.png)
+
+#### DUET
+
+DUET evaluates distal upper-extremity loading from OMNI-RES exertion ratings and repetitions. The task table shows which exertions dominate cumulative damage and the resulting distal upper-extremity outcome probability.
+
+![DUET assessment in the complete ErgoTools workspace](docs/images/ergotools-duet-full.png)
+
+#### Shoulder Tool
+
+The Shoulder Tool combines task type, lever arm, load, and repetitions to estimate shoulder cumulative damage and outcome probability.
 
 ![Shoulder Tool assessment in the complete ErgoTools workspace](docs/images/ergotools-shoulder-full.png)
-
-**Shoulder Tool.** Task type, lever arm, load, and repetitions are combined to estimate shoulder cumulative damage and outcome probability. The complete-window view also shows the common project, worker, workplace, anatomical, and status context shared by all three methods.
 
 ### Worker and organization management
 
@@ -144,19 +147,71 @@ Worker records and workplace entities are maintained separately from calculation
 
 ## PLOT organizational analysis
 
-PLOT displays one plant layout at a time. Each marker represents a worker result at its assigned station: circles and triangles distinguish worker sex, marker color represents the applicable risk category, and a blue frame identifies the selected result. Filters define the analytical population by ergonomic tool, workplace hierarchy, shift, and optional demographic ranges.
+PLOT displays one plant layout at a time and superimposes enabled assessment results at their assigned stations. Circles and triangles distinguish worker sex, marker color represents the applicable risk category, and a blue frame identifies the selected result. The plant-view rail provides layout loading and saving, zoom, fit, opacity, visibility, capture, and export operations.
 
-The **Tools Overview** summarizes the filtered population using comparative graphs. The **Worker Overview** reports the selected worker's assignment, cumulative damage, and outcome probability and can locate that marker within a dense plant layout.
+![PLOT plant view, filters, Tools Overview, and LiFFT outcome](docs/images/plot-overview.png)
 
-![PLOT Worker Overview at the standard analysis-window size](docs/images/plot-worker-overview.png)
+### Defining the analytical population
 
-The outcome panel is specific to the applied ergonomic-tool filter. Its group risk score is the mean outcome probability across enabled worker results that satisfy the active filters. The accompanying summary reports population counts and mean cumulative damage and outcome probability, including sex-specific estimates. High-risk station highlights identify locations containing results above the high-risk threshold and provide station-level counts, means, and maxima for follow-up. The gauge therefore describes the selected population; it is not an additional individual assessment and it does not represent cumulative damage.
+The filter area selects the ergonomic tool, one plant, a shift, and one or more scopes inside that plant. Optional demographic ranges can further restrict the displayed population by sex, age, weight, or height. Applying a filter updates the markers, overview graphs, filtered-result statistics, highlights, and group outcome together.
 
-The workplace selector keeps one plant active while allowing multiple branches within that plant. Selecting a section, line, or station restricts the population to that organizational scope; selecting a higher-level node includes its descendants. Multiple branches can be combined while preserving their hierarchical relationships.
+The workplace selector preserves the organizational hierarchy. Selecting a section, line, or station restricts the population to that scope; selecting a higher-level node includes its descendants. Multiple branches within the same plant can be combined, while the plant selection determines the background layout displayed in the central view.
 
 <p align="center">
   <img src="docs/images/workplace-multiselect.png" alt="PLOT multi-workplace scope selector" width="570">
 </p>
+
+### Tools Overview
+
+Tools Overview provides three complementary population summaries. Error bars show one standard deviation, and Graph Settings supports visual configuration and figure export.
+
+<table>
+  <tr>
+    <td width="33.33%"><img src="docs/images/plot-tools-overview-1.png" alt="Total worker risk distribution by ergonomic tool"></td>
+    <td width="33.33%"><img src="docs/images/plot-tools-overview-2.png" alt="Worker risk distribution by sex and ergonomic tool"></td>
+    <td width="33.33%"><img src="docs/images/plot-tools-overview-3.png" alt="Worker risk distribution by age and ergonomic tool"></td>
+  </tr>
+  <tr>
+    <td valign="top"><strong>Tool comparison</strong><br>Compares mean outcome probability across LiFFT, DUET, and Shoulder Tool results in the active scope.</td>
+    <td valign="top"><strong>Sex-stratified comparison</strong><br>Compares mean outcome probability for male and female workers within and across tools.</td>
+    <td valign="top"><strong>Age-stratified comparison</strong><br>Compares tool-specific mean outcome probability across the age ranges represented in the filtered data.</td>
+  </tr>
+</table>
+
+### Worker Overview
+
+Worker Overview connects an individual result to its position on the plant map. The selector and alphabet strip navigate the workers available under the applied filters; the assignment path identifies workplace, shift, and tool. The panel reports demographics, cumulative damage, and outcome probability, and uses the same circle or triangle, risk color, and blue selection frame shown on the plant layout.
+
+![PLOT Worker Overview at the standard analysis-window size](docs/images/plot-worker-overview.png)
+
+<table>
+  <tr>
+    <td width="42%"><img src="docs/images/plot-worker-overview-panel.png" alt="PLOT Worker Overview controls and selected assessment"></td>
+    <td width="58%"><img src="docs/images/plot-worker-picker.png" alt="PLOT worker-result selector with workplace hierarchy"></td>
+  </tr>
+  <tr>
+    <td valign="top"><strong>Inspect and locate</strong><br>Navigation changes the selected marker. Locate pulses its blue frame to find it within a dense layout. Visibility, enablement, locking, scale, and saved placement control how the result participates in the plant view.</td>
+    <td valign="top"><strong>Select within scope</strong><br>The worker-result selector searches the currently filtered population and uses the workplace tree to narrow records with similar names or multiple assignments.</td>
+  </tr>
+</table>
+
+### Tool outcomes and group risk
+
+The outcome panel is specific to the applied ergonomic-tool filter. Its group risk score is the mean outcome probability across enabled worker results that satisfy the active filters. The gauge shows that mean on the common risk scale; it does not represent cumulative damage or replace the individual assessment.
+
+![LiFFT filtered results and group outcome](docs/images/plot-lifft-outcome.png)
+
+![DUET filtered results and group outcome](docs/images/plot-duet-outcome.png)
+
+![Shoulder Tool filtered results and group outcome](docs/images/plot-shoulder-outcome.png)
+
+The filtered summary reports worker counts, age, sex-specific mean cumulative damage and outcome probability, and overall means. High-risk highlights identify stations containing results above the high-risk threshold. View Details opens the contributing stations with result counts, average outcome probability, and maximum outcome probability for follow-up.
+
+<p align="center">
+  <img src="docs/images/plot-highlight-details.png" alt="PLOT high-risk station details" width="760">
+</p>
+
+Together, the map, population summaries, individual inspection, and station highlights support movement from facility-level screening to specific workers and locations requiring closer ergonomic review.
 
 ## Installation
 
