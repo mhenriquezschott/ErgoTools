@@ -10,7 +10,7 @@
 [![Research software](https://img.shields.io/badge/status-research%20software-0A8A99)](#project-status)
 [![License not specified](https://img.shields.io/badge/license-not%20specified-lightgrey)](#license)
 
-[Overview](#overview) · [Features](#features) · [Scientific basis](#scientific-basis) · [Installation](#installation) · [Publications](#publications) · [Screenshots](#screenshots)
+[Overview](#overview) · [Capabilities](#key-capabilities) · [Scientific basis](#scientific-basis) · [Installation](#installation) · [Publications](#publications) · [Screenshots](#screenshots)
 </div>
 
 ![PLOT facility-wide ergonomic risk overview](docs/images/plot-overview.png)
