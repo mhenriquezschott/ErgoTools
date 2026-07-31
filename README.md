@@ -10,7 +10,7 @@
 [![Research software](https://img.shields.io/badge/status-research%20software-0A8A99)](#project-status)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-0B326C.svg)](LICENSE.txt)
 
-[Overview](#overview) · [Capabilities](#key-capabilities) · [Scientific basis](#scientific-basis) · [Installation](#installation) · [Publications](#publications) · [Analytical views](#interface-and-analytical-views)
+[Overview](#overview) · [ErgoTools](#ergotools-individual-assessment) · [PLOT](#plot-organizational-analysis) · [Scientific basis](#scientific-basis) · [Installation](#installation) · [Publications](#publications)
 </div>
 
 ![PLOT facility-wide ergonomic risk overview](docs/images/plot-overview.png)
@@ -21,7 +21,8 @@
 - [Key capabilities](#key-capabilities)
 - [Scientific basis](#scientific-basis)
 - [Workflow](#workflow)
-- [Interface and analytical views](#interface-and-analytical-views)
+- [ErgoTools individual assessment](#ergotools-individual-assessment)
+- [PLOT organizational analysis](#plot-organizational-analysis)
 - [Installation](#installation)
 - [Running ErgoTools](#running-ergotools)
 - [Project files and data](#project-files-and-data)
@@ -84,13 +85,47 @@ Associate the assessment with workplace and shift
 Use PLOT to filter, map, compare, and prioritize results
 ```
 
-## Interface and analytical views
+## ErgoTools individual assessment
 
-### Individual assessment
+The main ErgoTools workspace combines project and worker selection, anatomical context, task-level exposure data, calculation controls, and individual results. A common structure is retained across LiFFT, DUET, and the Shoulder Tool so that analysts can change methods without changing the overall workflow.
 
-Each assessment workspace accepts the task variables required by the selected method and reports task-level damage contributions, total cumulative damage, and estimated outcome probability. The gauge represents the individual's outcome probability and corresponding risk category; cumulative damage is reported separately because it is a distinct quantity.
+![Complete ErgoTools LiFFT assessment workspace](docs/images/ergotools-lifft-full.png)
 
-![Shoulder Tool assessment workspace](docs/images/assessment-workspace.png)
+The header identifies the active project and provides project-level actions. The worker bar supports direct selection, alphabetical filtering, record management, search, transfer of existing assessment data, and sequential navigation. The workplace strip records the plant, section, line, station, and shift associated with the assessment; this analytical assignment is distinct from the worker's identity record.
+
+### Anatomical and analytical context
+
+<table>
+  <tr>
+    <td width="24%"><img src="docs/images/ergotools-body-region.png" alt="Anatomical body-region panel for the Shoulder Tool"></td>
+    <td width="56%"><img src="docs/images/ergotools-assessment-panel.png" alt="LiFFT task-entry and calculation panel"></td>
+    <td width="20%"><img src="docs/images/ergotools-individual-results.png" alt="DUET individual outcome summary"></td>
+  </tr>
+  <tr>
+    <td valign="top"><strong>Body region</strong><br>The anatomical view identifies the region evaluated by the active method. Rotation, zoom, and reset controls support inspection, while the adjacent legend states the individual risk categories.</td>
+    <td valign="top"><strong>Task assessment</strong><br>Each row represents an exposure component. The table reports its cumulative-damage contribution and share of total damage; the calculation area reports the aggregate damage and outcome probability.</td>
+    <td valign="top"><strong>Individual results</strong><br>The gauge reports estimated outcome probability and its risk category. Cumulative damage, task count, repetitions, key exposure metrics, and data-completeness status remain visible beside the assessment.</td>
+  </tr>
+</table>
+
+Cumulative damage and outcome probability are related outputs but are not interchangeable. Cumulative damage is the fatigue-failure exposure measure accumulated across entered tasks. The probability gauge expresses the model-derived likelihood of the tool-specific adverse outcome and maps it to the established risk categories. A gray result state indicates that an assessment is unavailable or incomplete rather than a measured low-risk result.
+
+### Assessment methods
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/ergotools-lifft-full.png" alt="LiFFT assessment in the ErgoTools main window"></td>
+    <td width="50%"><img src="docs/images/ergotools-duet-full.png" alt="DUET assessment in the ErgoTools main window"></td>
+  </tr>
+  <tr>
+    <td valign="top"><strong>LiFFT</strong><br>Evaluates low-back loading from load, horizontal lever arm, and repetitions. ErgoTools calculates task moment, cumulative damage, percentage contribution, and probability of a high-risk job.</td>
+    <td valign="top"><strong>DUET</strong><br>Evaluates distal upper-extremity loading from OMNI-RES exertion ratings and repetitions. The task table shows which exertions dominate cumulative damage and the resulting distal upper-extremity outcome probability.</td>
+  </tr>
+</table>
+
+![Shoulder Tool assessment in the complete ErgoTools workspace](docs/images/ergotools-shoulder-full.png)
+
+**Shoulder Tool.** Task type, lever arm, load, and repetitions are combined to estimate shoulder cumulative damage and outcome probability. The complete-window view also shows the common project, worker, workplace, anatomical, and status context shared by all three methods.
 
 ### Worker and organization management
 
@@ -105,13 +140,15 @@ Each assessment workspace accepts the task variables required by the selected me
   </tr>
 </table>
 
-### Facility-level analysis with PLOT
+Worker records and workplace entities are maintained separately from calculation inputs. Worker identity requires only a unique identifier; demographic and employment details remain optional. The organization editor manages the plant → section → line → station hierarchy and independent shifts used to contextualize assessments and filter PLOT results.
+
+## PLOT organizational analysis
 
 PLOT displays one plant layout at a time. Each marker represents a worker result at its assigned station: circles and triangles distinguish worker sex, marker color represents the applicable risk category, and a blue frame identifies the selected result. Filters define the analytical population by ergonomic tool, workplace hierarchy, shift, and optional demographic ranges.
 
 The **Tools Overview** summarizes the filtered population using comparative graphs. The **Worker Overview** reports the selected worker's assignment, cumulative damage, and outcome probability and can locate that marker within a dense plant layout.
 
-![PLOT worker overview](docs/images/plot-worker-overview.png)
+![PLOT Worker Overview at the standard analysis-window size](docs/images/plot-worker-overview.png)
 
 The outcome panel is specific to the applied ergonomic-tool filter. Its group risk score is the mean outcome probability across enabled worker results that satisfy the active filters. The accompanying summary reports population counts and mean cumulative damage and outcome probability, including sex-specific estimates. High-risk station highlights identify locations containing results above the high-risk threshold and provide station-level counts, means, and maxima for follow-up. The gauge therefore describes the selected population; it is not an additional individual assessment and it does not represent cumulative damage.
 
