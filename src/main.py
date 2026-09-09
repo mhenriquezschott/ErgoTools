@@ -4903,8 +4903,8 @@ class ErgoTools(QtWidgets.QMainWindow):
         icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
         toolbar_actions = (
             ("new.png", "New", self.toolbarnewWorker), ("open.png", "Open", self.toolbaropenWorker),
-            ("save.png", "Save", self.toolbarsaveWorker), ("plot.png", "Layout", self.toolbaropenLayout),
-            ("plot.png", "JROT", self.toolbaropenRotationLayout),
+            ("save.png", "Save", self.toolbarsaveWorker), ("plot.png", "PLOT", self.toolbaropenLayout),
+            ("jrot.png", "JROT", self.toolbaropenRotationLayout),
             ("export.png", "Export", self.exportToCSV), ("settings.png", "Settings", self.openNumTasksDialog),
             ("help.png", "Help", self.openHelpPDF),
         )
@@ -4913,7 +4913,7 @@ class ErgoTools(QtWidgets.QMainWindow):
             action.setToolTip({
                 "New": "Create a new project.", "Open": "Open an existing Ergo Tools project.",
                 "Save": "Save the current project and assessment data.",
-                "Layout": "Open the plant layout workspace.",
+                "PLOT": "Open the Plant-Layout Organizational Tool.",
                 "JROT": "Open the Job Rotation Optimization Tool.",
                 "Export": "Export data from the selected ergonomic tool.",
                 "Settings": "Configure the number of task rows and application options.",
