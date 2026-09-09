@@ -13,6 +13,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
+import time
+from typing import Dict, List
+from pyomo.environ import (
+    ConcreteModel, Set, Var, Binary, Constraint,
+    Objective, minimize, SolverFactory, value
+)
+        
 #import threading
 import json
 import re
@@ -77,6 +84,7 @@ from pyTST import TST
 
 
 
+import statistics
 
 
 class ComboBoxDelegate(QStyledItemDelegate):
@@ -1112,8 +1120,8 @@ class RotationLayoutWindow(QDialog):
     def generateSuggestion(self, probs):
         if not probs:
             return ""
-        high = [p for p in probs if p > 50]
-        low = [p for p in probs if p <= 25]
+        high = [p for p in probs if p > 60]
+        low = [p for p in probs if p < 20]
         avg = sum(probs) / len(probs)
     
         if len(high) >= 2 and len(low) >= 1:
@@ -1134,8 +1142,8 @@ class RotationLayoutWindow(QDialog):
     def generateSuggestionOldWorking(self, probs):
         if not probs:
             return ""
-        high = [p for p in probs if p > 50]
-        low = [p for p in probs if p <= 25]
+        high = [p for p in probs if p > 60]
+        low = [p for p in probs if p < 20]
         avg = sum(probs) / len(probs)
         if len(high) >= 2 and len(low) >= 1:
             return "Avoid assigning multiple high-risk jobs"
@@ -1698,7 +1706,59 @@ class RotationLayoutWindow(QDialog):
 
         self.displayOptimizedTable(optimized_result, job_info, self.optimized_table)
         #print("=== Optimization Completed ===\n")
+        
+        
+         # 2) re‐extract the *original* rotation exactly as the UI did:
+        _, _, original_rotation, job_risk = self.extract_rotation_data(
+            table=self.rotation_table,
+            get_job_risks_func=self.getJobsWithMeasurement,
+            tool_id=tool_id
+        )
 
+        # 3) now we have two dicts:
+        #    original_rotation: {worker_id: [job1,job2,...]}
+        #    optimized_result:   {worker_id: [job1,job2,...]}
+
+        # 4) print the two blocks side by side, matching your format
+        self._print_single_tool_comparison(tool_id,
+                                           original_rotation,
+                                           optimized_result,
+                                           job_risk)
+                                           
+                                           
+        
+    def _print_single_tool_comparison(self, tool_id, orig_rot, opt_rot, job_risk):
+        def _flatten(jobs):
+            out = []
+            for x in jobs:
+                if isinstance(x, (list,tuple)):
+                    out.extend(x)
+                else:
+                    out.append(x)
+            return out
+
+        def _block(title, rotation):
+            print(f"\n=== {title} ===\n[{tool_id}]\n")
+            for w, jobs in rotation.items():
+                flat = _flatten(jobs)
+                # only keep real job IDs
+                filtered = [jid for jid in flat if jid in job_risk]
+                pieces = []
+                for jid in filtered:
+                    r = job_risk[jid]
+                    pieces.append(f"{jid}@{r:.1f}")
+                if filtered:
+                    avg = sum(job_risk[jid] for jid in filtered)/len(filtered)
+                else:
+                    avg = 0.0
+                print(f"{w}: {' '.join(pieces)} -> Avg: {avg:.1f}%")
+            print()
+
+        # now call it twice
+        _block("Original Average Risk per Worker", orig_rot)
+        _block("Optimized Average Risk per Worker", opt_rot)
+   
+   
     
     
     
@@ -2000,7 +2060,7 @@ class RotationLayoutWindow(QDialog):
         self.overlay = Overlay(parent=self, message="Optimizing Rotation for All Tools") #Overlay(parent=self)
         #self.overlay.label.setText("Optimizing all tools")
         self.overlay.setCancelHandler(self.cancelOptimization)
-        seconds = self.getTimeLimitInSeconds(for_multitool=True, solver_name="highs") #TODO: Trick, use other solver but just for the progress bar to considere the full time since with glpk for multi-op I passing half as time-limit to complete both steps in the total time, if I use glpk time the progress bar will finish in half time...
+        seconds = self.getTimeLimitInSeconds(for_multitool=True, solver_name="highs") * 2 #TODO: Check, Trick, use other solver but just for the progress bar to considere the full time since with glpk for multi-op I passing half as time-limit to complete both steps in the total time, if I use glpk time the progress bar will finish in half time...
         self.overlay.start(duration_seconds=seconds)
         
         #self.overlay.start()
@@ -2138,12 +2198,12 @@ class RotationLayoutWindow(QDialog):
         Stage 2  minimise  Σ_t (g_max[t]−g_min[t])
                    subject to the g_max from Stage 1
         """
-        import time
-        from typing import Dict, List
-        from pyomo.environ import (
-            ConcreteModel, Set, Var, Binary, Constraint,
-            Objective, minimize, SolverFactory, value
-        )
+        #import time
+        #from typing import Dict, List
+        #from pyomo.environ import (
+        #    ConcreteModel, Set, Var, Binary, Constraint,
+        #    Objective, minimize, SolverFactory, value
+        #)
 
         # ---------- helper: configure solver ----------------------------------
         def _make_solver(name):
@@ -2164,13 +2224,35 @@ class RotationLayoutWindow(QDialog):
             if mip_gap is not None:
                 if name == "glpk":
                     s.options["mipgap"] = mip_gap
+                    #s.options["mipgap"] = self.mip_gap
                 elif name == "cbc":
                     s.options["ratio"] = mip_gap
+                    #s.options["r"] = mip_gap
                 elif name.startswith("gurobi"):
                     s.options["MIPGap"] = mip_gap
                 elif name.startswith("highs"):
                     s.options["mip_rel_gap"] = mip_gap
-        
+                    
+            
+            
+            #TODO: Pass it as parameter...
+            #logfile_name = "solver_log.txt"
+            #self.logfile_name = None
+            # -- log file output ----------------------------------------------
+            if self.logfile_name is not None:
+                if name == "glpk":
+                    #s.options["write"] = self.logfile_name + ".raw.txt"  # Note: GLPK may not respect this directly; use redirection or GLPK API if needed
+                    s.options["log"] = self.logfile_name
+                    #s.options["msg_lev"] = 3  # max verbosity
+                elif name == "cbc":
+                    s.options["log"] = self.logfile_name
+                elif name.startswith("gurobi"):
+                    s.options["LogFile"] = self.logfile_name
+                elif name.startswith("highs"):
+                    s.options["log_file"] = self.logfile_name
+                    #s.options["msg_lev"] = 3  # max verbosity
+
+
             # -- suppress HiGHS banner / trace on Windows ----------------------
             #if name.startswith("highs"):
             #    s.options["log_to_console"] = "off"   # prevent WinError 1
@@ -2228,21 +2310,108 @@ class RotationLayoutWindow(QDialog):
         m.o2 = Objective(expr=sum(m.g_max[t] - m.g_min[t] for t in m.T),
                          sense=minimize)
         m.o2.deactivate()
+        
+        
+        
     
         # ---------- stage 1 ----------------------------------------------------
         if verbose:
             print("[OPT] Stage 1 – minimise per-tool ceilings …")
+            
+            
+            # 1) pull the current (pre‑opt) rotation from your UI
+            current_tool = self.tool_combo.currentText()
+            _, _, initial_assignments, initial_job_risk = self.extract_rotation_data(
+                table=self.rotation_table,
+                get_job_risks_func=self.getJobsWithMeasurement,
+                tool_id=current_tool
+            )
         
-        #TODO: Check this tee_flag to avoid optimizer console messages, specially if highs works in windows!!!
+            # 2) compute original stats from that rotation
+            original_stats = {}
+            inv_blocks = 1.0 / num_blocks
+            for t in m.T:  # t is one of "LiFFT", "DUET", "ST"
+                vals = []
+                for w in worker_ids:
+                    # sum the tool‐specific risk of every block assigned
+                    total = 0.0
+                    for job_id in initial_assignments[w]:
+                        total += tool_risk[t].get(job_id, 0.0)
+                    vals.append(total * inv_blocks)
+                mean = statistics.mean(vals)
+                sd   = statistics.pstdev(vals)
+                mn   = min(vals)
+                mx   = max(vals)
+                cv   = 100 * sd / mean if mean else 0.0
+                original_stats[t] = {
+                    'Mean': mean, 'SD': sd, 'Min': mn, 'Max': mx, 'CV': cv
+                }
+
+            # 3) debug‐print the raw values
+            #print("\nDEBUG original avgRisk per worker per tool:")
+            #for t, avgs in original_stats.items():
+            #    print(f" {t}: " + ", ".join(f"{w}={avgs[w_idx]:.1f}%" 
+            #           for w_idx, w in enumerate(worker_ids)))
+            
+            
+            
+            
+        
         #solver = _make_solver(solver_name)
         #res1 = solver.solve(m, tee=verbose)
+        self.logfile_name = "highs_stage1_test04.log.txt"
+        #self.mip_gap = 0.01
         solver = _make_solver(solver_name)
-        tee_flag = verbose and not solver_name.startswith("highs")
+        #tee_flag = verbose and not solver_name.startswith("highs")
         tee_flag = True
-        res1 = solver.solve(m, tee=tee_flag)          #  no logfile=
+        res1 = solver.solve(m, tee=tee_flag)          
+        
+        
+        #from contextlib import redirect_stdout
+        #with open("glpk_solver_stg1_log.txt", "w") as f:
+        #    res1 = solver.solve(m, tee=tee_flag, stdout=f)
 
         if verbose:
             print("[OPT] Stage 1 done – Σ g_max =", round(sum(value(m.g_max[t]) for t in m.T), 2))
+            
+            
+        # Extract and show intermediate schedule after Stage 1
+        schedule: Dict[str, List[str]] = {w: [""] * num_blocks for w in worker_ids}
+        for w in worker_ids:
+            for b in m.B:
+                for j in job_list:
+                    if value(m.x[w, b, j]) > 0.5:
+                        schedule[w][b] = j
+                        break
+
+        if verbose:
+            self.print_intermediate_rotation_schedule(schedule, tool_risk, num_blocks)
+            # compute intermediate stats post–Stage 1
+            intermediate_stats = {}
+            for t in m.T:
+                vals = [ value(m.avgRisk[w,t]) for w in m.W ]
+                mean = statistics.mean(vals)
+                sd   = statistics.pstdev(vals)
+                mn   = min(vals)
+                mx   = max(vals)
+                cv   = 100 * sd / mean if mean else 0.0
+                intermediate_stats[t] = {
+                    'Mean': mean, 'SD': sd, 'Min': mn, 'Max': mx, 'CV': cv
+                }
+    
+            # print Table 1
+            self.print_two_stage_stats(
+                title="Table 1. Original vs. Post–Stage 1",
+                stats_left=original_stats,
+                stats_mid=intermediate_stats
+            )
+        
+        
+
+            
+            
+            
+            
 
         # ---------- stage 2 ----------------------------------------------------
         # lock in the ceilings we just found
@@ -2257,15 +2426,44 @@ class RotationLayoutWindow(QDialog):
         #solver = _make_solver(solver_name)
         #tee_flag = verbose and not solver_name.startswith("highs")
         #res2 = solver.solve(m, tee=tee_flag, logfile="highs_stage2.log" if solver_name.startswith("highs") else None)
+        self.logfile_name = "highs_stage2_test04.log.txt"
+        #self.mip_gap = 0.005
         solver = _make_solver(solver_name)
-        tee_flag = verbose and not solver_name.startswith("highs")
+        #tee_flag = verbose and not solver_name.startswith("highs")
         #tee_flag = False
-        res2 = solver.solve(m, tee=tee_flag)          #  no logfile=
+        res2 = solver.solve(m, tee=tee_flag)         
+
+        #from contextlib import redirect_stdout
+        #with open("glpk_solver_stg2_log.txt", "w") as f:
+        #    res2= solver.solve(m, tee=tee_flag, stdout=f)
 
         if verbose:
             spread = sum(value(m.g_max[t] - m.g_min[t]) for t in m.T)
             print(f"[OPT] Stage 2 done – total spread = {spread:.2f}")
             print(f"[OPT] Total time: {time.time() - t0:.1f} s")
+            
+            
+            
+            # compute final optimized stats
+            optimized_stats = {}
+            for t in m.T:
+                vals = [ value(m.avgRisk[w,t]) for w in m.W ]
+                mean = statistics.mean(vals)
+                sd   = statistics.pstdev(vals)
+                mn   = min(vals)
+                mx   = max(vals)
+                cv   = 100 * sd / mean if mean else 0.0
+                optimized_stats[t] = {
+                    'Mean': mean, 'SD': sd, 'Min': mn, 'Max': mx, 'CV': cv
+                }
+
+            # print Table 2
+            self.print_two_stage_stats(
+                title="Table 2. Original vs. Post–Stage 1 vs. Final",
+                stats_left=original_stats,
+                stats_mid=intermediate_stats,
+                stats_right=optimized_stats
+            )
     
         # ---------- extract schedule ------------------------------------------
         schedule: Dict[str, List[str]] = {w: [""] * num_blocks for w in worker_ids}
@@ -2276,6 +2474,176 @@ class RotationLayoutWindow(QDialog):
                         schedule[w][b] = j
                         break
         return schedule
+
+
+
+
+    def print_intermediate_rotation_schedule(self, schedule, tool_risk, num_blocks):
+        """
+        Prints the current rotation schedule with risk values for each worker and tool.
+        """
+        print("\n[INTERMEDIATE ROTATION SCHEDULE]")
+        for tool_name, risk_map in tool_risk.items():
+            print(f"[{tool_name}]")
+            for worker_id, jobs in schedule.items():
+                entries = []
+                total = 0.0
+                for b, job in enumerate(jobs):
+                    risk = risk_map.get(job, 0.0)
+                    total += risk
+                    #entries.append(f"{job}@{risk:.1f}")
+                    entries.append(f"{job}@{risk:04.1f}")
+                avg = total / num_blocks if num_blocks > 0 else 0.0
+                print(f"{worker_id}: {' '.join(entries)} -> Avg: {avg:04.1f}%")
+            print()
+
+
+    
+    def print_two_stage_stats(self,
+            title: str,
+            stats_left: dict,
+            stats_mid: dict,
+            stats_right: dict = None):
+        """
+        Prints a 2‑or‑3 column table of per‑tool statistics.
+          title:       Header line for the table
+          stats_left:  { tool: { 'Mean':…, 'SD':…, 'Min':…, 'Max':…, 'CV':… }, … }
+          stats_mid:   same structure, for the intermediate stage
+          stats_right: same structure, for the final stage (optional)
+        """
+        columns = ['Original', 'Intermediate']
+        if stats_right is not None:
+            columns.append('Optimized')
+    
+        # Header
+        header = f"\n{title}\n"
+        header += f"{'Tool':<6}  {'Statistic':<10}  "
+        header += "  ".join(f"{c:>12}" for c in columns)
+        print(header)
+        print("-" * len(header))
+
+        for tool in stats_left:
+            left  = stats_left[tool]
+            mid   = stats_mid[tool]
+            right = stats_right[tool] if stats_right else None
+    
+            print(f"{tool:<6}")
+            for stat in ('Mean','SD','Min','Max','CV'):
+                row = f"      {stat:<10}"
+                row += f"  {left[stat]:12.2f}"
+                row += f"  {mid[stat]:12.2f}"
+                if right:
+                    row += f"  {right[stat]:12.2f}"
+                print(row)
+            print()
+        
+        
+        
+
+
+    #import numpy as np
+
+    from statistics import mean, pstdev
+
+    def compute_tool_stats(self, rotation: dict, job_risk: dict):
+        """
+        rotation: dict of worker_id -> list of job_id (strings)
+        job_risk: dict job_id -> float risk
+        returns dict { 'Mean':…, 'SD':…, 'Min':…, 'Max':…, 'CV':… }
+        """
+        worker_avgs = []
+        for w, jobs in rotation.items():
+            # flatten in case someone sneaks in a list-of-lists
+            flat = []
+            for j in jobs:
+                if isinstance(j, (list,tuple)):
+                    flat.extend(j)
+                else:
+                    flat.append(j)
+            risks = [job_risk.get(jid, 0.0) for jid in flat]
+            if risks:
+                worker_avgs.append(statistics.mean(risks))
+            else:
+                worker_avgs.append(0.0)
+
+        if not worker_avgs:
+            return dict(Mean=0, SD=0, Min=0, Max=0, CV=0)
+    
+        m  = statistics.mean(worker_avgs)
+        s  = statistics.pstdev(worker_avgs)            # population stdev
+        mn = min(worker_avgs)
+        mx = max(worker_avgs)
+        cv = (100.0 * s / m) if m != 0 else 0.0
+    
+        return dict(
+            Mean=round(m, 2),
+            SD=   round(s, 2),
+            Min=  round(mn,2),
+            Max=  round(mx,2),
+            CV=   round(cv,2),
+        )
+
+    def print_single_tool_table(self, orig_stats: dict, opt_stats: dict, tool_name: str):
+        """
+        Prints side‑by‑side Original vs. Optimized stats for one tool.
+        """
+        print(f"\nTool: {tool_name}")
+        print(f"{'Statistic':<9} {'Original':>10} {'Optimized':>12}")
+        print("-"*33)
+        for stat in ("Mean","SD","Min","Max","CV"):
+            o = orig_stats[stat]
+            p = opt_stats[stat]
+            print(f"{stat:<9} {o:>10.2f} {p:>12.2f}")
+        print()
+
+
+
+
+    def print_single_tool_rotations(self, orig_rot, opt_rot, job_risk, tool_id):
+        """
+        Print original vs optimized rotation for a single tool in the format:
+
+        === Original Average Risk per Worker ===
+
+        [LiFFT]
+        V001: Job‑11@10.0 Job‑11@10.0 Job‑11@10.0 -> Avg: 10.0%
+        …
+
+        === Optimized Average Risk per Worker ===
+        [LiFFT]
+        V001: Job‑11@10.0 Job‑13@50.0 Job‑12@30.0 -> Avg: 30.0%
+        …
+        """
+        def _print_block(title, rot):
+            print(f"\n=== {title} ===\n")
+            print(f"[{tool_id}]")
+            for w, jobs in rot.items():
+                # flatten in case someone stored a list of lists
+                flat = []
+                for j in jobs:
+                    if isinstance(j, (list, tuple)):
+                        flat.extend(j)
+                    else:
+                        flat.append(j)
+                # build the "Job‑xx@yy.y" pieces
+                pieces = []
+                for jid in flat:
+                    r = job_risk.get(jid, 0.0)
+                    pieces.append(f"{jid}@{r:.1f}")
+                avg = sum(job_risk.get(jid,0) for jid in flat) / len(flat) if flat else 0.0
+                print(f"{w}: " + " ".join(pieces) + f" -> Avg: {avg:.1f}%")
+            print()
+
+        _print_block("Original Average Risk per Worker", orig_rot)
+        _print_block("Optimized Average Risk per Worker", opt_rot)
+        print("=== Optimization Completed ===\n")
+
+
+
+
+
+
+
 
 
 
@@ -2443,7 +2811,8 @@ class RotationLayoutWindow(QDialog):
             seconds = minutes * 60
             # Divide by 2 only for multi-tool with glpk
             if for_multitool and solver_name.lower() == "glpk":
-                return seconds // 2
+                #return seconds // 2
+                return seconds #// 2
             return seconds
         except ValueError:
             return 60  # Default to 1 minute
@@ -2471,7 +2840,62 @@ class OptimizationWorker(QtCore.QObject):
     def request_cancel(self):
         self.cancel_requested = True
         
+        
     def run(self):
+        from pulp import PULP_CBC_CMD
+        parent = QtWidgets.QApplication.instance().activeWindow()
+
+        # 1) extract original rotation
+        #worker_ids, job_list, current_assignments, job_risk = \
+        #    parent.extract_rotation_data(
+        #        self.table,
+        #        parent.getJobsWithMeasurement,
+        #        self.tool_id
+        #    )
+        
+        # 1) extract the original
+        worker_ids, job_list, current_assignments, job_risk = parent.extract_rotation_data(
+            self.table, parent.getJobsWithMeasurement, self.tool_id
+        )
+
+        # 2) compute and save original stats
+        orig_stats = parent.compute_tool_stats(current_assignments, job_risk)
+
+        # 3) build and solve
+        model, x = parent.build_optimization_model(
+            worker_ids, job_list, current_assignments, job_risk, self.num_blocks
+        )
+        time_limit = parent.getTimeLimitInSeconds()
+        model.solve(PULP_CBC_CMD(msg=0, timeLimit=time_limit, gapRel=0.01))
+
+        if self.cancel_requested:
+            print("[CANCELLED] Optimization was cancelled.")
+            return
+
+        # 4) extract optimized rotation
+        optimized_rotation = parent.extract_solution(
+            model, x, worker_ids, job_risk, self.num_blocks
+        )
+
+        # 5) compute optimized stats
+        #opt_stats = parent.compute_tool_stats(optimized_rotation, job_risk)
+
+        # 6) print the comparison table
+        #parent.print_single_tool_table(orig_stats, opt_stats, self.tool_id)
+        
+        
+        # 3) extract optimized
+        #opt_rot = parent.extract_solution(model, x, worker_ids, job_risk, self.num_blocks)
+
+        # 4) print both tables side by side
+        #parent.print_single_tool_rotations(orig_rot, optimized_rotation, job_risk, self.tool_id)
+
+
+        # 7) emit the optimized rotation so the UI can update
+        self.optimizationCompleted.emit(optimized_rotation)
+        
+        
+    def runOldWorking(self):
         from pulp import PULP_CBC_CMD
         parent = QtWidgets.QApplication.instance().activeWindow()
 
@@ -2479,12 +2903,16 @@ class OptimizationWorker(QtCore.QObject):
             self.table, parent.getJobsWithMeasurement, self.tool_id
         )
 
+
+        # compute original stats
+        orig_stats = parent.compute_tool_stats(current_assignments, job_risk)
+        
         model, x = parent.build_optimization_model(
             worker_ids, job_list, current_assignments, job_risk, self.num_blocks
         )
 
         time_limit = parent.getTimeLimitInSeconds()
-        model.solve(PULP_CBC_CMD(msg=0, timeLimit=time_limit))
+        model.solve(PULP_CBC_CMD(msg=3, timeLimit=time_limit, gapRel=0.01))
         
         
         
@@ -2493,6 +2921,15 @@ class OptimizationWorker(QtCore.QObject):
             return
         
         result = parent.extract_solution(model, x, worker_ids, job_risk, self.num_blocks)
+        
+        # compute optimized stats
+        opt_stats = parent.compute_tool_stats(result, job_risk)
+
+        # 4) print table
+        parent.print_single_tool_table(orig_stats, opt_stats, self.tool_id)
+
+
+        
         self.optimizationCompleted.emit(result)
 
 
@@ -2767,4 +3204,5 @@ if __name__ == "__main__":
     sys.exit(app.exec_())
 
  
+
 
