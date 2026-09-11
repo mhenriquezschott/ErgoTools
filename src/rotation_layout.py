@@ -372,6 +372,8 @@ class RotationLayoutWindow(QDialog):
         current_layout.setContentsMargins(8, 8, 8, 8)
         self.label_current_table = QLabel("Current Rotation")
         self.label_current_table.setObjectName("panelTitle")
+        self.label_current_table.setFixedHeight(48)
+        self.label_current_table.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         current_layout.addWidget(self.label_current_table)
         self.rotation_table = QTableWidget()
         self.rotation_table.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -386,11 +388,15 @@ class RotationLayoutWindow(QDialog):
         optimized_heading = QHBoxLayout()
         self.label_optimized_table = QLabel("Optimized Rotation")
         self.label_optimized_table.setObjectName("panelTitle")
+        self.label_optimized_table.setFixedHeight(48)
+        self.label_optimized_table.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         optimized_heading.addWidget(self.label_optimized_table)
         optimized_heading.addStretch(1)
         self.transfer_button = QPushButton("Use as Current")
         self.transfer_button.setIcon(QIcon(os.path.join(self._icon_root, "applyrotation.png")))
-        self.transfer_button.setIconSize(QSize(28, 28))
+        self.transfer_button.setIconSize(QSize(40, 40))
+        self.transfer_button.setMinimumWidth(185)
+        self.transfer_button.setFixedHeight(48)
         self.transfer_button.setToolTip("Replace the current rotation with the optimized assignment.")
         self.transfer_button.clicked.connect(self.transferOptimizedToCurrent)
         optimized_heading.addWidget(self.transfer_button)
@@ -422,15 +428,15 @@ class RotationLayoutWindow(QDialog):
         self.close_button.setIcon(QIcon(os.path.join(self._icon_root, "close.png")))
         self.close_button.clicked.connect(self.close)
         for button, width, icon_size in (
-            (self.compare_btn, 118, 42),
-            (self.optimize_btn, 156, 40),
-            (self.optimizeall_btn, 184, 40),
-            (self.close_button, 92, 34),
+            (self.compare_btn, 118, 60),
+            (self.optimize_btn, 156, 46),
+            (self.optimizeall_btn, 184, 52),
+            (self.close_button, 92, 38),
         ):
             button.setObjectName("jrotActionButton")
             button.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
             button.setIconSize(QSize(icon_size, icon_size))
-            button.setFixedSize(width, 68)
+            button.setFixedSize(width, 94)
             optimization_row.addWidget(button)
         optimization_row.addStretch(1)
         root.addLayout(optimization_row)
@@ -478,7 +484,7 @@ class RotationLayoutWindow(QDialog):
             QPushButton:disabled { background: #F2F5F7; color: #8998A3; border-color: #D5DEE5; }
             QPushButton#primaryButton:disabled { background: #E2E8EC; color: #7B8993; border-color: #CAD5DD; }
             QToolButton#jrotActionButton { background: white; color: #0B326C; border: 1px solid #9FB4C4;
-                                           border-radius: 5px; padding: 4px; font-weight: 700; }
+                                           border-radius: 5px; padding: 2px 4px 5px 4px; font-weight: 700; }
             QToolButton#jrotActionButton:hover { background: #EAF7F8; border-color: #08A9B5; }
             QToolButton#jrotActionButton:pressed { background: #DDF3F5; }
             QToolButton#jrotActionButton[primaryAction="true"] { border: 2px solid #08A9B5; }
