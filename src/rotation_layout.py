@@ -290,11 +290,12 @@ class RotationLayoutWindow(QDialog):
         filters_layout.addLayout(filters_top)
 
         self.rotationfilter_group = QGroupBox("Rotation scheme")
-        rotation_group_layout = QVBoxLayout(self.rotationfilter_group)
+        rotation_group_layout = QHBoxLayout(self.rotationfilter_group)
         rotation_group_layout.setContentsMargins(10, 8, 10, 8)
-        rotation_group_layout.setSpacing(6)
-        rotation_layout = QHBoxLayout()
-        rotation_layout.setSpacing(8)
+        rotation_group_layout.setSpacing(14)
+        rotation_fields = QGridLayout()
+        rotation_fields.setHorizontalSpacing(8)
+        rotation_fields.setVerticalSpacing(5)
         self.rotationid_label = QLabel("Rotation ID")
         self.rotation_combo = QComboBox()
         self.rotation_combo.setEditable(True)
@@ -315,16 +316,20 @@ class RotationLayoutWindow(QDialog):
         self.time_limit_input.setValidator(QIntValidator(1, 180))
         self.time_limit_input.setAlignment(Qt.AlignCenter)
         self.time_limit_input.setFixedWidth(58)
-        for widget in (
-            self.rotationid_label, self.rotation_combo, self.workers_label, self.workersnumber_combo,
-            self.timeblock_label, self.timeblocks_combo, self.time_limit_label, self.time_limit_input,
-        ):
-            rotation_layout.addWidget(widget)
-        rotation_layout.addStretch(1)
-        rotation_group_layout.addLayout(rotation_layout)
+        rotation_fields.addWidget(self.rotationid_label, 0, 0)
+        rotation_fields.addWidget(self.rotation_combo, 0, 1)
+        rotation_fields.addWidget(self.workers_label, 0, 2)
+        rotation_fields.addWidget(self.workersnumber_combo, 0, 3)
+        rotation_fields.addWidget(self.timeblock_label, 1, 0)
+        rotation_fields.addWidget(self.timeblocks_combo, 1, 1)
+        rotation_fields.addWidget(self.time_limit_label, 1, 2)
+        rotation_fields.addWidget(self.time_limit_input, 1, 3)
+        rotation_group_layout.addLayout(rotation_fields)
+        rotation_group_layout.addStretch(1)
 
         record_actions = QHBoxLayout()
         record_actions.setSpacing(7)
+        record_actions.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         navigation = (
             ("first_button", "", "first.png", self.firstRotationScheme, "First rotation"),
             ("previous_button", "", "previous.png", self.previousRotationScheme, "Previous rotation"),
@@ -356,7 +361,6 @@ class RotationLayoutWindow(QDialog):
             button.clicked.connect(callback)
             setattr(self, attr, button)
             record_actions.addWidget(button)
-        record_actions.addStretch(1)
         rotation_group_layout.addLayout(record_actions)
         filters_layout.addWidget(self.rotationfilter_group)
         root.addWidget(self.filters_group)
