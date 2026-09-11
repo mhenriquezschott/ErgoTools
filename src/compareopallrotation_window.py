@@ -1,5 +1,5 @@
 from PyQt5 import QtWidgets, QtCore
-from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtGui import QColor, QFont, QIcon
 from PyQt5.QtCore import Qt
 
 class CompareOpAllRotationWindow(QtWidgets.QDialog):
@@ -8,6 +8,8 @@ class CompareOpAllRotationWindow(QtWidgets.QDialog):
         super().__init__(parent)
         self.setWindowTitle("All Tools - Optimized vs Current Rotation")
         self.resize(1400, 1000)
+        self.setMinimumSize(1000, 700)
+        self.setObjectName("jrotComparisonWindow")
         self.setWindowFlags(Qt.Window)
 
         self.current_assignments = current_assignments
@@ -18,15 +20,32 @@ class CompareOpAllRotationWindow(QtWidgets.QDialog):
         self.tools = tools
 
         self.main_layout = QtWidgets.QVBoxLayout(self)
+        title = QtWidgets.QLabel("All-Tool Rotation Comparison")
+        title.setObjectName("dialogTitle")
+        subtitle = QtWidgets.QLabel(
+            "Compare current and optimized risk distributions across LiFFT, DUET, and Shoulder Tool."
+        )
+        subtitle.setObjectName("supportingText")
+        self.main_layout.addWidget(title)
+        self.main_layout.addWidget(subtitle)
+        self.comparison_tabs = QtWidgets.QTabWidget()
+        self.comparison_tabs.setObjectName("comparisonTabs")
+        self.main_layout.addWidget(self.comparison_tabs, 1)
         self.renderGrids()
         
         # After rendering all tables
         self.transfer_button = QtWidgets.QPushButton("Apply This Optimized Rotation to Current Tool")
         self.transfer_button.setFixedHeight(40)
-        self.transfer_button.setStyleSheet("font-weight: bold;")
+        self.transfer_button.setObjectName("primaryButton")
+        icon_path = QtCore.QDir.cleanPath(
+            QtCore.QFileInfo(__file__).absolutePath() + "/../assets/ui-icons/previous.png"
+        )
+        self.transfer_button.setIcon(QIcon(icon_path))
         self.transfer_button.clicked.connect(self.transferToMainWindow)
 
         self.main_layout.addWidget(self.transfer_button)
+        if self.parent() is not None and hasattr(self.parent(), "jrotStyleSheet"):
+            self.setStyleSheet(self.parent().jrotStyleSheet())
         
         
         
@@ -49,6 +68,7 @@ class CompareOpAllRotationWindow(QtWidgets.QDialog):
             label_current = QtWidgets.QLabel(f"Current Rotation for {tool}")
             label_optimized = QtWidgets.QLabel(f"Optimized Rotation for {tool}")
             for lbl in (label_current, label_optimized):
+                lbl.setObjectName("panelTitle")
                 lbl.setAlignment(Qt.AlignCenter)
                 fnt = QFont()
                 fnt.setBold(True)
@@ -67,7 +87,7 @@ class CompareOpAllRotationWindow(QtWidgets.QDialog):
 
             section_layout.addLayout(layout_current)
             section_layout.addLayout(layout_optimized)
-            self.main_layout.addWidget(section)
+            self.comparison_tabs.addTab(section, "Shoulder" if tool == "ST" else tool)
             
             
             
@@ -89,7 +109,7 @@ class CompareOpAllRotationWindow(QtWidgets.QDialog):
 
         table.setColumnWidth(0, 80)
         for c in range(1, self.num_blocks + 1):
-            table.setColumnWidth(c, 100)
+            table.setColumnWidth(c, 90)
         table.setColumnWidth(self.num_blocks + 1, 100)
         table.verticalHeader().setDefaultSectionSize(50)
 
@@ -183,4 +203,3 @@ class CompareOpAllRotationWindow(QtWidgets.QDialog):
         parent.transferOptimizedToCurrent()
         #print(f"[INFO] Transferred optimized rotation for {current_tool}.")
         self.close()
-

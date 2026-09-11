@@ -2,6 +2,7 @@ import importlib.util
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 
@@ -25,7 +26,7 @@ class FuseTestProjectsTests(unittest.TestCase):
             )
 
             database = output.parent / "Integrated_data" / "Integrated_data.db"
-            with sqlite3.connect(database) as connection:
+            with closing(sqlite3.connect(database)) as connection:
                 expected_counts = {
                     "Worker": 27,
                     "WorkerStationShiftErgoTool": 191,

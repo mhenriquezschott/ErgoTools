@@ -2,6 +2,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 
@@ -12,7 +13,7 @@ from jrot_database import JROT_TABLES, ensure_jrot_schema
 
 
 def _create_existing_project(database_path):
-    with sqlite3.connect(database_path) as connection:
+    with closing(sqlite3.connect(database_path)) as connection:
         connection.executescript(
             """
             PRAGMA foreign_keys = ON;
@@ -26,6 +27,7 @@ def _create_existing_project(database_path):
             INSERT INTO ErgoTool VALUES ('LiFFT');
             """
         )
+        connection.commit()
 
 
 class JrotDatabaseTests(unittest.TestCase):
@@ -41,7 +43,7 @@ class JrotDatabaseTests(unittest.TestCase):
         ensure_jrot_schema(self.database_path)
         ensure_jrot_schema(self.database_path)
 
-        with sqlite3.connect(self.database_path) as connection:
+        with closing(sqlite3.connect(self.database_path)) as connection:
             tables = {
                 row[0]
                 for row in connection.execute(
@@ -54,7 +56,7 @@ class JrotDatabaseTests(unittest.TestCase):
     def test_jrot_foreign_keys_and_cascades(self):
         ensure_jrot_schema(self.database_path)
 
-        with sqlite3.connect(self.database_path) as connection:
+        with closing(sqlite3.connect(self.database_path)) as connection:
             connection.execute("PRAGMA foreign_keys = ON")
             connection.execute("INSERT INTO Job VALUES ('J-1', 'Job 1', '')")
             connection.execute(
@@ -62,6 +64,7 @@ class JrotDatabaseTests(unittest.TestCase):
             )
             connection.execute("DELETE FROM Job WHERE id = 'J-1'")
             self.assertEqual(connection.execute("SELECT * FROM JobMeasurement").fetchall(), [])
+            connection.commit()
 
 
 if __name__ == "__main__":

@@ -11,6 +11,8 @@ class OptimizedRotationWindow(QtWidgets.QDialog):
         super().__init__(parent)
         self.setWindowTitle("Optimized Rotation Table")
         self.resize(1000, 600)
+        self.setMinimumSize(760, 480)
+        self.setObjectName("jrotResultWindow")
 
         self.optimized_result = optimized_result  # Dict[worker_id] = (job_list, risk_list, avg)
         self.job_info = job_info  # Dict[job_id] = {prob, color, name, tool, damage}
@@ -18,6 +20,9 @@ class OptimizedRotationWindow(QtWidgets.QDialog):
 
     def initUI(self):
         layout = QtWidgets.QVBoxLayout(self)
+        title = QtWidgets.QLabel("Optimized Rotation")
+        title.setObjectName("dialogTitle")
+        layout.addWidget(title)
         table = QtWidgets.QTableWidget(self)
         layout.addWidget(table)
 
@@ -65,4 +70,5 @@ class OptimizedRotationWindow(QtWidgets.QDialog):
         table.resizeRowsToContents()
         table.horizontalHeader().setStretchLastSection(True)
         self.table = table
-
+        if self.parent() is not None and hasattr(self.parent(), "jrotStyleSheet"):
+            self.setStyleSheet(self.parent().jrotStyleSheet())

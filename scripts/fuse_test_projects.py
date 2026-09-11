@@ -5,6 +5,7 @@ import argparse
 import shutil
 import sqlite3
 import xml.etree.ElementTree as ET
+from contextlib import closing
 from pathlib import Path
 
 
@@ -57,7 +58,7 @@ def table_exists(connection, table):
 
 def merge_database(target_path, source_path):
     audit = {}
-    with sqlite3.connect(target_path) as target, sqlite3.connect(source_path) as source:
+    with closing(sqlite3.connect(target_path)) as target, closing(sqlite3.connect(source_path)) as source:
         target.execute("PRAGMA foreign_keys = ON")
         for table in TABLE_ORDER:
             if not table_exists(source, table):
@@ -89,6 +90,7 @@ def merge_database(target_path, source_path):
         violations = target.execute("PRAGMA foreign_key_check").fetchall()
         if violations:
             raise RuntimeError(f"Foreign-key validation failed: {violations[:10]}")
+        target.commit()
     return audit
 
 
@@ -114,7 +116,7 @@ def copy_images(source_folder, target_folder):
 
 
 def normalize_image_paths(database_path, new_folder):
-    with sqlite3.connect(database_path) as connection:
+    with closing(sqlite3.connect(database_path)) as connection:
         columns = table_columns(connection, "Plant") if table_exists(connection, "Plant") else []
         if "image_path" not in columns or "image_name" not in columns:
             return
@@ -126,6 +128,7 @@ def normalize_image_paths(database_path, new_folder):
             """,
             (new_folder,),
         )
+        connection.commit()
 
 
 def update_project_file(project, output_file, project_name, data_name, database_name, images_name):

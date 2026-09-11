@@ -144,7 +144,304 @@ class RotationLayoutWindow(QDialog):
         #self._save_lock = threading.Lock()
 
         self.operator_count = 0
-        self.initUI()
+        self.initResponsiveUI()
+
+    def initResponsiveUI(self):
+        self.resize(1480, 900)
+        self.setMinimumSize(1280, 740)
+        self.setObjectName("jrotWindow")
+        self._icon_root = os.path.normpath(
+            os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons")
+        )
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(10, 10, 10, 10)
+        root.setSpacing(8)
+
+        title_row = QHBoxLayout()
+        title = QLabel("Job Rotation Optimization Tool")
+        title.setObjectName("dialogTitle")
+        subtitle = QLabel("Define, optimize, and compare job rotation schemes")
+        subtitle.setObjectName("supportingText")
+        title_row.addWidget(title)
+        title_row.addSpacing(12)
+        title_row.addWidget(subtitle)
+        title_row.addStretch(1)
+        root.addLayout(title_row)
+
+        self.filters_group = QGroupBox("Filters")
+        filters_layout = QVBoxLayout(self.filters_group)
+        filters_layout.setContentsMargins(10, 8, 10, 10)
+        filters_layout.setSpacing(8)
+        filters_top = QHBoxLayout()
+        filters_top.setSpacing(10)
+
+        self.toolfilter_group = QGroupBox("Ergonomic Tool")
+        tool_layout = QHBoxLayout(self.toolfilter_group)
+        tool_layout.setContentsMargins(8, 8, 8, 8)
+        tool_layout.setSpacing(0)
+        self.toolsid_label = QLabel("Tool ID:")
+        self.toolsid_label.hide()
+        self.tool_combo = QComboBox()
+        self.tool_combo.hide()
+        self.tool_button_group = QtWidgets.QButtonGroup(self)
+        self.tool_button_group.setExclusive(True)
+        self.tool_buttons = {}
+        tool_icons = {"LiFFT": "lifft.png", "DUET": "duet.png", "ST": "shoulder.png"}
+        tool_labels = {"LiFFT": "LiFFT", "DUET": "DUET", "ST": "Shoulder"}
+        for tool_id in ("LiFFT", "DUET", "ST"):
+            button = QPushButton(tool_labels[tool_id])
+            button.setObjectName("toolSegment")
+            button.setCheckable(True)
+            button.setIcon(QIcon(os.path.join(self._icon_root, tool_icons[tool_id])))
+            button.setIconSize(QSize(28, 28))
+            button.setMinimumWidth(135)
+            button.setToolTip(f"Use {tool_labels[tool_id]} job-risk measurements.")
+            button.clicked.connect(lambda checked, value=tool_id: self.selectErgonomicTool(value))
+            self.tool_button_group.addButton(button)
+            self.tool_buttons[tool_id] = button
+            tool_layout.addWidget(button)
+        filters_top.addWidget(self.toolfilter_group, 0)
+
+        workplace_group = QGroupBox("Workplace")
+        workplace_layout = QHBoxLayout(workplace_group)
+        workplace_layout.setContentsMargins(10, 8, 10, 8)
+        workplace_layout.setSpacing(7)
+        workplace_icon = QLabel()
+        workplace_icon.setPixmap(QIcon(os.path.join(self._icon_root, "plant.png")).pixmap(QSize(34, 34)))
+        workplace_icon.setFixedSize(38, 38)
+        workplace_layout.addWidget(workplace_icon)
+        self.workplace_value_labels = {}
+        context = (
+            ("Plant", getattr(self.parent(), "plant_combo", None), "plant.png"),
+            ("Section", getattr(self.parent(), "section_combo", None), "section.png"),
+            ("Line", getattr(self.parent(), "line_combo", None), "line.png"),
+            ("Station", getattr(self.parent(), "station_combo", None), "station.png"),
+            ("Shift", getattr(self.parent(), "shift_combo", None), "shift.png"),
+        )
+        for index, (label_text, combo, icon_name) in enumerate(context):
+            if index:
+                arrow = QLabel(">")
+                arrow.setObjectName("contextArrow")
+                workplace_layout.addWidget(arrow)
+            block = QVBoxLayout()
+            block.setSpacing(0)
+            heading = QLabel()
+            heading.setObjectName("contextHeading")
+            heading.setText(
+                f'<img src="{os.path.join(self._icon_root, icon_name)}" width="16" height="16"> '
+                f'{label_text}'
+            )
+            value = combo.currentText() if combo is not None else ""
+            value_label = QLabel(value or "All")
+            value_label.setObjectName("contextValue")
+            value_label.setToolTip(f"Current {label_text.lower()}: {value or 'All'}")
+            self.workplace_value_labels[label_text] = value_label
+            block.addWidget(heading)
+            block.addWidget(value_label)
+            workplace_layout.addLayout(block, 1)
+        self.choose_workplace_button = QPushButton("Choose\nWorkplace")
+        self.choose_workplace_button.setIcon(QIcon(os.path.join(self._icon_root, "plant.png")))
+        self.choose_workplace_button.setIconSize(QSize(28, 28))
+        self.choose_workplace_button.setEnabled(False)
+        self.choose_workplace_button.setToolTip("Workplace filtering will be enabled in a later JROT integration stage.")
+        workplace_layout.addWidget(self.choose_workplace_button)
+        filters_top.addWidget(workplace_group, 1)
+
+        filter_actions = QVBoxLayout()
+        self.clearfilter_button = QPushButton("Clear Filters")
+        self.clearfilter_button.setIcon(QIcon(os.path.join(self._icon_root, "filterreset.png")))
+        self.applyfilter_button = QPushButton("Apply Filters")
+        self.applyfilter_button.setObjectName("primaryButton")
+        self.applyfilter_button.setIcon(QIcon(os.path.join(self._icon_root, "filterapply.png")))
+        for button in (self.clearfilter_button, self.applyfilter_button):
+            button.setIconSize(QSize(26, 26))
+            button.setMinimumWidth(145)
+            button.setEnabled(False)
+            button.setToolTip("Workplace filtering will be enabled in a later JROT integration stage.")
+            filter_actions.addWidget(button)
+        filters_top.addLayout(filter_actions)
+        filters_layout.addLayout(filters_top)
+
+        self.rotationfilter_group = QGroupBox("Rotation setup")
+        rotation_layout = QHBoxLayout(self.rotationfilter_group)
+        rotation_layout.setContentsMargins(10, 8, 10, 8)
+        rotation_layout.setSpacing(8)
+        self.rotationid_label = QLabel("Rotation ID")
+        self.rotation_combo = QComboBox()
+        self.rotation_combo.setEditable(True)
+        self.rotation_combo.setMinimumWidth(210)
+        self.workers_label = QLabel("Workers")
+        self.workersnumber_combo = QComboBox()
+        self.workersnumber_combo.addItems([str(n) for n in range(2, 11)])
+        self.timeblock_label = QLabel("Time blocks")
+        self.timeblocks_combo = QComboBox()
+        self.timeblocks_combo.addItems([str(n) for n in range(2, 11)])
+        self.timeblocks_combo.setCurrentText("4")
+        self.jobs_label = QLabel("Jobs")
+        self.jobsnumber_combo = QComboBox()
+        self.jobs_label.hide()
+        self.jobsnumber_combo.hide()
+        self.time_limit_label = QLabel("Optimization limit (minutes)")
+        self.time_limit_input = QLineEdit("1")
+        self.time_limit_input.setValidator(QIntValidator(1, 180))
+        self.time_limit_input.setAlignment(Qt.AlignCenter)
+        self.time_limit_input.setFixedWidth(58)
+        for widget in (
+            self.rotationid_label, self.rotation_combo, self.workers_label, self.workersnumber_combo,
+            self.timeblock_label, self.timeblocks_combo, self.time_limit_label, self.time_limit_input,
+        ):
+            rotation_layout.addWidget(widget)
+        rotation_layout.addStretch(1)
+        filters_layout.addWidget(self.rotationfilter_group)
+        root.addWidget(self.filters_group)
+
+        tables_splitter = QtWidgets.QSplitter(Qt.Horizontal)
+        current_panel = QFrame()
+        current_panel.setObjectName("workspacePanel")
+        current_layout = QVBoxLayout(current_panel)
+        current_layout.setContentsMargins(8, 8, 8, 8)
+        self.label_current_table = QLabel("Current Rotation")
+        self.label_current_table.setObjectName("panelTitle")
+        current_layout.addWidget(self.label_current_table)
+        self.rotation_table = QTableWidget()
+        self.rotation_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.rotation_table.customContextMenuRequested.connect(self.showContextMenu)
+        current_layout.addWidget(self.rotation_table, 1)
+        tables_splitter.addWidget(current_panel)
+
+        optimized_panel = QFrame()
+        optimized_panel.setObjectName("workspacePanel")
+        optimized_layout = QVBoxLayout(optimized_panel)
+        optimized_layout.setContentsMargins(8, 8, 8, 8)
+        optimized_heading = QHBoxLayout()
+        self.label_optimized_table = QLabel("Optimized Rotation")
+        self.label_optimized_table.setObjectName("panelTitle")
+        optimized_heading.addWidget(self.label_optimized_table)
+        optimized_heading.addStretch(1)
+        self.transfer_button = QPushButton("Use as Current")
+        self.transfer_button.setIcon(QIcon(os.path.join(self._icon_root, "previous.png")))
+        self.transfer_button.setToolTip("Replace the current rotation with the optimized assignment.")
+        self.transfer_button.clicked.connect(self.transferOptimizedToCurrent)
+        optimized_heading.addWidget(self.transfer_button)
+        optimized_layout.addLayout(optimized_heading)
+        self.optimized_table = QTableWidget()
+        optimized_layout.addWidget(self.optimized_table, 1)
+        tables_splitter.addWidget(optimized_panel)
+        tables_splitter.setStretchFactor(0, 6)
+        tables_splitter.setStretchFactor(1, 5)
+        root.addWidget(tables_splitter, 1)
+
+        action_row = QHBoxLayout()
+        navigation = (
+            ("first_button", "", "first.png", self.firstRotationScheme, "First rotation"),
+            ("previous_button", "", "previous.png", self.previousRotationScheme, "Previous rotation"),
+            ("next_button", "", "next.png", self.nextRotationScheme, "Next rotation"),
+            ("last_button", "", "last.png", self.lastRotationScheme, "Last rotation"),
+        )
+        for attr, text, icon, callback, tooltip in navigation:
+            button = QPushButton(text)
+            button.setIcon(QIcon(os.path.join(self._icon_root, icon)))
+            button.setIconSize(QSize(24, 24))
+            button.setFixedWidth(48)
+            button.setToolTip(tooltip)
+            button.clicked.connect(callback)
+            setattr(self, attr, button)
+            action_row.addWidget(button)
+        action_row.addSpacing(8)
+        commands = (
+            ("new_button", "New", "new.png", self.newRotationScheme),
+            ("save_button", "Save", "save.png", self.saveRotationScheme),
+            ("delete_button", "Delete", "delete.png", self.deleteRotationScheme),
+            ("search_button", "Search", "search.png", self.searchRotationScheme),
+            ("cancel_button", "Cancel", "undo.png", self.cancelRotationScheme),
+        )
+        for attr, text, icon, callback in commands:
+            button = QPushButton(text)
+            button.setIcon(QIcon(os.path.join(self._icon_root, icon)))
+            button.setIconSize(QSize(22, 22))
+            button.clicked.connect(callback)
+            setattr(self, attr, button)
+            action_row.addWidget(button)
+        action_row.addStretch(1)
+        root.addLayout(action_row)
+
+        optimization_row = QHBoxLayout()
+        optimization_row.addStretch(1)
+        self.compare_btn = QPushButton("Compare")
+        self.compare_btn.setMinimumWidth(100)
+        self.compare_btn.clicked.connect(self.onCompareClicked)
+        self.optimize_btn = QPushButton("Optimize Tool")
+        self.optimize_btn.setMinimumWidth(135)
+        self.optimize_btn.setObjectName("primaryOutlineButton")
+        self.optimize_btn.setIcon(QIcon(os.path.join(self._icon_root, "calculate.png")))
+        self.optimize_btn.clicked.connect(self.onOptimizeClicked)
+        self.optimizeall_btn = QPushButton("Optimize All Tools")
+        self.optimizeall_btn.setMinimumWidth(175)
+        self.optimizeall_btn.setObjectName("primaryButton")
+        self.optimizeall_btn.setIcon(QIcon(os.path.join(self._icon_root, "calculate-light.png")))
+        self.optimizeall_btn.clicked.connect(self.onOptimizeAllClicked)
+        self.close_button = QPushButton("Close")
+        self.close_button.setMinimumWidth(90)
+        self.close_button.setIcon(QIcon(os.path.join(self._icon_root, "close.png")))
+        self.close_button.clicked.connect(self.close)
+        for button in (self.compare_btn, self.optimize_btn, self.optimizeall_btn, self.close_button):
+            button.setIconSize(QSize(22, 22))
+            optimization_row.addWidget(button)
+        root.addLayout(optimization_row)
+
+        self.disclaimer_label = QLabel(
+            "Rotation estimates use job-level LiFFT, DUET, and Shoulder Tool measurements. "
+            "Interpret optimized schedules together with job redesign and other ergonomic controls."
+        )
+        self.disclaimer_label.setObjectName("supportingText")
+        self.disclaimer_label.setWordWrap(True)
+        self.disclaimer_label.setAlignment(Qt.AlignCenter)
+        root.addWidget(self.disclaimer_label)
+
+        self.applyfilter_button.clicked.connect(self.applyfilterButtonClicked)
+        self.tool_combo.currentIndexChanged.connect(self.ontoolComboChanged)
+        self.setStyleSheet(self.jrotStyleSheet())
+
+        if self.parent().projectFileCreated:
+            self.loadTools()
+            self.loadRotationSchemes()
+            self.rotation_combo.currentIndexChanged.connect(self.loadRotationDetails)
+            if self.rotation_combo.count() > 0:
+                self.rotation_combo.setCurrentIndex(0)
+                self.loadRotationDetails()
+
+    def jrotStyleSheet(self):
+        base = self.parent().mainWorkspaceStyleSheet() if hasattr(self.parent(), "mainWorkspaceStyleSheet") else ""
+        return base + """
+            QDialog#jrotWindow { background: #F4F7F9; color: #1B2933; font: 12px "Segoe UI"; }
+            QGroupBox { background: white; border: 1px solid #D5DEE5; border-radius: 7px;
+                        margin-top: 9px; padding-top: 5px; color: #0B326C; font-weight: 700; }
+            QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }
+            QLabel#contextHeading { color: #456071; font-size: 11px; font-weight: 650; }
+            QLabel#contextValue { color: #0B326C; font-size: 14px; font-weight: 750; }
+            QPushButton#toolSegment { border-radius: 0; min-height: 44px; text-align: left; padding: 2px 14px; }
+            QPushButton#toolSegment:first { border-top-left-radius: 5px; border-bottom-left-radius: 5px; }
+            QPushButton#toolSegment:checked { background: #DDF3F5; color: #087E91; border: 2px solid #08A9B5; }
+            QPushButton#primaryButton { background: #087E91; color: white; border-color: #087E91; }
+            QPushButton#primaryButton:hover { background: #096D7C; }
+            QPushButton:disabled { background: #F2F5F7; color: #8998A3; border-color: #D5DEE5; }
+            QPushButton#primaryButton:disabled { background: #E2E8EC; color: #7B8993; border-color: #CAD5DD; }
+            QTableWidget { background: white; alternate-background-color: #F5F8FA; border: 1px solid #CAD5DD;
+                           gridline-color: #D5DEE5; selection-background-color: #087E91; selection-color: white; }
+            QHeaderView::section { background: #EAF1F5; color: #0B326C; border: 0; border-right: 1px solid #CAD5DD;
+                                   border-bottom: 1px solid #CAD5DD; padding: 7px; font-weight: 700; }
+            QTabWidget#comparisonTabs::pane { border: 1px solid #D5DEE5; background: white; }
+            QTabWidget#comparisonTabs QTabBar::tab { min-width: 130px; min-height: 34px; padding: 5px 14px;
+                                                     color: #5F6F7A; background: #EDF2F5; border: 1px solid #D5DEE5; }
+            QTabWidget#comparisonTabs QTabBar::tab:selected { color: #087E91; background: white;
+                                                              border-bottom: 3px solid #08A9B5; }
+        """
+
+    def selectErgonomicTool(self, tool_id):
+        index = self.tool_combo.findText(tool_id)
+        if index >= 0 and index != self.tool_combo.currentIndex():
+            self.tool_combo.setCurrentIndex(index)
     
     def initUI(self):
         self.setFixedSize(1720, 940)
@@ -423,6 +720,11 @@ class RotationLayoutWindow(QDialog):
     
 
     def ontoolComboChanged(self, index):
+        tool_id = self.tool_combo.currentText()
+        for value, button in getattr(self, "tool_buttons", {}).items():
+            button.setChecked(value == tool_id)
+        if hasattr(self, "label_current_table"):
+            self.label_current_table.setText(f"Current {tool_id} Rotation")
         self.loadRotationDetails()
 
 
@@ -551,6 +853,13 @@ class RotationLayoutWindow(QDialog):
         # Set "LiFFT" as the default selection if available
         if "LiFFT" in tool_ids:
             self.tool_combo.setCurrentText("LiFFT")
+
+        current_tool = self.tool_combo.currentText()
+        for tool_id, button in getattr(self, "tool_buttons", {}).items():
+            button.setVisible(tool_id in tool_ids)
+            button.setChecked(tool_id == current_tool)
+        if hasattr(self, "label_current_table"):
+            self.label_current_table.setText(f"Current {current_tool} Rotation")
     
         # Restore signals
         self.tool_combo.blockSignals(False)
@@ -3204,5 +3513,3 @@ if __name__ == "__main__":
     sys.exit(app.exec_())
 
  
-
-

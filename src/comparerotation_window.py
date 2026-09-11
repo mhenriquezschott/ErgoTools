@@ -8,6 +8,8 @@ class CompareRotationWindow(QtWidgets.QDialog):
         super().__init__(parent)
         self.setWindowTitle("Rotation Comparison (Non-Optimized Tools)")
         self.resize(1300, 900)
+        self.setMinimumSize(960, 650)
+        self.setObjectName("jrotComparisonWindow")
         #self.setModal(True)
         self.setWindowFlags(Qt.Window)  # Allow normal window behavior
 
@@ -20,8 +22,18 @@ class CompareRotationWindow(QtWidgets.QDialog):
         self.tools_to_compare = tools_to_compare
 
         self.main_layout = QtWidgets.QVBoxLayout(self)
+        title = QtWidgets.QLabel("Rotation Comparison")
+        title.setObjectName("dialogTitle")
+        subtitle = QtWidgets.QLabel(
+            f"Evaluate the {self.tool_selected}-optimized schedule using the other ergonomic tools."
+        )
+        subtitle.setObjectName("supportingText")
+        self.main_layout.addWidget(title)
+        self.main_layout.addWidget(subtitle)
 
         self.renderComparisonGrids()
+        if self.parent() is not None and hasattr(self.parent(), "jrotStyleSheet"):
+            self.setStyleSheet(self.parent().jrotStyleSheet())
         #self.renderSummaryStats()  # Optional summary
 
     def renderComparisonGrids(self):
@@ -38,6 +50,7 @@ class CompareRotationWindow(QtWidgets.QDialog):
 
             section = QtWidgets.QWidget()
             section_layout = QtWidgets.QHBoxLayout(section)
+            section_layout.setContentsMargins(0, 4, 0, 4)
 
             #current_table = self.buildTable(tool, self.current_assignments, job_info, is_optimized=False)
             #optimized_table = self.buildTable(tool, self.optimized_assignments, job_info, is_optimized=True)
@@ -58,6 +71,7 @@ class CompareRotationWindow(QtWidgets.QDialog):
         else:
             label_text = f"Current Rotation for {tool}"
         label = QtWidgets.QLabel(label_text)
+        label.setObjectName("panelTitle")
 
         label.setAlignment(Qt.AlignCenter)
         font = QFont()
@@ -130,4 +144,3 @@ class CompareRotationWindow(QtWidgets.QDialog):
     #    stats.setAlignment(Qt.AlignCenter)
     #    stats.setStyleSheet("font-weight: bold; padding: 10px;")
     #    self.main_layout.addWidget(stats)
-

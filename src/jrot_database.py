@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import closing
 
 
 JROT_TABLES = ("Job", "JobMeasurement", "RotationScheme", "RotationAssignment")
@@ -9,7 +10,7 @@ def ensure_jrot_schema(database_path):
     if not database_path:
         raise ValueError("A project database path is required.")
 
-    with sqlite3.connect(database_path) as connection:
+    with closing(sqlite3.connect(database_path)) as connection:
         connection.execute("PRAGMA foreign_keys = ON")
         connection.executescript(
             """
@@ -54,4 +55,4 @@ def ensure_jrot_schema(database_path):
             );
             """
         )
-
+        connection.commit()

@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import (
 
 from PyQt5 import QtWidgets, QtCore 
 from PyQt5.QtCore import QDate, Qt
-from PyQt5.QtGui import QDoubleValidator, QIntValidator, QFont, QPixmap, QRegExpValidator, QColor
+from PyQt5.QtGui import QDoubleValidator, QIntValidator, QFont, QPixmap, QRegExpValidator, QColor, QIcon
 
 from PyQt5.QtGui import QRegularExpressionValidator
 from PyQt5.QtCore import QRegularExpression, QRegExp
@@ -35,7 +35,9 @@ class JobWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Job Management")
-        self.setGeometry(200, 200, 800, 500)
+        self.resize(1060, 680)
+        self.setMinimumSize(900, 600)
+        self.setObjectName("jobWindow")
         self.setupUI()
 
         # Check if a project has been created from the parent window
@@ -56,96 +58,130 @@ class JobWindow(QDialog):
             
 
     def setupUI(self):
-        layout = QVBoxLayout()
-        form_layout = QGridLayout()
-        bold_font = QFont()
-        bold_font.setBold(True)
-    
-        # --- Job Basic Info ---
-        form_layout.addWidget(QLabel("Job ID:"), 0, 0)
+        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(12)
+
+        title = QLabel("Job Management")
+        title.setObjectName("dialogTitle")
+        intro = QLabel("Define job-level risk measurements used by JROT rotation schemes.")
+        intro.setObjectName("supportingText")
+        layout.addWidget(title)
+        layout.addWidget(intro)
+
+        content = QHBoxLayout()
+        content.setSpacing(14)
+        browser_panel = QtWidgets.QFrame()
+        browser_panel.setObjectName("workspacePanel")
+        browser_panel.setMinimumWidth(280)
+        browser_panel.setMaximumWidth(340)
+        browser_layout = QVBoxLayout(browser_panel)
+        browser_layout.setContentsMargins(14, 12, 14, 12)
+        browser_layout.setSpacing(9)
+        browser_title = QLabel("Jobs")
+        browser_title.setObjectName("panelTitle")
+        browser_layout.addWidget(browser_title)
+        browser_layout.addWidget(QLabel("Job ID"))
         self.job_id_combo = QComboBox()
-        self.job_id_combo.setEditable(True)  # Allow new job entries
-        #self.job_id_combo.currentIndexChanged.connect(self.loadJobDetails)
-        form_layout.addWidget(self.job_id_combo, 0, 1)
-    
-        form_layout.addWidget(QLabel("Job Name:"), 1, 0)
-        self.job_name_input = QLineEdit()
-        form_layout.addWidget(self.job_name_input, 1, 1)
-    
-        form_layout.addWidget(QLabel("Description:"), 2, 0)
-        self.job_description_input = QTextEdit()
-        form_layout.addWidget(self.job_description_input, 2, 1)
-    
-        
-        form_layout.addWidget(QLabel("Risk Measurements:"), 3, 0)
-        form_layout.addWidget(self.createRiskMeasurementTable(), 3, 1)
-    
-        
-        self.job_id_combo.currentIndexChanged.connect(self.loadJobDetails)
-        
-        
-        layout.addLayout(form_layout)
-    
-    
-        # --- Navigation and Operation Buttons ---
-        button_layout = QHBoxLayout()
-    
-        self.first_button = QPushButton("|<")
-        self.first_button.setFont(bold_font)
-        self.first_button.clicked.connect(self.firstJob)
-    
-        self.previous_button = QPushButton("<")
-        self.previous_button.setFont(bold_font)
-        self.previous_button.clicked.connect(self.previousJob)
-    
-        self.next_button = QPushButton(">")
-        self.next_button.setFont(bold_font)
-        self.next_button.clicked.connect(self.nextJob)
-    
-        self.last_button = QPushButton(">|")
-        self.last_button.setFont(bold_font)
-        self.last_button.clicked.connect(self.lastJob)
-        
-        self.new_button = QPushButton("New")
-        self.new_button.setFont(bold_font)
-        self.new_button.clicked.connect(self.newJob)
-    
-        self.save_button = QPushButton("Save")
-        self.save_button.setFont(bold_font)
-        self.save_button.clicked.connect(self.saveJob)
-    
-        self.delete_button = QPushButton("Delete")
-        self.delete_button.setFont(bold_font)
-        self.delete_button.clicked.connect(self.deleteJob)
-    
+        self.job_id_combo.setEditable(True)
+        self.job_id_combo.setToolTip("Select an existing job or enter an ID for a new job.")
+        browser_layout.addWidget(self.job_id_combo)
+
+        navigation = QHBoxLayout()
+        navigation.setSpacing(6)
+        nav_specs = (
+            ("first_button", "first.png", self.firstJob, "First job"),
+            ("previous_button", "previous.png", self.previousJob, "Previous job"),
+            ("next_button", "next.png", self.nextJob, "Next job"),
+            ("last_button", "last.png", self.lastJob, "Last job"),
+        )
+        for attr, icon, callback, tooltip in nav_specs:
+            button = QPushButton()
+            button.setIcon(QIcon(os.path.join(icon_root, icon)))
+            button.setIconSize(QtCore.QSize(24, 24))
+            button.setToolTip(tooltip)
+            button.clicked.connect(callback)
+            setattr(self, attr, button)
+            navigation.addWidget(button)
+        browser_layout.addLayout(navigation)
+
         self.search_button = QPushButton("Search")
-        self.search_button.setFont(bold_font)
+        self.search_button.setIcon(QIcon(os.path.join(icon_root, "search.png")))
         self.search_button.clicked.connect(self.searchJob)
-    
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.setFont(bold_font)
-        self.cancel_button.clicked.connect(self.cancelJob)
-    
+        browser_layout.addWidget(self.search_button)
+        browser_layout.addStretch(1)
+        content.addWidget(browser_panel)
+
+        details_panel = QtWidgets.QFrame()
+        details_panel.setObjectName("workspacePanel")
+        details_layout = QVBoxLayout(details_panel)
+        details_layout.setContentsMargins(16, 12, 16, 14)
+        details_layout.setSpacing(10)
+        details_title = QLabel("Job details")
+        details_title.setObjectName("panelTitle")
+        details_layout.addWidget(details_title)
+        form_layout = QGridLayout()
+        form_layout.setHorizontalSpacing(12)
+        form_layout.setVerticalSpacing(9)
+        form_layout.addWidget(QLabel("Job name"), 0, 0)
+        self.job_name_input = QLineEdit()
+        self.job_name_input.setToolTip("Enter a descriptive name for this job.")
+        form_layout.addWidget(self.job_name_input, 0, 1)
+        form_layout.addWidget(QLabel("Description"), 1, 0, Qt.AlignTop)
+        self.job_description_input = QTextEdit()
+        self.job_description_input.setMaximumHeight(105)
+        self.job_description_input.setPlaceholderText("Optional job description")
+        form_layout.addWidget(self.job_description_input, 1, 1)
+        form_layout.setColumnStretch(1, 1)
+        details_layout.addLayout(form_layout)
+        risk_title = QLabel("Risk measurements")
+        risk_title.setObjectName("panelTitle")
+        risk_help = QLabel("Enter cumulative damage for each tool. Outcome probability is calculated automatically.")
+        risk_help.setObjectName("supportingText")
+        details_layout.addWidget(risk_title)
+        details_layout.addWidget(risk_help)
+        details_layout.addWidget(self.createRiskMeasurementTable(), 1)
+        content.addWidget(details_panel, 1)
+        layout.addLayout(content, 1)
+
+        self.job_id_combo.currentIndexChanged.connect(self.loadJobDetails)
+
+        button_layout = QHBoxLayout()
+        button_layout.addStretch(1)
+        command_specs = (
+            ("new_button", "New job", "new.png", self.newJob, ""),
+            ("save_button", "Save changes", "save.png", self.saveJob, "primaryOutlineButton"),
+            ("delete_button", "Delete", "delete.png", self.deleteJob, "dangerButton"),
+            ("cancel_button", "Cancel edit", "undo.png", self.cancelJob, ""),
+        )
+        for attr, text, icon, callback, object_name in command_specs:
+            button = QPushButton(text)
+            button.setIcon(QIcon(os.path.join(icon_root, icon)))
+            button.setIconSize(QtCore.QSize(22, 22))
+            button.clicked.connect(callback)
+            if object_name:
+                button.setObjectName(object_name)
+            setattr(self, attr, button)
+            button_layout.addWidget(button)
         self.close_button = QPushButton("Close")
-        self.close_button.setFont(bold_font)
+        self.close_button.setIcon(QIcon(os.path.join(icon_root, "close.png")))
+        self.close_button.setIconSize(QtCore.QSize(22, 22))
         self.close_button.clicked.connect(self.close)
-    
-       
-    
-        button_layout.addWidget(self.first_button)
-        button_layout.addWidget(self.previous_button)
-        button_layout.addWidget(self.new_button)
-        button_layout.addWidget(self.save_button)
-        button_layout.addWidget(self.delete_button)
-        button_layout.addWidget(self.search_button)
-        button_layout.addWidget(self.cancel_button)
         button_layout.addWidget(self.close_button)
-        button_layout.addWidget(self.next_button)
-        button_layout.addWidget(self.last_button)
-    
-        layout.addStretch()
         layout.addLayout(button_layout)
-        self.setLayout(layout)
+        base = self.parent().mainWorkspaceStyleSheet() if hasattr(self.parent(), "mainWorkspaceStyleSheet") else ""
+        self.setStyleSheet(base + """
+            QDialog#jobWindow { background: #F4F7F9; color: #1B2933; font: 12px "Segoe UI"; }
+            QTextEdit { background: white; border: 1px solid #BCC9D3; border-radius: 5px; padding: 6px; }
+            QTextEdit:focus { border: 2px solid #08A9B5; }
+            QTableWidget { background: white; alternate-background-color: #F5F8FA; border: 1px solid #CAD5DD;
+                           gridline-color: #D5DEE5; selection-background-color: #087E91; selection-color: white; }
+            QHeaderView::section { background: #EAF1F5; color: #0B326C; border: 0; border-right: 1px solid #CAD5DD;
+                                   border-bottom: 1px solid #CAD5DD; padding: 7px; font-weight: 700; }
+            QPushButton#dangerButton { color: #C73737; border-color: #E0A2A2; }
+            QPushButton#dangerButton:hover { background: #FFF0F0; border-color: #C73737; }
+        """)
 
 
     def createRiskMeasurementTable(self):
@@ -724,7 +760,6 @@ class JobWindow(QDialog):
             QMessageBox.critical(self, "Error", f"Failed to load job details:\n{str(e)}")
         finally:
             conn.close()
-
 
 
 
