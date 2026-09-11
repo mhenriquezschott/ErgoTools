@@ -372,7 +372,7 @@ class RotationLayoutWindow(QDialog):
         current_layout.setContentsMargins(8, 8, 8, 8)
         self.label_current_table = QLabel("Current Rotation")
         self.label_current_table.setObjectName("panelTitle")
-        self.label_current_table.setFixedHeight(48)
+        self.label_current_table.setFixedHeight(50)
         self.label_current_table.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         current_layout.addWidget(self.label_current_table)
         self.rotation_table = QTableWidget()
@@ -388,15 +388,15 @@ class RotationLayoutWindow(QDialog):
         optimized_heading = QHBoxLayout()
         self.label_optimized_table = QLabel("Optimized Rotation")
         self.label_optimized_table.setObjectName("panelTitle")
-        self.label_optimized_table.setFixedHeight(48)
+        self.label_optimized_table.setFixedHeight(50)
         self.label_optimized_table.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         optimized_heading.addWidget(self.label_optimized_table)
         optimized_heading.addStretch(1)
         self.transfer_button = QPushButton("Use as Current")
         self.transfer_button.setIcon(QIcon(os.path.join(self._icon_root, "applyrotation.png")))
-        self.transfer_button.setIconSize(QSize(40, 40))
+        self.transfer_button.setIconSize(QSize(44, 44))
         self.transfer_button.setMinimumWidth(185)
-        self.transfer_button.setFixedHeight(48)
+        self.transfer_button.setFixedHeight(50)
         self.transfer_button.setToolTip("Replace the current rotation with the optimized assignment.")
         self.transfer_button.clicked.connect(self.transferOptimizedToCurrent)
         optimized_heading.addWidget(self.transfer_button)
@@ -427,15 +427,15 @@ class RotationLayoutWindow(QDialog):
         self.close_button.setText("Close")
         self.close_button.setIcon(QIcon(os.path.join(self._icon_root, "close.png")))
         self.close_button.clicked.connect(self.close)
-        for button, width, icon_size in (
-            (self.compare_btn, 118, 60),
-            (self.optimize_btn, 156, 46),
-            (self.optimizeall_btn, 184, 52),
-            (self.close_button, 92, 38),
+        for button, width, icon_width, icon_height in (
+            (self.compare_btn, 128, 100, 52),
+            (self.optimize_btn, 156, 62, 62),
+            (self.optimizeall_btn, 184, 62, 62),
+            (self.close_button, 92, 54, 54),
         ):
             button.setObjectName("jrotActionButton")
             button.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-            button.setIconSize(QSize(icon_size, icon_size))
+            button.setIconSize(QSize(icon_width, icon_height))
             button.setFixedSize(width, 94)
             optimization_row.addWidget(button)
         optimization_row.addStretch(1)
