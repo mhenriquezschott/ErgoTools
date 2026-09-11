@@ -35,6 +35,8 @@ class JobWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Job Management")
+        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
+        self.setWindowIcon(QIcon(os.path.join(icon_root, "jobmanagement.png")))
         self.resize(1060, 680)
         self.setMinimumSize(900, 600)
         self.setObjectName("jobWindow")
@@ -760,6 +762,5 @@ class JobWindow(QDialog):
             QMessageBox.critical(self, "Error", f"Failed to load job details:\n{str(e)}")
         finally:
             conn.close()
-
 
 

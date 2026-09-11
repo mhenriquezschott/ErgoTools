@@ -38,9 +38,10 @@ class CompareOpAllRotationWindow(QtWidgets.QDialog):
         self.transfer_button.setFixedHeight(40)
         self.transfer_button.setObjectName("primaryButton")
         icon_path = QtCore.QDir.cleanPath(
-            QtCore.QFileInfo(__file__).absolutePath() + "/../assets/ui-icons/previous.png"
+            QtCore.QFileInfo(__file__).absolutePath() + "/../assets/ui-icons/applyrotation.png"
         )
         self.transfer_button.setIcon(QIcon(icon_path))
+        self.transfer_button.setIconSize(QtCore.QSize(28, 28))
         self.transfer_button.clicked.connect(self.transferToMainWindow)
 
         self.main_layout.addWidget(self.transfer_button)

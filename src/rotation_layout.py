@@ -320,7 +320,8 @@ class RotationLayoutWindow(QDialog):
         optimized_heading.addWidget(self.label_optimized_table)
         optimized_heading.addStretch(1)
         self.transfer_button = QPushButton("Use as Current")
-        self.transfer_button.setIcon(QIcon(os.path.join(self._icon_root, "previous.png")))
+        self.transfer_button.setIcon(QIcon(os.path.join(self._icon_root, "applyrotation.png")))
+        self.transfer_button.setIconSize(QSize(28, 28))
         self.transfer_button.setToolTip("Replace the current rotation with the optimized assignment.")
         self.transfer_button.clicked.connect(self.transferOptimizedToCurrent)
         optimized_heading.addWidget(self.transfer_button)
@@ -370,23 +371,29 @@ class RotationLayoutWindow(QDialog):
         optimization_row.addStretch(1)
         self.compare_btn = QPushButton("Compare")
         self.compare_btn.setMinimumWidth(100)
+        self.compare_btn.setIcon(QIcon(os.path.join(self._icon_root, "comparerotation.png")))
         self.compare_btn.clicked.connect(self.onCompareClicked)
         self.optimize_btn = QPushButton("Optimize Tool")
         self.optimize_btn.setMinimumWidth(135)
         self.optimize_btn.setObjectName("primaryOutlineButton")
-        self.optimize_btn.setIcon(QIcon(os.path.join(self._icon_root, "calculate.png")))
+        self.optimize_btn.setIcon(QIcon(os.path.join(self._icon_root, "optimizeselectedtool.png")))
         self.optimize_btn.clicked.connect(self.onOptimizeClicked)
         self.optimizeall_btn = QPushButton("Optimize All Tools")
         self.optimizeall_btn.setMinimumWidth(175)
         self.optimizeall_btn.setObjectName("primaryButton")
-        self.optimizeall_btn.setIcon(QIcon(os.path.join(self._icon_root, "calculate-light.png")))
+        self.optimizeall_btn.setIcon(QIcon(os.path.join(self._icon_root, "optimizealltools-light.png")))
         self.optimizeall_btn.clicked.connect(self.onOptimizeAllClicked)
         self.close_button = QPushButton("Close")
         self.close_button.setMinimumWidth(90)
         self.close_button.setIcon(QIcon(os.path.join(self._icon_root, "close.png")))
         self.close_button.clicked.connect(self.close)
-        for button in (self.compare_btn, self.optimize_btn, self.optimizeall_btn, self.close_button):
-            button.setIconSize(QSize(22, 22))
+        for button, icon_size in (
+            (self.compare_btn, 30),
+            (self.optimize_btn, 28),
+            (self.optimizeall_btn, 28),
+            (self.close_button, 22),
+        ):
+            button.setIconSize(QSize(icon_size, icon_size))
             optimization_row.addWidget(button)
         root.addLayout(optimization_row)
 
