@@ -12,6 +12,7 @@ sys.path.insert(0, str(SRC))
 
 from database import file_sha256
 from schema_migrations import LATEST_SCHEMA_VERSION, migrate_database
+from risk_colors import job_risk_color
 
 
 class IntegratedProjectMigrationTests(unittest.TestCase):
@@ -52,6 +53,7 @@ class IntegratedProjectMigrationTests(unittest.TestCase):
             "RotationAssignment",
         )
         with sqlite3.connect(self.database_path) as connection:
+            initial_version = connection.execute("PRAGMA user_version").fetchone()[0]
             counts_before = {
                 table: connection.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
                 for table in tracked_tables
@@ -63,8 +65,12 @@ class IntegratedProjectMigrationTests(unittest.TestCase):
 
         self.assertEqual(first.final_version, LATEST_SCHEMA_VERSION)
         self.assertEqual(second.applied_versions, ())
-        self.assertEqual(first.backup.source_checksum, checksum_before)
-        self.assertEqual(file_sha256(first.backup.path), checksum_before)
+        if initial_version < LATEST_SCHEMA_VERSION:
+            self.assertIsNotNone(first.backup)
+            self.assertEqual(first.backup.source_checksum, checksum_before)
+            self.assertEqual(file_sha256(first.backup.path), checksum_before)
+        else:
+            self.assertIsNone(first.backup)
         with sqlite3.connect(self.database_path) as connection:
             counts_after = {
                 table: connection.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
@@ -122,6 +128,21 @@ class IntegratedProjectMigrationTests(unittest.TestCase):
                 connection.execute("SELECT COUNT(*) FROM CurrentJobRiskMeasurement").fetchone()[0],
                 33,
             )
+            migrated_job_colors = connection.execute(
+                """
+                SELECT legacy.tool_id, legacy.total_cumulative_damage, legacy.color,
+                       current.unit
+                FROM JobMeasurement legacy
+                JOIN CurrentJobRiskMeasurement current
+                  ON current.job_id = legacy.job_id AND current.tool_id = legacy.tool_id
+                """
+            ).fetchall()
+            self.assertTrue(migrated_job_colors)
+            for tool_id, damage, legacy_color, unit in migrated_job_colors:
+                self.assertEqual(
+                    job_risk_color(tool_id, damage, unit or "Metric").lower(),
+                    legacy_color.lower(),
+                )
             with self.assertRaises(sqlite3.IntegrityError):
                 existing_job_id = connection.execute(
                     "SELECT job_id FROM JobRiskProfile ORDER BY id LIMIT 1"

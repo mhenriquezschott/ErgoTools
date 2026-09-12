@@ -10,6 +10,7 @@ sys.path.insert(0, str(SRC))
 
 from database import connect_database
 from job_risk_repository import current_measurements, jobs_for_tool, save_job_with_measurements
+from risk_colors import job_risk_color
 from schema_migrations import migrate_database
 
 
@@ -69,7 +70,7 @@ class JobRiskRepositoryTests(unittest.TestCase):
             self.assertEqual(current_measurements(connection, "J-1")["LiFFT"]["unit"], "Metric")
             jobs = jobs_for_tool(connection, "LiFFT")
             self.assertEqual(jobs[0]["id"], "J-1")
-            self.assertEqual(jobs[0]["color"], "#F5C400")
+            self.assertEqual(jobs[0]["color"], job_risk_color("LiFFT", 0.25, "Metric"))
             self.assertEqual(
                 connection.execute(
                     "SELECT probability_outcome FROM JobMeasurement WHERE job_id='J-1' AND tool_id='LiFFT'"

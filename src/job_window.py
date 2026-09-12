@@ -29,6 +29,7 @@ from pyDUET import DUET
 from pyTST import TST
 from database import connect_database
 from job_risk_repository import current_measurements, save_job_with_measurements
+from risk_colors import job_risk_color
 
 
 
@@ -266,7 +267,7 @@ class JobWindow(QDialog):
             color = "#ffffff"
         else:
             risk = round(tool_obj.riskFromDamage(damage) * 100, 1)
-            color = tool_obj.colorFromDamageRisk(damage)
+            color = job_risk_color(tool, damage, self.parent().selectedMeasurementSystem)
     
         
         prob_item.setText(f"{risk}")
@@ -717,18 +718,11 @@ class JobWindow(QDialog):
                 self.risk_table.item(row, 1).setText(str(damage_val))
                 self.risk_table.item(row, 2).setText(str(prob_val))
     
-                # Recalculate risk and apply color based on tool
-                if tool == "LiFFT":
-                    tool_obj = LiFFT(self.parent().selectedMeasurementSystem, 0, 0, 0)
-                elif tool == "DUET":
-                    tool_obj = DUET(0, 0)
-                elif tool == "ST":
-                    tool_obj = TST(self.parent().selectedMeasurementSystem, "", 0, 0, 0)
-                else:
-                    continue
-    
-                # Color background of probability cell
-                color = tool_obj.colorFromDamageRisk(damage_val)
+                color = job_risk_color(
+                    tool,
+                    damage_val,
+                    measurement.get("unit") or self.parent().selectedMeasurementSystem,
+                )
                 self.risk_table.item(row, 1).setBackground(QColor(color))
                 self.risk_table.item(row, 2).setBackground(QColor(color))
 
@@ -738,4 +732,3 @@ class JobWindow(QDialog):
             QMessageBox.critical(self, "Error", f"Failed to load job details:\n{str(e)}")
         finally:
             conn.close()
-

@@ -5,7 +5,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Iterable, Mapping
 
-from risk_ranges import risk_band
+from risk_colors import job_risk_color
 
 
 def _editable_profile_id(connection: sqlite3.Connection, job_id: str) -> int:
@@ -85,7 +85,7 @@ def save_job_with_measurements(
         )
 
         # Temporary compatibility write. Removed after every consumer uses profiles.
-        color = risk_band(probability or 0.0)[3]
+        color = job_risk_color(tool_id, damage, measurement.get("unit") or "Metric")
         connection.execute(
             """
             INSERT INTO JobMeasurement (
@@ -128,7 +128,7 @@ def jobs_for_tool(connection: sqlite3.Connection, tool_id: str) -> list[dict]:
     rows = connection.execute(
         """
         SELECT job_id AS id, job_name AS name, probability_outcome,
-               total_cumulative_damage, tool_id, profile_id, profile_version,
+               total_cumulative_damage, tool_id, unit, profile_id, profile_version,
                source_type, source_reference
         FROM CurrentJobRiskMeasurement
         WHERE tool_id = ?
@@ -142,6 +142,7 @@ def jobs_for_tool(connection: sqlite3.Connection, tool_id: str) -> list[dict]:
         "probability_outcome",
         "total_cumulative_damage",
         "tool_id",
+        "unit",
         "profile_id",
         "profile_version",
         "source_type",
@@ -150,7 +151,10 @@ def jobs_for_tool(connection: sqlite3.Connection, tool_id: str) -> list[dict]:
     results = []
     for row in rows:
         result = dict(zip(columns, row))
-        result["color"] = risk_band(result["probability_outcome"] or 0.0)[3]
+        result["color"] = job_risk_color(
+            result["tool_id"],
+            result["total_cumulative_damage"],
+            result["unit"] or "Metric",
+        )
         results.append(result)
     return results
-
