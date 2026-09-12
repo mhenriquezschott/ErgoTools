@@ -437,8 +437,9 @@ class RotationLayoutWindow(QDialog):
             button.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
             button.setIconSize(QSize(icon_width, icon_height))
             button.setFixedSize(width, 94)
+            if button is self.close_button:
+                optimization_row.addStretch(1)
             optimization_row.addWidget(button)
-        optimization_row.addStretch(1)
         root.addLayout(optimization_row)
 
         self.disclaimer_label = QLabel(
