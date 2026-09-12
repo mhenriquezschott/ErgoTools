@@ -48,6 +48,8 @@ import datetime
 from datetime import datetime
 import random
 import sqlite3
+from database import connect_database
+from job_risk_repository import jobs_for_tool
 
 #from PyQt5.QtGui import QIcon, QPixmap, QFont
 #import random
@@ -1067,24 +1069,16 @@ class RotationLayoutWindow(QDialog):
             return []
     
     
-        query = """
-            SELECT j.id, j.name, jm.probability_outcome, jm.total_cumulative_damage, jm.color, jm.tool_id
-            FROM Job j
-            JOIN JobMeasurement jm ON j.id = jm.job_id
-            WHERE jm.tool_id = ?
-            ORDER BY j.id
-        """
-    
+        conn = None
         try:
-            conn = sqlite3.connect(self.parent().projectdatabasePath)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute(query, (tool_id,))
-            results = cursor.fetchall()
-            return [dict(row) for row in results]
+            conn = connect_database(self.parent().projectdatabasePath)
+            return jobs_for_tool(conn, tool_id)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error loading job data:\n{str(e)}")
             return []
+        finally:
+            if conn is not None:
+                conn.close()
 
 
 

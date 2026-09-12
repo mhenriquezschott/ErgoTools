@@ -318,12 +318,12 @@ Create SQL views or repository queries, with tests, for:
 ### Phase 0: Baseline and Safety
 
 - [x] Create and push the pre-change backup branch.
-- [ ] Add a database inventory command that reports schema version, tables,
+- [x] Add a database inventory command that reports schema version, tables,
   indexes, triggers, row counts, foreign-key violations, and project paths.
-- [ ] Add automatic timestamped database backup before the first migration of a
+- [x] Add automatic timestamped database backup before the first migration of a
   project; verify backup checksum and restoration.
-- [ ] Run every migration against disposable copies, never the canonical fixture.
-- [ ] Repair the malformed legacy Plant definition where `mirror_V` and
+- [x] Run every migration against disposable copies, never the canonical fixture.
+- [x] Repair the malformed legacy Plant definition where `mirror_V` and
   `orientation` are currently parsed as one column, preserving recoverable values.
 - [ ] Audit all database-opening sites and route them through a connection helper
   that enables foreign keys and uses consistent transactions.
@@ -333,25 +333,25 @@ original database byte-for-byte unchanged.
 
 ### Phase 1: Versioned Schema Infrastructure
 
-- [ ] Add ordered migration modules with checksums and transaction boundaries.
-- [ ] Add SchemaMigration and synchronize `PRAGMA user_version`.
-- [ ] Make migrations idempotent and reject unknown newer schema versions.
+- [x] Add ordered migration modules with checksums and transaction boundaries.
+- [x] Add SchemaMigration and synchronize `PRAGMA user_version`.
+- [x] Make migrations idempotent and reject unknown newer schema versions.
 - [ ] Make new-project creation build the final schema directly.
-- [ ] Add migration tests for interrupted, repeated, and partially present states.
+- [x] Add migration tests for interrupted, repeated, and partially present states.
 
 **Gate:** New projects and migrated projects report the same schema definition,
 indexes, triggers, and foreign-key behavior.
 
 ### Phase 2: Job Risk Profiles
 
-- [ ] Create JobRiskProfile and JobRiskMeasurement.
-- [ ] Migrate each current Job into one approved/current profile named
+- [x] Create JobRiskProfile and JobRiskMeasurement.
+- [x] Migrate each current Job into one approved/current profile named
   `Imported baseline`, version 1, source type `imported`.
-- [ ] Migrate all JobMeasurement numeric values into profile measurements.
+- [x] Migrate all JobMeasurement numeric values into profile measurements.
 - [ ] Derive risk colors through shared application logic and stop writing color.
 - [ ] Update Job Management to create, edit, approve, retire, and select profiles;
   capture source, methodology, dates, sample size, and notes.
-- [ ] Update JROT reads to require an explicitly selected/current approved profile.
+- [x] Update JROT reads to require an explicitly selected/current approved profile.
 - [ ] Add warnings and blocked optimization states for missing or draft-only risk.
 
 **Gate:** All 11 integrated Jobs produce 11 imported profiles and 33 measurements
@@ -359,14 +359,14 @@ with numerically identical damage/probability values.
 
 ### Phase 3: Workplace, Job Placement, and Worker Assignment
 
-- [ ] Create WorkplaceContext and populate unique station/shift combinations.
-- [ ] Create JobPlacement and its consistency/index rules.
-- [ ] Create WorkerAssignment with nullable Job Placement.
-- [ ] Group legacy PLOT rows by worker, station hierarchy, and shift into assignments.
-- [ ] Leave migrated `job_placement_id` null because the existing data does not
+- [x] Create WorkplaceContext and populate unique station/shift combinations.
+- [x] Create JobPlacement and its consistency/index rules.
+- [x] Create WorkerAssignment with nullable Job Placement.
+- [x] Group legacy PLOT rows by worker, station hierarchy, and shift into assignments.
+- [x] Leave migrated `job_placement_id` null because the existing data does not
   prove which Job each worker performed.
 - [ ] Add Job Management workplace assignment controls with multi-select support.
-- [ ] Preserve a quick standalone Job workflow with no required organization data.
+- [x] Preserve a quick standalone Job workflow with no required organization data.
 - [ ] Add worker assignment UI for selecting an existing Job Placement or marking
   the Job as not yet classified.
 
@@ -375,11 +375,11 @@ with numerically identical damage/probability values.
 
 ### Phase 4: Individual Assessments and PLOT Markers
 
-- [ ] Create IndividualAssessment and the three new assessment task tables.
-- [ ] Create PlotAssessmentMarker.
-- [ ] Migrate each WorkerStationShiftErgoTool row into one current individual
+- [x] Create IndividualAssessment and the three new assessment task tables.
+- [x] Create PlotAssessmentMarker.
+- [x] Migrate each WorkerStationShiftErgoTool row into one current individual
   assessment and one tool-specific marker.
-- [ ] Migrate every LiFFT, DUET, and Shoulder task row to its assessment ID.
+- [x] Migrate every LiFFT, DUET, and Shoulder task row to its assessment ID.
 - [ ] Refactor main-tool load/save, worker transfer, and PLOT queries to use the
   new assignment and assessment keys.
 - [ ] Verify selected, visible, enabled, locked, moved, transferred, and deleted

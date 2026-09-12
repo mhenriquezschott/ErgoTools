@@ -23,7 +23,12 @@ QMessageBox.warning = staticmethod(lambda *args, **kwargs: QMessageBox.Ok)
 QMessageBox.critical = staticmethod(lambda *args, **kwargs: QMessageBox.Ok)
 
 parent = ErgoTools(disable_vtk=True)
-parent.openFilePath(os.path.abspath("tests/test3.ergprj"))
+project_copy_root = tempfile.TemporaryDirectory()
+project_copy_path = os.path.join(project_copy_root.name, "test3.ergprj")
+shutil.copy2("tests/test3.ergprj", project_copy_path)
+shutil.copytree("tests/test3_data", os.path.join(project_copy_root.name, "test3_data"))
+shutil.copytree("tests/test3_images", os.path.join(project_copy_root.name, "test3_images"))
+parent.openFilePath(project_copy_path)
 
 parent.tabWidget.setCurrentIndex(0)
 parent.lifft_repetitions_inputs[0].setText("10")

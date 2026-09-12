@@ -27,6 +27,8 @@ from PyQt5.QtCore import QRegularExpression, QRegExp
 from pyLiFFT import LiFFT
 from pyDUET import DUET
 from pyTST import TST
+from database import connect_database
+from job_risk_repository import current_measurements, save_job_with_measurements
 
 
 
@@ -301,7 +303,7 @@ class JobWindow(QDialog):
             return
     
         try:
-            conn = sqlite3.connect(self.parent().projectdatabasePath)
+            conn = connect_database(self.parent().projectdatabasePath)
             cursor = conn.cursor()
     
             # Enable foreign key constraints
@@ -391,7 +393,7 @@ class JobWindow(QDialog):
             return
     
         try:
-            conn = sqlite3.connect(self.parent().projectdatabasePath)
+            conn = connect_database(self.parent().projectdatabasePath)
             cursor = conn.cursor()
             query = "SELECT id FROM Job"
             cursor.execute(query)
@@ -525,24 +527,11 @@ class JobWindow(QDialog):
         job_description = self.job_description_input.toPlainText().strip()
     
         database_path = self.parent().projectdatabasePath
-        conn = sqlite3.connect(database_path)
+        conn = connect_database(database_path)
         cursor = conn.cursor()
     
         try:
-            # Save or update Job table
-            cursor.execute('''
-                INSERT INTO Job (id, name, description)
-                VALUES (:id, :name, :description)
-                ON CONFLICT(id) DO UPDATE SET
-                    name = excluded.name,
-                    description = excluded.description
-            ''', {
-                'id': job_id,
-                'name': job_name,
-                'description': job_description
-            })
-
-            # Save measurements from self.risk_table
+            measurements = []
             for row in range(3):  # 3 tools: LiFFT, DUET, ST
                 tool = self.risk_table.item(row, 0).text().strip()
     
@@ -556,30 +545,20 @@ class JobWindow(QDialog):
                     QMessageBox.warning(self, "Validation Error", f"{tool} fields must be numeric.")
                     return
 
-                # Recalculate color using tool-specific function
-                if tool == "LiFFT":
-                    #from tools.lifft import LiFFT
-                    lifft = LiFFT(self.parent().selectedMeasurementSystem, 0, 0, 0)
-                    color = lifft.colorFromDamageRisk(damage)
-                elif tool == "DUET":
-                    #from tools.duet import DUET
-                    duet = DUET(0, 0)
-                    color = duet.colorFromDamageRisk(damage)
-                elif tool == "ST":
-                    #from tools.shoulder_tool import TST
-                    tst = TST(self.parent().selectedMeasurementSystem, "", 0, 0, 0)
-                    color = tst.colorFromDamageRisk(damage)
-                else:
-                    color = "#ffffff"
-    
-                cursor.execute('''
-                    INSERT INTO JobMeasurement (job_id, tool_id, total_cumulative_damage, probability_outcome, color)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(job_id, tool_id) DO UPDATE SET
-                        total_cumulative_damage = excluded.total_cumulative_damage,
-                        probability_outcome = excluded.probability_outcome,
-                        color = excluded.color
-                ''', (job_id, tool, damage, probability, color))
+                measurements.append({
+                    "tool_id": tool,
+                    "total_cumulative_damage": damage,
+                    "probability_outcome": probability,
+                    "unit": self.parent().selectedMeasurementSystem,
+                })
+
+            save_job_with_measurements(
+                conn,
+                job_id=job_id,
+                name=job_name,
+                description=job_description,
+                measurements=measurements,
+            )
     
             conn.commit()
     
@@ -641,7 +620,7 @@ class JobWindow(QDialog):
         # Function to handle the OK button click
         def performSearch():
             job_id = ""
-            conn = sqlite3.connect(self.parent().projectdatabasePath)
+            conn = connect_database(self.parent().projectdatabasePath)
             cursor = conn.cursor()
 
             try:
@@ -701,7 +680,7 @@ class JobWindow(QDialog):
             return
     
         try:
-            conn = sqlite3.connect(self.parent().projectdatabasePath)
+            conn = connect_database(self.parent().projectdatabasePath)
             cursor = conn.cursor()
     
             # Load Job basic info
@@ -721,16 +700,13 @@ class JobWindow(QDialog):
             self.risk_table.blockSignals(True)
 
             tools = ["LiFFT", "DUET", "ST"]
+            measurements = current_measurements(conn, selected_job_id)
             for row, tool in enumerate(tools):
-                cursor.execute("""
-                    SELECT total_cumulative_damage, probability_outcome
-                    FROM JobMeasurement
-                    WHERE job_id = ? AND tool_id = ?
-                """, (selected_job_id, tool))
-                measurement = cursor.fetchone()
+                measurement = measurements.get(tool)
     
                 if measurement:
-                    damage_val, prob_val = measurement
+                    damage_val = measurement["total_cumulative_damage"]
+                    prob_val = measurement["probability_outcome"]
                     damage_val = float(damage_val) if damage_val is not None else 0.0
                     prob_val = float(prob_val) if prob_val is not None else 0.0
                 else:
@@ -762,5 +738,4 @@ class JobWindow(QDialog):
             QMessageBox.critical(self, "Error", f"Failed to load job details:\n{str(e)}")
         finally:
             conn.close()
-
 

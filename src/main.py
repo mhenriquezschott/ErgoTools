@@ -3143,7 +3143,7 @@ class ErgoTools(QtWidgets.QMainWindow):
             zoom REAL,                                -- Zoom Level
             rotation REAL,                            -- Rotation
             mirror_h INTEGER,                         -- Horizontal Mirror 
-            mirror_V INTEGER                          -- Vertical Mirror
+            mirror_v INTEGER,                        -- Vertical Mirror
             orientation TEXT,                         -- Orientation (e.g., Horizontal, Vertical)
             color TEXT,                               -- Color
             brightness REAL,                          -- Brightness
