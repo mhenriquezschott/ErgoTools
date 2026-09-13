@@ -28,7 +28,18 @@ from pyLiFFT import LiFFT
 from pyDUET import DUET
 from pyTST import TST
 from database import connect_database
-from job_risk_repository import current_measurements, save_job_with_measurements
+from job_risk_repository import save_job_with_measurements
+from job_risk_repository import (
+    JobRiskProfileError,
+    PROFILE_SOURCE_TYPES,
+    approve_profile,
+    create_draft_profile,
+    job_profiles,
+    make_profile_current,
+    profile_measurements,
+    retire_profile,
+    save_draft_profile,
+)
 from risk_colors import job_risk_color
 
 
@@ -40,8 +51,8 @@ class JobWindow(QDialog):
         self.setWindowTitle("Job Management")
         icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
         self.setWindowIcon(QIcon(os.path.join(icon_root, "jobmanagement.png")))
-        self.resize(1060, 680)
-        self.setMinimumSize(900, 600)
+        self.resize(1120, 740)
+        self.setMinimumSize(980, 680)
         self.setObjectName("jobWindow")
         self.setupUI()
 
@@ -135,22 +146,70 @@ class JobWindow(QDialog):
         form_layout.addWidget(self.job_name_input, 0, 1)
         form_layout.addWidget(QLabel("Description"), 1, 0, Qt.AlignTop)
         self.job_description_input = QTextEdit()
-        self.job_description_input.setMaximumHeight(105)
+        self.job_description_input.setMaximumHeight(70)
         self.job_description_input.setPlaceholderText("Optional job description")
         form_layout.addWidget(self.job_description_input, 1, 1)
         form_layout.setColumnStretch(1, 1)
         details_layout.addLayout(form_layout)
-        risk_title = QLabel("Risk measurements")
-        risk_title.setObjectName("panelTitle")
-        risk_help = QLabel("Enter cumulative damage for each tool. Outcome probability is calculated automatically.")
+        profile_header = QHBoxLayout()
+        profile_header.setSpacing(8)
+        profile_label = QLabel("Risk profile")
+        profile_label.setObjectName("panelTitle")
+        self.profile_combo = QComboBox()
+        self.profile_combo.setMinimumWidth(245)
+        self.profile_combo.setToolTip("Select a Job Risk Profile version.")
+        self.profile_status_label = QLabel("No profile")
+        self.profile_status_label.setObjectName("profileStatus")
+        profile_header.addWidget(profile_label)
+        profile_header.addWidget(self.profile_combo, 1)
+        profile_header.addWidget(self.profile_status_label)
+        details_layout.addLayout(profile_header)
+
+        profile_actions = QHBoxLayout()
+        profile_actions.setSpacing(7)
+        self.new_profile_button = QPushButton("New version")
+        self.new_profile_button.setIcon(QIcon(os.path.join(icon_root, "new.png")))
+        self.new_profile_button.setToolTip("Create a draft by copying the selected profile.")
+        self.approve_profile_button = QPushButton("Approve")
+        self.approve_profile_button.setObjectName("primaryOutlineButton")
+        self.approve_profile_button.setToolTip("Approve this draft and make it current.")
+        self.current_profile_button = QPushButton("Use as current")
+        self.current_profile_button.setToolTip("Use this approved historical profile in JROT.")
+        self.retire_profile_button = QPushButton("Retire")
+        self.retire_profile_button.setObjectName("dangerButton")
+        self.retire_profile_button.setToolTip("Retire this profile without deleting its history.")
+        for button in (
+            self.new_profile_button,
+            self.approve_profile_button,
+            self.current_profile_button,
+            self.retire_profile_button,
+        ):
+            button.setMinimumHeight(32)
+            profile_actions.addWidget(button)
+        profile_actions.addStretch(1)
+        details_layout.addLayout(profile_actions)
+
+        self.profile_tabs = QTabWidget()
+        self.profile_tabs.setObjectName("profileTabs")
+        measurement_tab = QWidget()
+        measurement_layout = QVBoxLayout(measurement_tab)
+        measurement_layout.setContentsMargins(8, 8, 8, 8)
+        risk_help = QLabel("Cumulative damage and calculated outcome probability")
         risk_help.setObjectName("supportingText")
-        details_layout.addWidget(risk_title)
-        details_layout.addWidget(risk_help)
-        details_layout.addWidget(self.createRiskMeasurementTable(), 1)
+        measurement_layout.addWidget(risk_help)
+        measurement_layout.addWidget(self.createRiskMeasurementTable(), 1)
+        self.profile_tabs.addTab(measurement_tab, "Risk measurements")
+        self.profile_tabs.addTab(self.createProfileEvidenceTab(), "Profile evidence")
+        details_layout.addWidget(self.profile_tabs, 1)
         content.addWidget(details_panel, 1)
         layout.addLayout(content, 1)
 
         self.job_id_combo.currentIndexChanged.connect(self.loadJobDetails)
+        self.profile_combo.currentIndexChanged.connect(self.loadSelectedProfile)
+        self.new_profile_button.clicked.connect(self.newProfileVersion)
+        self.approve_profile_button.clicked.connect(self.approveSelectedProfile)
+        self.current_profile_button.clicked.connect(self.makeSelectedProfileCurrent)
+        self.retire_profile_button.clicked.connect(self.retireSelectedProfile)
 
         button_layout = QHBoxLayout()
         button_layout.addStretch(1)
@@ -186,7 +245,78 @@ class JobWindow(QDialog):
                                    border-bottom: 1px solid #CAD5DD; padding: 7px; font-weight: 700; }
             QPushButton#dangerButton { color: #C73737; border-color: #E0A2A2; }
             QPushButton#dangerButton:hover { background: #FFF0F0; border-color: #C73737; }
+            QPushButton#primaryOutlineButton:disabled { color: #8998A3; background: #F2F5F7;
+                                                        border: 1px solid #D5DEE5; }
+            QLabel#profileStatus { color: #405866; font-weight: 700; padding: 4px 7px;
+                                   background: #EAF1F5; border: 1px solid #CAD5DD; border-radius: 4px; }
+            QTabWidget#profileTabs::pane { border: 1px solid #CAD5DD; background: white; }
+            QComboBox:disabled, QDateEdit:disabled, QSpinBox:disabled {
+                color: #304652; background: #F2F5F7; border-color: #D5DEE5;
+            }
         """)
+
+    def createProfileEvidenceTab(self):
+        tab = QWidget()
+        layout = QGridLayout(tab)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setHorizontalSpacing(10)
+        layout.setVerticalSpacing(8)
+
+        self.profile_name_input = QLineEdit()
+        self.profile_source_combo = QComboBox()
+        source_labels = {
+            "expert": "Expert estimate",
+            "external": "External assessment",
+            "study": "Study",
+            "aggregate": "Aggregated measurements",
+            "imported": "Imported legacy data",
+        }
+        for source_type in PROFILE_SOURCE_TYPES:
+            self.profile_source_combo.addItem(source_labels[source_type], source_type)
+        self.profile_reference_input = QLineEdit()
+        self.profile_reference_input.setPlaceholderText("Report, study, or dataset reference")
+        self.profile_sample_size = QSpinBox()
+        self.profile_sample_size.setRange(-1, 1000000)
+        self.profile_sample_size.setSpecialValueText("Not specified")
+        self.profile_sample_size.setValue(-1)
+        self.profile_assessed_on = self.createOptionalDateEdit()
+        self.profile_valid_from = self.createOptionalDateEdit()
+        self.profile_valid_to = self.createOptionalDateEdit()
+        self.profile_methodology_input = QTextEdit()
+        self.profile_methodology_input.setMaximumHeight(72)
+        self.profile_notes_input = QTextEdit()
+        self.profile_notes_input.setMaximumHeight(72)
+
+        layout.addWidget(QLabel("Profile name"), 0, 0)
+        layout.addWidget(self.profile_name_input, 0, 1, 1, 3)
+        layout.addWidget(QLabel("Source"), 1, 0)
+        layout.addWidget(self.profile_source_combo, 1, 1)
+        layout.addWidget(QLabel("Sample size"), 1, 2)
+        layout.addWidget(self.profile_sample_size, 1, 3)
+        layout.addWidget(QLabel("Source reference"), 2, 0)
+        layout.addWidget(self.profile_reference_input, 2, 1, 1, 3)
+        layout.addWidget(QLabel("Assessed on"), 3, 0)
+        layout.addWidget(self.profile_assessed_on, 3, 1)
+        layout.addWidget(QLabel("Valid from"), 3, 2)
+        layout.addWidget(self.profile_valid_from, 3, 3)
+        layout.addWidget(QLabel("Valid to"), 4, 2)
+        layout.addWidget(self.profile_valid_to, 4, 3)
+        layout.addWidget(QLabel("Methodology"), 5, 0, Qt.AlignTop)
+        layout.addWidget(self.profile_methodology_input, 5, 1)
+        layout.addWidget(QLabel("Notes"), 5, 2, Qt.AlignTop)
+        layout.addWidget(self.profile_notes_input, 5, 3)
+        layout.setColumnStretch(1, 1)
+        layout.setColumnStretch(3, 1)
+        return tab
+
+    def createOptionalDateEdit(self):
+        editor = QDateEdit()
+        editor.setCalendarPopup(True)
+        editor.setDisplayFormat("dd MMM yyyy")
+        editor.setMinimumDate(QDate(1900, 1, 1))
+        editor.setSpecialValueText("Not set")
+        editor.setDate(editor.minimumDate())
+        return editor
 
 
     def createRiskMeasurementTable(self):
@@ -233,6 +363,278 @@ class JobWindow(QDialog):
         header.setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)
         
         return self.risk_table
+
+    def optionalDateValue(self, editor):
+        if editor.date() == editor.minimumDate():
+            return None
+        return editor.date().toString("yyyy-MM-dd")
+
+    def setOptionalDateValue(self, editor, value):
+        date = QDate.fromString(value or "", "yyyy-MM-dd")
+        editor.setDate(date if date.isValid() else editor.minimumDate())
+
+    def selectedProfile(self):
+        profile_id = self.profile_combo.currentData()
+        if profile_id is None:
+            return None
+        return next(
+            (profile for profile in getattr(self, "profile_records", []) if profile["id"] == profile_id),
+            None,
+        )
+
+    def loadProfiles(self, job_id, selected_profile_id=None):
+        connection = connect_database(self.parent().projectdatabasePath, read_only=True)
+        try:
+            self.profile_records = job_profiles(connection, job_id)
+        finally:
+            connection.close()
+        if selected_profile_id is None:
+            selected_profile_id = next(
+                (
+                    profile["id"]
+                    for profile in self.profile_records
+                    if profile["status"] == "approved" and profile["is_current"]
+                ),
+                self.profile_records[0]["id"] if self.profile_records else None,
+            )
+        self.profile_combo.blockSignals(True)
+        self.profile_combo.clear()
+        for profile in self.profile_records:
+            suffix = " | Current" if profile["is_current"] else ""
+            self.profile_combo.addItem(
+                f"v{profile['version']} | {profile['name']} | {profile['status'].title()}{suffix}",
+                profile["id"],
+            )
+        index = self.profile_combo.findData(selected_profile_id)
+        self.profile_combo.setCurrentIndex(index if index >= 0 else 0)
+        self.profile_combo.blockSignals(False)
+        self.loadSelectedProfile()
+
+    def clearProfileControls(self):
+        self.profile_records = []
+        self.profile_combo.blockSignals(True)
+        self.profile_combo.clear()
+        self.profile_combo.blockSignals(False)
+        self.profile_status_label.setText("New Job")
+        self.profile_name_input.setText("Current job estimate")
+        self.profile_source_combo.setCurrentIndex(0)
+        self.profile_reference_input.clear()
+        self.profile_methodology_input.clear()
+        self.profile_notes_input.clear()
+        self.profile_sample_size.setValue(-1)
+        for editor in (
+            self.profile_assessed_on,
+            self.profile_valid_from,
+            self.profile_valid_to,
+        ):
+            editor.setDate(editor.minimumDate())
+        self.setProfileEditability(True, new_job=True)
+        self.setMeasurementValues({})
+
+    def setMeasurementValues(self, measurements):
+        self.risk_table.blockSignals(True)
+        for row, tool in enumerate(("LiFFT", "DUET", "ST")):
+            measurement = measurements.get(tool)
+            if measurement:
+                damage = measurement.get("total_cumulative_damage")
+                probability = measurement.get("probability_outcome")
+                self.risk_table.item(row, 1).setText("" if damage is None else str(damage))
+                self.risk_table.item(row, 2).setText("" if probability is None else str(probability))
+                color = job_risk_color(
+                    tool,
+                    damage,
+                    measurement.get("unit") or self.parent().selectedMeasurementSystem,
+                )
+            else:
+                self.risk_table.item(row, 1).setText("")
+                self.risk_table.item(row, 2).setText("")
+                color = "#D9E1E6"
+            self.risk_table.item(row, 1).setBackground(QColor(color))
+            self.risk_table.item(row, 2).setBackground(QColor(color))
+        self.risk_table.blockSignals(False)
+
+    def setProfileEditability(self, editable, *, new_job=False):
+        self.risk_table.setEnabled(True)
+        for row in range(self.risk_table.rowCount()):
+            for column in (1, 2):
+                item = self.risk_table.item(row, column)
+                flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+                if editable and column == 1:
+                    flags |= Qt.ItemIsEditable
+                item.setFlags(flags)
+        for control in (self.profile_name_input, self.profile_reference_input):
+            control.setReadOnly(not editable)
+        for control in (self.profile_methodology_input, self.profile_notes_input):
+            control.setReadOnly(not editable)
+        for control in (
+            self.profile_source_combo,
+            self.profile_sample_size,
+            self.profile_assessed_on,
+            self.profile_valid_from,
+            self.profile_valid_to,
+        ):
+            control.setEnabled(editable)
+        profile = self.selectedProfile()
+        self.new_profile_button.setEnabled(not new_job and profile is not None)
+        self.approve_profile_button.setEnabled(bool(profile and profile["status"] == "draft"))
+        self.current_profile_button.setEnabled(
+            bool(profile and profile["status"] == "approved" and not profile["is_current"])
+        )
+        self.retire_profile_button.setEnabled(
+            bool(profile and profile["status"] != "retired")
+        )
+
+    def loadSelectedProfile(self):
+        profile = self.selectedProfile()
+        if profile is None:
+            return
+        connection = connect_database(self.parent().projectdatabasePath, read_only=True)
+        try:
+            measurements = profile_measurements(connection, profile["id"])
+        finally:
+            connection.close()
+        status = profile["status"].title()
+        if profile["is_current"]:
+            status += " | Current"
+        self.profile_status_label.setText(status)
+        self.profile_name_input.setText(profile["name"] or "")
+        source_index = self.profile_source_combo.findData(profile["source_type"])
+        self.profile_source_combo.setCurrentIndex(max(0, source_index))
+        self.profile_reference_input.setText(profile["source_reference"] or "")
+        self.profile_methodology_input.setPlainText(profile["methodology"] or "")
+        self.profile_notes_input.setPlainText(profile["notes"] or "")
+        self.profile_sample_size.setValue(
+            profile["sample_size"] if profile["sample_size"] is not None else -1
+        )
+        self.setOptionalDateValue(self.profile_assessed_on, profile["assessed_on"])
+        self.setOptionalDateValue(self.profile_valid_from, profile["valid_from"])
+        self.setOptionalDateValue(self.profile_valid_to, profile["valid_to"])
+        self.setMeasurementValues(measurements)
+        self.setProfileEditability(profile["status"] == "draft")
+
+    def measurementPayload(self):
+        measurements = []
+        for row, tool in enumerate(("LiFFT", "DUET", "ST")):
+            damage_text = self.risk_table.item(row, 1).text().strip()
+            probability_text = self.risk_table.item(row, 2).text().strip()
+            try:
+                damage = float(damage_text) if damage_text else None
+                probability = float(probability_text) if probability_text else None
+            except ValueError as error:
+                raise JobRiskProfileError(f"{tool} measurements must be numeric.") from error
+            if (damage is None) != (probability is None):
+                raise JobRiskProfileError(
+                    f"{tool} requires both cumulative damage and outcome probability."
+                )
+            measurements.append(
+                {
+                    "tool_id": tool,
+                    "total_cumulative_damage": damage,
+                    "probability_outcome": probability,
+                    "unit": self.parent().selectedMeasurementSystem,
+                }
+            )
+        return measurements
+
+    def saveDraftControls(self, connection, profile_id):
+        save_draft_profile(
+            connection,
+            profile_id,
+            name=self.profile_name_input.text(),
+            source_type=self.profile_source_combo.currentData(),
+            source_reference=self.profile_reference_input.text().strip(),
+            methodology=self.profile_methodology_input.toPlainText().strip(),
+            sample_size=(
+                self.profile_sample_size.value()
+                if self.profile_sample_size.value() >= 0
+                else None
+            ),
+            assessed_on=self.optionalDateValue(self.profile_assessed_on),
+            valid_from=self.optionalDateValue(self.profile_valid_from),
+            valid_to=self.optionalDateValue(self.profile_valid_to),
+            notes=self.profile_notes_input.toPlainText().strip(),
+            measurements=self.measurementPayload(),
+        )
+
+    def newProfileVersion(self):
+        job_id = self.job_id_combo.currentText().strip()
+        profile = self.selectedProfile()
+        if not job_id or profile is None:
+            QMessageBox.warning(self, "Risk Profile", "Save the Job before creating a profile version.")
+            return
+        connection = connect_database(self.parent().projectdatabasePath)
+        try:
+            profile_id = create_draft_profile(
+                connection,
+                job_id,
+                copy_from_profile_id=profile["id"],
+            )
+            connection.commit()
+        except (sqlite3.Error, JobRiskProfileError) as error:
+            connection.rollback()
+            QMessageBox.critical(self, "Risk Profile", str(error))
+            return
+        finally:
+            connection.close()
+        self.loadProfiles(job_id, profile_id)
+        self.profile_tabs.setCurrentIndex(1)
+
+    def approveSelectedProfile(self):
+        profile = self.selectedProfile()
+        if not profile or profile["status"] != "draft":
+            return
+        connection = connect_database(self.parent().projectdatabasePath)
+        try:
+            self.saveDraftControls(connection, profile["id"])
+            approve_profile(connection, profile["id"])
+            connection.commit()
+        except (sqlite3.Error, JobRiskProfileError) as error:
+            connection.rollback()
+            QMessageBox.warning(self, "Profile Not Approved", str(error))
+            return
+        finally:
+            connection.close()
+        self.loadProfiles(profile["job_id"], profile["id"])
+
+    def makeSelectedProfileCurrent(self):
+        profile = self.selectedProfile()
+        if not profile:
+            return
+        connection = connect_database(self.parent().projectdatabasePath)
+        try:
+            make_profile_current(connection, profile["id"])
+            connection.commit()
+        except (sqlite3.Error, JobRiskProfileError) as error:
+            connection.rollback()
+            QMessageBox.warning(self, "Risk Profile", str(error))
+            return
+        finally:
+            connection.close()
+        self.loadProfiles(profile["job_id"], profile["id"])
+
+    def retireSelectedProfile(self):
+        profile = self.selectedProfile()
+        if not profile:
+            return
+        answer = QMessageBox.question(
+            self,
+            "Retire Risk Profile",
+            f"Retire version {profile['version']} of this Job Risk Profile?",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if answer != QMessageBox.Yes:
+            return
+        connection = connect_database(self.parent().projectdatabasePath)
+        try:
+            retire_profile(connection, profile["id"])
+            connection.commit()
+        except (sqlite3.Error, JobRiskProfileError) as error:
+            connection.rollback()
+            QMessageBox.warning(self, "Risk Profile", str(error))
+            return
+        finally:
+            connection.close()
+        self.loadProfiles(profile["job_id"], profile["id"])
 
 
 
@@ -303,6 +705,7 @@ class JobWindow(QDialog):
             QMessageBox.warning(self, "Error", "No Job ID selected. Unable to delete.")
             return
     
+        conn = None
         try:
             conn = connect_database(self.parent().projectdatabasePath)
             cursor = conn.cursor()
@@ -353,7 +756,8 @@ class JobWindow(QDialog):
             QMessageBox.critical(self, "Database Error", f"An error occurred while deleting the job: {e}")
     
         finally:
-            conn.close()
+            if conn is not None:
+                conn.close()
 
 
     def cancelJob(self):
@@ -477,14 +881,7 @@ class JobWindow(QDialog):
     
         self.job_name_input.clear()
         self.job_description_input.clear()
-
-        # Clear the table values and colors (but keep headers, layout, formatting)
-        for row in range(self.risk_table.rowCount()):
-            for col in [1, 2]:  # Only Total Cumulative Damage and Probability Outcome
-                item = self.risk_table.item(row, col)
-                if item:
-                    item.setText("0.0")
-                    item.setBackground(QColor("#ffffff"))  # Reset to white background
+        self.clearProfileControls()
     
         # Disable navigation and management buttons
         self.first_button.setEnabled(False)
@@ -529,41 +926,55 @@ class JobWindow(QDialog):
     
         database_path = self.parent().projectdatabasePath
         conn = connect_database(database_path)
-        cursor = conn.cursor()
-    
         try:
-            measurements = []
-            for row in range(3):  # 3 tools: LiFFT, DUET, ST
-                tool = self.risk_table.item(row, 0).text().strip()
-    
-                damage_text = self.risk_table.item(row, 1).text().strip()
-                prob_text = self.risk_table.item(row, 2).text().strip()
-    
-                try:
-                    damage = float(damage_text) if damage_text else 0.0
-                    probability = float(prob_text) if prob_text else 0.0
-                except ValueError:
-                    QMessageBox.warning(self, "Validation Error", f"{tool} fields must be numeric.")
-                    return
-
-                measurements.append({
-                    "tool_id": tool,
-                    "total_cumulative_damage": damage,
-                    "probability_outcome": probability,
-                    "unit": self.parent().selectedMeasurementSystem,
-                })
-
-            save_job_with_measurements(
-                conn,
-                job_id=job_id,
-                name=job_name,
-                description=job_description,
-                measurements=measurements,
-            )
+            profile = self.selectedProfile()
+            if profile and profile["status"] == "draft":
+                conn.execute(
+                    """
+                    UPDATE Job
+                    SET name = ?, description = ?, active = 1,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    """,
+                    (job_name, job_description, job_id),
+                )
+                self.saveDraftControls(conn, profile["id"])
+                saved_profile_id = profile["id"]
+                success_message = f"Draft profile v{profile['version']} saved."
+            elif profile:
+                conn.execute(
+                    """
+                    UPDATE Job
+                    SET name = ?, description = ?, active = 1,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    """,
+                    (job_name, job_description, job_id),
+                )
+                saved_profile_id = profile["id"]
+                success_message = f"Job '{job_id}' updated."
+            else:
+                measurements = [
+                    measurement
+                    for measurement in self.measurementPayload()
+                    if measurement["total_cumulative_damage"] is not None
+                ]
+                if not measurements:
+                    raise JobRiskProfileError(
+                        "Enter at least one complete ergonomic-tool measurement."
+                    )
+                saved_profile_id = save_job_with_measurements(
+                    conn,
+                    job_id=job_id,
+                    name=job_name,
+                    description=job_description,
+                    measurements=measurements,
+                )
+                success_message = f"Job '{job_id}' saved with an approved risk profile."
     
             conn.commit()
     
-            QMessageBox.information(self, "Success", f"Job '{job_id}' has been saved successfully.")
+            QMessageBox.information(self, "Success", success_message)
     
             self.first_button.setEnabled(True)
             self.previous_button.setEnabled(True)
@@ -577,8 +988,10 @@ class JobWindow(QDialog):
             index = self.job_id_combo.findText(current_text)
             if index != -1:
                 self.job_id_combo.setCurrentIndex(index)
+            self.loadProfiles(job_id, saved_profile_id)
     
-        except sqlite3.Error as e:
+        except (sqlite3.Error, JobRiskProfileError) as e:
+            conn.rollback()
             QMessageBox.critical(self, "Database Error", f"An error occurred while saving the job:\n{str(e)}")
     
         finally:
@@ -679,7 +1092,8 @@ class JobWindow(QDialog):
 
         if not selected_job_id:
             return
-    
+
+        conn = None
         try:
             conn = connect_database(self.parent().projectdatabasePath)
             cursor = conn.cursor()
@@ -697,38 +1111,12 @@ class JobWindow(QDialog):
                 QMessageBox.warning(self, "Error", f"No job data found for ID: {selected_job_id}")
                 return
     
-            # Disable signals to avoid triggering recomputation on setItem
-            self.risk_table.blockSignals(True)
-
-            tools = ["LiFFT", "DUET", "ST"]
-            measurements = current_measurements(conn, selected_job_id)
-            for row, tool in enumerate(tools):
-                measurement = measurements.get(tool)
-    
-                if measurement:
-                    damage_val = measurement["total_cumulative_damage"]
-                    prob_val = measurement["probability_outcome"]
-                    damage_val = float(damage_val) if damage_val is not None else 0.0
-                    prob_val = float(prob_val) if prob_val is not None else 0.0
-                else:
-                    damage_val = 0.0
-                    prob_val = 0.0
-    
-                # Update table cells
-                self.risk_table.item(row, 1).setText(str(damage_val))
-                self.risk_table.item(row, 2).setText(str(prob_val))
-    
-                color = job_risk_color(
-                    tool,
-                    damage_val,
-                    measurement.get("unit") or self.parent().selectedMeasurementSystem,
-                )
-                self.risk_table.item(row, 1).setBackground(QColor(color))
-                self.risk_table.item(row, 2).setBackground(QColor(color))
-
-            self.risk_table.blockSignals(False)
+            conn.close()
+            conn = None
+            self.loadProfiles(selected_job_id)
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load job details:\n{str(e)}")
         finally:
-            conn.close()
+            if conn is not None:
+                conn.close()

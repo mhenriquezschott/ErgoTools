@@ -9,7 +9,21 @@ SRC = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC))
 
 from database import connect_database
-from job_risk_repository import current_measurements, jobs_for_tool, save_job_with_measurements
+from job_risk_repository import (
+    JobRiskProfileError,
+    approve_profile,
+    create_draft_profile,
+    current_measurements,
+    format_job_risk_issues,
+    job_risk_issues,
+    job_profiles,
+    jobs_for_tool,
+    make_profile_current,
+    profile_measurements,
+    retire_profile,
+    save_draft_profile,
+    save_job_with_measurements,
+)
 from risk_colors import job_risk_color
 from schema_migrations import migrate_database
 
@@ -203,6 +217,135 @@ class JobRiskRepositoryTests(unittest.TestCase):
                 (first_context, placement_id),
             )
             connection.commit()
+        finally:
+            connection.close()
+
+    def test_optimizer_validation_reports_exact_missing_job_tool_pairs(self):
+        connection = connect_database(self.database_path)
+        try:
+            save_job_with_measurements(
+                connection,
+                job_id="Complete",
+                name="Complete",
+                description="",
+                measurements=(
+                    {
+                        "tool_id": "LiFFT",
+                        "total_cumulative_damage": 0.1,
+                        "probability_outcome": 20.0,
+                        "unit": "Metric",
+                    },
+                ),
+            )
+            connection.execute(
+                "INSERT INTO Job (id, name) VALUES ('DraftOnly', 'Draft only')"
+            )
+            connection.execute(
+                """
+                INSERT INTO JobRiskProfile (
+                    job_id, name, version, status, is_current, source_type
+                ) VALUES ('DraftOnly', 'Draft', 1, 'draft', 0, 'expert')
+                """
+            )
+            connection.commit()
+
+            issues = job_risk_issues(
+                connection,
+                ("Complete", "DraftOnly", "MissingJob"),
+                ("LiFFT", "DUET"),
+            )
+            issue_tuples = {
+                (issue.job_id, issue.tool_id, issue.reason) for issue in issues
+            }
+            self.assertEqual(
+                issue_tuples,
+                {
+                    ("Complete", "DUET", "measurement is not available"),
+                    ("DraftOnly", "LiFFT", "no current approved risk profile"),
+                    ("DraftOnly", "DUET", "no current approved risk profile"),
+                    ("MissingJob", "LiFFT", "job does not exist"),
+                    ("MissingJob", "DUET", "job does not exist"),
+                },
+            )
+            message = format_job_risk_issues(issues)
+            self.assertIn("Complete - DUET", message)
+            self.assertIn("DraftOnly - LiFFT", message)
+            self.assertNotIn("Complete - LiFFT", message)
+        finally:
+            connection.close()
+
+    def test_profile_lifecycle_preserves_approved_history(self):
+        connection = connect_database(self.database_path)
+        try:
+            save_job_with_measurements(
+                connection,
+                job_id="Lifecycle",
+                name="Lifecycle",
+                description="",
+                measurements=(
+                    {
+                        "tool_id": "LiFFT",
+                        "total_cumulative_damage": 0.01,
+                        "probability_outcome": 25.0,
+                        "unit": "Metric",
+                    },
+                ),
+            )
+            current = job_profiles(connection, "Lifecycle")[0]
+            draft_id = create_draft_profile(
+                connection,
+                "Lifecycle",
+                copy_from_profile_id=current["id"],
+            )
+            copied = profile_measurements(connection, draft_id)
+            self.assertEqual(copied["LiFFT"]["probability_outcome"], 25.0)
+            save_draft_profile(
+                connection,
+                draft_id,
+                name="Observed 2026 sample",
+                source_type="study",
+                source_reference="Study-2026",
+                methodology="Observed sample mean",
+                sample_size=12,
+                assessed_on="2026-09-01",
+                valid_from="2026-09-01",
+                valid_to=None,
+                notes="Reviewed",
+                measurements=(
+                    {
+                        "tool_id": "LiFFT",
+                        "total_cumulative_damage": 0.02,
+                        "probability_outcome": 30.0,
+                        "unit": "Metric",
+                    },
+                ),
+            )
+            approve_profile(connection, draft_id)
+            profiles = job_profiles(connection, "Lifecycle")
+            self.assertEqual(
+                [(item["version"], item["status"], item["is_current"]) for item in profiles],
+                [(2, "approved", 1), (1, "approved", 0)],
+            )
+            make_profile_current(connection, current["id"])
+            self.assertEqual(job_profiles(connection, "Lifecycle")[1]["is_current"], 1)
+            retire_profile(connection, current["id"])
+            self.assertEqual(job_profiles(connection, "Lifecycle")[1]["status"], "retired")
+            self.assertEqual(
+                job_risk_issues(connection, ("Lifecycle",), ("LiFFT",))[0].reason,
+                "no current approved risk profile",
+            )
+            with self.assertRaisesRegex(JobRiskProfileError, "Only a draft"):
+                approve_profile(connection, draft_id)
+        finally:
+            connection.close()
+
+    def test_empty_draft_cannot_be_approved(self):
+        connection = connect_database(self.database_path)
+        try:
+            connection.execute("INSERT INTO Job (id, name) VALUES ('Empty', 'Empty')")
+            draft_id = create_draft_profile(connection, "Empty")
+            with self.assertRaisesRegex(JobRiskProfileError, "At least one complete"):
+                approve_profile(connection, draft_id)
         finally:
             connection.close()
 

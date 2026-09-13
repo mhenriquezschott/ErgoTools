@@ -349,10 +349,10 @@ indexes, triggers, and foreign-key behavior.
   `Imported baseline`, version 1, source type `imported`.
 - [x] Migrate all JobMeasurement numeric values into profile measurements.
 - [ ] Derive risk colors through shared application logic and stop writing color.
-- [ ] Update Job Management to create, edit, approve, retire, and select profiles;
+- [x] Update Job Management to create, edit, approve, retire, and select profiles;
   capture source, methodology, dates, sample size, and notes.
 - [x] Update JROT reads to require an explicitly selected/current approved profile.
-- [ ] Add warnings and blocked optimization states for missing or draft-only risk.
+- [x] Add warnings and blocked optimization states for missing or draft-only risk.
 
 **Gate:** All 11 integrated Jobs produce 11 imported profiles and 33 measurements
 with numerically identical damage/probability values.

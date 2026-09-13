@@ -49,7 +49,7 @@ from datetime import datetime
 import random
 import sqlite3
 from database import connect_database
-from job_risk_repository import jobs_for_tool
+from job_risk_repository import format_job_risk_issues, job_risk_issues, jobs_for_tool
 
 #from PyQt5.QtGui import QIcon, QPixmap, QFont
 #import random
@@ -1865,6 +1865,43 @@ class RotationLayoutWindow(QDialog):
     
         return worker_ids, job_list, current_assignments, job_risk
 
+    def rotationJobIds(self):
+        job_ids = set()
+        num_blocks = int(self.timeblocks_combo.currentText())
+        for row in range(self.rotation_table.rowCount()):
+            for column in range(1, min(num_blocks + 1, self.rotation_table.columnCount())):
+                item = self.rotation_table.item(row, column)
+                if not item:
+                    continue
+                job_id = item.text().split("\n", 1)[0].strip()
+                if job_id:
+                    job_ids.add(job_id)
+        return sorted(job_ids)
+
+    def validateOptimizationRiskData(self, tool_ids):
+        job_ids = self.rotationJobIds()
+        if not job_ids:
+            QMessageBox.warning(
+                self,
+                "Incomplete Rotation",
+                "Assign at least one Job before starting optimization.",
+            )
+            return False
+
+        connection = connect_database(self.parent().projectdatabasePath, read_only=True)
+        try:
+            issues = job_risk_issues(connection, job_ids, tool_ids)
+        finally:
+            connection.close()
+        if issues:
+            QMessageBox.warning(
+                self,
+                "Missing Job Risk Data",
+                format_job_risk_issues(issues),
+            )
+            return False
+        return True
+
 
 
 
@@ -1931,6 +1968,8 @@ class RotationLayoutWindow(QDialog):
         table = self.rotation_table
         tool_id = self.tool_combo.currentText()
         num_blocks = int(self.timeblocks_combo.currentText())
+        if not self.validateOptimizationRiskData((tool_id,)):
+            return
     
    
 
@@ -2422,6 +2461,10 @@ class RotationLayoutWindow(QDialog):
     def onOptimizeAllClicked(self):
        # print("\n=== Multi-Objective Optimization for All Tools ===")
     
+        all_tools = ["LiFFT", "DUET", "ST"]
+        if not self.validateOptimizationRiskData(all_tools):
+            return
+
         # Show overlay
         self.overlay = Overlay(parent=self, message="Optimizing Rotation for All Tools") #Overlay(parent=self)
         #self.overlay.label.setText("Optimizing all tools")
@@ -2432,8 +2475,6 @@ class RotationLayoutWindow(QDialog):
         #self.overlay.start()
     
         num_blocks = int(self.timeblocks_combo.currentText())
-        all_tools = ["LiFFT", "DUET", "ST"]
-    
         # Setup thread and worker
         self.optimizeall_thread = QtCore.QThread()
         self.optimizeall_worker = MultiToolOptimizationWorker(
