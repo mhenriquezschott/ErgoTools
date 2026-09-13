@@ -381,7 +381,11 @@ def format_job_risk_issues(issues: Iterable[JobRiskIssue]) -> str:
     return "\n".join(lines)
 
 
-def _editable_profile_id(connection: sqlite3.Connection, job_id: str) -> int:
+def _editable_profile_id(
+    connection: sqlite3.Connection,
+    job_id: str,
+    profile_metadata: Mapping | None = None,
+) -> int:
     row = connection.execute(
         """
         SELECT id, source_type
@@ -406,14 +410,33 @@ def _editable_profile_id(connection: sqlite3.Connection, job_id: str) -> int:
         "SELECT COALESCE(MAX(version), 0) + 1 FROM JobRiskProfile WHERE job_id = ?",
         (job_id,),
     ).fetchone()[0]
+    metadata = dict(profile_metadata or {})
+    profile_name = str(metadata.get("name") or "Current job estimate").strip()
+    source_type = str(metadata.get("source_type") or "expert")
+    if source_type not in PROFILE_SOURCE_TYPES:
+        raise JobRiskProfileError(f"Unsupported profile source type: {source_type}")
     cursor = connection.execute(
         """
         INSERT INTO JobRiskProfile (
-            job_id, name, version, status, is_current, source_type, methodology
-        ) VALUES (?, 'Current job estimate', ?, 'approved', 1, 'expert',
-                  'Entered or updated in ErgoTools Job Management.')
+            job_id, name, version, status, is_current, source_type,
+            source_reference, methodology, sample_size, assessed_on,
+            valid_from, valid_to, notes
+        ) VALUES (?, ?, ?, 'approved', 1, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (job_id, next_version),
+        (
+            job_id,
+            profile_name,
+            next_version,
+            source_type,
+            metadata.get("source_reference") or None,
+            metadata.get("methodology")
+            or "Entered or updated in ErgoTools Job Management.",
+            metadata.get("sample_size"),
+            metadata.get("assessed_on") or None,
+            metadata.get("valid_from") or None,
+            metadata.get("valid_to") or None,
+            metadata.get("notes") or None,
+        ),
     )
     return int(cursor.lastrowid)
 
@@ -425,6 +448,7 @@ def save_job_with_measurements(
     name: str,
     description: str,
     measurements: Iterable[Mapping],
+    profile_metadata: Mapping | None = None,
 ) -> int:
     """Save a Job and its editable current profile, retaining legacy compatibility."""
     connection.execute(
@@ -439,7 +463,7 @@ def save_job_with_measurements(
         """,
         (job_id, name, description),
     )
-    profile_id = _editable_profile_id(connection, job_id)
+    profile_id = _editable_profile_id(connection, job_id, profile_metadata)
     for measurement in measurements:
         tool_id = str(measurement["tool_id"])
         damage = measurement.get("total_cumulative_damage")

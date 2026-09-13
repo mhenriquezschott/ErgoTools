@@ -365,7 +365,7 @@ with numerically identical damage/probability values.
 - [x] Group legacy PLOT rows by worker, station hierarchy, and shift into assignments.
 - [x] Leave migrated `job_placement_id` null because the existing data does not
   prove which Job each worker performed.
-- [ ] Add Job Management workplace assignment controls with multi-select support.
+- [x] Add Job Management workplace assignment controls with multi-select support.
 - [x] Preserve a quick standalone Job workflow with no required organization data.
 - [ ] Add worker assignment UI for selecting an existing Job Placement or marking
   the Job as not yet classified.
@@ -422,6 +422,15 @@ and produces the same displayed input risks.
 
 **Gate:** A source scan and review finds no production read/write path targeting
 legacy JobMeasurement, WorkerStationShiftErgoTool, or legacy rotation structures.
+
+## Pending Designer Icons
+
+The following concepts currently use styled text buttons while matching processed
+assets are pending:
+
+- Approve profile.
+- Use profile as current.
+- Retire profile.
 
 ### Phase 7: Final Schema Cleanup
 

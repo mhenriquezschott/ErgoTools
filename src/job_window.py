@@ -11,8 +11,10 @@ from datetime import datetime
 from PyQt5.QtCore import Qt, QTimer, QLocale, QTime, QDate, QStandardPaths
 
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QDateEdit, QSpinBox, 
-    QComboBox, QPushButton, QTabWidget, QWidget, QGridLayout, QMessageBox, QDialogButtonBox, QTextEdit, QTimeEdit, QTableWidget, QTableWidgetItem
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QDateEdit, QSpinBox,
+    QComboBox, QPushButton, QTabWidget, QWidget, QGridLayout, QMessageBox,
+    QDialogButtonBox, QTextEdit, QTimeEdit, QTableWidget, QTableWidgetItem,
+    QTreeWidget, QTreeWidgetItem
 )
 
 from PyQt5 import QtWidgets, QtCore 
@@ -41,6 +43,14 @@ from job_risk_repository import (
     save_draft_profile,
 )
 from risk_colors import job_risk_color
+from job_placement_repository import (
+    JobPlacementError,
+    WorkplaceKey,
+    active_job_placement_count,
+    active_job_placement_keys,
+    available_workplaces,
+    replace_active_job_placements,
+)
 
 
 
@@ -52,7 +62,7 @@ class JobWindow(QDialog):
         icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
         self.setWindowIcon(QIcon(os.path.join(icon_root, "jobmanagement.png")))
         self.resize(1120, 740)
-        self.setMinimumSize(980, 680)
+        self.setMinimumSize(980, 720)
         self.setObjectName("jobWindow")
         self.setupUI()
 
@@ -134,9 +144,18 @@ class JobWindow(QDialog):
         details_layout = QVBoxLayout(details_panel)
         details_layout.setContentsMargins(16, 12, 16, 14)
         details_layout.setSpacing(10)
+        details_header = QHBoxLayout()
         details_title = QLabel("Job details")
         details_title.setObjectName("panelTitle")
-        details_layout.addWidget(details_title)
+        self.workplaces_button = QPushButton("Workplaces (0)")
+        self.workplaces_button.setIcon(QIcon(os.path.join(icon_root, "plant.png")))
+        self.workplaces_button.setIconSize(QtCore.QSize(22, 22))
+        self.workplaces_button.setToolTip("Assign this Job to one or more workplace contexts.")
+        self.workplaces_button.clicked.connect(self.openWorkplaceAssignments)
+        details_header.addWidget(details_title)
+        details_header.addStretch(1)
+        details_header.addWidget(self.workplaces_button)
+        details_layout.addLayout(details_header)
         form_layout = QGridLayout()
         form_layout.setHorizontalSpacing(12)
         form_layout.setVerticalSpacing(9)
@@ -283,8 +302,10 @@ class JobWindow(QDialog):
         self.profile_valid_from = self.createOptionalDateEdit()
         self.profile_valid_to = self.createOptionalDateEdit()
         self.profile_methodology_input = QTextEdit()
+        self.profile_methodology_input.setMinimumHeight(52)
         self.profile_methodology_input.setMaximumHeight(72)
         self.profile_notes_input = QTextEdit()
+        self.profile_notes_input.setMinimumHeight(52)
         self.profile_notes_input.setMaximumHeight(72)
 
         layout.addWidget(QLabel("Profile name"), 0, 0)
@@ -430,6 +451,8 @@ class JobWindow(QDialog):
             editor.setDate(editor.minimumDate())
         self.setProfileEditability(True, new_job=True)
         self.setMeasurementValues({})
+        self.workplaces_button.setText("Workplaces (0)")
+        self.workplaces_button.setEnabled(False)
 
     def setMeasurementValues(self, measurements):
         self.risk_table.blockSignals(True)
@@ -497,6 +520,7 @@ class JobWindow(QDialog):
         if profile["is_current"]:
             status += " | Current"
         self.profile_status_label.setText(status)
+        self.profile_combo.setToolTip(self.profile_combo.currentText())
         self.profile_name_input.setText(profile["name"] or "")
         source_index = self.profile_source_combo.findData(profile["source_type"])
         self.profile_source_combo.setCurrentIndex(max(0, source_index))
@@ -536,23 +560,29 @@ class JobWindow(QDialog):
             )
         return measurements
 
-    def saveDraftControls(self, connection, profile_id):
-        save_draft_profile(
-            connection,
-            profile_id,
-            name=self.profile_name_input.text(),
-            source_type=self.profile_source_combo.currentData(),
-            source_reference=self.profile_reference_input.text().strip(),
-            methodology=self.profile_methodology_input.toPlainText().strip(),
-            sample_size=(
+    def profileEvidencePayload(self):
+        return {
+            "name": self.profile_name_input.text().strip() or "Current job estimate",
+            "source_type": self.profile_source_combo.currentData(),
+            "source_reference": self.profile_reference_input.text().strip(),
+            "methodology": self.profile_methodology_input.toPlainText().strip(),
+            "sample_size": (
                 self.profile_sample_size.value()
                 if self.profile_sample_size.value() >= 0
                 else None
             ),
-            assessed_on=self.optionalDateValue(self.profile_assessed_on),
-            valid_from=self.optionalDateValue(self.profile_valid_from),
-            valid_to=self.optionalDateValue(self.profile_valid_to),
-            notes=self.profile_notes_input.toPlainText().strip(),
+            "assessed_on": self.optionalDateValue(self.profile_assessed_on),
+            "valid_from": self.optionalDateValue(self.profile_valid_from),
+            "valid_to": self.optionalDateValue(self.profile_valid_to),
+            "notes": self.profile_notes_input.toPlainText().strip(),
+        }
+
+    def saveDraftControls(self, connection, profile_id):
+        evidence = self.profileEvidencePayload()
+        save_draft_profile(
+            connection,
+            profile_id,
+            **evidence,
             measurements=self.measurementPayload(),
         )
 
@@ -969,6 +999,7 @@ class JobWindow(QDialog):
                     name=job_name,
                     description=job_description,
                     measurements=measurements,
+                    profile_metadata=self.profileEvidencePayload(),
                 )
                 success_message = f"Job '{job_id}' saved with an approved risk profile."
     
@@ -1114,9 +1145,183 @@ class JobWindow(QDialog):
             conn.close()
             conn = None
             self.loadProfiles(selected_job_id)
+            self.refreshWorkplaceCount(selected_job_id)
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load job details:\n{str(e)}")
         finally:
             if conn is not None:
                 conn.close()
+
+    def refreshWorkplaceCount(self, job_id=None):
+        job_id = (job_id or self.job_id_combo.currentText()).strip()
+        if not job_id:
+            self.workplaces_button.setText("Workplaces (0)")
+            self.workplaces_button.setEnabled(False)
+            return
+        connection = connect_database(self.parent().projectdatabasePath, read_only=True)
+        try:
+            count = active_job_placement_count(connection, job_id)
+        finally:
+            connection.close()
+        self.workplaces_button.setText(f"Workplaces ({count})")
+        self.workplaces_button.setEnabled(True)
+
+    def openWorkplaceAssignments(self):
+        job_id = self.job_id_combo.currentText().strip()
+        if not job_id or self.selectedProfile() is None:
+            QMessageBox.warning(
+                self,
+                "Workplace Assignments",
+                "Save the Job before assigning workplace contexts.",
+            )
+            return
+        dialog = JobWorkplaceDialog(job_id, self.parent().projectdatabasePath, self)
+        if dialog.exec_() == QDialog.Accepted:
+            self.refreshWorkplaceCount(job_id)
+
+
+class JobWorkplaceDialog(QDialog):
+    def __init__(self, job_id, database_path, parent=None):
+        super().__init__(parent)
+        self.job_id = job_id
+        self.database_path = database_path
+        self.setWindowTitle(f"{job_id} Workplace Assignments")
+        self.resize(840, 590)
+        self.setMinimumSize(720, 500)
+        self.setObjectName("jobWorkplaceDialog")
+        self.setupUI()
+        self.loadWorkplaces()
+
+    def setupUI(self):
+        icon_root = os.path.normpath(
+            os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons")
+        )
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(10)
+        title = QLabel("Workplace assignments")
+        title.setObjectName("dialogTitle")
+        subtitle = QLabel(f"Job: {self.job_id}")
+        subtitle.setObjectName("supportingText")
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
+
+        self.filter_input = QLineEdit()
+        self.filter_input.setPlaceholderText("Filter by plant, section, line, station, or shift")
+        self.filter_input.textChanged.connect(self.applyFilter)
+        layout.addWidget(self.filter_input)
+
+        self.workplace_tree = QTreeWidget()
+        self.workplace_tree.setColumnCount(6)
+        self.workplace_tree.setHeaderLabels(
+            ["Use", "Plant", "Section", "Line", "Station", "Shift"]
+        )
+        self.workplace_tree.setRootIsDecorated(False)
+        self.workplace_tree.setAlternatingRowColors(True)
+        self.workplace_tree.setSelectionMode(QTreeWidget.ExtendedSelection)
+        self.workplace_tree.header().setStretchLastSection(False)
+        for column in range(1, 5):
+            self.workplace_tree.header().setSectionResizeMode(
+                column, QtWidgets.QHeaderView.Stretch
+            )
+        self.workplace_tree.header().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
+        self.workplace_tree.header().setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeToContents)
+        layout.addWidget(self.workplace_tree, 1)
+
+        self.assignment_status = QLabel()
+        self.assignment_status.setObjectName("supportingText")
+        layout.addWidget(self.assignment_status)
+
+        actions = QHBoxLayout()
+        self.clear_button = QPushButton("Clear assignments")
+        self.clear_button.setIcon(QIcon(os.path.join(icon_root, "filterreset.png")))
+        self.clear_button.clicked.connect(self.clearAssignments)
+        self.save_button = QPushButton("Save assignments")
+        self.save_button.setObjectName("primaryOutlineButton")
+        self.save_button.setIcon(QIcon(os.path.join(icon_root, "save.png")))
+        self.save_button.clicked.connect(self.saveAssignments)
+        cancel_button = QPushButton("Cancel")
+        cancel_button.setIcon(QIcon(os.path.join(icon_root, "close.png")))
+        cancel_button.clicked.connect(self.reject)
+        actions.addWidget(self.clear_button)
+        actions.addStretch(1)
+        actions.addWidget(self.save_button)
+        actions.addWidget(cancel_button)
+        layout.addLayout(actions)
+
+        base = self.parent().styleSheet() if self.parent() else ""
+        self.setStyleSheet(base)
+
+    def loadWorkplaces(self):
+        connection = connect_database(self.database_path, read_only=True)
+        try:
+            options = available_workplaces(connection)
+            selected = active_job_placement_keys(connection, self.job_id)
+        finally:
+            connection.close()
+        self.workplace_tree.clear()
+        for key in options:
+            item = QTreeWidgetItem(
+                [
+                    "",
+                    key.plant_name,
+                    key.section_name,
+                    key.line_name,
+                    key.station_id,
+                    key.shift_id,
+                ]
+            )
+            item.setData(0, Qt.UserRole, key)
+            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+            item.setCheckState(0, Qt.Checked if key in selected else Qt.Unchecked)
+            self.workplace_tree.addTopLevelItem(item)
+        self.workplace_tree.itemChanged.connect(self.updateStatus)
+        self.updateStatus()
+
+    def checkedWorkplaces(self):
+        return {
+            self.workplace_tree.topLevelItem(index).data(0, Qt.UserRole)
+            for index in range(self.workplace_tree.topLevelItemCount())
+            if self.workplace_tree.topLevelItem(index).checkState(0) == Qt.Checked
+        }
+
+    def updateStatus(self):
+        count = len(self.checkedWorkplaces())
+        if count:
+            self.assignment_status.setText(f"{count} workplace assignment(s) selected.")
+        else:
+            self.assignment_status.setText(
+                "Organization-neutral Job: available to JROT without a workplace assignment."
+            )
+
+    def applyFilter(self, text):
+        query = text.strip().casefold()
+        for index in range(self.workplace_tree.topLevelItemCount()):
+            item = self.workplace_tree.topLevelItem(index)
+            values = " ".join(item.text(column) for column in range(1, 6)).casefold()
+            item.setHidden(bool(query and query not in values))
+
+    def clearAssignments(self):
+        self.workplace_tree.blockSignals(True)
+        for index in range(self.workplace_tree.topLevelItemCount()):
+            self.workplace_tree.topLevelItem(index).setCheckState(0, Qt.Unchecked)
+        self.workplace_tree.blockSignals(False)
+        self.updateStatus()
+
+    def saveAssignments(self):
+        connection = connect_database(self.database_path)
+        try:
+            replace_active_job_placements(
+                connection,
+                self.job_id,
+                self.checkedWorkplaces(),
+            )
+            connection.commit()
+        except (sqlite3.Error, JobPlacementError) as error:
+            connection.rollback()
+            QMessageBox.warning(self, "Workplace Assignments", str(error))
+            return
+        finally:
+            connection.close()
+        self.accept()

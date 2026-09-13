@@ -1,0 +1,164 @@
+"""Job placement queries and transactional updates."""
+
+from __future__ import annotations
+
+import sqlite3
+from dataclasses import dataclass
+from typing import Iterable
+
+
+class JobPlacementError(ValueError):
+    """Raised when a Job placement request is invalid."""
+
+
+@dataclass(frozen=True, order=True)
+class WorkplaceKey:
+    plant_name: str
+    section_name: str
+    line_name: str
+    station_id: str
+    shift_id: str
+
+
+def available_workplaces(connection: sqlite3.Connection) -> list[WorkplaceKey]:
+    """Return valid station/shift choices without creating database rows."""
+    rows = connection.execute(
+        """
+        SELECT station.plant_name, station.section_name, station.line_name,
+               station.id, shift.id
+        FROM Station AS station
+        CROSS JOIN Shift AS shift
+        ORDER BY station.plant_name, station.section_name, station.line_name,
+                 station.id, shift.id
+        """
+    ).fetchall()
+    return [WorkplaceKey(*row) for row in rows]
+
+
+def active_job_placement_keys(
+    connection: sqlite3.Connection,
+    job_id: str,
+) -> set[WorkplaceKey]:
+    rows = connection.execute(
+        """
+        SELECT context.plant_name, context.section_name, context.line_name,
+               context.station_id, context.shift_id
+        FROM JobPlacement AS placement
+        JOIN WorkplaceContext AS context
+          ON context.id = placement.workplace_context_id
+        WHERE placement.job_id = ? AND placement.active = 1
+        ORDER BY context.plant_name, context.section_name, context.line_name,
+                 context.station_id, context.shift_id
+        """,
+        (job_id,),
+    ).fetchall()
+    return {WorkplaceKey(*row) for row in rows}
+
+
+def active_job_placement_count(connection: sqlite3.Connection, job_id: str) -> int:
+    return int(
+        connection.execute(
+            "SELECT COUNT(*) FROM JobPlacement WHERE job_id = ? AND active = 1",
+            (job_id,),
+        ).fetchone()[0]
+    )
+
+
+def _context_id(connection: sqlite3.Connection, key: WorkplaceKey) -> int:
+    station_exists = connection.execute(
+        """
+        SELECT 1 FROM Station
+        WHERE plant_name = ? AND section_name = ? AND line_name = ? AND id = ?
+        """,
+        (key.plant_name, key.section_name, key.line_name, key.station_id),
+    ).fetchone()
+    if station_exists is None:
+        raise JobPlacementError(
+            f"Station does not exist: {key.plant_name} / {key.section_name} / "
+            f"{key.line_name} / {key.station_id}"
+        )
+    if connection.execute("SELECT 1 FROM Shift WHERE id = ?", (key.shift_id,)).fetchone() is None:
+        raise JobPlacementError(f"Shift does not exist: {key.shift_id}")
+    connection.execute(
+        """
+        INSERT OR IGNORE INTO WorkplaceContext (
+            plant_name, section_name, line_name, station_id, shift_id
+        ) VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            key.plant_name,
+            key.section_name,
+            key.line_name,
+            key.station_id,
+            key.shift_id,
+        ),
+    )
+    return int(
+        connection.execute(
+            """
+            SELECT id FROM WorkplaceContext
+            WHERE plant_name = ? AND section_name = ? AND line_name = ?
+              AND station_id = ? AND shift_id = ?
+            """,
+            (
+                key.plant_name,
+                key.section_name,
+                key.line_name,
+                key.station_id,
+                key.shift_id,
+            ),
+        ).fetchone()[0]
+    )
+
+
+def replace_active_job_placements(
+    connection: sqlite3.Connection,
+    job_id: str,
+    workplace_keys: Iterable[WorkplaceKey],
+) -> None:
+    """Replace current placements while retaining deactivated history."""
+    if connection.execute("SELECT 1 FROM Job WHERE id = ?", (job_id,)).fetchone() is None:
+        raise JobPlacementError(f"Job does not exist: {job_id}")
+    requested = set(workplace_keys)
+    current = active_job_placement_keys(connection, job_id)
+
+    for key in current - requested:
+        connection.execute(
+            """
+            UPDATE JobPlacement
+            SET active = 0,
+                valid_to = COALESCE(
+                    valid_to,
+                    CASE
+                        WHEN valid_from IS NOT NULL AND valid_from > date('now')
+                        THEN valid_from
+                        ELSE date('now')
+                    END
+                )
+            WHERE job_id = ? AND active = 1
+              AND workplace_context_id = (
+                  SELECT id FROM WorkplaceContext
+                  WHERE plant_name = ? AND section_name = ? AND line_name = ?
+                    AND station_id = ? AND shift_id = ?
+              )
+            """,
+            (
+                job_id,
+                key.plant_name,
+                key.section_name,
+                key.line_name,
+                key.station_id,
+                key.shift_id,
+            ),
+        )
+
+    for key in requested - current:
+        context_id = _context_id(connection, key)
+        connection.execute(
+            """
+            INSERT INTO JobPlacement (
+                job_id, workplace_context_id, active, valid_from
+            ) VALUES (?, ?, 1, date('now'))
+            """,
+            (job_id, context_id),
+        )

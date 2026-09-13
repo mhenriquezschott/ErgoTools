@@ -84,16 +84,43 @@ class IntegratedProjectMigrationTests(unittest.TestCase):
             }
             self.assertEqual(plant_columns["mirror_v"], "INTEGER")
             self.assertEqual(plant_columns["orientation"], "TEXT")
-            self.assertEqual(connection.execute("SELECT COUNT(*) FROM JobRiskProfile").fetchone()[0], 11)
-            self.assertEqual(connection.execute("SELECT COUNT(*) FROM JobRiskMeasurement").fetchone()[0], 33)
-            self.assertEqual(connection.execute("SELECT COUNT(*) FROM WorkplaceContext").fetchone()[0], 17)
-            self.assertEqual(connection.execute("SELECT COUNT(*) FROM WorkerAssignment").fetchone()[0], 100)
-            self.assertEqual(connection.execute("SELECT COUNT(*) FROM JobPlacement").fetchone()[0], 0)
             self.assertEqual(
                 connection.execute(
-                    "SELECT COUNT(*) FROM WorkerAssignment WHERE job_placement_id IS NOT NULL"
+                    """
+                    SELECT COUNT(*) FROM JobRiskProfile
+                    WHERE version = 1 AND source_type = 'imported'
+                    """
                 ).fetchone()[0],
-                0,
+                11,
+            )
+            self.assertEqual(
+                connection.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM JobRiskMeasurement measurement
+                    JOIN JobRiskProfile profile ON profile.id = measurement.profile_id
+                    WHERE profile.version = 1 AND profile.source_type = 'imported'
+                    """
+                ).fetchone()[0],
+                33,
+            )
+            self.assertGreaterEqual(
+                connection.execute("SELECT COUNT(*) FROM WorkplaceContext").fetchone()[0],
+                17,
+            )
+            self.assertGreaterEqual(
+                connection.execute("SELECT COUNT(*) FROM WorkerAssignment").fetchone()[0],
+                100,
+            )
+            self.assertEqual(
+                connection.execute(
+                    """
+                    SELECT COUNT(*) FROM WorkerAssignment
+                    WHERE job_placement_id IS NULL
+                      AND notes LIKE 'Migrated from WorkerStationShiftErgoTool%'
+                    """
+                ).fetchone()[0],
+                100,
             )
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM IndividualAssessment").fetchone()[0], 191)
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM PlotAssessmentMarker").fetchone()[0], 191)

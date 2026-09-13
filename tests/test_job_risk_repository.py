@@ -24,6 +24,12 @@ from job_risk_repository import (
     save_draft_profile,
     save_job_with_measurements,
 )
+from job_placement_repository import (
+    WorkplaceKey,
+    active_job_placement_keys,
+    available_workplaces,
+    replace_active_job_placements,
+)
 from risk_colors import job_risk_color
 from schema_migrations import migrate_database
 
@@ -91,6 +97,48 @@ class JobRiskRepositoryTests(unittest.TestCase):
                 ).fetchone()[0],
                 30.0,
             )
+        finally:
+            connection.close()
+
+    def test_initial_profile_preserves_optional_evidence(self):
+        connection = connect_database(self.database_path)
+        try:
+            profile_id = save_job_with_measurements(
+                connection,
+                job_id="J-Evidence",
+                name="Case packing",
+                description="",
+                measurements=(
+                    {
+                        "tool_id": "LiFFT",
+                        "total_cumulative_damage": 0.25,
+                        "probability_outcome": 30.0,
+                        "unit": "Metric",
+                    },
+                ),
+                profile_metadata={
+                    "name": "Expert panel estimate",
+                    "source_type": "expert",
+                    "source_reference": "Panel-2026",
+                    "methodology": "Consensus estimate",
+                    "sample_size": 4,
+                    "assessed_on": "2026-09-12",
+                    "valid_from": "2026-09-12",
+                    "notes": "Initial release",
+                },
+            )
+            connection.commit()
+            profile = next(
+                item for item in job_profiles(connection, "J-Evidence")
+                if item["id"] == profile_id
+            )
+            self.assertEqual(profile["name"], "Expert panel estimate")
+            self.assertEqual(profile["source_reference"], "Panel-2026")
+            self.assertEqual(profile["methodology"], "Consensus estimate")
+            self.assertEqual(profile["sample_size"], 4)
+            self.assertEqual(profile["assessed_on"], "2026-09-12")
+            self.assertEqual(profile["valid_from"], "2026-09-12")
+            self.assertEqual(profile["notes"], "Initial release")
         finally:
             connection.close()
 
@@ -216,6 +264,58 @@ class JobRiskRepositoryTests(unittest.TestCase):
                 """,
                 (first_context, placement_id),
             )
+            connection.commit()
+        finally:
+            connection.close()
+
+    def test_job_placements_are_optional_multiselect_and_preserve_history(self):
+        connection = connect_database(self.database_path)
+        try:
+            connection.executescript(
+                """
+                INSERT INTO Plant VALUES ('P-2');
+                INSERT INTO Shift VALUES ('A');
+                CREATE TABLE Section (
+                    plant_name TEXT NOT NULL, name TEXT NOT NULL,
+                    PRIMARY KEY (plant_name, name)
+                );
+                CREATE TABLE Line (
+                    plant_name TEXT NOT NULL, section_name TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    PRIMARY KEY (plant_name, section_name, name)
+                );
+                CREATE TABLE Station (
+                    plant_name TEXT NOT NULL, section_name TEXT NOT NULL,
+                    line_name TEXT NOT NULL, id TEXT NOT NULL,
+                    PRIMARY KEY (plant_name, section_name, line_name, id)
+                );
+                INSERT INTO Section VALUES ('P-2', 'S-2');
+                INSERT INTO Line VALUES ('P-2', 'S-2', 'L-2');
+                INSERT INTO Station VALUES ('P-2', 'S-2', 'L-2', 'ST-1');
+                INSERT INTO Station VALUES ('P-2', 'S-2', 'L-2', 'ST-2');
+                INSERT INTO Job (id, name) VALUES ('Placed', 'Placed Job');
+                """
+            )
+            first = WorkplaceKey('P-2', 'S-2', 'L-2', 'ST-1', 'A')
+            second = WorkplaceKey('P-2', 'S-2', 'L-2', 'ST-2', 'A')
+            self.assertEqual(available_workplaces(connection), [first, second])
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM WorkplaceContext").fetchone()[0],
+                0,
+            )
+
+            replace_active_job_placements(connection, 'Placed', (first, second))
+            self.assertEqual(active_job_placement_keys(connection, 'Placed'), {first, second})
+            replace_active_job_placements(connection, 'Placed', (second,))
+            self.assertEqual(active_job_placement_keys(connection, 'Placed'), {second})
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) FROM JobPlacement WHERE job_id='Placed'"
+                ).fetchone()[0],
+                2,
+            )
+            replace_active_job_placements(connection, 'Placed', ())
+            self.assertEqual(active_job_placement_keys(connection, 'Placed'), set())
             connection.commit()
         finally:
             connection.close()
