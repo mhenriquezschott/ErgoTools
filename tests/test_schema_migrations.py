@@ -87,22 +87,29 @@ class IntegratedProjectMigrationTests(unittest.TestCase):
             self.assertEqual(
                 connection.execute(
                     """
-                    SELECT COUNT(*) FROM JobRiskProfile
-                    WHERE version = 1 AND source_type = 'imported'
+                    SELECT COUNT(*)
+                    FROM Job
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM JobRiskProfile profile
+                        WHERE profile.job_id = Job.id
+                    )
                     """
                 ).fetchone()[0],
-                11,
+                0,
             )
             self.assertEqual(
                 connection.execute(
                     """
                     SELECT COUNT(*)
-                    FROM JobRiskMeasurement measurement
-                    JOIN JobRiskProfile profile ON profile.id = measurement.profile_id
-                    WHERE profile.version = 1 AND profile.source_type = 'imported'
+                    FROM JobMeasurement legacy
+                    JOIN CurrentJobRiskMeasurement current
+                      ON current.job_id = legacy.job_id
+                     AND current.tool_id = legacy.tool_id
+                    WHERE current.total_cumulative_damage = legacy.total_cumulative_damage
+                      AND current.probability_outcome = legacy.probability_outcome
                     """
                 ).fetchone()[0],
-                33,
+                connection.execute("SELECT COUNT(*) FROM JobMeasurement").fetchone()[0],
             )
             self.assertGreaterEqual(
                 connection.execute("SELECT COUNT(*) FROM WorkplaceContext").fetchone()[0],

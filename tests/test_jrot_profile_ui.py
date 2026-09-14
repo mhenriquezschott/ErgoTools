@@ -19,6 +19,7 @@ from job_risk_repository import job_profiles
 from job_window import JobWindow, JobWorkplaceDialog
 from main import ErgoTools
 from rotation_layout import RotationLayoutWindow
+from worker_window import WorkerWindow
 
 
 app = QApplication.instance() or QApplication([])
@@ -110,6 +111,55 @@ with tempfile.TemporaryDirectory() as temporary_directory:
         assert connection.execute(
             "SELECT COUNT(*) FROM JobPlacement WHERE job_id='Job-S003' AND active=1"
         ).fetchone()[0] == 2
+        worker_assignment = connection.execute(
+            """
+            SELECT assignment.worker_id, assignment.id, placement.id
+            FROM WorkerAssignment AS assignment
+            JOIN JobPlacement AS placement
+              ON placement.workplace_context_id = assignment.workplace_context_id
+            WHERE placement.job_id = 'Job-S003' AND placement.active = 1
+            ORDER BY assignment.worker_id
+            LIMIT 1
+            """
+        ).fetchone()
+    assert worker_assignment is not None
+
+    worker_id, assignment_id, placement_id = worker_assignment
+    parent.workerComboBox.setCurrentText(worker_id)
+    worker_window = WorkerWindow(parent)
+    worker_index = worker_window.worker_id_combo.findText(worker_id)
+    assert worker_index >= 0
+    worker_window.worker_id_combo.setCurrentIndex(worker_index)
+    worker_window.loadWorkerDetails()
+    worker_window.tabWidget.setCurrentWidget(worker_window.assignments_tab)
+    matching_combo = None
+    for row in range(worker_window.assignment_table.rowCount()):
+        combo = worker_window.assignment_table.cellWidget(row, 5)
+        if int(combo.property("assignmentId")) == assignment_id:
+            matching_combo = combo
+            break
+    assert matching_combo is not None
+    placement_index = matching_combo.findData(placement_id)
+    assert placement_index >= 0
+    matching_combo.setCurrentIndex(placement_index)
+    worker_window.resize(worker_window.minimumSize())
+    worker_window.show()
+    app.processEvents()
+    assert worker_window.tabWidget.tabBar().count() == 5
+    assert worker_window.tabWidget.tabBar().isTabVisible(0)
+    assert worker_window.tabWidget.tabBar().isTabVisible(1)
+    assert all(
+        not worker_window.tabWidget.tabBar().isTabVisible(index)
+        for index in range(2, worker_window.tabWidget.count())
+    )
+    assert matching_combo.view().sizeHintForColumn(0) > 0
+    worker_window.grab().save("/tmp/worker_job_assignments.png")
+    worker_window.saveWorker()
+    with sqlite3.connect(parent.projectdatabasePath) as connection:
+        assert connection.execute(
+            "SELECT job_placement_id FROM WorkerAssignment WHERE id = ?",
+            (assignment_id,),
+        ).fetchone()[0] == placement_id
 
     job_window.newJob()
     job_window.job_id_combo.setEditText("UI-New-Job")
@@ -151,6 +201,7 @@ with tempfile.TemporaryDirectory() as temporary_directory:
     job_window.grab().save("/tmp/job_profile_ui_smoke.png")
 
     rotation_window.close()
+    worker_window.close()
     job_window.close()
     parent.close()
 

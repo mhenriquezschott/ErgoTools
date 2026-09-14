@@ -25,10 +25,14 @@ from job_risk_repository import (
     save_job_with_measurements,
 )
 from job_placement_repository import (
+    JobPlacementError,
     WorkplaceKey,
     active_job_placement_keys,
     available_workplaces,
+    job_placement_options,
     replace_active_job_placements,
+    update_worker_assignment_jobs,
+    worker_assignments,
 )
 from risk_colors import job_risk_color
 from schema_migrations import migrate_database
@@ -306,6 +310,58 @@ class JobRiskRepositoryTests(unittest.TestCase):
 
             replace_active_job_placements(connection, 'Placed', (first, second))
             self.assertEqual(active_job_placement_keys(connection, 'Placed'), {first, second})
+            connection.execute("INSERT INTO Worker VALUES ('W-Placement')")
+            contexts = {
+                WorkplaceKey(*row[1:]): row[0]
+                for row in connection.execute(
+                    """
+                    SELECT id, plant_name, section_name, line_name, station_id, shift_id
+                    FROM WorkplaceContext
+                    """
+                )
+            }
+            assignment_id = connection.execute(
+                """
+                INSERT INTO WorkerAssignment (worker_id, workplace_context_id)
+                VALUES ('W-Placement', ?)
+                """,
+                (contexts[first],),
+            ).lastrowid
+            placement_ids = {
+                row[1]: row[0]
+                for row in connection.execute(
+                    "SELECT id, workplace_context_id FROM JobPlacement WHERE job_id='Placed'"
+                )
+            }
+            first_placement = placement_ids[contexts[first]]
+            second_placement = placement_ids[contexts[second]]
+            self.assertEqual(
+                job_placement_options(connection, contexts[first])[0]["job_id"],
+                "Placed",
+            )
+            update_worker_assignment_jobs(
+                connection,
+                "W-Placement",
+                {assignment_id: first_placement},
+            )
+            self.assertEqual(
+                worker_assignments(connection, "W-Placement")[0]["job_id"],
+                "Placed",
+            )
+            with self.assertRaisesRegex(JobPlacementError, "not active in this worker"):
+                update_worker_assignment_jobs(
+                    connection,
+                    "W-Placement",
+                    {assignment_id: second_placement},
+                )
+            update_worker_assignment_jobs(
+                connection,
+                "W-Placement",
+                {assignment_id: None},
+            )
+            self.assertIsNone(
+                worker_assignments(connection, "W-Placement")[0]["job_placement_id"]
+            )
             replace_active_job_placements(connection, 'Placed', (second,))
             self.assertEqual(active_job_placement_keys(connection, 'Placed'), {second})
             self.assertEqual(

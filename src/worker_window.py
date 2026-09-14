@@ -22,6 +22,14 @@ from PyQt5.QtGui import QDoubleValidator, QIntValidator, QFont, QPixmap, QRegExp
 from PyQt5.QtGui import QRegularExpressionValidator
 from PyQt5.QtCore import QRegularExpression, QRegExp
 
+from database import connect_database
+from job_placement_repository import (
+    JobPlacementError,
+    job_placement_options,
+    update_worker_assignment_jobs,
+    worker_assignments,
+)
+
 
 class WorkerWindow(QDialog):
     def __init__(self, parent=None):
@@ -212,7 +220,9 @@ class WorkerWindow(QDialog):
         self.general_tab = QWidget()
         self.setupGeneralTab()
         self.tabWidget.addTab(self.general_tab, "Worker details")
-        self.tabWidget.tabBar().hide()
+        self.assignments_tab = QWidget()
+        self.setupAssignmentsTab()
+        self.tabWidget.addTab(self.assignments_tab, "Work assignments")
         details_layout.addWidget(self.tabWidget, 1)
 
         self.notification_area = QFrame()
@@ -237,6 +247,8 @@ class WorkerWindow(QDialog):
         self.setupUpperBodyTab()
         self.lower_body_tab = QWidget()
         self.setupLowerBodyTab()
+        for index in range(2, self.tabWidget.count()):
+            self.tabWidget.tabBar().setTabVisible(index, False)
 
         action_bar = QHBoxLayout()
         action_bar.setSpacing(10)
@@ -400,8 +412,11 @@ class WorkerWindow(QDialog):
 
 
     def onTabChanged(self, index):
-        if (index > 0):
-            self.updateWorkerInfoLabels()
+        if (
+            hasattr(self, "assignments_tab")
+            and self.tabWidget.widget(index) is self.assignments_tab
+        ):
+            self.loadWorkerAssignments()
 
 
     def updateWorkerInfoLabels(self):
@@ -592,6 +607,11 @@ class WorkerWindow(QDialog):
         self.worker_table.clearSelection()
         self.worker_table.setEnabled(False)
         self.worker_search_input.setEnabled(False)
+        self.assignment_table.setRowCount(0)
+        self.assignment_worker_id = None
+        self.assignment_status_label.setText(
+            "Save the Worker before classifying workplace assignments."
+        )
         self.cancel_button.setEnabled(True)
         self.setNotification(
             "Only Worker ID is required. Optional birth date, sex, height, and weight improve advanced filtering in PLOT and other tools.",
@@ -840,6 +860,40 @@ class WorkerWindow(QDialog):
         self.details_scroll.setWidget(details_content)
         tab_layout.addWidget(self.details_scroll)
 
+    def setupAssignmentsTab(self):
+        layout = QVBoxLayout(self.assignments_tab)
+        layout.setContentsMargins(0, 4, 0, 0)
+        layout.setSpacing(10)
+        heading = QLabel("Worker Job classification")
+        heading.setObjectName("sectionTitle")
+        layout.addWidget(heading)
+        self.assignment_status_label = QLabel()
+        self.assignment_status_label.setObjectName("supportingText")
+        self.assignment_status_label.setWordWrap(True)
+        layout.addWidget(self.assignment_status_label)
+
+        self.assignment_table = QTableWidget(0, 6)
+        self.assignment_worker_id = None
+        self.assignment_table.setHorizontalHeaderLabels(
+            ["Plant", "Section", "Line", "Station", "Shift", "Job"]
+        )
+        self.assignment_table.setAlternatingRowColors(True)
+        self.assignment_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.assignment_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.assignment_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.assignment_table.verticalHeader().setVisible(False)
+        self.assignment_table.verticalHeader().setDefaultSectionSize(46)
+        header = self.assignment_table.horizontalHeader()
+        for column in range(5):
+            header.setSectionResizeMode(column, QHeaderView.Interactive)
+        header.setSectionResizeMode(5, QHeaderView.Stretch)
+        for column, width in enumerate((105, 125, 120, 140, 60)):
+            self.assignment_table.setColumnWidth(column, width)
+        self.assignment_table.setToolTip(
+            "Classify each active workplace assignment using a compatible Job Placement."
+        )
+        layout.addWidget(self.assignment_table, 1)
+
     def workerManagementStyleSheet(self):
         return """
             QDialog#workerManagementDialog {
@@ -958,6 +1012,24 @@ class WorkerWindow(QDialog):
                 border-bottom: 1px solid #D5DEE5;
                 padding: 9px 6px;
                 font-weight: 600;
+            }
+            QTabWidget#detailsTabs::pane {
+                border: 0;
+                border-top: 1px solid #D5DEE5;
+                top: -1px;
+            }
+            QTabWidget#detailsTabs QTabBar::tab {
+                background: #EDF3F6;
+                color: #405866;
+                border: 1px solid #CAD5DD;
+                padding: 9px 16px;
+                min-width: 135px;
+                font-weight: 600;
+            }
+            QTabWidget#detailsTabs QTabBar::tab:selected {
+                background: #FFFFFF;
+                color: #087E91;
+                border-bottom: 2px solid #08A9B5;
             }
             QPushButton {
                 min-height: 42px;
@@ -1440,6 +1512,7 @@ class WorkerWindow(QDialog):
                 self.populateStatesForUSA()
                 self.state_combo.setCurrentText(worker_data[15])  # Adjusted index for state
                 self.selectWorkerTableRow()
+                self.loadWorkerAssignments(selected_worker_id)
                 missing_filter_data = not self.height_input.text().strip() or not self.weight_input.text().strip()
                 if missing_filter_data:
                     self.setNotification(
@@ -1456,6 +1529,108 @@ class WorkerWindow(QDialog):
         
         finally:
             conn.close()
+
+    def loadWorkerAssignments(self, worker_id=None):
+        worker_id = (worker_id or self.worker_id_combo.currentText()).strip()
+        self.assignment_table.setRowCount(0)
+        if not worker_id:
+            self.assignment_status_label.setText(
+                "Save the Worker before classifying workplace assignments."
+            )
+            return
+        self.assignment_worker_id = worker_id
+        connection = connect_database(self.parent().projectdatabasePath, read_only=True)
+        try:
+            assignments = worker_assignments(connection, worker_id)
+            option_map = {
+                assignment["workplace_context_id"]: job_placement_options(
+                    connection, assignment["workplace_context_id"]
+                )
+                for assignment in assignments
+            }
+        finally:
+            connection.close()
+
+        self.assignment_table.setRowCount(len(assignments))
+        classified = 0
+        for row, assignment in enumerate(assignments):
+            values = (
+                assignment["plant_name"],
+                assignment["section_name"],
+                assignment["line_name"],
+                assignment["station_id"],
+                assignment["shift_id"],
+            )
+            for column, value in enumerate(values):
+                item = QTableWidgetItem(str(value))
+                item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+                self.assignment_table.setItem(row, column, item)
+
+            combo = QComboBox()
+            combo.addItem("Not classified", None)
+            for option in option_map[assignment["workplace_context_id"]]:
+                label = option["job_id"]
+                if option["job_name"]:
+                    label += f" | {option['job_name']}"
+                combo.addItem(label, option["placement_id"])
+            current_index = combo.findData(assignment["job_placement_id"])
+            if current_index < 0 and assignment["job_placement_id"] is not None:
+                label = assignment["job_id"] or "Unavailable Job"
+                combo.addItem(f"{label} | Placement unavailable", assignment["job_placement_id"])
+                current_index = combo.count() - 1
+            combo.setCurrentIndex(max(0, current_index))
+            combo.setProperty("assignmentId", assignment["assignment_id"])
+            combo.currentIndexChanged.connect(
+                lambda _index, control=combo: self.assignmentSelectionChanged(control)
+            )
+            self.assignment_table.setCellWidget(row, 5, combo)
+            if assignment["job_placement_id"] is not None:
+                classified += 1
+
+        if not assignments:
+            self.assignment_status_label.setText(
+                "No active workplace assignments are available for this Worker."
+            )
+        else:
+            self.assignment_status_label.setText(
+                f"{classified} of {len(assignments)} workplace assignment(s) classified."
+            )
+        for row in range(self.assignment_table.rowCount()):
+            self.updateAssignmentTooltip(self.assignment_table.cellWidget(row, 5))
+
+    def updateAssignmentTooltip(self, combo):
+        if combo is None:
+            return
+        combo.setToolTip(
+            f"Selected: {combo.currentText()}\n"
+            "Only Jobs placed in this exact workplace context are available."
+        )
+
+    def assignmentSelectionChanged(self, combo):
+        self.updateAssignmentTooltip(combo)
+        self.updateAssignmentStatus()
+
+    def updateAssignmentStatus(self):
+        total = self.assignment_table.rowCount()
+        classified = sum(
+            1
+            for row in range(total)
+            if self.assignment_table.cellWidget(row, 5) is not None
+            and self.assignment_table.cellWidget(row, 5).currentData() is not None
+        )
+        self.assignment_status_label.setText(
+            f"{classified} of {total} workplace assignment(s) classified."
+        )
+
+    def workerAssignmentPayload(self, worker_id):
+        if worker_id != self.assignment_worker_id:
+            return {}
+        payload = {}
+        for row in range(self.assignment_table.rowCount()):
+            combo = self.assignment_table.cellWidget(row, 5)
+            if combo is not None:
+                payload[int(combo.property("assignmentId"))] = combo.currentData()
+        return payload
 
     
     def loadWorkerDetailsOld(self):
@@ -2460,7 +2635,7 @@ class WorkerWindow(QDialog):
    
     
         # Insert or update the worker
-        conn = sqlite3.connect(database_path)
+        conn = connect_database(database_path)
         cursor = conn.cursor()
         try:
             cursor.execute('''
@@ -2530,6 +2705,12 @@ class WorkerWindow(QDialog):
                 'leg_length': leg_length
             })
 
+            update_worker_assignment_jobs(
+                conn,
+                worker_id,
+                self.workerAssignmentPayload(worker_id),
+            )
+
             conn.commit()
 
             QMessageBox.information(self, "Success", f"Worker '{worker_id}' has been saved successfully.")
@@ -2553,7 +2734,7 @@ class WorkerWindow(QDialog):
             self.loadWorkerTable(0)
             self.selectWorkerTableRow()
 
-        except sqlite3.Error as e:
+        except (sqlite3.Error, JobPlacementError) as e:
             QMessageBox.critical(self, "Database Error", f"An error occurred while saving the worker:\n{str(e)}")
         finally:
             conn.close()

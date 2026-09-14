@@ -367,7 +367,7 @@ with numerically identical damage/probability values.
   prove which Job each worker performed.
 - [x] Add Job Management workplace assignment controls with multi-select support.
 - [x] Preserve a quick standalone Job workflow with no required organization data.
-- [ ] Add worker assignment UI for selecting an existing Job Placement or marking
+- [x] Add worker assignment UI for selecting an existing Job Placement or marking
   the Job as not yet classified.
 
 **Gate:** The integrated fixture produces exactly 17 WorkplaceContext rows and

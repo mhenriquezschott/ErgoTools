@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, Mapping
 
 
 class JobPlacementError(ValueError):
@@ -161,4 +161,108 @@ def replace_active_job_placements(
             ) VALUES (?, ?, 1, date('now'))
             """,
             (job_id, context_id),
+        )
+
+
+def worker_assignments(connection: sqlite3.Connection, worker_id: str) -> list[dict]:
+    rows = connection.execute(
+        """
+        SELECT assignment.id, assignment.workplace_context_id,
+               context.plant_name, context.section_name, context.line_name,
+               context.station_id, context.shift_id,
+               assignment.job_placement_id, job.id, job.name,
+               COALESCE(placement.active, 0)
+        FROM WorkerAssignment AS assignment
+        JOIN WorkplaceContext AS context
+          ON context.id = assignment.workplace_context_id
+        LEFT JOIN JobPlacement AS placement
+          ON placement.id = assignment.job_placement_id
+        LEFT JOIN Job AS job ON job.id = placement.job_id
+        WHERE assignment.worker_id = ? AND assignment.active = 1
+        ORDER BY context.plant_name, context.section_name, context.line_name,
+                 context.station_id, context.shift_id
+        """,
+        (worker_id,),
+    ).fetchall()
+    columns = (
+        "assignment_id",
+        "workplace_context_id",
+        "plant_name",
+        "section_name",
+        "line_name",
+        "station_id",
+        "shift_id",
+        "job_placement_id",
+        "job_id",
+        "job_name",
+        "placement_active",
+    )
+    return [dict(zip(columns, row)) for row in rows]
+
+
+def job_placement_options(
+    connection: sqlite3.Connection,
+    workplace_context_id: int,
+) -> list[dict]:
+    rows = connection.execute(
+        """
+        SELECT placement.id, placement.job_id, job.name
+        FROM JobPlacement AS placement
+        JOIN Job AS job ON job.id = placement.job_id
+        WHERE placement.workplace_context_id = ?
+          AND placement.active = 1
+          AND job.active = 1
+          AND (placement.valid_from IS NULL OR placement.valid_from <= date('now'))
+          AND (placement.valid_to IS NULL OR placement.valid_to >= date('now'))
+        ORDER BY placement.job_id
+        """,
+        (workplace_context_id,),
+    ).fetchall()
+    return [
+        {"placement_id": row[0], "job_id": row[1], "job_name": row[2] or ""}
+        for row in rows
+    ]
+
+
+def update_worker_assignment_jobs(
+    connection: sqlite3.Connection,
+    worker_id: str,
+    assignments: Mapping[int, int | None],
+) -> None:
+    """Classify active Worker Assignments using compatible active placements."""
+    for assignment_id, placement_id in assignments.items():
+        assignment = connection.execute(
+            """
+            SELECT workplace_context_id
+            FROM WorkerAssignment
+            WHERE id = ? AND worker_id = ? AND active = 1
+            """,
+            (assignment_id, worker_id),
+        ).fetchone()
+        if assignment is None:
+            raise JobPlacementError(
+                f"Active Worker Assignment does not exist: {assignment_id}"
+            )
+        if placement_id is not None:
+            compatible = connection.execute(
+                """
+                SELECT 1
+                FROM JobPlacement AS placement
+                JOIN Job AS job ON job.id = placement.job_id
+                WHERE placement.id = ?
+                  AND placement.workplace_context_id = ?
+                  AND placement.active = 1
+                  AND job.active = 1
+                  AND (placement.valid_from IS NULL OR placement.valid_from <= date('now'))
+                  AND (placement.valid_to IS NULL OR placement.valid_to >= date('now'))
+                """,
+                (placement_id, assignment[0]),
+            ).fetchone()
+            if compatible is None:
+                raise JobPlacementError(
+                    "The selected Job Placement is not active in this worker's workplace context."
+                )
+        connection.execute(
+            "UPDATE WorkerAssignment SET job_placement_id = ? WHERE id = ?",
+            (placement_id, assignment_id),
         )
