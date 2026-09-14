@@ -380,6 +380,10 @@ with numerically identical damage/probability values.
 - [x] Migrate each WorkerStationShiftErgoTool row into one current individual
   assessment and one tool-specific marker.
 - [x] Migrate every LiFFT, DUET, and Shoulder task row to its assessment ID.
+- [x] Make main-workspace assessment search tool-specific and return the selected
+  worker plus exact Plant, Section, Line, Station, and Shift context.
+- [x] Keep the displayed assessment workplace synchronized with search results and
+  distinguish an unsaved context from an existing zero-valued result.
 - [ ] Refactor main-tool load/save, worker transfer, and PLOT queries to use the
   new assignment and assessment keys.
 - [ ] Verify selected, visible, enabled, locked, moved, transferred, and deleted

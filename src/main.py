@@ -362,12 +362,15 @@ class AssessmentWorkplaceDialog(QDialog):
 
 
 class WorkerSearchDialog(QDialog):
-    """Live worker directory filtered by surname and assessment workplace."""
+    """Find a saved assessment by worker and exact workplace context."""
 
     def __init__(self, parent):
         super().__init__(parent)
         self.main_window = parent
         self.selected_worker_id = None
+        self.selected_assessment_context = None
+        self.active_tool_id = ("LiFFT", "DUET", "ST")[parent.tabWidget.currentIndex()]
+        self.active_tool_name = "Shoulder" if self.active_tool_id == "ST" else self.active_tool_id
         self.active_letter = None
         self.active_workplace = ()
         self.worker_rows = []
@@ -377,7 +380,7 @@ class WorkerSearchDialog(QDialog):
             os.path.dirname(__file__), "..", "assets", "ui-icons"
         ))
         self.setObjectName("workerSearchDialog")
-        self.setWindowTitle("Find Worker")
+        self.setWindowTitle("Find Assessment")
         self.resize(1080, 650)
         self.setMinimumSize(900, 560)
         self.setStyleSheet(parent.mainWorkspaceStyleSheet() + """
@@ -411,11 +414,11 @@ class WorkerSearchDialog(QDialog):
         root = QVBoxLayout(self)
         root.setContentsMargins(18, 16, 18, 16)
         root.setSpacing(10)
-        title = QLabel("Find a worker")
+        title = QLabel(f"Find a {self.active_tool_name} assessment")
         title.setObjectName("dialogTitle")
         root.addWidget(title)
         subtitle = QLabel(
-            "Search by worker ID or name, then narrow the directory by last-name initial or assessment workplace."
+            "Search saved assessments by worker, then narrow the results by last-name initial or workplace."
         )
         subtitle.setObjectName("supportingText")
         subtitle.setWordWrap(True)
@@ -428,13 +431,13 @@ class WorkerSearchDialog(QDialog):
         workplace_panel.setFixedWidth(360)
         workplace_layout = QVBoxLayout(workplace_panel)
         workplace_layout.setContentsMargins(12, 12, 12, 12)
-        workplace_title = QLabel("Assessment workplace")
+        workplace_title = QLabel("Assessment workplace scope")
         workplace_title.setObjectName("sectionTitle")
         workplace_title.setToolTip(
-            "Filter workers by workplaces where they already have saved assessment data."
+            f"Filter workers by workplaces where they have saved {self.active_tool_name} assessments."
         )
         workplace_layout.addWidget(workplace_title)
-        workplace_help = QLabel("Select any level to include all workplaces below it.")
+        workplace_help = QLabel("Select any level to include every saved assessment below it.")
         workplace_help.setObjectName("supportingText")
         workplace_help.setWordWrap(True)
         workplace_layout.addWidget(workplace_help)
@@ -446,7 +449,7 @@ class WorkerSearchDialog(QDialog):
         self.workplace_tree.setColumnWidth(1, 82)
         self.workplace_tree.setAlternatingRowColors(True)
         self.workplace_tree.setToolTip(
-            "Choose All workplaces, or expand the hierarchy to filter workers with assessments in that location."
+            f"Choose All workplaces, or filter saved {self.active_tool_name} assessments by location."
         )
         self.workplace_tree.currentItemChanged.connect(self.workplaceChanged)
         workplace_layout.addWidget(self.workplace_tree, 1)
@@ -458,7 +461,7 @@ class WorkerSearchDialog(QDialog):
         directory_layout.setContentsMargins(12, 12, 12, 12)
         directory_layout.setSpacing(8)
         search_row = QHBoxLayout()
-        directory_title = QLabel("Worker directory")
+        directory_title = QLabel("Saved assessments")
         directory_title.setObjectName("sectionTitle")
         search_row.addWidget(directory_title)
         search_row.addStretch(1)
@@ -496,13 +499,14 @@ class WorkerSearchDialog(QDialog):
         alphabet_row.addStretch(1)
         directory_layout.addLayout(alphabet_row)
 
-        self.table = QTableWidget(0, 6)
+        self.table = QTableWidget(0, 7)
         self.table.setHorizontalHeaderLabels([
-            "Worker ID", "Last name", "First name", "Sex", "Age", "Workplace"
+            "Worker ID", "Last name", "First name", "Sex", "Age", "Workplace", "Shift"
         ])
         self.table.horizontalHeaderItem(5).setToolTip(
-            "Workplaces where the worker has saved assessment data."
+            f"Exact workplace where this {self.active_tool_name} assessment is saved."
         )
+        self.table.horizontalHeaderItem(6).setToolTip("Shift associated with this saved assessment.")
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
@@ -515,8 +519,12 @@ class WorkerSearchDialog(QDialog):
             header.setSectionResizeMode(column, QHeaderView.Fixed)
             self.table.setColumnWidth(column, width)
         header.setSectionResizeMode(5, QHeaderView.Stretch)
+        header.setSectionResizeMode(6, QHeaderView.Fixed)
+        self.table.setColumnWidth(6, 58)
         header.setSortIndicator(1, Qt.AscendingOrder)
-        self.table.setToolTip("Select a worker, then choose Use worker. Double-clicking also selects the worker.")
+        self.table.setToolTip(
+            "Select a saved assessment, then choose Use assessment. Double-clicking also opens it."
+        )
         self.table.itemSelectionChanged.connect(self.selectionChanged)
         self.table.itemDoubleClicked.connect(lambda *_: self.acceptSelection())
         directory_layout.addWidget(self.table, 1)
@@ -527,13 +535,15 @@ class WorkerSearchDialog(QDialog):
         cancel_button = buttons.button(QDialogButtonBox.Cancel)
         cancel_button.setIcon(QIcon(os.path.join(self.icon_root, "cancel.png")))
         cancel_button.setIconSize(QSize(22, 22))
-        cancel_button.setToolTip("Close without changing the selected worker.")
+        cancel_button.setToolTip("Close without changing the selected worker or assessment workplace.")
         self.use_button = buttons.button(QDialogButtonBox.Ok)
-        self.use_button.setText("Use worker")
+        self.use_button.setText("Use assessment")
         self.use_button.setObjectName("primaryOutlineButton")
         self.use_button.setIcon(QIcon(os.path.join(self.icon_root, "worker.png")))
         self.use_button.setIconSize(QSize(24, 24))
-        self.use_button.setToolTip("Show the selected worker in the main assessment workspace.")
+        self.use_button.setToolTip(
+            "Show the selected worker and this exact assessment workplace in the main workspace."
+        )
         self.use_button.setEnabled(False)
         buttons.accepted.connect(self.acceptSelection)
         buttons.rejected.connect(self.reject)
@@ -547,12 +557,15 @@ class WorkerSearchDialog(QDialog):
                    FROM Worker ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE, id"""
             ).fetchall()
             contexts = conn.execute(
-                """SELECT DISTINCT worker_id, plant_name, section_name, line_name, station_id
-                   FROM WorkerStationShiftErgoTool"""
+                """SELECT DISTINCT worker_id, plant_name, section_name, line_name, station_id, shift_id
+                   FROM WorkerStationShiftErgoTool
+                   WHERE tool_id = ?
+                   ORDER BY worker_id, plant_name, section_name, line_name, station_id, shift_id""",
+                (self.active_tool_id,),
             ).fetchall()
-            for worker_id, plant, section, line, station in contexts:
+            for worker_id, plant, section, line, station, shift in contexts:
                 self.worker_contexts.setdefault(str(worker_id), set()).add(tuple(
-                    str(value) for value in (plant, section, line, station)
+                    str(value) for value in (plant, section, line, station, shift)
                 ))
             self.populateWorkplaceTree(conn)
         self.worker_rows = []
@@ -564,7 +577,10 @@ class WorkerSearchDialog(QDialog):
             self.worker_rows.append((
                 str(worker_id), last_name or "", first_name or "", gender or "-", age
             ))
-        available = {row[1][0].upper() for row in self.worker_rows if row[1] and row[1][0].isalpha()}
+        available = {
+            row[1][0].upper() for row in self.worker_rows
+            if row[0] in self.worker_contexts and row[1] and row[1][0].isalpha()
+        }
         for letter, button in self.alphabet_buttons.items():
             button.setEnabled(letter == "All" or letter in available)
         self.applyFilters()
@@ -621,37 +637,41 @@ class WorkerSearchDialog(QDialog):
             if self.active_letter and not last_name.upper().startswith(self.active_letter):
                 continue
             contexts = self.worker_contexts.get(worker_id, set())
-            if self.active_workplace and not any(
-                context[:len(self.active_workplace)] == self.active_workplace for context in contexts
-            ):
-                continue
-            filtered.append(row)
+            matching_contexts = (
+                context for context in contexts
+                if not self.active_workplace
+                or context[:len(self.active_workplace)] == self.active_workplace
+            )
+            filtered.extend(row + (context,) for context in sorted(matching_contexts))
         self.renderRows(filtered)
 
     def renderRows(self, rows):
         self.table.setSortingEnabled(False)
         self.table.setRowCount(len(rows))
-        for row_index, (worker_id, last_name, first_name, gender, age) in enumerate(rows):
-            contexts = sorted(self.worker_contexts.get(worker_id, set()))
-            workplace = "; ".join(" > ".join(path) for path in contexts) if contexts else "No saved assessment workplace"
-            values = (worker_id, last_name or "-", first_name or "-", gender, age, workplace)
+        for row_index, (worker_id, last_name, first_name, gender, age, context) in enumerate(rows):
+            workplace = " > ".join(context[:4])
+            values = (worker_id, last_name or "-", first_name or "-", gender, age, workplace, context[4])
             for column, value in enumerate(values):
                 item = QTableWidgetItem(value)
                 if column == 0:
                     item.setData(Qt.UserRole, worker_id)
+                    item.setData(Qt.UserRole + 1, context)
                 item.setToolTip(value)
                 self.table.setItem(row_index, column, item)
         self.table.setSortingEnabled(True)
         self.table.sortItems(1, Qt.AscendingOrder)
         self.table.clearSelection()
         self.selected_worker_id = None
+        self.selected_assessment_context = None
         self.use_button.setEnabled(False)
         count = len(rows)
-        self.result_count.setText(f"{count} worker{'s' if count != 1 else ''}")
+        self.result_count.setText(f"{count} assessment{'s' if count != 1 else ''}")
 
     def selectionChanged(self):
         selected = self.table.selectionModel().selectedRows()
-        self.selected_worker_id = self.table.item(selected[0].row(), 0).data(Qt.UserRole) if selected else None
+        selected_item = self.table.item(selected[0].row(), 0) if selected else None
+        self.selected_worker_id = selected_item.data(Qt.UserRole) if selected_item else None
+        self.selected_assessment_context = selected_item.data(Qt.UserRole + 1) if selected_item else None
         self.use_button.setEnabled(bool(self.selected_worker_id))
 
     def acceptSelection(self):
@@ -4050,6 +4070,9 @@ class ErgoTools(QtWidgets.QMainWindow):
         repetitions = sum(int(value) for value in repetition_values if value > 0)
         source_color = QColor(summary["color"])
         ready = bool(task_count and self.projectFileCreated and source_color.isValid())
+        assessment_saved = getattr(self, "_assessment_record_exists_by_tool", {}).get(
+            summary["name"], False
+        )
         probability = self.numericLabelValue(summary["probability"])
         damage = self.numericLabelValue(summary["damage"])
         if not ready:
@@ -4103,8 +4126,17 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.assessment_status_label.setProperty("ready", ready)
         self.assessment_status_label.style().unpolish(self.assessment_status_label)
         self.assessment_status_label.style().polish(self.assessment_status_label)
+        status_detail = (
+            "Assessment data is available."
+            if ready else
+            f"No {summary['name']} assessment is saved here."
+            if not assessment_saved else
+            "Enter context and task data."
+        )
         self.assessment_status_detail.setText(
-            "Assessment data is available." if ready else "Enter context and task data."
+            "No assessment saved here."
+            if not ready and not assessment_saved else
+            status_detail
         )
         if self.projectFileCreated:
             project_text = self.projectName or os.path.splitext(os.path.basename(self.projectFilePath))[0] or "Untitled project"
@@ -4118,11 +4150,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.footer_unit_label.setText(f"Units: {units}")
         self.footer_context_label.setText(f"Current Project: {project_text}")
         status_name = "Ready" if ready else "Incomplete"
-        status_detail = (
-            "Assessment data is available."
-            if ready else
-            "Enter context and task data."
-        )
         self.statusBar().showMessage(f"Status: {status_name} - {status_detail}")
 
     def styleToolResultSummary(self, summary, result_color):
@@ -4564,13 +4591,15 @@ class ErgoTools(QtWidgets.QMainWindow):
         context_summary_layout.addStretch(1)
         association_row.addWidget(association_title)
         association_row.addWidget(self.context_summary_widget, 1)
-        choose_button = QPushButton("Change workplace")
-        choose_button.setObjectName("primaryOutlineButton")
-        choose_button.setIcon(QIcon(os.path.join(icon_root, "station.png")))
-        choose_button.setIconSize(QSize(24, 24))
-        choose_button.setToolTip("Choose a station and shift from the workplace hierarchy.")
-        choose_button.clicked.connect(self.openAssessmentWorkplaceDialog)
-        association_row.addWidget(choose_button)
+        self.choose_assessment_workplace_button = QPushButton("Select assessment workplace")
+        self.choose_assessment_workplace_button.setObjectName("primaryOutlineButton")
+        self.choose_assessment_workplace_button.setIcon(QIcon(os.path.join(icon_root, "station.png")))
+        self.choose_assessment_workplace_button.setIconSize(QSize(24, 24))
+        self.choose_assessment_workplace_button.setToolTip(
+            "Select which workplace assessment to view for the current worker. This does not move data."
+        )
+        self.choose_assessment_workplace_button.clicked.connect(self.openAssessmentWorkplaceDialog)
+        association_row.addWidget(self.choose_assessment_workplace_button)
         manage_button.setText("Manage organization")
         association_row.addWidget(manage_button)
         self.tabstop_controls_layout.addLayout(association_row)
@@ -4616,11 +4645,20 @@ class ErgoTools(QtWidgets.QMainWindow):
         ):
             label.setText(f"{level_name}: {value}")
 
-    def openAssessmentWorkplaceDialog(self):
-        dialog = AssessmentWorkplaceDialog(self)
-        if dialog.exec_() != QDialog.Accepted:
-            return
-        plant, section, line, station = dialog.selected_path
+    def setAssessmentWorkplaceContext(self, context, load_data=True):
+        """Select an exact assessment context without moving or copying data."""
+        if not context or len(context) != 5:
+            return False
+        plant, section, line, station, shift = (str(value) for value in context)
+        values = (
+            (self.plant_combo, self.getPlants() or [], plant),
+            (self.section_combo, self.getSections(plant) or [], section),
+            (self.line_combo, self.getLines(plant, section) or [], line),
+            (self.station_combo, self.getStations(plant, section, line) or [], station),
+            (self.shift_combo, self.getShifts() or [], shift),
+        )
+        if any(value not in [str(item) for item in items] for _combo, items, value in values):
+            return False
         combos = (
             self.plant_combo, self.section_combo, self.line_combo,
             self.station_combo, self.shift_combo,
@@ -4628,25 +4666,24 @@ class ErgoTools(QtWidgets.QMainWindow):
         for combo in combos:
             combo.blockSignals(True)
         try:
-            values = (
-                (self.plant_combo, self.getPlants() or [], plant),
-                (self.section_combo, self.getSections(plant) or [], section),
-                (self.line_combo, self.getLines(plant, section) or [], line),
-                (self.station_combo, self.getStations(plant, section, line) or [], station),
-                (self.shift_combo, self.getShifts() or [], dialog.shift_combo.currentText()),
-            )
             for combo, items, value in values:
                 combo.clear()
                 combo.addItems([str(item) for item in items])
-                index = combo.findText(str(value))
-                if index >= 0:
-                    combo.setCurrentIndex(index)
+                combo.setCurrentIndex(combo.findText(value))
         finally:
             for combo in combos:
                 combo.blockSignals(False)
-        self.loadToolsData()
         self.updateContextSummary()
-        return
+        if load_data:
+            self.loadToolsData()
+        return True
+
+    def openAssessmentWorkplaceDialog(self):
+        dialog = AssessmentWorkplaceDialog(self)
+        if dialog.exec_() != QDialog.Accepted:
+            return
+        context = tuple(dialog.selected_path) + (dialog.shift_combo.currentText(),)
+        self.setAssessmentWorkplaceContext(context)
 
         # Row of controls outside the tabs area
         self.tabstop_controls_layout = QHBoxLayout()
@@ -4960,7 +4997,9 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.editButton.clicked.connect(self.editWorkerClicked)
         self.searchButton = QPushButton("Search")
         self.searchButton.setIcon(QIcon(os.path.join(icon_root, "search.png")))
-        self.searchButton.setToolTip("Find and select a worker by identifying information.")
+        self.searchButton.setToolTip(
+            "Find and open a saved assessment by worker, workplace, and the active ergonomic tool."
+        )
         self.searchButton.clicked.connect(self.searchWorkerClicked)
         self.transferButton = QPushButton("Transfer")
         self.transferButton.setIcon(QIcon(os.path.join(icon_root, "transferworkerdata.png")))
@@ -5190,13 +5229,18 @@ class ErgoTools(QtWidgets.QMainWindow):
             return
         self.setMainWorkerAlphabetFilter("All")
         worker_id = dialog.selected_worker_id
+        assessment_context = dialog.selected_assessment_context
         index = next(
             (candidate for candidate in range(self.workerComboBox.count())
              if self.workerComboBox.itemText(candidate).split(" ", 1)[0] == worker_id),
             -1,
         )
         if index >= 0:
+            # Change the worker first so the existing unsaved-input prompt still
+            # saves against the previous worker and workplace when requested.
             self.workerComboBox.setCurrentIndex(index)
+            if assessment_context:
+                self.setAssessmentWorkplaceContext(tuple(assessment_context))
 
     
     def toolbaropenWorker(self):
@@ -6389,6 +6433,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         ''', (worker_id, plant_name, section_name, line_name, station_id, shift_id, "LiFFT"))
         # Fetch the result (expecting only one row)
         result = cursor.fetchone()
+        lifft_assessment_exists = result is not None
         # Assign values to variables, defaulting to 0 if result is None
         lifft_total_cumulative_damage, lifft_probability_outcome, self.lifft_unit = 0, 0, ""
         if result:
@@ -6426,6 +6471,7 @@ class ErgoTools(QtWidgets.QMainWindow):
  
         # Fetch the result (expecting only one row)
         result = cursor.fetchone()
+        duet_assessment_exists = result is not None
 
         # Assign values to variables, defaulting to 0 if result is None
         duet_total_cumulative_damage, duet_probability_outcome, self.duet_unit = 0, 0, ""
@@ -6459,12 +6505,19 @@ class ErgoTools(QtWidgets.QMainWindow):
 
         # Fetch the result (expecting only one row)
         result = cursor.fetchone()
+        tst_assessment_exists = result is not None
         # Assign values to variables, defaulting to 0 if result is None
         tst_total_cumulative_damage, tst_probability_outcome, self.tst_unit = 0, 0, ""
         if result:
             tst_total_cumulative_damage, tst_probability_outcome, self.tst_unit = result
         else:
             tst_total_cumulative_damage, tst_probability_outcome, self.tst_unit = 0, 0, ""
+
+        self._assessment_record_exists_by_tool = {
+            "LiFFT": lifft_assessment_exists,
+            "DUET": duet_assessment_exists,
+            "Shoulder": tst_assessment_exists,
+        }
             
 
         self.tabWidget.removeTab(0)
@@ -6619,6 +6672,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.any_lifft_input_changed = False
         self.any_duet_input_changed = False
         self.any_tst_input_changed = False
+        self.refreshAssessmentSummary()
     
              
          
