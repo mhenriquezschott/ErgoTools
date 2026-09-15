@@ -695,6 +695,25 @@ class SyncedHeaderLayout(QGridLayout):
 
 
 class ErgoTools(QtWidgets.QMainWindow):
+
+    def assessmentContextDebug(self, event, **details):
+        """Temporary trace for diagnosing worker/context synchronization."""
+        worker_combo = getattr(self, "workerComboBox", None)
+        worker = worker_combo.currentText() if worker_combo is not None else "<not ready>"
+        combo_names = ("plant_combo", "section_combo", "line_combo", "station_combo", "shift_combo")
+        controls = tuple(
+            getattr(self, name).currentText() if hasattr(self, name) else "<not ready>"
+            for name in combo_names
+        )
+        labels = tuple(
+            label.text() for label in getattr(self, "context_summary_labels", [])
+        )
+        extra = " ".join(f"{key}={value!r}" for key, value in details.items())
+        print(
+            f"[ASSESSMENT_CONTEXT_DEBUG] event={event} worker={worker!r} "
+            f"controls={controls!r} labels={labels!r} {extra}",
+            flush=True,
+        )
     
     def retranslateUI(self):
         # control panel
@@ -4645,6 +4664,7 @@ class ErgoTools(QtWidgets.QMainWindow):
 
     def setAssessmentWorkplaceContext(self, context, load_data=True):
         """Select an exact assessment context without moving or copying data."""
+        self.assessmentContextDebug("context.select.request", context=tuple(context or ()))
         if not context or len(context) != 5:
             return False
         plant, section, line, station, shift = (str(value) for value in context)
@@ -4674,6 +4694,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.updateContextSummary()
         if load_data:
             self.loadToolsData()
+        self.assessmentContextDebug("context.select.complete", load_data=load_data)
         return True
 
     def openAssessmentWorkplaceDialog(self):
@@ -4876,21 +4897,29 @@ class ErgoTools(QtWidgets.QMainWindow):
     # Navigation Handlers
     def firstButtonClicked(self):
         if self.workerComboBox.count() > 0:
+            self.assessmentContextDebug("navigation.first.before", target_index=0)
             self.workerComboBox.setCurrentIndex(0)
+            self.assessmentContextDebug("navigation.first.after")
  
     def previousButtonClicked(self):
         current_index = self.workerComboBox.currentIndex()
         if current_index > 0:
+            self.assessmentContextDebug("navigation.previous.before", target_index=current_index - 1)
             self.workerComboBox.setCurrentIndex(current_index - 1)
+            self.assessmentContextDebug("navigation.previous.after")
  
     def nextButtonClicked(self):
         current_index = self.workerComboBox.currentIndex()
         if current_index < self.workerComboBox.count() - 1:
+            self.assessmentContextDebug("navigation.next.before", target_index=current_index + 1)
             self.workerComboBox.setCurrentIndex(current_index + 1)
+            self.assessmentContextDebug("navigation.next.after")
             
     def lastButtonClicked(self):
         if self.workerComboBox.count() > 0:
+            self.assessmentContextDebug("navigation.last.before", target_index=self.workerComboBox.count() - 1)
             self.workerComboBox.setCurrentIndex(self.workerComboBox.count() - 1)
+            self.assessmentContextDebug("navigation.last.after")
  
  
  
@@ -6259,6 +6288,7 @@ class ErgoTools(QtWidgets.QMainWindow):
 
 
     def workerComboIndexChanged(self, index):
+        self.assessmentContextDebug("worker.changed.begin", index=index)
         # If any LiFFT input has changed, prompt the user.
         if self.any_lifft_input_changed or self.any_duet_input_changed or self.any_tst_input_changed:
         
@@ -6314,6 +6344,7 @@ class ErgoTools(QtWidgets.QMainWindow):
             self.loadToolsData()
             self.previous_worker_index = index
         self.updateMainWorkerCurrentInitial()
+        self.assessmentContextDebug("worker.changed.complete", index=index)
             #print(self.previous_worker_index)
 
     def updateMainWorkerCurrentInitial(self):
@@ -6343,12 +6374,25 @@ class ErgoTools(QtWidgets.QMainWindow):
     def loadToolsData(self):
         """Load the selected worker/tool context once, ignoring only true re-entry."""
         if getattr(self, "_loading_tools_data", False):
+            self.assessmentContextDebug("load.ignored_reentry")
             return
+        self._assessment_load_sequence = getattr(self, "_assessment_load_sequence", 0) + 1
+        load_sequence = self._assessment_load_sequence
+        self.assessmentContextDebug("load.begin", load_sequence=load_sequence)
         self._loading_tools_data = True
         try:
             return self._loadToolsData()
         finally:
             self._loading_tools_data = False
+            summary = self.activeToolSummaryWidgets() if hasattr(self, "tabWidget") and self.tabWidget.count() >= 3 else None
+            self.assessmentContextDebug(
+                "load.complete",
+                load_sequence=load_sequence,
+                active_tool=summary["name"] if summary else None,
+                probability=summary["probability"].text() if summary else None,
+                first_input=(summary["inputs"][0][0].text() if summary and summary["inputs"][0] else None),
+                record_exists=getattr(self, "_assessment_record_exists_by_tool", None),
+            )
 
     def _loadToolsData(self):
 
@@ -6390,6 +6434,18 @@ class ErgoTools(QtWidgets.QMainWindow):
             tool_id = "ST"
         else:
             tool_id = ""  # Default case if needed
+
+        self.assessmentContextDebug(
+            "load.query_context",
+            worker_id=worker_id,
+            plant=plant_name,
+            section=section_name,
+            line=line_name,
+            station=station_id,
+            shift=shift_id,
+            active_tool=tool_id,
+            database=self.projectdatabasePath,
+        )
 
         self.selectedMeasurementSystem = self.default_metric_sys  # Start setting it as the project default..
 
@@ -6510,6 +6566,15 @@ class ErgoTools(QtWidgets.QMainWindow):
             "DUET": duet_assessment_exists,
             "Shoulder": tst_assessment_exists,
         }
+        self.assessmentContextDebug(
+            "load.query_results",
+            lifft_tasks=len(tasks_lifft),
+            duet_tasks=len(tasks_duet),
+            shoulder_tasks=len(tasks_tst),
+            lifft_summary=lifft_assessment_exists,
+            duet_summary=duet_assessment_exists,
+            shoulder_summary=tst_assessment_exists,
+        )
             
 
         self.tabWidget.removeTab(0)
