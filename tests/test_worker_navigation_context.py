@@ -8,8 +8,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 sys.path.insert(0, os.path.abspath("src"))
 
-from PyQt5.QtWidgets import QApplication, QMessageBox
+from PyQt5.QtWidgets import QApplication, QDialog, QMessageBox
 
+import main as main_module
 from main import ErgoTools
 
 
@@ -45,9 +46,35 @@ def test_worker_navigation_keeps_exact_assessment_context():
         window = ErgoTools(disable_vtk=True)
         window.openFilePath(project_path)
         window.tabWidget.setCurrentIndex(0)
-        assert window.setAssessmentWorkplaceContext(
-            ("Default", "Default", "Default", "ST04", "1")
+
+        original_combos = (
+            window.plant_combo, window.section_combo, window.line_combo,
+            window.station_combo, window.shift_combo,
         )
+
+        class FakeWorkplaceDialog:
+            selected_path = ("Default", "Default", "Default", "ST04")
+
+            def __init__(self, parent):
+                self.shift_combo = type(
+                    "ShiftSelection", (), {"currentText": lambda self: "1"}
+                )()
+
+            def exec_(self):
+                return QDialog.Accepted
+
+        real_dialog = main_module.AssessmentWorkplaceDialog
+        main_module.AssessmentWorkplaceDialog = FakeWorkplaceDialog
+        try:
+            window.openAssessmentWorkplaceDialog()
+        finally:
+            main_module.AssessmentWorkplaceDialog = real_dialog
+
+        assert original_combos == (
+            window.plant_combo, window.section_combo, window.line_combo,
+            window.station_combo, window.shift_combo,
+        )
+        assert window.station_combo.currentText() == "ST04"
 
         window.workerComboBox.setCurrentIndex(worker_index(window, "SSN004"))
         assert window.numericLabelValue(window.lifft_probability_value_label) == 13.2
@@ -61,6 +88,10 @@ def test_worker_navigation_keeps_exact_assessment_context():
         assert window.lifft_lever_arm_inputs[0].text() == ""
         assert window.numericLabelValue(window.lifft_probability_value_label) == 0.0
         assert window.assessment_status_detail.text() == "No assessment saved here."
+        window.resize(1550, 1055)
+        window.show()
+        app.processEvents()
+        window.grab().save("/tmp/assessment_context_navigation.png")
         window.close()
 
 

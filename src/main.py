@@ -695,26 +695,6 @@ class SyncedHeaderLayout(QGridLayout):
 
 
 class ErgoTools(QtWidgets.QMainWindow):
-
-    def assessmentContextDebug(self, event, **details):
-        """Temporary trace for diagnosing worker/context synchronization."""
-        worker_combo = getattr(self, "workerComboBox", None)
-        worker = worker_combo.currentText() if worker_combo is not None else "<not ready>"
-        combo_names = ("plant_combo", "section_combo", "line_combo", "station_combo", "shift_combo")
-        controls = tuple(
-            getattr(self, name).currentText() if hasattr(self, name) else "<not ready>"
-            for name in combo_names
-        )
-        labels = tuple(
-            label.text() for label in getattr(self, "context_summary_labels", [])
-        )
-        extra = " ".join(f"{key}={value!r}" for key, value in details.items())
-        print(
-            f"[ASSESSMENT_CONTEXT_DEBUG] event={event} worker={worker!r} "
-            f"controls={controls!r} labels={labels!r} {extra}",
-            flush=True,
-        )
-    
     def retranslateUI(self):
         # control panel
         self.upButton.setText(QtWidgets.QApplication.translate('App', 'Up'))
@@ -1751,6 +1731,8 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.line_combo.blockSignals(False)
         self.station_combo.blockSignals(False)
         self.shift_combo.blockSignals(False)
+        self._selected_assessment_context = self.assessmentContextFromControls()
+        self.updateContextSummary()
 
 
 
@@ -2190,6 +2172,8 @@ class ErgoTools(QtWidgets.QMainWindow):
         if not file_path:
             return
 
+        self._selected_assessment_context = None
+
         # Read the XML file
         try:
         
@@ -2260,9 +2244,8 @@ class ErgoTools(QtWidgets.QMainWindow):
             #self.loadStations()
             self.loadShifts()
             self.loadJobs()
-            
-            
-            
+            self._selected_assessment_context = self.assessmentContextFromControls()
+            self.updateContextSummary()
             self.loadToolsData()
             
             
@@ -2695,6 +2678,8 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.section_combo.blockSignals(False)
         self.line_combo.blockSignals(False)
         self.station_combo.blockSignals(False)
+        self._selected_assessment_context = self.assessmentContextFromControls()
+        self.updateContextSummary()
         
         
         self.selectedMeasurementSystem = self.editUnit
@@ -4651,10 +4636,12 @@ class ErgoTools(QtWidgets.QMainWindow):
     def updateContextSummary(self, *args):
         if not hasattr(self, "context_summary_labels"):
             return
-        values = [combo.currentText() or fallback for combo, fallback in (
-            (self.plant_combo, "Default"), (self.section_combo, "Default"),
-            (self.line_combo, "Default"), (self.station_combo, "Default"), (self.shift_combo, "1"),
-        )]
+        values = getattr(self, "_selected_assessment_context", None)
+        if not values:
+            values = tuple(combo.currentText() or fallback for combo, fallback in (
+                (self.plant_combo, "Default"), (self.section_combo, "Default"),
+                (self.line_combo, "Default"), (self.station_combo, "Default"), (self.shift_combo, "1"),
+            ))
         for label, level_name, value in zip(
             self.context_summary_labels,
             ("Plant", "Section", "Line", "Station", "Shift"),
@@ -4662,9 +4649,20 @@ class ErgoTools(QtWidgets.QMainWindow):
         ):
             label.setText(f"{level_name}: {value}")
 
+    def assessmentContextFromControls(self):
+        return tuple(combo.currentText().strip() for combo in (
+            self.plant_combo, self.section_combo, self.line_combo,
+            self.station_combo, self.shift_combo,
+        ))
+
+    def restoreSelectedAssessmentContext(self):
+        selected = getattr(self, "_selected_assessment_context", None)
+        if selected and self.assessmentContextFromControls() != selected:
+            return self.setAssessmentWorkplaceContext(selected, load_data=False)
+        return True
+
     def setAssessmentWorkplaceContext(self, context, load_data=True):
         """Select an exact assessment context without moving or copying data."""
-        self.assessmentContextDebug("context.select.request", context=tuple(context or ()))
         if not context or len(context) != 5:
             return False
         plant, section, line, station, shift = (str(value) for value in context)
@@ -4691,10 +4689,10 @@ class ErgoTools(QtWidgets.QMainWindow):
         finally:
             for combo in combos:
                 combo.blockSignals(False)
+        self._selected_assessment_context = (plant, section, line, station, shift)
         self.updateContextSummary()
         if load_data:
             self.loadToolsData()
-        self.assessmentContextDebug("context.select.complete", load_data=load_data)
         return True
 
     def openAssessmentWorkplaceDialog(self):
@@ -4704,145 +4702,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         context = tuple(dialog.selected_path) + (dialog.shift_combo.currentText(),)
         self.setAssessmentWorkplaceContext(context)
 
-        # Row of controls outside the tabs area
-        self.tabstop_controls_layout = QHBoxLayout()
-        # Create bold font for labels that need emphasis
-        bold_font = QFont()
-        bold_font.setBold(True)
-        
-        
-        # Add left spacing before the first control
-        #left_spacer = QSpacerItem(10, 10, QSizePolicy.Fixed, QSizePolicy.Minimum)
-        #top_controls_layout.addSpacerItem(left_spacer)
-
-        # Create controls for Plant
-        plant_label = QLabel("Plant:")
-        plant_label.setFont(bold_font)  # Apply bold font
-        self.plant_combo = QComboBox()
-        self.plant_combo.setEditable(True)  # Allow the user to write in the combobox
-        self.plant_combo.addItems(["Default"])  # Example items
-        self.plant_combo.setFixedWidth(200)  # Set the fixed width for the combo box
-        # Connect the combo box to an index change event
-        self.plant_combo.currentIndexChanged.connect(self.plantComboIndexChanged)
-
-        plant_edit_button = QPushButton()
-        plant_edit_button.setIcon(QIcon("../images/edit_icon.png"))
-        plant_edit_button.setFixedSize(30, 30)
-        plant_edit_button.setIconSize(QtCore.QSize(25, 25))
-        plant_edit_button.clicked.connect(self.editPlantClicked)
-        
-        # Add Plant controls to layout
-        self.tabstop_controls_layout.addWidget(plant_label)
-        self.tabstop_controls_layout.addWidget(self.plant_combo)
-        self.tabstop_controls_layout.addWidget(plant_edit_button)
-
-        self.tabstop_controls_layout.addStretch()  # Add a flexible stretch
-        
-        # Create controls for Section
-        section_label = QLabel("Section:")
-        section_label.setFont(bold_font)  # Apply bold font
-        self.section_combo = QComboBox()
-        self.section_combo.setEditable(True)  # Allow the user to write in the combobox
-        self.section_combo.addItems(["Default"])  # Example items
-        self.section_combo.setFixedWidth(100)  # Set the fixed width for the combo box
-        # Connect the combo box to an index change event
-        self.section_combo.currentIndexChanged.connect(self.sectionComboIndexChanged)
-        section_edit_button = QPushButton()
-        section_edit_button.setIcon(QIcon("../images/edit_icon.png"))
-        section_edit_button.setFixedSize(30, 30)
-        section_edit_button.setIconSize(QtCore.QSize(25, 25))
-        section_edit_button.clicked.connect(self.editSectionClicked)
-
-        # Add Section controls to layout
-        self.tabstop_controls_layout.addWidget(section_label)
-        self.tabstop_controls_layout.addWidget(self.section_combo)
-        self.tabstop_controls_layout.addWidget(section_edit_button)
-
-        self.tabstop_controls_layout.addStretch()  # Add a flexible stretch
-
-        # Create controls for Line
-        line_label = QLabel("Line:")
-        line_label.setFont(bold_font)  # Apply bold font
-        self.line_combo = QComboBox()
-        self.line_combo.setEditable(True)  # Allow the user to write in the combobox
-        self.line_combo.addItems(["Default"])  # Example items
-        self.line_combo.setFixedWidth(100)  # Set the fixed width for the combo box
-        # Connect the combo box to an index change event
-        self.line_combo.currentIndexChanged.connect(self.lineComboIndexChanged)
-        line_edit_button = QPushButton()
-        line_edit_button.setIcon(QIcon("../images/edit_icon.png"))
-        line_edit_button.setFixedSize(30, 30)
-        line_edit_button.setIconSize(QtCore.QSize(25, 25))
-        line_edit_button.clicked.connect(self.editLineClicked)
-
-        # Add Line controls to layout
-        self.tabstop_controls_layout.addWidget(line_label)
-        self.tabstop_controls_layout.addWidget(self.line_combo)
-        self.tabstop_controls_layout.addWidget(line_edit_button)
-
-        self.tabstop_controls_layout.addStretch()  # Add a flexible stretch
-        
-        # Create controls for Station
-        station_label = QLabel("Station:")
-        station_label.setFont(bold_font)  # Apply bold font
-        self.station_combo = QComboBox()
-        self.station_combo.setEditable(True)  # Allow the user to write in the combobox
-        self.station_combo.addItems(["Default"])  # Example items
-        self.station_combo.setFixedWidth(100)  # Set the fixed width for the combo box
-        # Connect the combo box to an index change event
-        self.station_combo.currentIndexChanged.connect(self.stationComboIndexChanged)
-        station_edit_button = QPushButton()
-        station_edit_button.setIcon(QIcon("../images/edit_icon.png"))
-        station_edit_button.setFixedSize(30, 30)
-        station_edit_button.setIconSize(QtCore.QSize(25, 25))
-        station_edit_button.clicked.connect(self.editStationClicked)
-
-        # Add Station controls to layout
-        self.tabstop_controls_layout.addWidget(station_label)
-        self.tabstop_controls_layout.addWidget(self.station_combo)
-        self.tabstop_controls_layout.addWidget(station_edit_button)
-
-        self.tabstop_controls_layout.addStretch()  # Add a flexible stretch
-        
-        # Add vertical separator
-        separator = QFrame()
-        separator.setFrameShape(QFrame.VLine)  # Vertical Line
-        separator.setFrameShadow(QFrame.Sunken)
-        separator.setFixedWidth(10)  # Adjust width for better visibility
-
-        self.tabstop_controls_layout.addWidget(separator)  # Insert separator between Station and Shift controls
-
-
-        # Create controls for Shift
-        shift_label = QLabel("Shift:")
-        shift_label.setFont(bold_font)  # Apply bold font
-        self.shift_combo = QComboBox()
-        self.shift_combo.setEditable(True)  # Allow the user to write in the combobox
-        self.shift_combo.addItems(["1"])  # Example items
-        self.shift_combo.setFixedWidth(70)  # Set the fixed width for the combo box
-        # Connect the combo box to an index change event
-        self.shift_combo.currentIndexChanged.connect(self.shiftComboIndexChanged)
-        shift_edit_button = QPushButton()
-        shift_edit_button.setIcon(QIcon("../images/edit_icon.png"))
-        shift_edit_button.setFixedSize(30, 30)
-        shift_edit_button.setIconSize(QtCore.QSize(25, 25))
-        shift_edit_button.clicked.connect(self.editShiftClicked)
-
-        # Add Shift controls to layout
-        self.tabstop_controls_layout.addWidget(shift_label)
-        self.tabstop_controls_layout.addWidget(self.shift_combo)
-        self.tabstop_controls_layout.addWidget(shift_edit_button)
-
-
-        # Add spacing between groups
-        #top_controls_layout.addStretch()
-
-        # Add the top controls layout to the main layout
-        #mainLayout.insertLayout(2, top_controls_layout)
-        #mainLayout.addLayout(top_controls_layout)
-
-
-   
     def setupNavigationButtons(self):
         # Navigation buttons layout
         self.navigationLayout = QtWidgets.QHBoxLayout()
@@ -4897,29 +4756,21 @@ class ErgoTools(QtWidgets.QMainWindow):
     # Navigation Handlers
     def firstButtonClicked(self):
         if self.workerComboBox.count() > 0:
-            self.assessmentContextDebug("navigation.first.before", target_index=0)
             self.workerComboBox.setCurrentIndex(0)
-            self.assessmentContextDebug("navigation.first.after")
  
     def previousButtonClicked(self):
         current_index = self.workerComboBox.currentIndex()
         if current_index > 0:
-            self.assessmentContextDebug("navigation.previous.before", target_index=current_index - 1)
             self.workerComboBox.setCurrentIndex(current_index - 1)
-            self.assessmentContextDebug("navigation.previous.after")
  
     def nextButtonClicked(self):
         current_index = self.workerComboBox.currentIndex()
         if current_index < self.workerComboBox.count() - 1:
-            self.assessmentContextDebug("navigation.next.before", target_index=current_index + 1)
             self.workerComboBox.setCurrentIndex(current_index + 1)
-            self.assessmentContextDebug("navigation.next.after")
             
     def lastButtonClicked(self):
         if self.workerComboBox.count() > 0:
-            self.assessmentContextDebug("navigation.last.before", target_index=self.workerComboBox.count() - 1)
             self.workerComboBox.setCurrentIndex(self.workerComboBox.count() - 1)
-            self.assessmentContextDebug("navigation.last.after")
  
  
  
@@ -6288,7 +6139,7 @@ class ErgoTools(QtWidgets.QMainWindow):
 
 
     def workerComboIndexChanged(self, index):
-        self.assessmentContextDebug("worker.changed.begin", index=index)
+        self.restoreSelectedAssessmentContext()
         # If any LiFFT input has changed, prompt the user.
         if self.any_lifft_input_changed or self.any_duet_input_changed or self.any_tst_input_changed:
         
@@ -6344,7 +6195,6 @@ class ErgoTools(QtWidgets.QMainWindow):
             self.loadToolsData()
             self.previous_worker_index = index
         self.updateMainWorkerCurrentInitial()
-        self.assessmentContextDebug("worker.changed.complete", index=index)
             #print(self.previous_worker_index)
 
     def updateMainWorkerCurrentInitial(self):
@@ -6374,25 +6224,13 @@ class ErgoTools(QtWidgets.QMainWindow):
     def loadToolsData(self):
         """Load the selected worker/tool context once, ignoring only true re-entry."""
         if getattr(self, "_loading_tools_data", False):
-            self.assessmentContextDebug("load.ignored_reentry")
             return
-        self._assessment_load_sequence = getattr(self, "_assessment_load_sequence", 0) + 1
-        load_sequence = self._assessment_load_sequence
-        self.assessmentContextDebug("load.begin", load_sequence=load_sequence)
+        self.restoreSelectedAssessmentContext()
         self._loading_tools_data = True
         try:
             return self._loadToolsData()
         finally:
             self._loading_tools_data = False
-            summary = self.activeToolSummaryWidgets() if hasattr(self, "tabWidget") and self.tabWidget.count() >= 3 else None
-            self.assessmentContextDebug(
-                "load.complete",
-                load_sequence=load_sequence,
-                active_tool=summary["name"] if summary else None,
-                probability=summary["probability"].text() if summary else None,
-                first_input=(summary["inputs"][0][0].text() if summary and summary["inputs"][0] else None),
-                record_exists=getattr(self, "_assessment_record_exists_by_tool", None),
-            )
 
     def _loadToolsData(self):
 
@@ -6420,11 +6258,10 @@ class ErgoTools(QtWidgets.QMainWindow):
         # Extract the ID from the text (assuming the format is ID (Lastname, Firstname))
         worker_id = worker_combo_text.split(" ")[0] if worker_combo_text else ""
         #worker_id = self.workerComboBox.currentText().strip()
-        plant_name = self.plant_combo.currentText().strip()
-        section_name = self.section_combo.currentText().strip()
-        line_name = self.line_combo.currentText().strip()
-        station_id = self.station_combo.currentText().strip()
-        shift_id = self.shift_combo.currentText().strip()
+        context = getattr(self, "_selected_assessment_context", None)
+        if not context:
+            context = self.assessmentContextFromControls()
+        plant_name, section_name, line_name, station_id, shift_id = context
         tab_index = self.tabWidget.currentIndex()
         if tab_index == 0:
             tool_id = "LiFFT"
@@ -6434,18 +6271,6 @@ class ErgoTools(QtWidgets.QMainWindow):
             tool_id = "ST"
         else:
             tool_id = ""  # Default case if needed
-
-        self.assessmentContextDebug(
-            "load.query_context",
-            worker_id=worker_id,
-            plant=plant_name,
-            section=section_name,
-            line=line_name,
-            station=station_id,
-            shift=shift_id,
-            active_tool=tool_id,
-            database=self.projectdatabasePath,
-        )
 
         self.selectedMeasurementSystem = self.default_metric_sys  # Start setting it as the project default..
 
@@ -6566,15 +6391,6 @@ class ErgoTools(QtWidgets.QMainWindow):
             "DUET": duet_assessment_exists,
             "Shoulder": tst_assessment_exists,
         }
-        self.assessmentContextDebug(
-            "load.query_results",
-            lifft_tasks=len(tasks_lifft),
-            duet_tasks=len(tasks_duet),
-            shoulder_tasks=len(tasks_tst),
-            lifft_summary=lifft_assessment_exists,
-            duet_summary=duet_assessment_exists,
-            shoulder_summary=tst_assessment_exists,
-        )
             
 
         self.tabWidget.removeTab(0)
@@ -7051,7 +6867,8 @@ class ErgoTools(QtWidgets.QMainWindow):
         if not hasattr(self, 'projectdatabasePath') or not self.projectdatabasePath:
             QMessageBox.critical(self, "Error", "Database path is not set. Unable to save Data.")
             return
-    
+
+        self.restoreSelectedAssessmentContext()
         self.saveLiFFTToolData()
         self.saveDUETToolData()
         self.saveTSTToolData()
@@ -7825,6 +7642,8 @@ class ErgoTools(QtWidgets.QMainWindow):
         shift_index = self.shift_combo.findText(selections[4])
         if shift_index >= 0:
             self.shift_combo.setCurrentIndex(shift_index)
+        self._selected_assessment_context = self.assessmentContextFromControls()
+        self.updateContextSummary()
 
 
     def editPlantClicked(self):
@@ -8406,6 +8225,7 @@ class ErgoTools(QtWidgets.QMainWindow):
     
           
     def deleteLiFFTData(self):
+        self.restoreSelectedAssessmentContext()
         currentTabIndex = self.tabWidget.currentIndex()
         currentTabText = self.tabWidget.tabText(currentTabIndex)
          
@@ -8721,6 +8541,7 @@ class ErgoTools(QtWidgets.QMainWindow):
     
     
     def deleteDUETData(self):
+        self.restoreSelectedAssessmentContext()
         # Retrieve primary key data from UI elements
         worker_combo_text = self.workerComboBox.currentText()
         # Extract the ID from the text (assuming the format is ID (Lastname, Firstname))
@@ -9089,6 +8910,7 @@ class ErgoTools(QtWidgets.QMainWindow):
 
     
     def deleteTSTData(self):
+        self.restoreSelectedAssessmentContext()
         # Retrieve primary key data from UI elements
         worker_combo_text = self.workerComboBox.currentText()
         # Extract the ID from the text (assuming the format is ID (Lastname, Firstname))
