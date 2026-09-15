@@ -1194,6 +1194,16 @@ class JobWorkplaceDialog(QDialog):
         self.filter_input.textChanged.connect(self.applyFilter)
         layout.addWidget(self.filter_input)
 
+        shift_layout = QHBoxLayout()
+        shift_layout.addWidget(QLabel("Shift"))
+        self.shift_combo = QComboBox()
+        self.shift_combo.setToolTip(
+            "Select the shift whose Job station assignments you want to view or edit."
+        )
+        self.shift_combo.currentIndexChanged.connect(self.shiftChanged)
+        shift_layout.addWidget(self.shift_combo, 1)
+        layout.addLayout(shift_layout)
+
         self.workplace_tree = QTreeWidget()
         self.workplace_tree.setColumnCount(3)
         self.workplace_tree.setHeaderLabels(["Use", "Workplace hierarchy", "Level"])
@@ -1210,23 +1220,16 @@ class JobWorkplaceDialog(QDialog):
         )
         layout.addWidget(self.workplace_tree, 1)
 
-        shift_layout = QHBoxLayout()
-        shift_layout.addWidget(QLabel("Shift"))
-        self.shift_combo = QComboBox()
-        self.shift_combo.setToolTip(
-            "Select the shift whose Job station assignments you want to view or edit."
-        )
-        self.shift_combo.currentIndexChanged.connect(self.shiftChanged)
-        shift_layout.addWidget(self.shift_combo, 1)
-        layout.addLayout(shift_layout)
-
         self.assignment_status = QLabel()
         self.assignment_status.setObjectName("supportingText")
         layout.addWidget(self.assignment_status)
 
         actions = QHBoxLayout()
-        self.clear_button = QPushButton("Clear assignments")
+        self.clear_button = QPushButton("Clear shift assignments")
         self.clear_button.setIcon(QIcon(os.path.join(icon_root, "filterreset.png")))
+        self.clear_button.setToolTip(
+            "Clear every station assignment for the shift currently displayed."
+        )
         self.clear_button.clicked.connect(self.clearAssignments)
         self.save_button = QPushButton("Save assignments")
         self.save_button.setObjectName("primaryOutlineButton")
@@ -1308,11 +1311,21 @@ class JobWorkplaceDialog(QDialog):
         self.shift_combo.blockSignals(True)
         self.shift_combo.clear()
         self.shift_combo.addItems(shifts)
+        preferred_shift = None
+        parent_shift_map = getattr(
+            self.parent(), "_job_workplace_shift_by_job", {}
+        ) if self.parent() else {}
+        if self.job_id in parent_shift_map:
+            preferred_shift = parent_shift_map[self.job_id]
+        elif self._station_selections_by_shift:
+            preferred_shift = sorted(self._station_selections_by_shift)[0]
+        if preferred_shift in shifts:
+            self.shift_combo.setCurrentText(preferred_shift)
         self.shift_combo.blockSignals(False)
         self._updating_workplace_tree = False
         if shifts:
-            self._displayed_shift = shifts[0]
-            self.renderShiftAssignments(shifts[0])
+            self._displayed_shift = self.shift_combo.currentText()
+            self.renderShiftAssignments(self._displayed_shift)
         self.updateStatus()
 
     def iterWorkplaceItems(self):
@@ -1339,13 +1352,18 @@ class JobWorkplaceDialog(QDialog):
     def renderShiftAssignments(self, shift_id):
         selected_paths = self._station_selections_by_shift.get(shift_id, set())
         self._updating_workplace_tree = True
+        self.workplace_tree.blockSignals(True)
+        for index in range(self.workplace_tree.topLevelItemCount()):
+            self.workplace_tree.topLevelItem(index).setCheckState(0, Qt.Unchecked)
         for item in self.iterWorkplaceItems():
             if item.childCount() == 0:
                 path = tuple(item.data(0, Qt.UserRole) or ())
                 item.setCheckState(
                     0, Qt.Checked if path in selected_paths else Qt.Unchecked
                 )
+        self.workplace_tree.blockSignals(False)
         self._updating_workplace_tree = False
+        self.workplace_tree.viewport().update()
 
     def shiftChanged(self):
         self.captureDisplayedShift()
@@ -1403,20 +1421,16 @@ class JobWorkplaceDialog(QDialog):
             filter_item(self.workplace_tree.topLevelItem(index))
 
     def clearAssignments(self):
-        self._station_selections_by_shift = {
-            shift_id: set() for shift_id in self._station_selections_by_shift
-        }
         if self._displayed_shift is not None:
-            self._station_selections_by_shift.setdefault(self._displayed_shift, set())
-        self._updating_workplace_tree = True
-        self.workplace_tree.blockSignals(True)
-        for item in self.iterWorkplaceItems():
-            item.setCheckState(0, Qt.Unchecked)
-        self.workplace_tree.blockSignals(False)
-        self._updating_workplace_tree = False
+            self._station_selections_by_shift[self._displayed_shift] = set()
+            self.renderShiftAssignments(self._displayed_shift)
         self.updateStatus()
 
     def saveAssignments(self):
+        if self.parent() is not None and self._displayed_shift is not None:
+            shift_map = getattr(self.parent(), "_job_workplace_shift_by_job", {})
+            shift_map[self.job_id] = self._displayed_shift
+            self.parent()._job_workplace_shift_by_job = shift_map
         connection = connect_database(self.database_path)
         try:
             replace_active_job_placements(
