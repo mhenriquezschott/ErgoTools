@@ -384,6 +384,8 @@ with numerically identical damage/probability values.
   worker plus exact Plant, Section, Line, Station, and Shift context.
 - [x] Keep the displayed assessment workplace synchronized with search results and
   distinguish an unsaved context from an existing zero-valued result.
+- [x] Preserve the selected assessment workplace during worker navigation and
+  fully clear tool data when the next worker has no assessment in that context.
 - [ ] Refactor main-tool load/save, worker transfer, and PLOT queries to use the
   new assignment and assessment keys.
 - [ ] Verify selected, visible, enabled, locked, moved, transferred, and deleted

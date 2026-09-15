@@ -24,8 +24,6 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QTabWidget, QVBoxLayout,
                              QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QButtonGroup)
 import math
 
-import inspect
-
 from pyLiFFT import LiFFT
 from pyDUET import DUET
 from pyTST import TST
@@ -6343,22 +6341,16 @@ class ErgoTools(QtWidgets.QMainWindow):
     
     
     def loadToolsData(self):
-        ###################### TODO:  FIX ########################
-        # TODO: temporary fix, this code is call recursive due to index change events in the comboboxes, it seems it have to do with clearing and adding    
-        # items to the combos...some improvement stopping event signal in index change event in plant, section, line, station combos
-        # also stopping signal when cleaning and adding items to workers combobox...
-        
-        stack_size = len(inspect.stack())
+        """Load the selected worker/tool context once, ignoring only true re-entry."""
+        if getattr(self, "_loading_tools_data", False):
+            return
+        self._loading_tools_data = True
+        try:
+            return self._loadToolsData()
+        finally:
+            self._loading_tools_data = False
 
-        if stack_size >= 6:  # Stop recursion at level 6
-            #print(f"Exiting {inspect.stack()[1].function} at recursion level 6")
-            return  # Quit function without further recursion
-    
-        #print(f"Call depth: {stack_size}, Function: {inspect.stack()[1].function}")
-        
-        ###################### TODO: FIX ########################
-        
-        
+    def _loadToolsData(self):
 
         # Check if a project has been created 
         if not hasattr(self, 'projectFileCreated') or not self.projectFileCreated:
