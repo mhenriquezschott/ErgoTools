@@ -1,0 +1,244 @@
+# Main UI and PLOT Functional Test Catalog
+
+This catalog translates the current functional specifications into stable test cases
+and fixture requirements. JROT workflows are intentionally excluded.
+
+## Test Levels
+
+| Level | Purpose |
+| --- | --- |
+| Unit | Formulas, risk boundaries, normalization, and query predicates without a visible window. |
+| Repository/database | Composite-key persistence, migration, transfer, cascade, and isolation behavior. |
+| UI integration | Widget state, navigation, dialogs, filtering, and persistence using an offscreen Qt application. |
+| Visual regression | Geometry, clipping, colors, empty/populated states, and responsive layout screenshots. |
+| Manual graphical | VTK/OpenGL body rendering, native dialogs, mouse marker movement, and platform-specific behavior. |
+
+Every automated test must operate on a temporary copy of a fixture. Tests must never
+write to the repository's canonical `.ergprj`, database, or image files.
+
+## Fixture Projects
+
+### F00 Empty integrated project
+
+- One default Plant > Section > Line > Station hierarchy and shift 1.
+- No workers, assessments, markers, or plant image.
+- Used for new/empty/error states.
+
+### F01 Basic assessment project
+
+- Workers with complete, partial, and ID-only demographic records.
+- At least one valid LiFFT, DUET, and Shoulder assessment.
+- Metric and Imperial saved assessments.
+- Risk values at 0, 25, 25.1, 37.5, 37.6, 50, 50.1, and 100 percent.
+- Used for calculations, presentation, saving, deletion, and CSV export.
+
+### F02 Multi-context worker project
+
+- V001 has LiFFT at Default station and no LiFFT at ST04.
+- SSN004 has LiFFT at ST04 with a distinguishable probability such as 13.2%.
+- Another worker has data at ST04 with a different unit and probability.
+- At least one worker has the same tool at two stations and two shifts.
+- Used for assessment-context isolation and navigation regressions.
+
+### F03 PLOT populated project
+
+- One plant with a layout image and multiple sections, lines, and stations.
+- A second plant with a different image.
+- Multiple workers for each tool and each risk band.
+- Male, Female, and missing-sex workers.
+- Complete and missing age/height/weight values.
+- Visible, hidden, enabled, disabled, locked, and unlocked markers.
+- A single-worker filtered scope and a many-worker scope.
+- At least one high-risk result for every tool.
+
+### F04 Legacy compatibility matrix
+
+- Pre-JROT PLOT project.
+- Pre-current-schema ErgoTools assessment project.
+- Current integrated project.
+- Each opens from a copy, migrates non-destructively, and preserves existing results.
+
+`tests/ErgoTools_IntegratedTest.ergprj` currently supplies much of F02/F03. Purpose-
+built immutable fixtures should eventually replace dependencies on manually edited
+development projects.
+
+## Main UI Test Cases
+
+| ID | Behavior | Minimum assertion |
+| --- | --- | --- |
+| PRJ-001 | Open current project | Header, footer, workers, organization, units, and first assessment load. |
+| PRJ-002 | Open legacy project | Migration succeeds and original assessment counts/values remain. |
+| PRJ-003 | Invalid/missing descriptor data | Error is reported without leaving a partially loaded project. |
+| PRJ-004 | New project defaults | Default hierarchy, shift 1, empty worker/tool state, and current schema exist. |
+| PRJ-005 | Save and reopen | Descriptor paths and saved assessments resolve after restart. |
+| PRJ-006 | Save As | New package is usable and source package remains unchanged. |
+| PRJ-007 | Properties | Displayed metadata matches descriptor values. |
+| PRJ-008 | CSV cancel | No file is created and no project data changes. |
+| PRJ-009 | CSV per tool | Headers, context identity, task rows, totals, probability, and units are correct. |
+| PREF-001 | Task count bounds | Accepted range is 1-100 and active grid row count follows it. |
+| PREF-002 | Unit switch | LiFFT/Shoulder headers and calculations use selected Metric/Imperial units. |
+| PREF-003 | Saved unit load | Navigating to an assessment restores its recorded unit. |
+| PREF-004 | Camera preference | Setting persists; disabled mode uses full-body view. |
+| WRK-001 | ID-only worker | Save/reload succeeds with blank names, birth date, and sex. |
+| WRK-002 | Worker ID validation | Blank or space-containing IDs are rejected. |
+| WRK-003 | Optional dates | Missing birth date displays Not provided; both date controls use `dd MMM yyyy`. |
+| WRK-004 | Age calculation | Displayed age is correct around the current year's birthday boundary. |
+| WRK-005 | Directory text search | Partial ID, first name, and last name filter rows correctly. |
+| WRK-006 | Alphabet filter | All and available initials produce the correct directory and page count. |
+| WRK-007 | Worker navigation | First/previous/next/last preserve ordering and selected row. |
+| WRK-008 | Worker delete | Confirmation No preserves; Yes removes according to foreign-key rules. |
+| ORG-001 | Create hierarchy | Plant, Section, Line, and Station save under the correct parent. |
+| ORG-002 | Unique identifiers | Duplicate identifier in the same parent is rejected. |
+| ORG-003 | Independent shifts | Shift creation does not require a location parent. |
+| ORG-004 | Identifier immutability | Existing identifier editor is disabled. |
+| ORG-005 | Organization cancel | Unsaved edits are discarded. |
+| ORG-006 | Organization delete | Confirmation and foreign-key cascade/restriction are correct. |
+| CTX-001 | Select exact workplace | Footer, hidden controls, and authoritative tuple match all five values. |
+| CTX-002 | Selection does not transfer | Source/destination row counts do not change after viewing another context. |
+| CTX-003 | Navigation preserves context | ST04 remains selected through previous/next worker navigation. |
+| CTX-004 | Missing record clears form | Worker with no ST04 record shows empty inputs, zero outputs, and Not available. |
+| CTX-005 | No cross-context leakage | Default-station values never appear while footer/context is ST04. |
+| CTX-006 | Tool switch preserves context | LiFFT, DUET, and Shoulder query the same selected workplace independently. |
+| CTX-007 | Search selects context | Use assessment selects exact worker, tool, workplace, and shift from the row. |
+| CTX-008 | Project reload | Selected/default context and record identity are internally consistent. |
+| CTX-009 | Hidden-widget identity | Workplace dialog does not replace any context combo-box object. |
+| CTX-010 | Save exact context | New V001/ST04 assessment persists without changing V001/Default. |
+| CTX-011 | Delete exact context | Delete V001/ST04 leaves V001/Default and other tools intact. |
+| TRN-001 | Copy assessment | Source and destination exist with identical assessment/task data. |
+| TRN-002 | Move assessment | Destination exists and source is removed. |
+| TRN-003 | Multi-tool transfer | Only checked tools transfer. |
+| TRN-004 | Same-context rejection | No database change occurs. |
+| TRN-005 | Transfer cancel | No database change occurs. |
+
+## Tool Calculation and Presentation Tests
+
+For formula validation, expected values should come from fixed published examples or
+independently calculated reference vectors, not values copied from the application.
+
+| ID | Behavior | Minimum assertion |
+| --- | --- | --- |
+| CALC-L-001 | LiFFT valid row | Moment, damage, percent total, total, and probability match reference. |
+| CALC-L-002 | LiFFT multiple rows | Total is the sum and percentages are normalized. |
+| CALC-D-001 | DUET OMNI-Res endpoints | Ratings 0 and 10 produce reference damage/probability. |
+| CALC-D-002 | DUET multiple rows | Damage contribution and total percentages match reference. |
+| CALC-S-001 | Shoulder task directions | Every supported direction maps to the proper calculation parameters. |
+| CALC-S-002 | Shoulder multiple rows | Moment, damage, total, and probability match reference. |
+| CALC-001 | Empty calculate | No stale result or Ready state appears. |
+| CALC-002 | Invalid/partial row | Validation is deterministic and no partial corrupt save occurs. |
+| CALC-003 | Reset | Active tool clears without modifying the other two tabs. |
+| CALC-004 | Risk boundaries | 25, 37.5, and 50 remain in the lower band; values above enter the next band. |
+| CALC-005 | Shared palette | Gauge, totals, body region, and risk label use the canonical band color. |
+| CALC-006 | Sidebar tool identity | Titles/outcome labels are correct for all three tabs. |
+| CALC-007 | Ready state | Saved/valid data produces matching sidebar and status-bar messages. |
+| CALC-008 | Empty state | Missing record produces Not available and clears metrics/gauge/body color. |
+| CALC-009 | Save/reload fidelity | Inputs, calculated fields, totals, probability, color, and unit round-trip. |
+| BODY-001 | Tool region | LiFFT, DUET, and Shoulder focus and color the correct anatomical region. |
+| BODY-002 | Empty/reset region | Risk overlays are hidden and do not retain the prior tool's color. |
+| BODY-003 | View controls | Rotate, Zoom, and Reset View update and restore the VTK camera correctly. |
+
+## PLOT Filter Tests
+
+| ID | Behavior | Minimum assertion |
+| --- | --- | --- |
+| FLT-001 | Default filter | First plant, all descendants, shift 1, and LiFFT are selected. |
+| FLT-002 | Tool pending/apply | Results/title change only when Apply Filters runs. |
+| FLT-003 | Parent scope | Selecting a section includes all lines/stations beneath it. |
+| FLT-004 | Multiple siblings | Multiple checked sections/lines/stations in one plant all contribute. |
+| FLT-005 | Redundant descendants | Parent plus descendant is normalized and not double-counted. |
+| FLT-006 | One-plant constraint | Selecting another plant clears former-plant scopes. |
+| FLT-007 | Shift or All | A specific shift or All shifts returns only intended results. |
+| FLT-008 | Compact values | ID, All, and N selected labels are correct. |
+| FLT-009 | Scope tooltips | Full selected paths are available on hover. |
+| FLT-010 | Demographic disclosure | Collapsed filters do not affect results. |
+| FLT-011 | Sex filter | Male/Female/Both produce correct result identities. |
+| FLT-012 | Age range | Inclusive boundaries and missing birth year are handled correctly. |
+| FLT-013 | Height/weight ranges | Inclusive boundaries and missing values are handled correctly. |
+| FLT-014 | Combined filters | Tool AND workplace AND shift AND demographics produce the intersection. |
+| FLT-015 | Clear Filters | Controls return to defaults and apply produces the default dataset. |
+
+## PLOT Canvas and Worker Tests
+
+| ID | Behavior | Minimum assertion |
+| --- | --- | --- |
+| MAP-001 | Plant image | Selected plant loads its own image and changing plant removes prior image/markers. |
+| MAP-002 | Marker shape/color | Sex shape and exact canonical risk color match each record. |
+| MAP-003 | Selected marker | Only selected result has the blue frame. |
+| MAP-004 | Visibility | Hidden marker is not drawn but record remains persisted. |
+| MAP-005 | Enable | Disabled result is excluded from summary, outcome, and highlights. |
+| MAP-006 | Lock | Locked marker cannot be dragged; unlocked marker can. |
+| MAP-007 | Save selected | X, Y, scale, and visual flags round-trip for exact result identity. |
+| MAP-008 | Save all | Every current marker persists and receives intended common scale. |
+| MAP-009 | Locate one worker | No crash; marker pulses and ends with border visible. |
+| MAP-010 | Locate many workers | Correct selected identity pulses. |
+| MAP-011 | Refilter during Locate | Timer/target cancel before scene objects are deleted. |
+| MAP-012 | Worker picker | Exact duplicate-worker context is selected, not merely first matching ID. |
+| MAP-013 | Alphabet/order/navigation | Selector and map border remain synchronized. |
+| MAP-014 | Zoom limits | Zoom out never passes below 1:1; actual-size restores supported view. |
+| MAP-015 | Opacity cycle | Only non-background scene items change opacity. |
+| MAP-016 | Capture cancel/save | Cancel writes nothing; save produces a nonblank image. |
+| MAP-017 | CSV export | Exported rows equal current filtered dataset and omit internal visual fields. |
+
+## PLOT Summary and Outcome Tests
+
+| ID | Behavior | Minimum assertion |
+| --- | --- | --- |
+| SUM-001 | Counts | Total, Male, and Female counts equal enabled matching results. |
+| SUM-002 | Average age | Uses only records with birth year and current-year rule. |
+| SUM-003 | Sex averages | Damage/risk use only explicit Male or Female records. |
+| SUM-004 | Overall averages | Damage/risk include every enabled matching result. |
+| SUM-005 | Group gauge | Arithmetic mean probability, label, category, and color are correct. |
+| SUM-006 | Tool outcome labels | LiFFT, DUET, and Shoulder/ST titles are correct after apply. |
+| SUM-007 | Three charts | Correct chart and explanatory text appear for each selector item. |
+| SUM-008 | Bar borders | Every Matplotlib bar patch has a black edge. |
+| SUM-009 | Graph settings | Each toggle/mode/text scale changes chart and Cancel preserves prior state. |
+| SUM-010 | Expanded graph | Clicking canvas opens viewer using current figure. |
+| HIL-001 | Single high-risk result | One result above 50% creates warning and detail row. |
+| HIL-002 | Multiple stations | Counts, average, and maximum group correctly by station. |
+| HIL-003 | All tools | Highlight detection and tool titles work for LiFFT, DUET, and Shoulder. |
+| HIL-004 | Threshold boundary | 50% is not high-risk; 50.1% is high-risk. |
+| HIL-005 | Detail colors | Average/maximum use canonical background and readable foreground. |
+| HIL-006 | No highlights | Neutral message appears and View details is hidden. |
+| EMP-001 | No matching records | Worker panel, metrics, chart, gauge, and highlights all clear. |
+| EMP-002 | All records disabled | Same complete empty state as no matching records. |
+| EMP-003 | Empty then populated | Reapplying a matching filter restores only current data. |
+| EMP-004 | Populated then empty | No prior values, markers, or highlight rows remain. |
+
+## Visual Regression Matrix
+
+Capture each state at 1300 x 900, the default 1460 x 1060, and a maximized desktop
+viewport where practical.
+
+| Window/state | Required checks |
+| --- | --- |
+| Main LiFFT populated/empty | Full title text, sticky headers, body view, gauge, metrics, status, and workplace footer. |
+| Main DUET populated/empty | OMNI labels, result title, gauge, and no clipping. |
+| Main Shoulder populated/empty | Shoulder title spelling, Not available text, gauge, and status do not overlap. |
+| Worker Management compact/optional expanded | Required/optional grouping, date formats, paging, and bottom actions. |
+| Organization Management | Trees, expanded hierarchy, editor, optional details, and notification. |
+| Assessment Search | Workplace tree, alphabet row, result table, empty state, and selected row. |
+| Assessment Workplace | Hierarchy selection, shift, selected breadcrumb, and action buttons. |
+| Transfer | Source, tool selection, destination hierarchy, preview, and actions. |
+| PLOT default | Complete filters, plant canvas, Tools Overview, and outcome. |
+| PLOT demographics expanded | All range controls and labels fit. |
+| PLOT multi-workplace | Checked rows, summary text, and long IDs fit/tooltips exist. |
+| PLOT Worker Overview | Full plant canvas retained; details, Locate, and visual controls fit. |
+| PLOT one worker located | Marker remains live and correctly framed. |
+| PLOT empty result | No stale graph, worker details, gauge, marker, or highlight. |
+| Highlight details per tool | Tool-specific title, all columns, colored average/maximum cells. |
+
+Screenshots should be accompanied by geometry assertions for critical fixed-format
+regions. Pixel checks should confirm plant/chart canvases are nonblank when content is
+expected and blank/neutral only in documented empty states.
+
+## Current Automated Coverage Map
+
+| Test file | Current emphasis |
+| --- | --- |
+| `tests/test_assessment_context_selection.py` | Exact assessment search/context selection and empty-record clearing. |
+| `tests/test_worker_navigation_context.py` | Workplace dialog identity and context retention during worker navigation. |
+| `tests/test_revised_ui_smoke.py` | Main summaries, risk presentation, worker optional fields, organization UI. |
+| `tests/test_plot_responsive_ui.py` | PLOT sizing, filters, charts, tooltips, empty states, and single-worker Locate. |
+| `tests/test_schema_migrations.py` | Non-destructive schema migration. |
+
+This map describes existing emphasis, not complete coverage. New tests should use the
+IDs in this catalog in their names or comments so missing coverage can be audited.

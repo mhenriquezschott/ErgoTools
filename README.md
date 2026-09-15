@@ -343,7 +343,12 @@ Do not commit operational or personally identifiable worker data to a public rep
 
 ## Documentation
 
+- [Documentation index](docs/README.md)
 - [ErgoTools user manual (PDF)](docs/ErgoToolManual.pdf)
+- [Main assessment UI functional specification](docs/main-ui-functional-specification.md)
+- [PLOT functional specification](docs/plot-functional-specification.md)
+- [Main UI and PLOT functional test catalog](docs/main-plot-functional-test-catalog.md)
+- [Integrated work-risk data-model plan](docs/integrated-work-risk-data-model-plan.md)
 
 ## Publications
 
