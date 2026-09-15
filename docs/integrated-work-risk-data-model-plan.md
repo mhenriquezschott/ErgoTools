@@ -362,8 +362,8 @@ with numerically identical damage/probability values.
 - [x] Group legacy PLOT rows by worker, station hierarchy, and shift into assignments.
 - [x] Leave migrated `job_placement_id` null because the existing data does not
   prove which Job each worker performed.
-- [x] Add Job Management workplace assignment controls with hierarchical
-  Plant/Section/Line/Station/Shift checkbox selection.
+- [x] Add Job Management workplace assignment controls with a hierarchical
+  Plant/Section/Line/Station checkbox tree and a separate shift selector.
 - [x] Preserve a quick standalone Job workflow with no required organization data.
 - [x] Add worker assignment UI for selecting an existing Job Placement or marking
   the Job as not yet classified.

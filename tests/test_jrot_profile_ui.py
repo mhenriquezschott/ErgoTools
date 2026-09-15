@@ -104,6 +104,10 @@ with tempfile.TemporaryDirectory() as temporary_directory:
         if item.childCount() == 0
     ]
     assert len(leaves) > 1
+    assert workplace_dialog.shift_combo.count() > 0
+    assert all(
+        item.text(2) != "Shift" for item in workplace_dialog.iterWorkplaceItems()
+    )
     leaves[0].setCheckState(0, Qt.Checked)
     leaves[1].setCheckState(0, Qt.Checked)
     workplace_dialog.resize(840, 590)
