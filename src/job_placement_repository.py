@@ -126,15 +126,7 @@ def replace_active_job_placements(
         connection.execute(
             """
             UPDATE JobPlacement
-            SET active = 0,
-                valid_to = COALESCE(
-                    valid_to,
-                    CASE
-                        WHEN valid_from IS NOT NULL AND valid_from > date('now')
-                        THEN valid_from
-                        ELSE date('now')
-                    END
-                )
+            SET active = 0
             WHERE job_id = ? AND active = 1
               AND workplace_context_id = (
                   SELECT id FROM WorkplaceContext
@@ -154,11 +146,24 @@ def replace_active_job_placements(
 
     for key in requested - current:
         context_id = _context_id(connection, key)
+        inactive = connection.execute(
+            """
+            SELECT id FROM JobPlacement
+            WHERE job_id = ? AND workplace_context_id = ? AND active = 0
+            ORDER BY id DESC LIMIT 1
+            """,
+            (job_id, context_id),
+        ).fetchone()
+        if inactive:
+            connection.execute(
+                "UPDATE JobPlacement SET active = 1 WHERE id = ?",
+                (inactive[0],),
+            )
+            continue
         connection.execute(
             """
-            INSERT INTO JobPlacement (
-                job_id, workplace_context_id, active, valid_from
-            ) VALUES (?, ?, 1, date('now'))
+            INSERT INTO JobPlacement (job_id, workplace_context_id, active)
+            VALUES (?, ?, 1)
             """,
             (job_id, context_id),
         )
@@ -212,8 +217,6 @@ def job_placement_options(
         WHERE placement.workplace_context_id = ?
           AND placement.active = 1
           AND job.active = 1
-          AND (placement.valid_from IS NULL OR placement.valid_from <= date('now'))
-          AND (placement.valid_to IS NULL OR placement.valid_to >= date('now'))
         ORDER BY placement.job_id
         """,
         (workplace_context_id,),
@@ -253,8 +256,6 @@ def update_worker_assignment_jobs(
                   AND placement.workplace_context_id = ?
                   AND placement.active = 1
                   AND job.active = 1
-                  AND (placement.valid_from IS NULL OR placement.valid_from <= date('now'))
-                  AND (placement.valid_to IS NULL OR placement.valid_to >= date('now'))
                 """,
                 (placement_id, assignment[0]),
             ).fetchone()

@@ -139,14 +139,13 @@ may contain LiFFT, DUET, and Shoulder measurements but does not require all thre
 - `methodology TEXT`
 - `sample_size INTEGER CHECK (sample_size IS NULL OR sample_size >= 0)`
 - `assessed_on TEXT`
-- `valid_from TEXT`
-- `valid_to TEXT`
 - `notes TEXT`
 - `created_at TEXT NOT NULL`
 - `updated_at TEXT NOT NULL`
 - Unique constraint on `(job_id, version)`.
 - Partial unique index allowing no more than one current approved profile per Job.
-- Date-order checks for validity ranges.
+- Profile lifecycle is controlled explicitly through draft, approved, current, and
+  retired states. Dates never change profile status automatically.
 
 ### JobRiskMeasurement
 
@@ -171,12 +170,10 @@ Job, and a workplace may host different Jobs.
 - `job_id TEXT NOT NULL`
 - `workplace_context_id INTEGER NOT NULL`
 - `active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1))`
-- `valid_from TEXT`
-- `valid_to TEXT`
 - `notes TEXT`
 - Foreign keys to Job and WorkplaceContext.
-- Indexes on Job, workplace context, and active validity dates.
-- Duplicate and overlapping active placements are rejected.
+- Indexes on Job, workplace context, and active state.
+- A partial unique index rejects duplicate active placements.
 
 If a Job applies to all shifts at a station, the UI creates placements for the
 selected known shifts in one operation. The database still stores exact contexts.
@@ -350,7 +347,7 @@ indexes, triggers, and foreign-key behavior.
 - [x] Migrate all JobMeasurement numeric values into profile measurements.
 - [ ] Derive risk colors through shared application logic and stop writing color.
 - [x] Update Job Management to create, edit, approve, retire, and select profiles;
-  capture source, methodology, dates, sample size, and notes.
+  capture source, methodology, assessment date, sample size, and notes.
 - [x] Update JROT reads to require an explicitly selected/current approved profile.
 - [x] Add warnings and blocked optimization states for missing or draft-only risk.
 
@@ -365,7 +362,8 @@ with numerically identical damage/probability values.
 - [x] Group legacy PLOT rows by worker, station hierarchy, and shift into assignments.
 - [x] Leave migrated `job_placement_id` null because the existing data does not
   prove which Job each worker performed.
-- [x] Add Job Management workplace assignment controls with multi-select support.
+- [x] Add Job Management workplace assignment controls with hierarchical
+  Plant/Section/Line/Station/Shift checkbox selection.
 - [x] Preserve a quick standalone Job workflow with no required organization data.
 - [x] Add worker assignment UI for selecting an existing Job Placement or marking
   the Job as not yet classified.

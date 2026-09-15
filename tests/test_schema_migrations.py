@@ -51,6 +51,10 @@ class IntegratedProjectMigrationTests(unittest.TestCase):
             "JobMeasurement",
             "RotationScheme",
             "RotationAssignment",
+            "JobRiskProfile",
+            "JobRiskMeasurement",
+            "JobPlacement",
+            "WorkerAssignment",
         )
         with sqlite3.connect(self.database_path) as connection:
             initial_version = connection.execute("PRAGMA user_version").fetchone()[0]
@@ -79,6 +83,12 @@ class IntegratedProjectMigrationTests(unittest.TestCase):
             self.assertEqual(counts_after, counts_before)
             self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
             self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], LATEST_SCHEMA_VERSION)
+            for table in ("JobRiskProfile", "JobPlacement"):
+                columns = {
+                    row[1] for row in connection.execute(f"PRAGMA table_info({table})")
+                }
+                self.assertNotIn("valid_from", columns)
+                self.assertNotIn("valid_to", columns)
             plant_columns = {
                 row[1]: row[2] for row in connection.execute("PRAGMA table_info(Plant)")
             }

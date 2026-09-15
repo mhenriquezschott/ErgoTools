@@ -28,7 +28,7 @@ def job_profiles(connection: sqlite3.Connection, job_id: str) -> list[dict]:
         """
         SELECT id, job_id, name, version, status, is_current, source_type,
                source_reference, methodology, sample_size, assessed_on,
-               valid_from, valid_to, notes, created_at, updated_at
+               notes, created_at, updated_at
         FROM JobRiskProfile
         WHERE job_id = ?
         ORDER BY version DESC
@@ -47,8 +47,6 @@ def job_profiles(connection: sqlite3.Connection, job_id: str) -> list[dict]:
         "methodology",
         "sample_size",
         "assessed_on",
-        "valid_from",
-        "valid_to",
         "notes",
         "created_at",
         "updated_at",
@@ -93,8 +91,7 @@ def create_draft_profile(
     if copy_from_profile_id is not None:
         source = connection.execute(
             """
-            SELECT name, source_reference, methodology, sample_size, assessed_on,
-                   valid_from, valid_to, notes
+            SELECT name, source_reference, methodology, sample_size, assessed_on, notes
             FROM JobRiskProfile
             WHERE id = ? AND job_id = ?
             """,
@@ -103,14 +100,13 @@ def create_draft_profile(
         if source is None:
             raise JobRiskProfileError("The source profile does not belong to this Job.")
 
-    source = source or ("New estimate", None, None, None, None, None, None, None)
+    source = source or ("New estimate", None, None, None, None, None)
     cursor = connection.execute(
         """
         INSERT INTO JobRiskProfile (
             job_id, name, version, status, is_current, source_type,
-            source_reference, methodology, sample_size, assessed_on,
-            valid_from, valid_to, notes
-        ) VALUES (?, ?, ?, 'draft', 0, 'expert', ?, ?, ?, ?, ?, ?, ?)
+            source_reference, methodology, sample_size, assessed_on, notes
+        ) VALUES (?, ?, ?, 'draft', 0, 'expert', ?, ?, ?, ?, ?)
         """,
         (job_id, f"{source[0]} - revision", next_version, *source[1:]),
     )
@@ -142,8 +138,6 @@ def save_draft_profile(
     methodology: str | None,
     sample_size: int | None,
     assessed_on: str | None,
-    valid_from: str | None,
-    valid_to: str | None,
     notes: str | None,
     measurements: Iterable[Mapping],
 ) -> None:
@@ -163,8 +157,7 @@ def save_draft_profile(
         """
         UPDATE JobRiskProfile
         SET name = ?, source_type = ?, source_reference = ?, methodology = ?,
-            sample_size = ?, assessed_on = ?, valid_from = ?, valid_to = ?,
-            notes = ?, updated_at = CURRENT_TIMESTAMP
+            sample_size = ?, assessed_on = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
         """,
         (
@@ -174,8 +167,6 @@ def save_draft_profile(
             methodology or None,
             sample_size,
             assessed_on or None,
-            valid_from or None,
-            valid_to or None,
             notes or None,
             profile_id,
         ),
@@ -419,9 +410,8 @@ def _editable_profile_id(
         """
         INSERT INTO JobRiskProfile (
             job_id, name, version, status, is_current, source_type,
-            source_reference, methodology, sample_size, assessed_on,
-            valid_from, valid_to, notes
-        ) VALUES (?, ?, ?, 'approved', 1, ?, ?, ?, ?, ?, ?, ?, ?)
+            source_reference, methodology, sample_size, assessed_on, notes
+        ) VALUES (?, ?, ?, 'approved', 1, ?, ?, ?, ?, ?, ?)
         """,
         (
             job_id,
@@ -433,8 +423,6 @@ def _editable_profile_id(
             or "Entered or updated in ErgoTools Job Management.",
             metadata.get("sample_size"),
             metadata.get("assessed_on") or None,
-            metadata.get("valid_from") or None,
-            metadata.get("valid_to") or None,
             metadata.get("notes") or None,
         ),
     )

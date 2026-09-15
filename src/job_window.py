@@ -69,16 +69,10 @@ class JobWindow(QDialog):
         # Check if a project has been created from the parent window
         if self.parent().projectFileCreated:
             self.loadJobs()
-
-            # Get the current text from the plant_combo in the parent window
-            job_combo_text = self.parent().job_combo.currentText()
-
-            # Extract the ID from the text 
-            job_id = job_combo_text.strip()
-
+            job_id = str(getattr(self.parent(), "editJobName", "")).strip()
             index = self.job_id_combo.findText(job_id)
             if index != -1:
-                self.job_id_combo.setCurrentIndex(index)    
+                self.job_id_combo.setCurrentIndex(index)
     
             
             
@@ -299,8 +293,6 @@ class JobWindow(QDialog):
         self.profile_sample_size.setSpecialValueText("Not specified")
         self.profile_sample_size.setValue(-1)
         self.profile_assessed_on = self.createOptionalDateEdit()
-        self.profile_valid_from = self.createOptionalDateEdit()
-        self.profile_valid_to = self.createOptionalDateEdit()
         self.profile_methodology_input = QTextEdit()
         self.profile_methodology_input.setMinimumHeight(52)
         self.profile_methodology_input.setMaximumHeight(72)
@@ -318,14 +310,10 @@ class JobWindow(QDialog):
         layout.addWidget(self.profile_reference_input, 2, 1, 1, 3)
         layout.addWidget(QLabel("Assessed on"), 3, 0)
         layout.addWidget(self.profile_assessed_on, 3, 1)
-        layout.addWidget(QLabel("Valid from"), 3, 2)
-        layout.addWidget(self.profile_valid_from, 3, 3)
-        layout.addWidget(QLabel("Valid to"), 4, 2)
-        layout.addWidget(self.profile_valid_to, 4, 3)
-        layout.addWidget(QLabel("Methodology"), 5, 0, Qt.AlignTop)
-        layout.addWidget(self.profile_methodology_input, 5, 1)
-        layout.addWidget(QLabel("Notes"), 5, 2, Qt.AlignTop)
-        layout.addWidget(self.profile_notes_input, 5, 3)
+        layout.addWidget(QLabel("Methodology"), 4, 0, Qt.AlignTop)
+        layout.addWidget(self.profile_methodology_input, 4, 1)
+        layout.addWidget(QLabel("Notes"), 4, 2, Qt.AlignTop)
+        layout.addWidget(self.profile_notes_input, 4, 3)
         layout.setColumnStretch(1, 1)
         layout.setColumnStretch(3, 1)
         return tab
@@ -443,12 +431,7 @@ class JobWindow(QDialog):
         self.profile_methodology_input.clear()
         self.profile_notes_input.clear()
         self.profile_sample_size.setValue(-1)
-        for editor in (
-            self.profile_assessed_on,
-            self.profile_valid_from,
-            self.profile_valid_to,
-        ):
-            editor.setDate(editor.minimumDate())
+        self.profile_assessed_on.setDate(self.profile_assessed_on.minimumDate())
         self.setProfileEditability(True, new_job=True)
         self.setMeasurementValues({})
         self.workplaces_button.setText("Workplaces (0)")
@@ -493,8 +476,6 @@ class JobWindow(QDialog):
             self.profile_source_combo,
             self.profile_sample_size,
             self.profile_assessed_on,
-            self.profile_valid_from,
-            self.profile_valid_to,
         ):
             control.setEnabled(editable)
         profile = self.selectedProfile()
@@ -531,8 +512,6 @@ class JobWindow(QDialog):
             profile["sample_size"] if profile["sample_size"] is not None else -1
         )
         self.setOptionalDateValue(self.profile_assessed_on, profile["assessed_on"])
-        self.setOptionalDateValue(self.profile_valid_from, profile["valid_from"])
-        self.setOptionalDateValue(self.profile_valid_to, profile["valid_to"])
         self.setMeasurementValues(measurements)
         self.setProfileEditability(profile["status"] == "draft")
 
@@ -572,8 +551,6 @@ class JobWindow(QDialog):
                 else None
             ),
             "assessed_on": self.optionalDateValue(self.profile_assessed_on),
-            "valid_from": self.optionalDateValue(self.profile_valid_from),
-            "valid_to": self.optionalDateValue(self.profile_valid_to),
             "notes": self.profile_notes_input.toPlainText().strip(),
         }
 
@@ -1213,20 +1190,19 @@ class JobWorkplaceDialog(QDialog):
         layout.addWidget(self.filter_input)
 
         self.workplace_tree = QTreeWidget()
-        self.workplace_tree.setColumnCount(6)
-        self.workplace_tree.setHeaderLabels(
-            ["Use", "Plant", "Section", "Line", "Station", "Shift"]
-        )
-        self.workplace_tree.setRootIsDecorated(False)
+        self.workplace_tree.setColumnCount(3)
+        self.workplace_tree.setHeaderLabels(["Use", "Workplace hierarchy", "Level"])
+        self.workplace_tree.setRootIsDecorated(True)
         self.workplace_tree.setAlternatingRowColors(True)
+        self.workplace_tree.setIconSize(QtCore.QSize(22, 22))
         self.workplace_tree.setSelectionMode(QTreeWidget.ExtendedSelection)
         self.workplace_tree.header().setStretchLastSection(False)
-        for column in range(1, 5):
-            self.workplace_tree.header().setSectionResizeMode(
-                column, QtWidgets.QHeaderView.Stretch
-            )
         self.workplace_tree.header().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
-        self.workplace_tree.header().setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeToContents)
+        self.workplace_tree.header().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
+        self.workplace_tree.header().setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeToContents)
+        self.workplace_tree.setToolTip(
+            "Check any hierarchy level to assign the Job to all workplace contexts beneath it."
+        )
         layout.addWidget(self.workplace_tree, 1)
 
         self.assignment_status = QLabel()
@@ -1261,29 +1237,62 @@ class JobWorkplaceDialog(QDialog):
         finally:
             connection.close()
         self.workplace_tree.clear()
+        icon_root = os.path.normpath(
+            os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons")
+        )
+        item_cache = {}
+        levels = ("Plant", "Section", "Line", "Station", "Shift")
         for key in options:
-            item = QTreeWidgetItem(
-                [
-                    "",
-                    key.plant_name,
-                    key.section_name,
-                    key.line_name,
-                    key.station_id,
-                    key.shift_id,
-                ]
+            path = (
+                key.plant_name,
+                key.section_name,
+                key.line_name,
+                key.station_id,
+                key.shift_id,
             )
-            item.setData(0, Qt.UserRole, key)
-            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            item.setCheckState(0, Qt.Checked if key in selected else Qt.Unchecked)
-            self.workplace_tree.addTopLevelItem(item)
+            parent = None
+            for depth, value in enumerate(path, start=1):
+                partial = path[:depth]
+                item = item_cache.get(partial)
+                if item is None:
+                    level = levels[depth - 1]
+                    item = QTreeWidgetItem(["", str(value), level])
+                    flags = item.flags() | Qt.ItemIsUserCheckable
+                    if depth < len(levels):
+                        flags |= Qt.ItemIsTristate
+                    item.setFlags(flags)
+                    item.setCheckState(0, Qt.Unchecked)
+                    item.setData(1, Qt.UserRole, partial)
+                    item.setIcon(
+                        1,
+                        QIcon(os.path.join(icon_root, f"{level.lower()}.png")),
+                    )
+                    item.setToolTip(1, " > ".join(str(part) for part in partial))
+                    if parent is None:
+                        self.workplace_tree.addTopLevelItem(item)
+                    else:
+                        parent.addChild(item)
+                    item_cache[partial] = item
+                parent = item
+            parent.setData(0, Qt.UserRole, key)
+            parent.setCheckState(0, Qt.Checked if key in selected else Qt.Unchecked)
         self.workplace_tree.itemChanged.connect(self.updateStatus)
+        self.workplace_tree.collapseAll()
         self.updateStatus()
+
+    def iterWorkplaceItems(self):
+        iterator = QtWidgets.QTreeWidgetItemIterator(self.workplace_tree)
+        while iterator.value():
+            yield iterator.value()
+            iterator += 1
 
     def checkedWorkplaces(self):
         return {
-            self.workplace_tree.topLevelItem(index).data(0, Qt.UserRole)
-            for index in range(self.workplace_tree.topLevelItemCount())
-            if self.workplace_tree.topLevelItem(index).checkState(0) == Qt.Checked
+            item.data(0, Qt.UserRole)
+            for item in self.iterWorkplaceItems()
+            if item.childCount() == 0
+            and item.checkState(0) == Qt.Checked
+            and item.data(0, Qt.UserRole) is not None
         }
 
     def updateStatus(self):
@@ -1297,15 +1306,29 @@ class JobWorkplaceDialog(QDialog):
 
     def applyFilter(self, text):
         query = text.strip().casefold()
+
+        def filter_item(item, ancestor_matches=False):
+            path = item.data(1, Qt.UserRole) or ()
+            own_match = not query or query in " ".join(map(str, path)).casefold()
+            descendant_match = False
+            for index in range(item.childCount()):
+                descendant_match = (
+                    filter_item(item.child(index), ancestor_matches or own_match)
+                    or descendant_match
+                )
+            visible = ancestor_matches or own_match or descendant_match
+            item.setHidden(not visible)
+            if query and descendant_match:
+                item.setExpanded(True)
+            return visible
+
         for index in range(self.workplace_tree.topLevelItemCount()):
-            item = self.workplace_tree.topLevelItem(index)
-            values = " ".join(item.text(column) for column in range(1, 6)).casefold()
-            item.setHidden(bool(query and query not in values))
+            filter_item(self.workplace_tree.topLevelItem(index))
 
     def clearAssignments(self):
         self.workplace_tree.blockSignals(True)
-        for index in range(self.workplace_tree.topLevelItemCount()):
-            self.workplace_tree.topLevelItem(index).setCheckState(0, Qt.Unchecked)
+        for item in self.iterWorkplaceItems():
+            item.setCheckState(0, Qt.Unchecked)
         self.workplace_tree.blockSignals(False)
         self.updateStatus()
 

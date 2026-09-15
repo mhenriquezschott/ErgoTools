@@ -2136,29 +2136,6 @@ class ErgoTools(QtWidgets.QMainWindow):
             self.shift_combo.clear()
             self.shift_combo.addItems(shifts_list)
 
-    def getJobs(self):
-        if not self.projectFileCreated or not self.projectdatabasePath:
-            return []
-        try:
-            with sqlite3.connect(self.projectdatabasePath) as connection:
-                connection.execute("PRAGMA foreign_keys = ON")
-                return [row[0] for row in connection.execute("SELECT id FROM Job ORDER BY id")]
-        except sqlite3.Error as error:
-            QMessageBox.critical(self, "Database Error", f"Failed to retrieve jobs:\n{error}")
-            return []
-
-    def loadJobs(self):
-        selected_job = self.job_combo.currentText() if hasattr(self, "job_combo") else ""
-        self.job_combo.blockSignals(True)
-        self.job_combo.clear()
-        self.job_combo.addItem("")
-        self.job_combo.addItems(self.getJobs())
-        selected_index = self.job_combo.findText(selected_job)
-        self.job_combo.setCurrentIndex(selected_index if selected_index >= 0 else 0)
-        self.job_combo.blockSignals(False)
-
-    
-    
     def openFile(self):
         # Open a file dialog to select a project file
         options = QFileDialog.Options()
@@ -2243,7 +2220,6 @@ class ErgoTools(QtWidgets.QMainWindow):
             #self.loadLines()
             #self.loadStations()
             self.loadShifts()
-            self.loadJobs()
             self._selected_assessment_context = self.assessmentContextFromControls()
             self.updateContextSummary()
             self.loadToolsData()
@@ -4819,6 +4795,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         toolbar_actions = (
             ("new.png", "New", self.toolbarnewWorker), ("open.png", "Open", self.toolbaropenWorker),
             ("save.png", "Save", self.toolbarsaveWorker), ("plot.png", "PLOT", self.toolbaropenLayout),
+            ("jobmanagement.png", "Jobs", self.editJobClicked),
             ("jrot.png", "JROT", self.toolbaropenRotationLayout),
             ("export.png", "Export", self.exportToCSV), ("settings.png", "Settings", self.openNumTasksDialog),
             ("help.png", "Help", self.openHelpPDF),
@@ -4829,6 +4806,7 @@ class ErgoTools(QtWidgets.QMainWindow):
                 "New": "Create a new project.", "Open": "Open an existing Ergo Tools project.",
                 "Save": "Save the current project and assessment data.",
                 "PLOT": "Open the Plant-Layout Organizational Tool.",
+                "Jobs": "Manage Jobs, risk profiles, and workplace availability.",
                 "JROT": "Open the Job Rotation Optimization Tool.",
                 "Export": "Export data from the selected ergonomic tool.",
                 "Settings": "Configure the number of task rows and application options.",
@@ -4892,21 +4870,6 @@ class ErgoTools(QtWidgets.QMainWindow):
             button.setIconSize(QSize(22, 22))
             worker_layout.addWidget(button)
         self.transferButton.setIconSize(QSize(30, 30))
-        worker_layout.addSpacing(10)
-        job_label = QLabel("Job")
-        job_label.setObjectName("contextLabel")
-        worker_layout.addWidget(job_label)
-        self.job_combo = QComboBox()
-        self.job_combo.setMinimumWidth(130)
-        self.job_combo.setToolTip("Select the job that will receive the current tool result when saving.")
-        worker_layout.addWidget(self.job_combo)
-        self.jobEditButton = QPushButton("Jobs")
-        self.jobEditButton.setObjectName("compactButton")
-        self.jobEditButton.setIcon(QIcon(os.path.join(icon_root, "jobmanagement.png")))
-        self.jobEditButton.setIconSize(QSize(24, 24))
-        self.jobEditButton.setToolTip("Open Job Management.")
-        self.jobEditButton.clicked.connect(self.editJobClicked)
-        worker_layout.addWidget(self.jobEditButton)
         worker_layout.addSpacing(10)
         worker_layout.addLayout(self.navigationLayout)
         worker_bar_layout.addLayout(worker_layout)
@@ -5225,10 +5188,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.editJobName = ""
         self.job_window = JobWindow(self)
         self.job_window.exec_()
-        self.loadJobs()
-        index = self.job_combo.findText(self.editJobName)
-        if index >= 0:
-            self.job_combo.setCurrentIndex(index)
                 
     
     
@@ -6872,68 +6831,6 @@ class ErgoTools(QtWidgets.QMainWindow):
         self.saveLiFFTToolData()
         self.saveDUETToolData()
         self.saveTSTToolData()
-        self.saveJobData()
-
-    def saveJobData(self):
-        job_id = self.job_combo.currentText().strip()
-        if not job_id:
-            return
-
-        measurements = (
-            ("LiFFT", self.lifft_total_damage_value_label, self.lifft_probability_value_label, self.lifft_total_risk_color),
-            ("DUET", self.duet_total_damage_value_label, self.duet_probability_value_label, self.duet_total_risk_color),
-            ("ST", self.tst_total_damage_value_label, self.tst_probability_value_label, self.tst_total_risk_color),
-        )
-        tool_id, damage_label, probability_label, color = measurements[self.tabWidget.currentIndex()]
-
-        def numeric_label_value(label):
-            text = label.text().strip().replace("%", "")
-            if text.startswith(">"):
-                return 100.0
-            if text.startswith("<"):
-                return 0.0
-            try:
-                return float(text)
-            except ValueError:
-                return 0.0
-
-        try:
-            ensure_jrot_schema(self.projectdatabasePath)
-            with sqlite3.connect(self.projectdatabasePath) as connection:
-                connection.execute("PRAGMA foreign_keys = ON")
-                exists = connection.execute(
-                    "SELECT 1 FROM JobMeasurement WHERE job_id = ? AND tool_id = ?",
-                    (job_id, tool_id),
-                ).fetchone()
-                if exists:
-                    reply = QMessageBox.question(
-                        self,
-                        "Confirm Job Measurement Update",
-                        f"Replace the existing {tool_id} measurement for job '{job_id}'?",
-                        QMessageBox.Yes | QMessageBox.No,
-                    )
-                    if reply != QMessageBox.Yes:
-                        return
-                connection.execute(
-                    """
-                    INSERT INTO JobMeasurement
-                        (job_id, tool_id, total_cumulative_damage, probability_outcome, color)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(job_id, tool_id) DO UPDATE SET
-                        total_cumulative_damage = excluded.total_cumulative_damage,
-                        probability_outcome = excluded.probability_outcome,
-                        color = excluded.color
-                    """,
-                    (
-                        job_id,
-                        tool_id,
-                        numeric_label_value(damage_label),
-                        numeric_label_value(probability_label),
-                        color,
-                    ),
-                )
-        except sqlite3.Error as error:
-            QMessageBox.critical(self, "Database Error", f"Failed to save the job measurement:\n{error}")
         
     
     def saveLiFFTToolData(self):

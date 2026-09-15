@@ -51,7 +51,7 @@ with tempfile.TemporaryDirectory() as temporary_directory:
 
     parent = ErgoTools(disable_vtk=True)
     parent.openFilePath(str(project_path))
-    parent.job_combo.setCurrentText("Job-S003")
+    parent.editJobName = "Job-S003"
 
     job_window = JobWindow(parent)
     job_index = job_window.job_id_combo.findText("Job-S003")
@@ -99,9 +99,13 @@ with tempfile.TemporaryDirectory() as temporary_directory:
     workplace_dialog = JobWorkplaceDialog(
         "Job-S003", parent.projectdatabasePath, job_window
     )
-    assert workplace_dialog.workplace_tree.topLevelItemCount() > 1
-    workplace_dialog.workplace_tree.topLevelItem(0).setCheckState(0, Qt.Checked)
-    workplace_dialog.workplace_tree.topLevelItem(1).setCheckState(0, Qt.Checked)
+    leaves = [
+        item for item in workplace_dialog.iterWorkplaceItems()
+        if item.childCount() == 0
+    ]
+    assert len(leaves) > 1
+    leaves[0].setCheckState(0, Qt.Checked)
+    leaves[1].setCheckState(0, Qt.Checked)
     workplace_dialog.resize(840, 590)
     workplace_dialog.show()
     app.processEvents()

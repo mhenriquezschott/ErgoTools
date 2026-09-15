@@ -81,8 +81,6 @@ JROT_REQUIRED_COLUMNS = {
         "methodology",
         "sample_size",
         "assessed_on",
-        "valid_from",
-        "valid_to",
         "notes",
         "created_at",
         "updated_at",
@@ -108,8 +106,6 @@ JROT_REQUIRED_COLUMNS = {
         "job_id",
         "workplace_context_id",
         "active",
-        "valid_from",
-        "valid_to",
         "notes",
     },
     "WorkerAssignment": {
@@ -945,6 +941,142 @@ def _create_individual_assessments_v5(connection: sqlite3.Connection) -> None:
         )
 
 
+def _remove_unused_validity_periods_v6(connection: sqlite3.Connection) -> None:
+    """Remove validity periods; lifecycle state is explicit and user-controlled."""
+    connection.execute("DROP VIEW IF EXISTS CurrentJobRiskMeasurement")
+    connection.execute(
+        """
+        CREATE TABLE JobRiskProfile_schema_v6 (
+            id INTEGER PRIMARY KEY,
+            job_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            version INTEGER NOT NULL CHECK (version > 0),
+            status TEXT NOT NULL CHECK (status IN ('draft', 'approved', 'retired')),
+            is_current INTEGER NOT NULL DEFAULT 0 CHECK (is_current IN (0, 1)),
+            source_type TEXT NOT NULL CHECK (
+                source_type IN ('expert', 'external', 'study', 'aggregate', 'imported')
+            ),
+            source_reference TEXT,
+            methodology TEXT,
+            sample_size INTEGER CHECK (sample_size IS NULL OR sample_size >= 0),
+            assessed_on TEXT,
+            notes TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (job_id, version),
+            FOREIGN KEY (job_id) REFERENCES Job (id) ON DELETE CASCADE
+        )
+        """
+    )
+    connection.execute(
+        """
+        INSERT INTO JobRiskProfile_schema_v6 (
+            id, job_id, name, version, status, is_current, source_type,
+            source_reference, methodology, sample_size, assessed_on, notes,
+            created_at, updated_at
+        )
+        SELECT id, job_id, name, version, status, is_current, source_type,
+               source_reference, methodology, sample_size, assessed_on, notes,
+               created_at, updated_at
+        FROM JobRiskProfile
+        """
+    )
+    connection.execute("DROP TABLE JobRiskProfile")
+    connection.execute("ALTER TABLE JobRiskProfile_schema_v6 RENAME TO JobRiskProfile")
+    connection.execute(
+        """
+        CREATE UNIQUE INDEX uq_job_risk_profile_current_approved
+        ON JobRiskProfile (job_id)
+        WHERE is_current = 1 AND status = 'approved'
+        """
+    )
+    connection.execute(
+        "CREATE INDEX ix_job_risk_profile_job_status "
+        "ON JobRiskProfile (job_id, status, version)"
+    )
+    connection.execute(
+        """
+        CREATE VIEW CurrentJobRiskMeasurement AS
+        SELECT job.id AS job_id,
+               job.name AS job_name,
+               job.description AS job_description,
+               profile.id AS profile_id,
+               profile.name AS profile_name,
+               profile.version AS profile_version,
+               profile.source_type,
+               profile.source_reference,
+               measurement.tool_id,
+               measurement.total_cumulative_damage,
+               measurement.probability_outcome,
+               measurement.unit,
+               measurement.notes
+        FROM Job AS job
+        JOIN JobRiskProfile AS profile ON profile.job_id = job.id
+        JOIN JobRiskMeasurement AS measurement ON measurement.profile_id = profile.id
+        WHERE job.active = 1
+          AND profile.status = 'approved'
+          AND profile.is_current = 1
+        """
+    )
+
+    connection.execute("DROP TRIGGER IF EXISTS trg_worker_assignment_placement_context_insert")
+    connection.execute("DROP TRIGGER IF EXISTS trg_worker_assignment_placement_context_update")
+    connection.execute(
+        """
+        CREATE TABLE JobPlacement_schema_v6 (
+            id INTEGER PRIMARY KEY,
+            job_id TEXT NOT NULL,
+            workplace_context_id INTEGER NOT NULL,
+            active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+            notes TEXT,
+            FOREIGN KEY (job_id) REFERENCES Job (id) ON DELETE CASCADE,
+            FOREIGN KEY (workplace_context_id) REFERENCES WorkplaceContext (id)
+                ON DELETE CASCADE
+        )
+        """
+    )
+    connection.execute(
+        """
+        INSERT INTO JobPlacement_schema_v6 (
+            id, job_id, workplace_context_id, active, notes
+        )
+        SELECT id, job_id, workplace_context_id, active, notes
+        FROM JobPlacement
+        """
+    )
+    connection.execute("DROP TABLE JobPlacement")
+    connection.execute("ALTER TABLE JobPlacement_schema_v6 RENAME TO JobPlacement")
+    connection.execute(
+        """
+        CREATE UNIQUE INDEX uq_job_placement_active_context
+        ON JobPlacement (job_id, workplace_context_id)
+        WHERE active = 1
+        """
+    )
+    connection.execute(
+        "CREATE INDEX ix_job_placement_job ON JobPlacement (job_id, active)"
+    )
+    connection.execute(
+        "CREATE INDEX ix_job_placement_context ON JobPlacement (workplace_context_id, active)"
+    )
+    for operation in ("INSERT", "UPDATE"):
+        connection.execute(
+            f"""
+            CREATE TRIGGER trg_worker_assignment_placement_context_{operation.lower()}
+            BEFORE {operation} ON WorkerAssignment
+            WHEN NEW.job_placement_id IS NOT NULL
+             AND NOT EXISTS (
+                 SELECT 1 FROM JobPlacement placement
+                 WHERE placement.id = NEW.job_placement_id
+                   AND placement.workplace_context_id = NEW.workplace_context_id
+             )
+            BEGIN
+                SELECT RAISE(ABORT, 'Worker Assignment and Job Placement contexts must match');
+            END
+            """
+        )
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(
         version=1,
@@ -989,6 +1121,16 @@ MIGRATIONS: tuple[Migration, ...] = (
             "migrate legacy worker-tool results while retaining per-tool marker state"
         ),
         apply=_create_individual_assessments_v5,
+    ),
+    Migration(
+        version=6,
+        name="remove unused validity periods",
+        definition=(
+            "Remove JobRiskProfile and JobPlacement validity ranges; profile lifecycle "
+            "and placement activation are explicit user-controlled states"
+        ),
+        apply=_remove_unused_validity_periods_v6,
+        requires_foreign_keys_off=True,
     ),
 )
 

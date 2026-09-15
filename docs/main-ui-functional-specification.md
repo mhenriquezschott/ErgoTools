@@ -35,10 +35,14 @@ The footer must display the current project separately from the assessment statu
 
 ### Primary toolbar
 
-The toolbar mirrors the main commands: New, Open, Save, PLOT, JROT, Export,
-Settings, and Help. PLOT requires an open project. Export acts on the selected
+The toolbar mirrors the main commands: New, Open, Save, PLOT, Jobs, JROT, Export,
+Settings, and Help. PLOT and Jobs require an open project. Export acts on the selected
 ergonomic tool. Settings currently opens the task-count configuration. JROT is
 visible, but its detailed behavior is reserved for the future JROT specification.
+
+Jobs opens project-level Job Management for risk profiles and workplace
+availability. It is deliberately separate from worker assessment selection: saving
+an individual assessment never creates or updates a Job Risk Profile.
 
 ## Projects
 
@@ -49,8 +53,8 @@ directories. The descriptor and companion directories must remain together when 
 project is moved or shared.
 
 Opening a project resolves the database relative to the descriptor, applies
-non-destructive schema migrations, loads workers, organization values, shifts, and
-jobs, then loads the selected worker and assessment context.
+transactional schema migrations, loads workers, organization values, and shifts,
+then loads the selected worker and assessment context.
 
 ### Project commands
 
@@ -349,6 +353,5 @@ the main UI, PLOT, Job Management, and JROT.
 ## Excluded from This Specification
 
 - JROT rotation creation, optimization, comparison, and persistence.
-- The main-window Job selector, Job Management, job risk-profile versioning, and
-  approval workflows, except where a job appears as worker-classification metadata.
-- Proposed database changes not yet implemented.
+- Detailed Job Management, job risk-profile versioning, and approval workflows,
+  except for the separation between project Jobs and individual assessments stated above.

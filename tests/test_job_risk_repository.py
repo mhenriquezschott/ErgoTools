@@ -127,7 +127,6 @@ class JobRiskRepositoryTests(unittest.TestCase):
                     "methodology": "Consensus estimate",
                     "sample_size": 4,
                     "assessed_on": "2026-09-12",
-                    "valid_from": "2026-09-12",
                     "notes": "Initial release",
                 },
             )
@@ -141,8 +140,12 @@ class JobRiskRepositoryTests(unittest.TestCase):
             self.assertEqual(profile["methodology"], "Consensus estimate")
             self.assertEqual(profile["sample_size"], 4)
             self.assertEqual(profile["assessed_on"], "2026-09-12")
-            self.assertEqual(profile["valid_from"], "2026-09-12")
             self.assertEqual(profile["notes"], "Initial release")
+            columns = {
+                row[1] for row in connection.execute("PRAGMA table_info(JobRiskProfile)")
+            }
+            self.assertNotIn("valid_from", columns)
+            self.assertNotIn("valid_to", columns)
         finally:
             connection.close()
 
@@ -235,20 +238,12 @@ class JobRiskRepositoryTests(unittest.TestCase):
             ]
             first_context, second_context = contexts
             placement_id = connection.execute(
-                """
-                INSERT INTO JobPlacement (
-                    job_id, workplace_context_id, valid_from, valid_to
-                ) VALUES ('J-3', ?, '2026-01-01', '2026-12-31')
-                """,
+                "INSERT INTO JobPlacement (job_id, workplace_context_id) VALUES ('J-3', ?)",
                 (first_context,),
             ).lastrowid
-            with self.assertRaisesRegex(sqlite3.IntegrityError, "may not overlap"):
+            with self.assertRaises(sqlite3.IntegrityError):
                 connection.execute(
-                    """
-                    INSERT INTO JobPlacement (
-                        job_id, workplace_context_id, valid_from, valid_to
-                    ) VALUES ('J-3', ?, '2026-06-01', NULL)
-                    """,
+                    "INSERT INTO JobPlacement (job_id, workplace_context_id) VALUES ('J-3', ?)",
                     (first_context,),
                 )
             with self.assertRaisesRegex(sqlite3.IntegrityError, "contexts must match"):
@@ -464,8 +459,6 @@ class JobRiskRepositoryTests(unittest.TestCase):
                 methodology="Observed sample mean",
                 sample_size=12,
                 assessed_on="2026-09-01",
-                valid_from="2026-09-01",
-                valid_to=None,
                 notes="Reviewed",
                 measurements=(
                     {
