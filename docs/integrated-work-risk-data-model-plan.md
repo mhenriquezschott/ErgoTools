@@ -356,7 +356,8 @@ original database byte-for-byte unchanged.
 - [x] Add ordered migration modules with checksums and transaction boundaries.
 - [x] Add SchemaMigration and synchronize `PRAGMA user_version`.
 - [x] Make migrations idempotent and reject unknown newer schema versions.
-- [ ] Make new-project creation build the final schema directly.
+- [x] Make new-project creation build the final schema directly from the tracked
+  current-version template; migration remains the older-project upgrade path.
 - [x] Add migration tests for interrupted, repeated, and partially present states.
 
 **Gate:** New projects and migrated projects report the same schema definition,
@@ -423,6 +424,9 @@ with numerically identical damage/probability values.
   from legacy per-tool marker positions without deleting the migration source.
 - [x] Add tested position repository operations that initialize an unknown Station
   from the first manually positioned Worker while preserving established anchors.
+- [x] Add normalized PLOT read models and the Individual, Job, and Comparison map
+  modes. Job mode includes every active placement and preserves missing profiles
+  as an explicit unavailable state rather than converting them to zero risk.
 - [ ] Refactor main-tool load/save, worker transfer, and PLOT queries to use the
   new assignment and assessment keys.
 - [ ] Verify selected, visible, enabled, locked, moved, transferred, and deleted

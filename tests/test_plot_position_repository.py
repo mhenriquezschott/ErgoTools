@@ -16,6 +16,8 @@ from plot_position_repository import (
     StationKey,
     ensure_worker_assignment_marker,
     initialize_station_position,
+    plot_job_records,
+    plot_worker_records,
     save_worker_assignment_marker,
     set_station_position,
     station_position,
@@ -178,6 +180,72 @@ class PlotPositionRepositoryTests(unittest.TestCase):
                 20,
                 position_source="guess",
             )
+
+    def test_worker_read_model_uses_assessments_assignments_and_physical_markers(self):
+        records = plot_worker_records(
+            self.connection,
+            tool_id="LiFFT",
+            order_by="worker_id",
+        )
+        self.assertTrue(records)
+        self.assertTrue(all(row["tool_id"] == "LiFFT" for row in records))
+        self.assertEqual(
+            len(records),
+            len({row["worker_assignment_id"] for row in records}),
+        )
+        first = records[0]
+        scoped = plot_worker_records(
+            self.connection,
+            tool_id="LiFFT",
+            scope_paths=((
+                first["plant_name"],
+                first["section_name"],
+                first["line_name"],
+                first["station_id"],
+            ),),
+            shift_id=first["shift_id"],
+        )
+        self.assertTrue(scoped)
+        self.assertTrue(
+            all(row["station_id"] == first["station_id"] for row in scoped)
+        )
+        self.assertIn("job_probability_outcome", first)
+        self.assertIn("job_risk_profile_version", first)
+
+    def test_job_read_model_keeps_active_placements_without_an_approved_profile(self):
+        records = plot_job_records(self.connection, tool_id="LiFFT")
+        expected = self.connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM JobPlacement AS placement
+            JOIN Job AS job ON job.id = placement.job_id AND job.active = 1
+            WHERE placement.active = 1
+            """
+        ).fetchone()[0]
+        self.assertEqual(len(records), expected)
+        self.assertTrue(all("position_source" in record for record in records))
+
+        placement = self.connection.execute(
+            """
+            SELECT placement.id
+            FROM JobPlacement AS placement
+            JOIN Job AS job ON job.id = placement.job_id AND job.active = 1
+            WHERE placement.active = 1
+            ORDER BY placement.id
+            LIMIT 1
+            """
+        ).fetchone()
+        self.assertIsNotNone(placement)
+        missing_tool_records = plot_job_records(
+            self.connection, tool_id="NO-PROFILE-TEST"
+        )
+        self.assertEqual(len(missing_tool_records), expected)
+        self.assertTrue(
+            all(record["job_risk_profile_id"] is None for record in missing_tool_records)
+        )
+        self.assertTrue(
+            all(record["probability_outcome"] is None for record in missing_tool_records)
+        )
 
 
 if __name__ == "__main__":

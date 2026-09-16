@@ -58,6 +58,10 @@ from PyQt5.QtGui import QPixmap, QIcon, QFont
 from PyQt5.QtCore import Qt
 
 from visualworkertool import VisualWorkerTool
+from visualjobmarker import VisualJobMarker
+from risk_colors import job_risk_color
+from database import database_session
+from plot_position_repository import plot_job_records, plot_worker_records
 
 from plotviewerdialog import PlotViewerDialog
 from multiselectcombobox import MultiSelectComboBox
@@ -302,15 +306,20 @@ class PlotWorkerMarkerPreview(QWidget):
         super().__init__(parent)
         self.gender = ""
         self.color = QColor("#19B83F")
+        self.job_color = QColor("#9AA8B2")
+        self.comparison = False
         self.has_worker = False
         self.setFixedSize(108, 108)
         self.setToolTip("Marker shape identifies sex; color identifies the selected assessment risk.")
 
-    def setWorker(self, gender, color):
+    def setWorker(self, gender, color, job_color=None, comparison=False):
         self.has_worker = True
         self.gender = str(gender or "").strip().casefold()
         candidate = QColor(str(color or ""))
         self.color = candidate if candidate.isValid() else QColor("#19B83F")
+        job_candidate = QColor(str(job_color or ""))
+        self.job_color = job_candidate if job_candidate.isValid() else QColor("#9AA8B2")
+        self.comparison = bool(comparison)
         self.update()
 
     def clearWorker(self):
@@ -336,6 +345,14 @@ class PlotWorkerMarkerPreview(QWidget):
             selection_size,
             selection_size,
         ))
+        if self.comparison:
+            painter.setPen(QPen(self.job_color, 5, Qt.SolidLine))
+            painter.drawRect(QRectF(
+                center.x() - 37,
+                center.y() - 37,
+                74,
+                74,
+            ))
         painter.setPen(QPen(QColor("#FFFFFF"), 2))
         painter.setBrush(self.color)
         size = 36.0
@@ -345,8 +362,15 @@ class PlotWorkerMarkerPreview(QWidget):
                 QPointF(center.x() - size, center.y() + size * 0.8),
                 QPointF(center.x() + size, center.y() + size * 0.8),
             ]))
-        else:
+        elif self.gender == "female":
             painter.drawEllipse(center, size, size)
+        else:
+            painter.drawRect(QRectF(
+                center.x() - size,
+                center.y() - size,
+                size * 2,
+                size * 2,
+            ))
 
 
 class PlotHighlightDetailsDialog(QDialog):
@@ -356,6 +380,8 @@ class PlotHighlightDetailsDialog(QDialog):
         super().__init__(parent)
         active_tool = tool_id or getattr(parent, "applied_plot_tool", "LiFFT")
         tool_name = "Shoulder" if active_tool == "ST" else active_tool
+        job_view = getattr(parent, "plot_risk_view_mode", "individual") == "job"
+        subject = "Job" if job_view else "worker"
         self.setWindowTitle(f"PLOT {tool_name} Highlight Details")
         self.resize(760, 420)
         self.setMinimumSize(720, 390)
@@ -368,7 +394,7 @@ class PlotHighlightDetailsDialog(QDialog):
         self.title_label.setObjectName("dialogTitle")
         root.addWidget(self.title_label)
         subtitle = QLabel(
-            "Stations containing one or more enabled worker results above 50% in the current filter scope."
+            f"Stations containing one or more {subject} results above 50% in the current filter scope."
         )
         subtitle.setObjectName("dialogSubtitle")
         subtitle.setWordWrap(True)
@@ -376,7 +402,12 @@ class PlotHighlightDetailsDialog(QDialog):
         self.table = QtWidgets.QTreeWidget()
         self.table.setRootIsDecorated(False)
         self.table.setAlternatingRowColors(True)
-        self.table.setHeaderLabels(("Station", "High-risk workers", "Average outcome", "Maximum outcome"))
+        self.table.setHeaderLabels((
+            "Station",
+            "High-risk Jobs" if job_view else "High-risk workers",
+            "Average outcome",
+            "Maximum outcome",
+        ))
         self.table.header().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
         for column in range(1, 4):
             self.table.header().setSectionResizeMode(column, QtWidgets.QHeaderView.ResizeToContents)
@@ -629,12 +660,12 @@ class PlotWorkplaceFilterDialog(QDialog):
         if database and os.path.exists(database):
             with sqlite3.connect(database) as connection:
                 paths = connection.execute(
-                    """SELECT DISTINCT plant_name, section_name, line_name, station_id
-                       FROM WorkerStationShiftErgoTool
-                       ORDER BY plant_name, section_name, line_name, station_id"""
+                    """SELECT plant_name, section_name, line_name, id
+                       FROM Station
+                       ORDER BY plant_name, section_name, line_name, id"""
                 ).fetchall()
                 shifts = [str(row[0]) for row in connection.execute(
-                    "SELECT DISTINCT shift_id FROM WorkerStationShiftErgoTool ORDER BY shift_id"
+                    "SELECT id FROM Shift ORDER BY id"
                 )]
         item_cache = {}
         entity_names = ("Plant", "Section", "Line", "Station")
@@ -764,6 +795,7 @@ class PlantLayoutWindow(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Plant-Layout Organizational Tool (PLOT)")
         self.graph_settings = self.defaultGraphSettings()
+        self.plot_risk_view_mode = "individual"
         
         #self._save_lock = threading.Lock()
 
@@ -1674,6 +1706,31 @@ class PlantLayoutWindow(QDialog):
             tool_button_row.addWidget(button)
             self.plot_tool_buttons[tool_id] = button
         tool_filter_layout.addLayout(tool_button_row)
+        self.riskview_group = QGroupBox("Risk view", self.filters_group)
+        risk_view_row = QHBoxLayout(self.riskview_group)
+        risk_view_row.setContentsMargins(8, 8, 8, 7)
+        risk_view_row.setSpacing(0)
+        self.plot_risk_view_buttons = {}
+        for mode, label, tooltip in (
+            ("individual", "Individual", "Show each Worker's individual assessment risk."),
+            ("job", "Job", "Show current approved Job risk at each positioned Station."),
+            ("comparison", "Comparison", "Compare individual fill with the Job-risk outer square."),
+        ):
+            button = QToolButton(self.riskview_group)
+            button.setObjectName("plotRiskViewButton")
+            button.setText(label)
+            button.setCheckable(True)
+            button.setAutoExclusive(True)
+            button.setToolButtonStyle(Qt.ToolButtonTextOnly)
+            button.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            button.setToolTip(tooltip)
+            button.clicked.connect(
+                lambda _checked=False, selected_mode=mode: self.selectRiskViewMode(selected_mode)
+            )
+            risk_view_row.addWidget(button, 1)
+            self.plot_risk_view_buttons[mode] = button
+        self.plot_risk_view_buttons["individual"].setChecked(True)
+        self.riskview_group.setFixedHeight(54)
         self.toolsfiltersettings_button.hide()
         self.tool_combo.currentTextChanged.connect(self.syncPlotToolButtons)
         self.applied_plot_tool = self.tool_combo.currentText().strip() or "LiFFT"
@@ -1801,12 +1858,13 @@ class PlantLayoutWindow(QDialog):
         filters_layout.setVerticalSpacing(8)
         filters_layout.addWidget(self.toolfilter_group, 0, 0)
         filters_layout.addWidget(self.plantfilter_group, 0, 1)
-        filters_layout.addWidget(self.workerfilter_group, 1, 0, 1, 2)
+        filters_layout.addWidget(self.riskview_group, 1, 0)
+        filters_layout.addWidget(self.workerfilter_group, 1, 1)
         filters_layout.addWidget(filter_actions, 0, 2, 2, 1)
         filters_layout.setColumnStretch(0, 2)
         filters_layout.setColumnStretch(1, 3)
         self.filters_group.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed)
-        self.filters_group.setFixedHeight(183)
+        self.filters_group.setFixedHeight(195)
         for group in (
             self.plantfilter_group, self.toolfilter_group,
             self.workerfilter_group,
@@ -2069,12 +2127,21 @@ class PlantLayoutWindow(QDialog):
         self.worker_tool_value = QLabel("–", assessment_group)
         self.worker_damage_value = QLabel("0.0000", assessment_group)
         self.worker_risk_value = QLabel("0.0%", assessment_group)
+        self.worker_job_value = QLabel("Not classified", assessment_group)
+        self.worker_job_risk_value = QLabel("–", assessment_group)
+        self.worker_risk_difference_value = QLabel("–", assessment_group)
         assessment_grid.addWidget(QLabel("Tool", assessment_group), 0, 0)
         assessment_grid.addWidget(self.worker_tool_value, 0, 1)
         assessment_grid.addWidget(QLabel("Cumulative damage", assessment_group), 1, 0)
         assessment_grid.addWidget(self.worker_damage_value, 1, 1)
         assessment_grid.addWidget(QLabel("Outcome probability", assessment_group), 2, 0)
         assessment_grid.addWidget(self.worker_risk_value, 2, 1)
+        assessment_grid.addWidget(QLabel("Job", assessment_group), 3, 0)
+        assessment_grid.addWidget(self.worker_job_value, 3, 1)
+        assessment_grid.addWidget(QLabel("Job risk", assessment_group), 4, 0)
+        assessment_grid.addWidget(self.worker_job_risk_value, 4, 1)
+        assessment_grid.addWidget(QLabel("Difference", assessment_group), 5, 0)
+        assessment_grid.addWidget(self.worker_risk_difference_value, 5, 1)
         self.worker_marker_preview = PlotWorkerMarkerPreview(assessment_group)
         self.locate_worker_button = QPushButton("Locate", assessment_group)
         self.locate_worker_button.setObjectName("locateWorkerButton")
@@ -2084,8 +2151,8 @@ class PlantLayoutWindow(QDialog):
             "Blink the selected worker's blue frame on the plant layout."
         )
         self.locate_worker_button.clicked.connect(self.locateSelectedWorker)
-        assessment_grid.addWidget(self.locate_worker_button, 3, 0, 1, 2)
-        assessment_grid.addWidget(self.worker_marker_preview, 0, 2, 4, 1, Qt.AlignCenter)
+        assessment_grid.addWidget(self.locate_worker_button, 6, 0, 1, 2)
+        assessment_grid.addWidget(self.worker_marker_preview, 0, 2, 7, 1, Qt.AlignCenter)
         assessment_grid.setColumnStretch(1, 1)
         worker_layout.addWidget(assessment_group)
 
@@ -2637,6 +2704,21 @@ class PlantLayoutWindow(QDialog):
                 background: #DDF3F5;
                 border-color: #08A9B5;
             }
+            QToolButton#plotRiskViewButton {
+                min-height: 25px;
+                padding: 2px 8px;
+                color: #304652;
+                background: #FFFFFF;
+                border: 1px solid #AFC0CB;
+                border-radius: 0;
+                font-weight: 600;
+            }
+            QToolButton#plotRiskViewButton:hover { background: #EAF7F8; }
+            QToolButton#plotRiskViewButton:checked {
+                color: #087E91;
+                background: #DDF3F5;
+                border-color: #08A9B5;
+            }
             QCheckBox, QRadioButton { color: #304652; spacing: 6px; }
             QCheckBox:disabled, QRadioButton:disabled, QLabel:disabled { color: #98A7B2; }
             QSplitter::handle { background: #E4EBEF; }
@@ -2652,11 +2734,23 @@ class PlantLayoutWindow(QDialog):
             self.tool_combo.setCurrentIndex(index)
         self.syncPlotToolButtons(self.tool_combo.currentText())
 
+    def selectRiskViewMode(self, mode):
+        if mode not in {"individual", "job", "comparison"}:
+            return
+        self.plot_risk_view_mode = mode
+        for key, button in self.plot_risk_view_buttons.items():
+            button.setChecked(key == mode)
+        if hasattr(self, "details_tabs"):
+            self.details_tabs.setTabEnabled(1, mode != "job")
+            if mode == "job":
+                self.details_tabs.setCurrentIndex(0)
+        self.applyfilterButtonClicked()
+
     def updateWorkerFilterDisclosure(self, expanded):
         """Collapse demographic fields completely instead of merely disabling them."""
         self.worker_filter_container.setVisible(expanded)
         self.workerfilter_group.setFixedHeight(94 if expanded else 42)
-        self.filters_group.setFixedHeight(235 if expanded else 183)
+        self.filters_group.setFixedHeight(247 if expanded else 195)
 
     def openWorkplaceFilter(self):
         dialog = PlotWorkplaceFilterDialog(self)
@@ -2823,10 +2917,17 @@ class PlantLayoutWindow(QDialog):
             self.outcome_risk_title.setText(f"{score_name} Group Risk Score:")
 
     def updateMapScopeFooter(self):
-        count = len(getattr(self, "visual_worker_tools", []))
+        mode = getattr(self, "plot_risk_view_mode", "individual")
+        if mode == "job":
+            count = len(getattr(self, "visual_job_markers", []))
+            result_name = "Job markers"
+        else:
+            count = len(getattr(self, "visual_worker_tools", []))
+            result_name = "Worker markers"
         workplace = self.workplace_summary_label.text() if hasattr(self, "workplace_summary_label") else ""
         self.map_scope_label.setText(
-            f"Displayed results: {count}  |  Tool: {self.tool_combo.currentText()}  |  {workplace}"
+            f"{result_name}: {count}  |  Risk view: {mode.title()}  |  "
+            f"Tool: {self.tool_combo.currentText()}  |  {workplace}"
         )
         
         
@@ -3237,6 +3338,9 @@ class PlantLayoutWindow(QDialog):
         index = self.tool_combo.findText("LiFFT")
         if index != -1:
             self.tool_combo.setCurrentIndex(index)
+        self.plot_risk_view_mode = "individual"
+        for mode, button in getattr(self, "plot_risk_view_buttons", {}).items():
+            button.setChecked(mode == "individual")
     
         # **Reset Gender ComboBox (Default: Both)**
         if self.gender_combo.count() > 0:
@@ -3417,6 +3521,9 @@ class PlantLayoutWindow(QDialog):
        	
     def onSummaryPlotChanged(self):
         """Handles summary plot selection and calls the corresponding function."""
+        if self.plot_risk_view_mode == "job":
+            self.loadJobRiskSummary()
+            return
         selected_index = self.summaryplot_combo.currentIndex()
         if hasattr(self, "plot_description_label"):
             descriptions = (
@@ -3438,7 +3545,13 @@ class PlantLayoutWindow(QDialog):
             )
             description = descriptions[selected_index] if 0 <= selected_index < 3 else ("", "")
             self.plot_description_label.setText(description[0])
-            self.plot_compare_label.setText(description[1])
+            if self.plot_risk_view_mode == "comparison":
+                self.plot_compare_label.setText(
+                    description[1]
+                    + " Worker fill is individual risk; the outer square is applicable Job risk."
+                )
+            else:
+                self.plot_compare_label.setText(description[1])
     
         # **Ensure workers dataset is available**
         if not hasattr(self, "workerstationshifttool_dataset") or not self.workerstationshifttool_dataset:
@@ -4414,6 +4527,7 @@ class PlantLayoutWindow(QDialog):
         # Get the filtered workers list
         self.workerstationshifttool_dataset = self.getWorkers(order_by)
         self.workerstationshiftAlltools_dataset = self.getWorkersAllTools(order_by)
+        self.job_risk_marker_dataset = self.getJobRiskMarkers()
     
         # Suspend signals to prevent unwanted events
         self.workerComboBox.blockSignals(True)
@@ -4486,8 +4600,98 @@ class PlantLayoutWindow(QDialog):
 
 
     def getWorkers(self, order_by, tid=None, ignore_workplace=False):
+        """Return current PLOT Worker rows from the normalized risk model."""
+        database_path = getattr(self.parent(), "projectdatabasePath", "")
+        if not database_path:
+            QMessageBox.warning(self, "Error", "No project file loaded or saved.")
+            return []
+
+        def checked_values(combo):
+            return tuple(
+                combo.itemText(index)
+                for index in range(combo.count())
+                if combo.model().item(index).checkState() == Qt.Checked
+                and combo.itemText(index) != "All"
+            )
+
+        tool_id = tid or self.tool_combo.currentText().strip()
+        tool_id = None if tool_id == "All" else tool_id
+        scope_paths = () if ignore_workplace else tuple(
+            getattr(self, "workplace_scope_paths", ()) or ()
+        )
+        plant_name = None
+        section_names = ()
+        line_names = ()
+        station_ids = ()
+        if not ignore_workplace and not scope_paths:
+            selected_plant = self.plant_combo.currentText().strip()
+            plant_name = None if selected_plant in ("", "All") else selected_plant
+            section_names = checked_values(self.section_combo)
+            line_names = checked_values(self.line_combo)
+            station_ids = checked_values(self.station_combo)
+        selected_shift = None if ignore_workplace else self.shift_combo.currentText().strip()
+        shift_id = None if selected_shift in ("", "All") else selected_shift
+
+        gender = None
+        birth_year_range = None
+        weight_range = None
+        height_range = None
+        if self.workerfilter_group.isChecked():
+            selected_gender = self.gender_combo.currentText().strip()
+            if selected_gender in ("Male", "Female"):
+                gender = selected_gender
+
+            def optional_range(lower, upper):
+                low = None if lower.value() == lower.minimum() else lower.value()
+                high = None if upper.value() == upper.minimum() else upper.value()
+                if low is None or high is None or low > high:
+                    return None
+                return low, high
+
+            age_range = optional_range(self.agefrom_edit, self.ageto_edit)
+            if age_range is not None:
+                current_year = QDate.currentDate().year()
+                birth_year_range = (
+                    current_year - int(age_range[1]),
+                    current_year - int(age_range[0]),
+                )
+            weight_range = optional_range(self.weightfrom_edit, self.weightto_edit)
+            height_range = optional_range(self.heightfrom_edit, self.heightto_edit)
+
+        try:
+            with database_session(database_path, read_only=True) as connection:
+                records = plot_worker_records(
+                    connection,
+                    tool_id=tool_id,
+                    scope_paths=scope_paths,
+                    plant_name=plant_name,
+                    section_names=section_names,
+                    line_names=line_names,
+                    station_ids=station_ids,
+                    shift_id=shift_id,
+                    gender=gender,
+                    birth_year_range=birth_year_range,
+                    weight_range=weight_range,
+                    height_range=height_range,
+                    order_by="worker_id" if order_by == 0 else "last_name",
+                )
+            for record in records:
+                try:
+                    record["color"] = job_risk_color(
+                        record["tool_id"],
+                        record["total_cumulative_damage"],
+                        record.get("unit") or "Metric",
+                    )
+                except (TypeError, ValueError):
+                    record["color"] = "#D9E1E6"
+            return records
+        except Exception as error:
+            QMessageBox.critical(self, "Error", f"Failed to retrieve workers:\n{error}")
+            return []
+
+    def _getWorkersLegacy(self, order_by, tid=None, ignore_workplace=False):
         """
-        Retrieves workers from WorkerStationShiftErgoTool with additional worker details.
+        Transitional pre-repository implementation retained until UI cutover is verified.
     
         Returns:
             list: A list of dictionaries containing worker data.
@@ -4499,31 +4703,80 @@ class PlantLayoutWindow(QDialog):
     
     
         # Determine the order column
-        order_column = "ws.worker_id" if order_by == 0 else "w.last_name"
+        order_column = "assignment.worker_id" if order_by == 0 else "w.last_name"
         
-        # Base query (includes ALL fields from WorkerStationShiftErgoTool and Worker with distinct column names)
+        # Retain the row shape consumed by the existing worker overview while the
+        # authoritative data comes from the normalized assessment model.
         query = """
             SELECT 
-                ws.worker_id, ws.plant_name, ws.section_name, ws.line_name, ws.station_id, ws.shift_id, ws.tool_id,
-                ws.total_cumulative_damage, ws.probability_outcome, 
-                ws.result_3, ws.result_4, ws.result_5, ws.result_6, ws.result_7, ws.result_8, ws.result_9, unit,
+                assignment.id AS worker_assignment_id,
+                assignment.worker_id,
+                context.plant_name, context.section_name, context.line_name,
+                context.station_id, context.shift_id,
+                assessment.tool_id,
+                assessment.total_cumulative_damage,
+                assessment.probability_outcome,
+                0.0 AS result_3, 0.0 AS result_4, 0.0 AS result_5,
+                0.0 AS result_6, 0.0 AS result_7, 0.0 AS result_8,
+                0.0 AS result_9, assessment.unit,
                 
                 -- Visual elements (Aliased to avoid conflicts)
-                ws.x, ws.y, ws.width, ws.height AS ws_height, ws.line_thickness, ws.scale_x, ws.scale_y,
-                ws.crop_x, ws.crop_y, ws.crop_width, ws.crop_height, ws.zoom, ws.rotation,
-                ws.mirror_h, ws.mirror_v, ws.orientation, ws.color, ws.r, ws.g, ws.b,
-                ws.brightness, ws.contrast, ws.saturation, ws.lock, ws.visible, ws.transparency, ws.enable,
+                COALESCE(marker.x, station_position.x, 0.0) AS x,
+                COALESCE(marker.y, station_position.y, 0.0) AS y,
+                COALESCE(marker.size, 50.0) AS width,
+                COALESCE(marker.size, 50.0) AS ws_height,
+                COALESCE(marker.line_thickness, 1.0) AS line_thickness,
+                COALESCE(marker.scale, 1.0) AS scale_x,
+                COALESCE(marker.scale, 1.0) AS scale_y,
+                0.0 AS crop_x, 0.0 AS crop_y,
+                COALESCE(marker.size, 50.0) AS crop_width,
+                COALESCE(marker.size, 50.0) AS crop_height,
+                1.0 AS zoom, 0.0 AS rotation, 0 AS mirror_h, 0 AS mirror_v,
+                'Horizontal' AS orientation,
+                0 AS r, 0 AS g, 0 AS b,
+                0.0 AS brightness, 0.0 AS contrast, 0.0 AS saturation,
+                COALESCE(marker.locked, 0) AS lock,
+                COALESCE(marker.visible, 0) AS visible,
+                0.0 AS transparency,
+                COALESCE(marker.enabled, 1) AS enable,
                 
                 -- Worker details (Aliased to avoid conflicts)
                 w.first_name, w.last_name, w.year_of_birth, w.month_of_birth, w.day_of_birth, 
-                w.gender, w.height AS worker_height, w.weight AS worker_weight
+                w.gender, w.height AS worker_height, w.weight AS worker_weight,
 
-            FROM WorkerStationShiftErgoTool ws
-            JOIN Worker w ON ws.worker_id = w.id
+                -- Applicable Job and current approved Job Risk Profile
+                placement.job_id, job.name AS job_name,
+                job_risk.profile_id AS job_risk_profile_id,
+                job_risk.profile_name AS job_risk_profile_name,
+                job_risk.profile_version AS job_risk_profile_version,
+                job_risk.source_type AS job_risk_source_type,
+                job_risk.total_cumulative_damage AS job_total_cumulative_damage,
+                job_risk.probability_outcome AS job_probability_outcome,
+                job_risk.unit AS job_unit
+
+            FROM IndividualAssessment AS assessment
+            JOIN WorkerAssignment AS assignment
+              ON assignment.id = assessment.worker_assignment_id
+            JOIN WorkplaceContext AS context
+              ON context.id = assignment.workplace_context_id
+            JOIN Worker AS w ON w.id = assignment.worker_id
+            LEFT JOIN PlotWorkerAssignmentMarker AS marker
+              ON marker.worker_assignment_id = assignment.id
+            LEFT JOIN PlotStationPosition AS station_position
+              ON station_position.plant_name = context.plant_name
+             AND station_position.section_name = context.section_name
+             AND station_position.line_name = context.line_name
+             AND station_position.station_id = context.station_id
+            LEFT JOIN JobPlacement AS placement
+              ON placement.id = assignment.job_placement_id
+            LEFT JOIN Job AS job ON job.id = placement.job_id
+            LEFT JOIN CurrentJobRiskMeasurement AS job_risk
+              ON job_risk.job_id = placement.job_id
+             AND job_risk.tool_id = assessment.tool_id
         """
 
         # Collect filters from comboboxes
-        filters = []
+        filters = ["assessment.is_current = 1", "assignment.active = 1"]
         params = []    
         
         
@@ -4553,7 +4806,8 @@ class PlantLayoutWindow(QDialog):
         if use_path_scopes:
             scope_filters = []
             hierarchy_columns = (
-                "ws.plant_name", "ws.section_name", "ws.line_name", "ws.station_id",
+                "context.plant_name", "context.section_name", "context.line_name",
+                "context.station_id",
             )
             for path in scope_paths:
                 normalized_path = tuple(str(value) for value in path if str(value))
@@ -4570,7 +4824,7 @@ class PlantLayoutWindow(QDialog):
                 use_path_scopes = False
 
         if not use_path_scopes and not ignore_workplace and plant_name != "All":
-            filters.append("ws.plant_name = ?")
+            filters.append("context.plant_name = ?")
             params.append(plant_name)
     
         #if section_name != "All":
@@ -4582,11 +4836,11 @@ class PlantLayoutWindow(QDialog):
         if selected_sections:
             # If multiple sections are selected, use the IN clause
             placeholders = ", ".join(["?"] * len(selected_sections))
-            filters.append(f"ws.section_name IN ({placeholders})")
+            filters.append(f"context.section_name IN ({placeholders})")
             params.extend(selected_sections)
         elif not use_path_scopes and not ignore_workplace and section_name != "All":
             # If a single section is selected
-            filters.append("ws.section_name = ?")
+            filters.append("context.section_name = ?")
             params.append(section_name)
     
             
@@ -4600,11 +4854,11 @@ class PlantLayoutWindow(QDialog):
         if selected_lines:
             # If multiple lines are selected, use the IN clause
             placeholders = ", ".join(["?"] * len(selected_lines))
-            filters.append(f"ws.line_name IN ({placeholders})")
+            filters.append(f"context.line_name IN ({placeholders})")
             params.extend(selected_lines)
         elif not use_path_scopes and not ignore_workplace and line_name != "All":
             # If a single line is selected
-            filters.append("ws.line_name = ?")
+            filters.append("context.line_name = ?")
             params.append(line_name)
     
     
@@ -4619,21 +4873,21 @@ class PlantLayoutWindow(QDialog):
         if selected_stations:
             # If multiple stations are selected, use the IN clause
             placeholders = ", ".join(["?"] * len(selected_stations))
-            filters.append(f"ws.station_id IN ({placeholders})")
+            filters.append(f"context.station_id IN ({placeholders})")
             params.extend(selected_stations)
         elif not use_path_scopes and not ignore_workplace and station_id != "All":
             # If a single station is selected
-            filters.append("ws.station_id = ?")
+            filters.append("context.station_id = ?")
             params.append(station_id)
         
             
     
         if shift_id != "All":
-            filters.append("ws.shift_id = ?")
+            filters.append("context.shift_id = ?")
             params.append(shift_id)
     
         if tool_id != "All":
-            filters.append("ws.tool_id = ?")
+            filters.append("assessment.tool_id = ?")
             params.append(tool_id)
         
         # **Apply Gender Filter (Only if Worker Filter Group is Checked OR Gender ComboBox is Enabled)**
@@ -4672,7 +4926,7 @@ class PlantLayoutWindow(QDialog):
     
                 if weight_from is not None and weight_to is not None:
                     if weight_from <= weight_to:
-                        filters.append("worker_weight BETWEEN ? AND ?")
+                        filters.append("w.weight BETWEEN ? AND ?")
                         params.extend([weight_from, weight_to])
     
                 # **HEIGHT FILTER**
@@ -4681,7 +4935,7 @@ class PlantLayoutWindow(QDialog):
     
                 if height_from is not None and height_to is not None:
                     if height_from <= height_to:
-                        filters.append("worker_height BETWEEN ? AND ?")
+                        filters.append("w.height BETWEEN ? AND ?")
                         params.extend([height_from, height_to])
 
             except ValueError:
@@ -4709,7 +4963,17 @@ class PlantLayoutWindow(QDialog):
             #    print(row) 
             
             # Convert results to a list of dictionaries
-            return [dict(row) for row in workers]
+            records = [dict(row) for row in workers]
+            for record in records:
+                try:
+                    record["color"] = job_risk_color(
+                        record["tool_id"],
+                        record["total_cumulative_damage"],
+                        record.get("unit") or "Metric",
+                    )
+                except (TypeError, ValueError):
+                    record["color"] = "#D9E1E6"
+            return records
     
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to retrieve workers:\n{str(e)}")
@@ -4718,6 +4982,37 @@ class PlantLayoutWindow(QDialog):
 
     def getWorkersAllTools(self, order_by):
         return self.getWorkers(order_by, "All")
+
+    def getJobRiskMarkers(self):
+        """Return placed Job risks for the current tool and workplace scope."""
+        database_path = getattr(self.parent(), "projectdatabasePath", "")
+        if not database_path:
+            return []
+        scope_paths = tuple(getattr(self, "workplace_scope_paths", ()) or ())
+        selected_plant = self.plant_combo.currentText().strip()
+        plant_name = None if selected_plant in ("", "All") else selected_plant
+        selected_shift = self.shift_combo.currentText().strip()
+        shift_id = None if selected_shift in ("", "All") else selected_shift
+        tool_id = self.tool_combo.currentText().strip() or "LiFFT"
+        try:
+            with database_session(database_path, read_only=True) as connection:
+                records = plot_job_records(
+                    connection,
+                    tool_id=tool_id,
+                    scope_paths=scope_paths,
+                    plant_name=plant_name,
+                    shift_id=shift_id,
+                )
+            for record in records:
+                record["color"] = job_risk_color(
+                    tool_id,
+                    record.get("total_cumulative_damage"),
+                    record.get("unit") or "Metric",
+                )
+            return records
+        except Exception as error:
+            QMessageBox.critical(self, "Error", f"Failed to retrieve Job risks:\n{error}")
+            return []
         
     
     
@@ -4793,8 +5088,39 @@ class PlantLayoutWindow(QDialog):
             self.worker_risk_value.setText(
                 f"{float(worker_data.get('probability_outcome', 0.0) or 0.0):.1f}%"
             )
+            job_id = worker_data.get("job_id")
+            job_name = worker_data.get("job_name")
+            self.worker_job_value.setText(
+                f"{job_id} - {job_name}" if job_id and job_name else (job_id or "Not classified")
+            )
+            job_risk = worker_data.get("job_probability_outcome")
+            individual_risk = worker_data.get("probability_outcome")
+            if job_risk is None:
+                self.worker_job_risk_value.setText("Not available")
+                self.worker_risk_difference_value.setText("Not available")
+            else:
+                self.worker_job_risk_value.setText(f"{float(job_risk):.1f}%")
+                difference = float(individual_risk or 0.0) - float(job_risk)
+                direction = "above" if difference > 0 else "below" if difference < 0 else "equal to"
+                self.worker_risk_difference_value.setText(
+                    f"{difference:+.1f} pp ({direction} Job)"
+                    if difference else "0.0 pp (equal to Job)"
+                )
+            profile_name = worker_data.get("job_risk_profile_name") or "Not available"
+            profile_version = worker_data.get("job_risk_profile_version")
+            profile_text = profile_name + (
+                f" (v{profile_version})" if profile_version is not None else ""
+            )
+            self.worker_job_risk_value.setToolTip(f"Current approved profile: {profile_text}")
             self.worker_marker_preview.setWorker(
-                worker_data.get("gender", ""), worker_data.get("color", "#19B83F")
+                worker_data.get("gender", ""),
+                worker_data.get("color", "#19B83F"),
+                job_risk_color(
+                    worker_data.get("tool_id", "LiFFT"),
+                    worker_data.get("job_total_cumulative_damage"),
+                    worker_data.get("job_unit") or "Metric",
+                ),
+                self.plot_risk_view_mode == "comparison",
             )
 
         self.xinfo_input.setText(f"{int(worker_data.get('x', 0))}")
@@ -4832,6 +5158,9 @@ class PlantLayoutWindow(QDialog):
         self.worker_tool_value.setText("–")
         self.worker_damage_value.setText("–")
         self.worker_risk_value.setText("–")
+        self.worker_job_value.setText("–")
+        self.worker_job_risk_value.setText("–")
+        self.worker_risk_difference_value.setText("–")
         self.worker_marker_preview.clearWorker()
         for field in (self.xinfo_input, self.yinfo_input, self.scaleinfo_input):
             field.clear()
@@ -5039,7 +5368,7 @@ class PlantLayoutWindow(QDialog):
 
     def getPlants(self):
         """
-        Retrieves all records from the Plant table for plants that exist in WorkerStationShiftErgoTool.
+        Retrieves all Plant records in the project organization.
     
         Returns:
             list: A list of dictionaries containing full plant data, including visual elements.
@@ -5054,21 +5383,7 @@ class PlantLayoutWindow(QDialog):
             conn.row_factory = sqlite3.Row  # Dictionary-like access
             cursor = conn.cursor()
     
-            # Step 1: Get distinct plant names from WorkerStationShiftErgoTool
-            cursor.execute("SELECT DISTINCT plant_name FROM WorkerStationShiftErgoTool")
-            plant_names = [row["plant_name"] for row in cursor.fetchall()]
-    
-            if not plant_names:
-                conn.close()
-                return []
-    
-            # Step 2: Fetch full plant details for those plants
-            query = f"""
-                SELECT * FROM Plant
-                WHERE name IN ({','.join(['?'] * len(plant_names))})
-                ORDER BY name
-            """
-            cursor.execute(query, plant_names)
+            cursor.execute("SELECT * FROM Plant ORDER BY name")
             plants = cursor.fetchall()
             conn.close()
     
@@ -5118,7 +5433,7 @@ class PlantLayoutWindow(QDialog):
     
     def getSections(self):
         """
-        Retrieves all distinct section names for the selected plant from WorkerStationShiftErgoTool.
+        Retrieves all distinct section names for the selected Plant.
     
         Returns:
             list: A list of dictionaries containing section names.
@@ -5140,10 +5455,10 @@ class PlantLayoutWindow(QDialog):
     
             # Fetch distinct sections for the selected plant
             query = """
-                SELECT DISTINCT section_name 
-                FROM WorkerStationShiftErgoTool    
+                SELECT name AS section_name
+                FROM Section
                 WHERE plant_name = ?
-                ORDER BY section_name
+                ORDER BY name
             """
             cursor.execute(query, (selected_plant,))
             sections = cursor.fetchall()
@@ -5198,7 +5513,7 @@ class PlantLayoutWindow(QDialog):
     
     def getLines(self):
         """
-        Retrieves all distinct line names for the selected plant and section(s) from WorkerStationShiftErgoTool.
+        Retrieves all Line names for the selected Plant and Sections.
     
         Returns:
             list: A list of dictionaries containing line names.
@@ -5228,7 +5543,7 @@ class PlantLayoutWindow(QDialog):
             cursor = conn.cursor()
     
             # **Build Query Based on Filters**
-            query = "SELECT DISTINCT line_name FROM WorkerStationShiftErgoTool WHERE plant_name = ?"
+            query = "SELECT name AS line_name FROM Line WHERE plant_name = ?"
             params = [selected_plant]
     
             # **Apply Section Filter (If Specific Sections Selected)**
@@ -5254,7 +5569,7 @@ class PlantLayoutWindow(QDialog):
 
     def getLinesW(self):
         """
-        Retrieves all distinct line names for the selected plant and section from WorkerStationShiftErgoTool.
+        Retrieves all Line names for the selected Plant and Section.
     
         Returns:
             list: A list of dictionaries containing line names.
@@ -5278,10 +5593,10 @@ class PlantLayoutWindow(QDialog):
     
             # Fetch distinct lines for the selected plant and section
             query = """
-                SELECT DISTINCT line_name 
-                FROM WorkerStationShiftErgoTool
+                SELECT name AS line_name
+                FROM Line
                 WHERE plant_name = ? AND section_name = ?
-                ORDER BY line_name
+                ORDER BY name
             """
             cursor.execute(query, (selected_plant, selected_section))
             lines = cursor.fetchall()
@@ -5333,7 +5648,7 @@ class PlantLayoutWindow(QDialog):
     def getStations(self):
         """
         Retrieves all distinct station IDs for the selected plant, sections, and lines 
-        from WorkerStationShiftErgoTool.
+        from the Station hierarchy.
     
         Returns:
             list: A list of dictionaries containing station IDs.
@@ -5367,8 +5682,8 @@ class PlantLayoutWindow(QDialog):
     
             # **Base Query**
             query = """
-                SELECT DISTINCT station_id 
-                FROM WorkerStationShiftErgoTool
+                SELECT id AS station_id
+                FROM Station
                 WHERE plant_name = ?
             """
             params = [selected_plant]
@@ -5407,7 +5722,7 @@ class PlantLayoutWindow(QDialog):
     
     def getStationsW(self):
         """
-        Retrieves all distinct station IDs for the selected plant, section, and line from WorkerStationShiftErgoTool.
+        Retrieves all Station IDs for the selected Plant, Section, and Line.
     
         Returns:
             list: A list of dictionaries containing station IDs.
@@ -5432,10 +5747,10 @@ class PlantLayoutWindow(QDialog):
     
             # Fetch distinct stations for the selected plant, section, and line
             query = """
-                SELECT DISTINCT station_id 
-                FROM WorkerStationShiftErgoTool
+                SELECT id AS station_id
+                FROM Station
                 WHERE plant_name = ? AND section_name = ? AND line_name = ?
-                ORDER BY station_id
+                ORDER BY id
             """
             cursor.execute(query, (selected_plant, selected_section, selected_line))
             stations = cursor.fetchall()
@@ -5496,7 +5811,7 @@ class PlantLayoutWindow(QDialog):
     
     def getShifts(self):
         """
-        Retrieves all records from the Shift table for shift IDs that exist in WorkerStationShiftErgoTool.
+        Retrieves all Shift records in the project.
     
         Returns:
             list: A list of dictionaries containing full shift data.
@@ -5511,21 +5826,7 @@ class PlantLayoutWindow(QDialog):
             conn.row_factory = sqlite3.Row  # Dictionary-like access
             cursor = conn.cursor()
     
-            # Step 1: Get distinct shift IDs from WorkerStationShiftErgoTool
-            cursor.execute("SELECT DISTINCT shift_id FROM WorkerStationShiftErgoTool")
-            shift_ids = [row["shift_id"] for row in cursor.fetchall()]
-    
-            if not shift_ids:
-                conn.close()
-                return []
-    
-            # Step 2: Fetch full shift details for those shifts
-            query = f"""
-                SELECT * FROM Shift
-                WHERE id IN ({','.join(['?'] * len(shift_ids))})
-                ORDER BY id
-            """
-            cursor.execute(query, shift_ids)
+            cursor.execute("SELECT * FROM Shift ORDER BY id")
             shifts = cursor.fetchall()
             conn.close()
     
@@ -5561,7 +5862,7 @@ class PlantLayoutWindow(QDialog):
     
     
     def loadVisualWorkerTools(self):
-        """Creates VisualWorkerTool objects from the workerstationshifttool_dataset and stores them in a list."""
+        """Rebuild map markers for the selected Individual, Job, or Comparison view."""
         self.cancelLocatePulse()
     
         # **Ensure the dataset is available**
@@ -5576,23 +5877,58 @@ class PlantLayoutWindow(QDialog):
         #            print("Removing item from scene...")
         #            self.plantlayout_scene.removeItem(worker_tool)
         
-        # **Clear only visible visual tools**
-        if hasattr(self, 'visual_worker_tools'):
-            for worker_tool in self.visual_worker_tools:
-                if worker_tool in self.plantlayout_scene.items() and worker_tool.isVisible():
-                    print("Removing item from scene...")
-                    self.plantlayout_scene.removeItem(worker_tool)
-
-
-        # **Initialize the list to store objects**
+        for collection_name in ("visual_worker_tools", "visual_job_markers"):
+            for marker in getattr(self, collection_name, []):
+                try:
+                    marker_scene = marker.scene()
+                except RuntimeError:
+                    # QGraphicsScene.clear() owns and deletes its C++ items before
+                    # this Python list is rebuilt.
+                    continue
+                if marker_scene is self.plantlayout_scene:
+                    self.plantlayout_scene.removeItem(marker)
         self.visual_worker_tools = []
-    
-        # **Loop through each worker in the dataset and create a visual object**
+        self.visual_job_markers = []
+
+        if self.plot_risk_view_mode == "job":
+            station_counts = {}
+            for job_data in getattr(self, "job_risk_marker_dataset", []):
+                station_key = (
+                    job_data["plant_name"], job_data["section_name"],
+                    job_data["line_name"], job_data["station_id"],
+                )
+                index = station_counts.get(station_key, 0)
+                station_counts[station_key] = index + 1
+                offset = ((index % 3) * 9.0, (index // 3) * 9.0)
+                marker = VisualJobMarker(
+                    self.plantlayout_scene,
+                    job_data,
+                    self.scale_factor,
+                    display_offset=offset,
+                )
+                self.visual_job_markers.append(marker)
+            self.setWorkerOverviewEnabled(False)
+            self.updateMapScopeFooter()
+            return
+
         for worker_data in self.workerstationshifttool_dataset:
+            worker_data["risk_view_mode"] = self.plot_risk_view_mode
+            worker_data["job_color"] = job_risk_color(
+                worker_data["tool_id"],
+                worker_data.get("job_total_cumulative_damage"),
+                worker_data.get("job_unit") or "Metric",
+            )
             worker_tool = VisualWorkerTool(self.plantlayout_scene, worker_data, self.scale_factor)  # Create the object
             self.visual_worker_tools.append(worker_tool)  # Store in the list
-    
-        print(f"Loaded {len(self.visual_worker_tools)} VisualWorkerTool objects.")
+        self.updateMapScopeFooter()
+
+    def jobMarkerPositionSaved(self, station_key, x, y):
+        """Refresh overlapping Job markers after a Station anchor is moved."""
+        QTimer.singleShot(0, self.loadWorkersAndMarkersAfterStationMove)
+
+    def loadWorkersAndMarkersAfterStationMove(self):
+        self.loadWorkers(0 if self.isNumberOrder else 1)
+        self.loadVisualWorkerTools()
 
     
     def updateWorkerBorders(self):
@@ -5629,6 +5965,7 @@ class PlantLayoutWindow(QDialog):
     
     def clearOutcomeForEmptyScope(self):
         """Remove stale aggregate state when no enabled results are available."""
+        subject = "Job" if self.plot_risk_view_mode == "job" else "Worker"
         if hasattr(self, "plot_risk_gauge"):
             self.plot_risk_gauge.resetValue()
             self.outcome_risk_label.setText(
@@ -5636,17 +5973,18 @@ class PlantLayoutWindow(QDialog):
             )
         self.highlight_details = []
         self.outcomeresult1_label.setText(
-            "No enabled worker results match the current filters."
+            f"No {subject.lower()} results match the current filters."
         )
         self.outcomeresult1_label.setStyleSheet("color: #526777; font-weight: 600;")
         self.outcomeresult1_label.setToolTip(
-            "No enabled worker results match the current filters."
+            f"No {subject.lower()} results match the current filters."
         )
         self.outcomemore_button.hide()
 
     def clearSummaryForEmptyScope(self):
         """Reset metrics and chart together so prior filter results cannot leak."""
-        self.summaryresult1_label.setText("<b>Total Workers:</b> 0")
+        subject = "Jobs" if self.plot_risk_view_mode == "job" else "Workers"
+        self.summaryresult1_label.setText(f"<b>Total {subject}:</b> 0")
         self.summaryresult2_label.setText("<b>Average Age:</b> –")
         self.summaryresult3_label.setText("<b>Males:</b> 0")
         self.summaryresult4_label.setText("<b>Females:</b> 0")
@@ -5661,7 +5999,7 @@ class PlantLayoutWindow(QDialog):
         figure, axis = plt.subplots(figsize=(3.1, 2.3))
         axis.set_facecolor("#FFFFFF")
         axis.text(
-            0.5, 0.5, "No worker results match\\nthe current filters.",
+            0.5, 0.5, f"No {subject.lower()} results match\\nthe current filters.",
             ha="center", va="center", color="#526777", fontsize=9,
         )
         axis.set_axis_off()
@@ -5670,6 +6008,12 @@ class PlantLayoutWindow(QDialog):
 
     def loadSummary(self):
         """Calculates and updates summary statistics from workerstationshifttool_dataset, considering only enabled workers."""
+        if self.plot_risk_view_mode == "job":
+            self.loadJobRiskSummary()
+            return
+        self.summaryplot_combo.show()
+        self.summaryplot_combo.setEnabled(True)
+        self.summaryplot_combo.setToolTip("Choose the summary visualization shown above.")
         
         if not hasattr(self, "workerstationshifttool_dataset") or not self.workerstationshifttool_dataset:
             self.clearSummaryForEmptyScope()
@@ -5678,8 +6022,6 @@ class PlantLayoutWindow(QDialog):
         # **Filter dataset to only include enabled workers**
         enabled_workers = [worker for worker in self.workerstationshifttool_dataset if worker.get("enable", 0) == 1]
         
-        enabled_workersAllTools = [worker for worker in self.workerstationshiftAlltools_dataset if worker.get("enable", 0) == 1]
-
         if not enabled_workers:
             self.clearSummaryForEmptyScope()
             return
@@ -5745,17 +6087,132 @@ class PlantLayoutWindow(QDialog):
         self.summaryresult6_label.setText(f"<b>Female avg. damage:</b> {female_damage:.4f}")
         self.summaryresult7_label.setText(f"<b>Male avg. risk:</b> {male_risk:.1f}%")
         self.summaryresult8_label.setText(f"<b>Female avg. risk:</b> {female_risk:.1f}%")
-        self.summaryresult9_label.setText(f"<b>Overall avg. damage:</b> {avg_cumulative_damage:.4f}")
-        self.summaryresult10_label.setText(f"<b>Overall avg. risk:</b> {avg_job_risk:.1f}%")
+        if self.plot_risk_view_mode == "comparison":
+            comparable = [
+                worker for worker in enabled_workers
+                if worker.get("job_probability_outcome") is not None
+            ]
+            average_job_risk = (
+                np.mean([float(worker["job_probability_outcome"]) for worker in comparable])
+                if comparable else 0.0
+            )
+            average_difference = avg_job_risk - average_job_risk if comparable else 0.0
+            self.summaryresult9_label.setText(
+                f"<b>Overall avg. individual risk:</b> {avg_job_risk:.1f}%"
+            )
+            self.summaryresult10_label.setText(
+                f"<b>Avg. difference:</b> {average_difference:+.1f} percentage points"
+                if comparable else "<b>Avg. difference:</b> –"
+            )
+        else:
+            self.summaryresult9_label.setText(
+                f"<b>Overall avg. damage:</b> {avg_cumulative_damage:.4f}"
+            )
+            self.summaryresult10_label.setText(
+                f"<b>Overall avg. individual risk:</b> {avg_job_risk:.1f}%"
+            )
 
         # **Generate and Display Risk Distribution Plot**
         #self.generateRiskDistributionPlot(enabled_workers)
-        self.generateTotalWorkerRiskDistributionPlot(enabled_workersAllTools)
+        self.onSummaryPlotChanged()
         #self.generateWorkerRiskHeatmap(enabled_workers)
         #self.generateRiskHeatmap(enabled_workers)
         #self.generateWorkerDistributionPlot(enabled_workers)
         #self.generateRiskVsAgePlot(enabled_workers)
         #self.generateCumulativeRiskOverTimePlot(enabled_workers)
+
+    def loadJobRiskSummary(self):
+        records = list(getattr(self, "job_risk_marker_dataset", []) or [])
+        self.summaryplot_combo.setEnabled(False)
+        self.summaryplot_combo.hide()
+        if not records:
+            self.clearSummaryForEmptyScope()
+            return
+        self.summaryplot_combo.setToolTip(
+            "Job Risk view uses the placed-Job chart for the selected ergonomic tool."
+        )
+        self.plot_description_label.setText(
+            "<b>What this shows:</b> Current approved Job risk for each active placement "
+            "in the selected workplace and shift scope."
+        )
+        self.plot_compare_label.setText(
+            "<b>Map:</b> Each square is a placed Job at its Station anchor; a dashed square "
+            "has not yet been positioned."
+        )
+        probabilities = [
+            float(record["probability_outcome"])
+            for record in records if record.get("probability_outcome") is not None
+        ]
+        damages = [
+            float(record["total_cumulative_damage"])
+            for record in records if record.get("total_cumulative_damage") is not None
+        ]
+        positioned = {
+            (record["plant_name"], record["section_name"], record["line_name"], record["station_id"])
+            for record in records if record.get("x") is not None and record.get("y") is not None
+        }
+        all_stations = {
+            (record["plant_name"], record["section_name"], record["line_name"], record["station_id"])
+            for record in records
+        }
+        unique_jobs = {record["job_id"] for record in records}
+        profiles = {
+            record["job_risk_profile_id"]
+            for record in records
+            if record.get("job_risk_profile_id") is not None
+        }
+        values = (
+            ("Placed Jobs", len(unique_jobs)),
+            ("Active placements", len(records)),
+            ("Positioned stations", len(positioned)),
+            ("Unpositioned stations", len(all_stations - positioned)),
+            ("Approved profiles", len(profiles)),
+            ("Average Job damage", f"{np.mean(damages):.4f}" if damages else "–"),
+            ("Average Job risk", f"{np.mean(probabilities):.1f}%" if probabilities else "–"),
+            ("Minimum Job risk", f"{min(probabilities):.1f}%" if probabilities else "–"),
+            ("Maximum Job risk", f"{max(probabilities):.1f}%" if probabilities else "–"),
+            ("Ergonomic tool", self.tool_combo.currentText()),
+        )
+        targets = (
+            self.summaryresult1_label, self.summaryresult2_label,
+            self.summaryresult3_label, self.summaryresult4_label,
+            self.summaryresult5_label, self.summaryresult6_label,
+            self.summaryresult7_label, self.summaryresult8_label,
+            self.summaryresult9_label, self.summaryresult10_label,
+        )
+        for (label, value), target in zip(values, targets):
+            target.setText(f"<b>{label}:</b> {value}")
+
+        figure, axis = plt.subplots(figsize=(3.1, 2.3))
+        available_records = [
+            record for record in records
+            if record.get("probability_outcome") is not None
+        ]
+        labels = [
+            f'{record["job_id"]}\n{record["station_id"]} / S{record["shift_id"]}'
+            for record in available_records
+        ]
+        risks = [float(record["probability_outcome"]) for record in available_records]
+        colors = [record.get("color", "#D9E1E6") for record in available_records]
+        axis.bar(
+            range(len(available_records)), risks, color=colors,
+            edgecolor="black", linewidth=0.8,
+        )
+        axis.set_xticks(range(len(available_records)))
+        axis.set_xticklabels(labels, rotation=45, ha="right", fontsize=7)
+        axis.set_ylim(0, 100)
+        axis.set_ylabel("Job risk (%)", fontsize=8, fontweight="bold")
+        axis.set_title("Placed Job Risk", fontsize=9, fontweight="bold")
+        axis.grid(axis="y", linestyle="--", alpha=0.35)
+        if not available_records:
+            axis.text(
+                0.5, 0.5, "No approved profile for this tool",
+                ha="center", va="center", transform=axis.transAxes,
+                fontsize=8, color="#526777",
+            )
+        figure.tight_layout()
+        self.current_plot_figure = figure
+        self.setSummaryFigure(figure)
     
     
     
@@ -6417,26 +6874,57 @@ class PlantLayoutWindow(QDialog):
     
     def loadOutcome(self):
         """Update aggregate risk and highlights for the current PLOT scope."""
-    
-        if not hasattr(self, "workerstationshifttool_dataset") or not self.workerstationshifttool_dataset:
+
+        job_view = self.plot_risk_view_mode == "job"
+        outcome_records = (
+            list(getattr(self, "job_risk_marker_dataset", []) or [])
+            if job_view else
+            [
+                worker for worker in getattr(self, "workerstationshifttool_dataset", [])
+                if worker.get("enable", 0) == 1
+            ]
+        )
+        if not outcome_records:
             self.clearOutcomeForEmptyScope()
             return
-    
-        # **Filter dataset to only include enabled workers**
-        enabled_workers = [worker for worker in self.workerstationshifttool_dataset if worker.get("enable", 0) == 1]
-        if not enabled_workers:
-            self.clearOutcomeForEmptyScope()
+        measured_records = [
+            record for record in outcome_records
+            if record.get("probability_outcome") is not None
+        ]
+        if job_view and not measured_records:
+            self.plot_risk_gauge.resetValue()
+            self.outcome_risk_label.setText(
+                "<span style='color:#758590;'>●</span> Not available"
+            )
+            self.outcome_risk_title.setText(
+                f"{self.tool_combo.currentText()} Job Group Risk Score:"
+            )
+            self.highlight_details = []
+            message = (
+                "Active Job placements are in scope, but no current approved "
+                "risk profile is available for this ergonomic tool."
+            )
+            self.outcomeresult1_label.setText(message)
+            self.outcomeresult1_label.setStyleSheet(
+                "color: #526777; font-weight: 600;"
+            )
+            self.outcomeresult1_label.setToolTip(message)
+            self.outcomemore_button.hide()
             return
+        risk_records = measured_records if job_view else outcome_records
         average_probability = (
-            sum(float(worker.get("probability_outcome", 0.0) or 0.0) for worker in enabled_workers)
-            / len(enabled_workers)
-            if enabled_workers else 0.0
+            sum(float(record["probability_outcome"]) for record in risk_records)
+            / len(risk_records)
         )
         if hasattr(self, "plot_risk_gauge"):
             self.plot_risk_gauge.setValue(average_probability)
             _start, _end, band_label, band_color, _range_text = risk_band(average_probability)
             self.outcome_risk_label.setText(
                 f"<span style='color:{band_color};'>●</span> {band_label}  ·  {average_probability:.1f}%"
+            )
+            score_name = "Job" if job_view else "Individual"
+            self.outcome_risk_title.setText(
+                f"{self.tool_combo.currentText()} {score_name} Group Risk Score:"
             )
         
         
@@ -6446,8 +6934,8 @@ class PlantLayoutWindow(QDialog):
     
         # **Loop Through Dataset to Sum Colors**
         #for worker in self.workerstationshifttool_dataset:
-        for worker in enabled_workers:
-            hex_color = worker.get("color", "#72ff00")  # Default to black
+        for record in risk_records:
+            hex_color = record.get("color", "#D9E1E6")
             color = QColor(hex_color)  # Convert hex to QColor
     
             if color.isValid():
@@ -6484,9 +6972,9 @@ class PlantLayoutWindow(QDialog):
         high_risk_threshold = 50
         station_risk_values = {}
 
-        for worker in enabled_workers:  # Use only enabled workers
-            station_id = worker.get("station_id", "")
-            probability_outcome = worker.get("probability_outcome", 0.0)  # Ensure it's a float
+        for record in risk_records:
+            station_id = record.get("station_id", "")
+            probability_outcome = record["probability_outcome"]
 
             if probability_outcome > high_risk_threshold:
                 station_risk_values.setdefault(station_id, []).append(float(probability_outcome))
@@ -6505,10 +6993,11 @@ class PlantLayoutWindow(QDialog):
 
         # **Update the Outcome Label Based on Results**
         if self.highlight_details:
-            high_risk_workers = sum(detail["count"] for detail in self.highlight_details)
+            high_risk_results = sum(detail["count"] for detail in self.highlight_details)
+            subject = "Job" if job_view else "worker"
             warning_message = (
-                f"Warning: {high_risk_workers} high-risk worker "
-                f"{'result' if high_risk_workers == 1 else 'results'} found "
+                f"Warning: {high_risk_results} high-risk {subject} "
+                f"{'result' if high_risk_results == 1 else 'results'} found "
                 f"across {len(self.highlight_details)} "
                 f"{'station' if len(self.highlight_details) == 1 else 'stations'} (>{high_risk_threshold}%)."
             )
@@ -6519,7 +7008,8 @@ class PlantLayoutWindow(QDialog):
             self.outcomemore_button.show()
             
         else:
-            neutral_message = "No high-risk worker results were found in the current filter scope."
+            subject = "Job" if job_view else "worker"
+            neutral_message = f"No high-risk {subject} results were found in the current filter scope."
             self.outcomeresult1_label.setText(neutral_message)
             self.outcomeresult1_label.setStyleSheet("color: #526777; font-weight: 600;")
             self.outcomeresult1_label.setToolTip(neutral_message)

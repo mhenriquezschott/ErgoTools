@@ -289,5 +289,32 @@ class IntegratedProjectMigrationTests(unittest.TestCase):
             )
 
 
+class NewProjectTemplateTests(unittest.TestCase):
+    def test_template_is_born_at_the_current_schema(self):
+        template = REPOSITORY_ROOT / "data" / "ergotools_data.db"
+        self.assertTrue(template.is_file())
+        with sqlite3.connect(template) as connection:
+            self.assertEqual(
+                connection.execute("PRAGMA user_version").fetchone()[0],
+                LATEST_SCHEMA_VERSION,
+            )
+            self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
+            history = connection.execute(
+                "SELECT version FROM SchemaMigration ORDER BY version"
+            ).fetchall()
+            self.assertEqual(
+                [version for (version,) in history],
+                list(range(1, LATEST_SCHEMA_VERSION + 1)),
+            )
+
+        temporary_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary_directory.cleanup)
+        project_database = Path(temporary_directory.name) / "new-project.db"
+        shutil.copy2(template, project_database)
+        result = migrate_database(project_database)
+        self.assertEqual(result.applied_versions, ())
+        self.assertIsNone(result.backup)
+
+
 if __name__ == "__main__":
     unittest.main()

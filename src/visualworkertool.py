@@ -21,6 +21,9 @@ from PyQt5 import QtWidgets, QtCore
 import random
 import sqlite3
 
+from database import database_session
+from plot_position_repository import save_worker_assignment_marker
+
 #from PyQt5.QtGui import QIcon, QPixmap, QFont
 
 
@@ -52,6 +55,7 @@ class VisualWorkerTool(QGraphicsItem):
         self.loadIntoTool = False
         
         self.datarow = datarow
+        self.worker_assignment_id = datarow.get("worker_assignment_id")
         
         self.loadscale = scale
         #self.sfi = round(2 - self.scale, 2)
@@ -71,6 +75,14 @@ class VisualWorkerTool(QGraphicsItem):
     
         self.total_cumulative_damage = datarow.get("total_cumulative_damage", 0.0)
         self.probability_outcome = datarow.get("probability_outcome", 0.0)
+        self.job_id = datarow.get("job_id")
+        self.job_name = datarow.get("job_name")
+        self.job_probability_outcome = datarow.get("job_probability_outcome")
+        self.job_total_cumulative_damage = datarow.get("job_total_cumulative_damage")
+        self.job_risk_profile_name = datarow.get("job_risk_profile_name")
+        self.job_risk_profile_version = datarow.get("job_risk_profile_version")
+        self.job_color = QColor(datarow.get("job_color", "#9AA8B2"))
+        self.risk_view_mode = datarow.get("risk_view_mode", "individual")
         
         # **Additional results**
         self.result_3 = datarow.get("result_3", 0.0)
@@ -177,7 +189,10 @@ class VisualWorkerTool(QGraphicsItem):
             f"Station: {self.station_id}\n"
             f"Shift: {self.shift_id}\n"
             f"Cumulative Damage: {self.total_cumulative_damage}\n"
-            f"Risk Probability: {self.probability_outcome}%"
+            f"Individual Risk: {self.probability_outcome}%\n"
+            f"Job: {self.job_id or 'Not classified'}\n"
+            f"Job Risk: "
+            f"{str(self.job_probability_outcome) + '%' if self.job_probability_outcome is not None else 'Not available'}"
         )
 
     
@@ -221,8 +236,22 @@ class VisualWorkerTool(QGraphicsItem):
     def initShape(self):
         """Creates and assigns the graphical shape (circle, triangle, or square) to the worker item."""
 
-        if hasattr(self, 'item') and self.item:  
-            self.scene().removeItem(self.item)  # Remove existing shape if any
+        #if hasattr(self, 'item') and self.item:  
+        #    self.scene().removeItem(self.item)  # Remove existing shape if any
+    
+        #if hasattr(self, 'item') and self.item:
+        #    current_scene = self.scene()
+        #    if current_scene is not None:
+        #        current_scene.removeItem(self.item)
+        #    self.item = None
+    
+        if hasattr(self, 'item') and self.item:
+            item_scene = self.item.scene()
+            if item_scene is not None:
+                item_scene.removeItem(self.item)
+            elif self.item.parentItem() is not None:
+                self.item.setParentItem(None)
+            self.item = None
     
         # self.sfi = Scale Factor Internal
         #self.sfi = round(2 - self.scale, 2)
@@ -256,8 +285,16 @@ class VisualWorkerTool(QGraphicsItem):
     def initShapeAt(self): # TODO: remove it, it should not be needed
         """Creates and assigns the graphical shape (circle, triangle, or square) to the worker item."""
 
-        if hasattr(self, 'item') and self.item:  
-            self.scene().removeItem(self.item)  # Remove existing shape if any
+        #if hasattr(self, 'item') and self.item:  
+        #    self.scene().removeItem(self.item)  # Remove existing shape if any
+    
+        if hasattr(self, 'item') and self.item:
+            item_scene = self.item.scene()
+            if item_scene is not None:
+                item_scene.removeItem(self.item)
+            elif self.item.parentItem() is not None:
+                self.item.setParentItem(None)
+            self.item = None
     
         # self.sfi = Scale Factor Internal
         #self.sfi = round(2 - self.scale, 2)
@@ -397,6 +434,14 @@ class VisualWorkerTool(QGraphicsItem):
     
 
     def paint(self, painter, option, widget=None):
+        if self.risk_view_mode == "comparison":
+            frame = self.boundingRect().adjusted(-5, -5, 5, 5)
+            frame_pen = QPen(self.job_color, max(4, math.ceil(3 * self.sfi)), Qt.SolidLine)
+            if self.job_probability_outcome is None:
+                frame_pen.setStyle(Qt.DashLine)
+            painter.setPen(frame_pen)
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(frame)
         if self.border:
             if  (self.isSaveAt == False):
                 rect = self.boundingRect()
@@ -557,116 +602,45 @@ class VisualWorkerTool(QGraphicsItem):
      
 
 
-    def __saveData(self):
-        """Saves the object's updated data directly to the WorkerStationShiftErgoTool table."""
-        
+    def __saveData(self, *, use_internal_position=False):
+        """Persist the one physical marker owned by this Worker Assignment."""
         grandparent = self.parentScene.parent().parent()
-        
-        if not grandparent or not hasattr(grandparent, 'projectdatabasePath') or not grandparent.projectdatabasePath:
-            print("Error: Database path is missing.")
-            return
-    
-        try:
-        
-            # TODO: temporary fix, it should be from members..
-            # **Extract x and y from UI Controls if available**
-            #parent = self.parentScene.parent()
-            #x_value = float(parent.xcurrentinfo_input.text().strip()) if parent and hasattr(parent, 'xcurrentinfo_input') and parent.xcurrentinfo_input.text().strip() else self.x
-            #y_value = float(parent.ycurrentinfo_input.text().strip()) if parent and hasattr(parent, 'ycurrentinfo_input') and parent.ycurrentinfo_input.text().strip() else self.y
-            
-            #print("self.x=", self.x)
-            #print("self.y=", self.y)
-            
-            #print("self.xi=", self.xi)
-            #print("self.yi=", self.yi)
-            if (self.x != self.xi):
-            #    print("different x coord")
-                x_value = self.xi
-                x_value = round(float(x_value) - ((float(self.width) * float(self.sfi) * float(self.scale)) / 2)) 
-            else:
-            #    print("equal x coord")
-                x_value = round(self.x)
-            
-            if (self.y != self.yi):
-            #    print("different y coord")
-                y_value = self.yi
-                y_value = round(float(y_value) - ((float(self.height) * float(self.sfi) * float(self.scale)) / 2))
-            else:
-            #    print("equal y coord")
-                y_value = round(self.y)
-            
-            #print("x_value=", x_value)
-            #print("y_value=", y_value)
-            
-            
-            # TODO: check if it really fix the saving position issue, it seems to help
-            #x_value = x_value - (width / 2) 
-            #y_value = y_value - (height / 2)
-            
-            # **Connect to SQLite Database**
-            conn = sqlite3.connect(grandparent.projectdatabasePath)
-            cursor = conn.cursor()
-    
-            # **SQL Update Query (Updating all visual fields)**
-            query = """
-                UPDATE WorkerStationShiftErgoTool 
-                SET 
-                    x = ?, 
-                    y = ?, 
-                    width = ?, 
-                    height = ?, 
-                    line_thickness = ?, 
-                    scale_x = ?, 
-                    scale_y = ?, 
-                    crop_x = ?, 
-                    crop_y = ?, 
-                    crop_width = ?, 
-                    crop_height = ?, 
-                    zoom = ?, 
-                    rotation = ?, 
-                    mirror_h = ?, 
-                    mirror_v = ?, 
-                    orientation = ?, 
-                    brightness = ?, 
-                    contrast = ?, 
-                    saturation = ?, 
-                    lock = ?, 
-                    visible = ?, 
-                    transparency = ?, 
-                    enable = ?, 
-                    color = ?
-                WHERE worker_id = ? 
-                    AND plant_name = ? 
-                    AND section_name = ? 
-                    AND line_name = ? 
-                    AND station_id = ? 
-                    AND shift_id = ? 
-                    AND tool_id = ?
-                """
+        database_path = getattr(grandparent, "projectdatabasePath", "")
+        if not database_path:
+            raise RuntimeError("The project database path is missing.")
+        if self.worker_assignment_id is None:
+            raise RuntimeError("The worker marker has no Worker Assignment identity.")
 
-            # **Prepare Parameters (Including all visual fields)**
-            params = (
-                x_value, y_value, self.width, self.height, self.line_thickness,
-                self.scale, self.scale, self.crop_x, self.crop_y,
-                self.crop_width, self.crop_height, self.zoom, self.rotation,
-                self.mirror_h, self.mirror_v, self.orientation, self.brightness,
-                self.contrast, self.saturation, self.lock, self.visible, self.transparency, self.enable,
-                self.color.name(),  # Convert QColor to string (#RRGGBB format)
-                self.worker_id, self.plant_name, self.section_name, self.line_name, 
-                self.station_id, self.shift_id, self.tool_id
+        if use_internal_position:
+            x_value = round(float(self.xi))
+            y_value = round(float(self.yi))
+        else:
+            x_value = round(float(self.x))
+            y_value = round(float(self.y))
+            if self.x != self.xi:
+                x_value = round(
+                    float(self.xi)
+                    - (float(self.width) * float(self.sfi) * float(self.scale) / 2)
+                )
+            if self.y != self.yi:
+                y_value = round(
+                    float(self.yi)
+                    - (float(self.height) * float(self.sfi) * float(self.scale) / 2)
+                )
+
+        with database_session(database_path) as connection:
+            save_worker_assignment_marker(
+                connection,
+                int(self.worker_assignment_id),
+                x=x_value,
+                y=y_value,
+                size=max(float(self.width), float(self.height)),
+                scale=float(self.scale),
+                line_thickness=float(self.line_thickness),
+                locked=bool(self.lock),
+                visible=bool(self.visible),
+                enabled=bool(self.enable),
             )
-
-            # **Execute Update**
-            cursor.execute(query, params)
-            conn.commit()
-            conn.close()
-
-            #QMessageBox.information(None, "Save Successful", f"Data saved for Worker ID: {self.worker_id}")
-            #QMessageBox.information(grandparent, "Save Successful", f"Data saved for Worker ID: {self.worker_id}")
-
-
-        except Exception as e:
-            print(f"Failed to save data: {str(e)}")
 
 
     def saveData(self):
@@ -674,119 +648,8 @@ class VisualWorkerTool(QGraphicsItem):
     
 
     def saveDataAt(self):
-        self.__saveDataAt()
-        
-    def __saveDataAt(self): # TODO: remove it, it should not be needed
-        """Saves the object's updated data directly to the WorkerStationShiftErgoTool table."""
-        
-        grandparent = self.parentScene.parent().parent()
-        
-        if not grandparent or not hasattr(grandparent, 'projectdatabasePath') or not grandparent.projectdatabasePath:
-            print("Error: Database path is missing.")
-            return
-    
-        try:
-        
-            self.isSaveAt = True
-            # TODO: temporary fix, it should be from members..
-            # **Extract x and y from UI Controls if available**
-            #parent = self.parentScene.parent()
-            #x_value = float(parent.xcurrentinfo_input.text().strip()) if parent and hasattr(parent, 'xcurrentinfo_input') and parent.xcurrentinfo_input.text().strip() else self.x
-            #y_value = float(parent.ycurrentinfo_input.text().strip()) if parent and hasattr(parent, 'ycurrentinfo_input') and parent.ycurrentinfo_input.text().strip() else self.y
-            
-            #print("self.x=", self.x)
-            #print("self.y=", self.y)
-            
-            #print("self.xi=", self.xi)
-            #print("self.yi=", self.yi)
-            if (self.x != self.xi):
-            #    print("different x coord")
-                x_value = self.xi
-                #x_value = round(float(x_value) - ((float(self.width) * float(self.sfi) * float(self.scale)) / 2)) 
-            else:
-            #    print("equal x coord")
-                x_value = round(self.x)
-            
-            if (self.y != self.yi):
-            #    print("different y coord")
-                y_value = self.yi
-                #y_value = round(float(y_value) - ((float(self.height) * float(self.sfi) * float(self.scale)) / 2))
-            else:
-            #    print("equal y coord")
-                y_value = round(self.y)
-            
-            #print("x_value=", x_value)
-            #print("y_value=", y_value)
-            
-            
-            # TODO: check if it really fix the saving position issue, it seems to help
-            #x_value = x_value - (width / 2) 
-            #y_value = y_value - (height / 2)
-            
-            # **Connect to SQLite Database**
-            conn = sqlite3.connect(grandparent.projectdatabasePath)
-            cursor = conn.cursor()
-    
-            # **SQL Update Query (Updating all visual fields)**
-            query = """
-                UPDATE WorkerStationShiftErgoTool 
-                SET 
-                    x = ?, 
-                    y = ?, 
-                    width = ?, 
-                    height = ?, 
-                    line_thickness = ?, 
-                    scale_x = ?, 
-                    scale_y = ?, 
-                    crop_x = ?, 
-                    crop_y = ?, 
-                    crop_width = ?, 
-                    crop_height = ?, 
-                    zoom = ?, 
-                    rotation = ?, 
-                    mirror_h = ?, 
-                    mirror_v = ?, 
-                    orientation = ?, 
-                    brightness = ?, 
-                    contrast = ?, 
-                    saturation = ?, 
-                    lock = ?, 
-                    visible = ?, 
-                    transparency = ?, 
-                    enable = ?, 
-                    color = ?
-                WHERE worker_id = ? 
-                    AND plant_name = ? 
-                    AND section_name = ? 
-                    AND line_name = ? 
-                    AND station_id = ? 
-                    AND shift_id = ? 
-                    AND tool_id = ?
-                """
-
-            # **Prepare Parameters (Including all visual fields)**
-            params = (
-                x_value, y_value, self.width, self.height, self.line_thickness,
-                self.scale, self.scale, self.crop_x, self.crop_y,
-                self.crop_width, self.crop_height, self.zoom, self.rotation,
-                self.mirror_h, self.mirror_v, self.orientation, self.brightness,
-                self.contrast, self.saturation, self.lock, self.visible, self.transparency, self.enable,
-                self.color.name(),  # Convert QColor to string (#RRGGBB format)
-                self.worker_id, self.plant_name, self.section_name, self.line_name, 
-                self.station_id, self.shift_id, self.tool_id
-            )
-
-            # **Execute Update**
-            cursor.execute(query, params)
-            conn.commit()
-            conn.close()
-
-            #QMessageBox.information(None, "Save Successful", f"Data saved for Worker ID: {self.worker_id}")
-            #QMessageBox.information(grandparent, "Save Successful", f"Data saved for Worker ID: {self.worker_id}")
-
-
-        except Exception as e:
-            print(f"Failed to save data: {str(e)}")
+        self.isSaveAt = True
+        self.__saveData(use_internal_position=True)
 
 
     
@@ -1212,8 +1075,6 @@ class VisualWorkerTool(QGraphicsItem):
         self.datarow["color"] = hex_color
         if hasattr(self, 'item') and self.item:
             self.item.setBrush(QBrush(self.color, Qt.SolidPattern))  # Update color immediately
-
-
 
 
 

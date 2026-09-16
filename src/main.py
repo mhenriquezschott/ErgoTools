@@ -2549,7 +2549,9 @@ class ErgoTools(QtWidgets.QMainWindow):
         os.makedirs(images_folder, exist_ok=True)
         
         # Copy the database to the new folder
-        original_db_path = "../data/ergotools_data.db"
+        original_db_path = os.path.normpath(
+            os.path.join(os.path.dirname(__file__), "..", "data", "ergotools_data.db")
+        )
         #project_db_name = project_name + '_data.db'
         project_db_name = project_folder + '_data.db'
         project_db_path = os.path.join(data_folder, project_db_name)
