@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass
+from datetime import date
 from typing import Iterable, Mapping
 
 
@@ -227,6 +228,111 @@ def job_placement_options(
     ]
 
 
+def active_job_placements(connection: sqlite3.Connection) -> list[dict]:
+    """Return active Jobs placed in exact workplace and shift contexts."""
+    rows = connection.execute(
+        """
+        SELECT placement.id, placement.job_id, job.name,
+               placement.workplace_context_id,
+               context.plant_name, context.section_name, context.line_name,
+               context.station_id, context.shift_id
+        FROM JobPlacement AS placement
+        JOIN Job AS job ON job.id = placement.job_id
+        JOIN WorkplaceContext AS context
+          ON context.id = placement.workplace_context_id
+        WHERE placement.active = 1 AND job.active = 1
+        ORDER BY context.plant_name, context.section_name, context.line_name,
+                 context.station_id, context.shift_id, placement.job_id
+        """
+    ).fetchall()
+    columns = (
+        "placement_id", "job_id", "job_name", "workplace_context_id",
+        "plant_name", "section_name", "line_name", "station_id", "shift_id",
+    )
+    return [dict(zip(columns, row)) for row in rows]
+
+
+def assign_worker_to_job_placement(
+    connection: sqlite3.Connection,
+    worker_id: str,
+    placement_id: int,
+) -> int:
+    """Create or transition the worker's active assignment to a Job Placement.
+
+    A change from one classified Job to another closes the former assignment
+    and creates a new row. Assessments linked to the former assignment retain
+    their historical Job meaning.
+    """
+    if connection.execute("SELECT 1 FROM Worker WHERE id = ?", (worker_id,)).fetchone() is None:
+        raise JobPlacementError(f"Worker does not exist: {worker_id}")
+    placement = connection.execute(
+        """
+        SELECT placement.workplace_context_id
+        FROM JobPlacement AS placement
+        JOIN Job AS job ON job.id = placement.job_id
+        WHERE placement.id = ? AND placement.active = 1 AND job.active = 1
+        """,
+        (placement_id,),
+    ).fetchone()
+    if placement is None:
+        raise JobPlacementError("The selected Job Placement is not active.")
+    context_id = int(placement[0])
+    existing = connection.execute(
+        """
+        SELECT id, job_placement_id
+        FROM WorkerAssignment
+        WHERE worker_id = ? AND workplace_context_id = ? AND active = 1
+        """,
+        (worker_id, context_id),
+    ).fetchone()
+    if existing is None:
+        return int(
+            connection.execute(
+                """
+                INSERT INTO WorkerAssignment (
+                    worker_id, workplace_context_id, job_placement_id,
+                    started_at, active, notes
+                ) VALUES (?, ?, ?, ?, 1, 'Created from Worker Management.')
+                """,
+                (worker_id, context_id, placement_id, date.today().isoformat()),
+            ).lastrowid
+        )
+    assignment_id, current_placement_id = int(existing[0]), existing[1]
+    if current_placement_id == placement_id:
+        return assignment_id
+    if current_placement_id is None:
+        connection.execute(
+            """
+            UPDATE WorkerAssignment
+            SET job_placement_id = ?, started_at = COALESCE(started_at, ?),
+                notes = 'Classified from Worker Management.'
+            WHERE id = ?
+            """,
+            (placement_id, date.today().isoformat(), assignment_id),
+        )
+        return assignment_id
+
+    connection.execute(
+        """
+        UPDATE WorkerAssignment
+        SET active = 0, ended_at = COALESCE(ended_at, ?)
+        WHERE id = ?
+        """,
+        (date.today().isoformat(), assignment_id),
+    )
+    return int(
+        connection.execute(
+            """
+            INSERT INTO WorkerAssignment (
+                worker_id, workplace_context_id, job_placement_id,
+                started_at, active, notes
+            ) VALUES (?, ?, ?, ?, 1, 'Job assignment changed from Worker Management.')
+            """,
+            (worker_id, context_id, placement_id, date.today().isoformat()),
+        ).lastrowid
+    )
+
+
 def update_worker_assignment_jobs(
     connection: sqlite3.Connection,
     worker_id: str,
@@ -236,7 +342,7 @@ def update_worker_assignment_jobs(
     for assignment_id, placement_id in assignments.items():
         assignment = connection.execute(
             """
-            SELECT workplace_context_id
+            SELECT workplace_context_id, job_placement_id
             FROM WorkerAssignment
             WHERE id = ? AND worker_id = ? AND active = 1
             """,
@@ -263,7 +369,36 @@ def update_worker_assignment_jobs(
                 raise JobPlacementError(
                     "The selected Job Placement is not active in this worker's workplace context."
                 )
+        current_placement_id = assignment[1]
+        if current_placement_id == placement_id:
+            continue
+        if current_placement_id is None:
+            connection.execute(
+                """
+                UPDATE WorkerAssignment
+                SET job_placement_id = ?, started_at = COALESCE(started_at, ?)
+                WHERE id = ?
+                """,
+                (placement_id, date.today().isoformat(), assignment_id),
+            )
+            continue
         connection.execute(
-            "UPDATE WorkerAssignment SET job_placement_id = ? WHERE id = ?",
-            (placement_id, assignment_id),
+            """
+            UPDATE WorkerAssignment
+            SET active = 0, ended_at = COALESCE(ended_at, ?)
+            WHERE id = ?
+            """,
+            (date.today().isoformat(), assignment_id),
+        )
+        connection.execute(
+            """
+            INSERT INTO WorkerAssignment (
+                worker_id, workplace_context_id, job_placement_id,
+                started_at, active, notes
+            ) VALUES (?, ?, ?, ?, 1, 'Classification changed from Worker Management.')
+            """,
+            (
+                worker_id, assignment[0], placement_id,
+                date.today().isoformat(),
+            ),
         )

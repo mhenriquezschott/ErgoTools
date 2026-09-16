@@ -27,7 +27,9 @@ from job_risk_repository import (
 from job_placement_repository import (
     JobPlacementError,
     WorkplaceKey,
+    active_job_placements,
     active_job_placement_keys,
+    assign_worker_to_job_placement,
     available_workplaces,
     job_placement_options,
     replace_active_job_placements,
@@ -367,6 +369,70 @@ class JobRiskRepositoryTests(unittest.TestCase):
             )
             replace_active_job_placements(connection, 'Placed', ())
             self.assertEqual(active_job_placement_keys(connection, 'Placed'), set())
+            connection.commit()
+        finally:
+            connection.close()
+
+    def test_worker_job_assignment_creation_and_transition_preserve_history(self):
+        connection = connect_database(self.database_path)
+        try:
+            connection.executescript(
+                """
+                INSERT INTO Plant VALUES ('Assignment Plant');
+                INSERT INTO Shift VALUES ('1');
+                CREATE TABLE Section (
+                    plant_name TEXT NOT NULL, name TEXT NOT NULL,
+                    PRIMARY KEY (plant_name, name)
+                );
+                CREATE TABLE Line (
+                    plant_name TEXT NOT NULL, section_name TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    PRIMARY KEY (plant_name, section_name, name)
+                );
+                CREATE TABLE Station (
+                    plant_name TEXT NOT NULL, section_name TEXT NOT NULL,
+                    line_name TEXT NOT NULL, id TEXT NOT NULL,
+                    PRIMARY KEY (plant_name, section_name, line_name, id)
+                );
+                INSERT INTO Section VALUES ('Assignment Plant', 'Section');
+                INSERT INTO Line VALUES ('Assignment Plant', 'Section', 'Line');
+                INSERT INTO Station VALUES ('Assignment Plant', 'Section', 'Line', 'Station');
+                INSERT INTO Worker VALUES ('Assigned Worker');
+                INSERT INTO Job (id, name) VALUES ('Job A', 'First Job');
+                INSERT INTO Job (id, name) VALUES ('Job B', 'Second Job');
+                """
+            )
+            key = WorkplaceKey('Assignment Plant', 'Section', 'Line', 'Station', '1')
+            replace_active_job_placements(connection, 'Job A', (key,))
+            replace_active_job_placements(connection, 'Job B', (key,))
+            placements = active_job_placements(connection)
+            self.assertEqual([row['job_id'] for row in placements], ['Job A', 'Job B'])
+
+            first_id = assign_worker_to_job_placement(
+                connection, 'Assigned Worker', placements[0]['placement_id']
+            )
+            self.assertEqual(
+                worker_assignments(connection, 'Assigned Worker')[0]['job_id'], 'Job A'
+            )
+            self.assertEqual(
+                assign_worker_to_job_placement(
+                    connection, 'Assigned Worker', placements[0]['placement_id']
+                ),
+                first_id,
+            )
+
+            second_id = assign_worker_to_job_placement(
+                connection, 'Assigned Worker', placements[1]['placement_id']
+            )
+            self.assertNotEqual(first_id, second_id)
+            self.assertEqual(
+                worker_assignments(connection, 'Assigned Worker')[0]['job_id'], 'Job B'
+            )
+            historical = connection.execute(
+                "SELECT active, ended_at FROM WorkerAssignment WHERE id = ?", (first_id,)
+            ).fetchone()
+            self.assertEqual(historical[0], 0)
+            self.assertIsNotNone(historical[1])
             connection.commit()
         finally:
             connection.close()

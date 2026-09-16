@@ -2,7 +2,7 @@
 
 Status: current implemented behavior through 2026-09-15.
 
-Scope: project handling, worker and organization management, assessment workplace
+Scope: project handling, worker and organization management, assessment context
 selection, and LiFFT, DUET, and Shoulder Tool assessment workflows. JROT is excluded
 and will receive a separate specification.
 
@@ -101,8 +101,10 @@ first names. The unique Worker ID is the identity key; names are optional.
 | Transfer | Move or copy selected tool assessments between workplace contexts. |
 | Refresh | Reload worker data and the current assessment. |
 
-Changing workers must retain the currently selected assessment workplace. If the
-new worker has no saved assessment for the active tool at that exact context, the
+Changing workers must retain the currently selected workplace and shift. The Job is
+resolved independently for the newly selected Worker. If that Worker has no
+classified work assignment there, the footer displays `Job: Unclassified`. If the
+new Worker has no saved assessment for the active tool at that exact context, the
 form must be empty; data from another station or shift must never appear.
 
 When edited inputs are present, changing workers prompts whether to save them. The
@@ -124,30 +126,41 @@ The dialog supports:
 Using a result must select both its worker and its full assessment context, then load
 that record in the main UI.
 
-## Assessment Workplace
+## Assessment Context
 
 ### Identity
 
-Every individual assessment is addressed by the following composite context:
+Every new individual assessment belongs to a Worker Assignment and therefore has
+the following complete domain context:
 
 ```text
-(Worker ID, Tool, Plant, Section, Line, Station, Shift)
+(Worker ID, Job, Tool, Plant, Section, Line, Station, Shift)
 ```
 
-The selected workplace applies to all three tool tabs, while each tool has a separate
-record at that context.
+Job and Station are separate concepts. Station identifies where the assessment was
+performed; Job identifies the work being performed. The selected Worker Assignment
+applies to all three tool tabs, while each tool has a separate assessment.
 
 ### Visible behavior
 
 The bottom bar displays:
 
 ```text
-Assessment workplace  Plant > Section > Line > Station > Shift
+Assessment context  Plant > Section > Line > Station > Shift > Job
 ```
 
-**Select assessment workplace** changes which assessment location is being viewed.
-It does not transfer, copy, or delete any record. Selecting a context immediately
-loads the active worker's assessment at that exact location.
+**Select assessment context** lists the current Worker's active, classified work
+assignments. Selecting one changes which Job and workplace assessment is being
+viewed. It does not transfer, copy, or delete any record.
+
+A new assessment cannot be saved unless the Worker has an active assignment to a
+real Job Placement in that exact workplace and shift. The application must not
+silently create a `Default Job` or other placeholder. A lightweight workflow may
+use the Default Plant/Section/Line/Station hierarchy, but the user still chooses or
+creates the real Job once and subsequent assessments reuse that assignment.
+
+Migrated assessments whose Job is unknown remain readable as unclassified legacy
+data. They must be classified before being updated through the new save workflow.
 
 The selection must remain unchanged when the user:
 
@@ -161,7 +174,9 @@ The selection must remain unchanged when the user:
 The visible footer is a read-only summary. The current implementation retains five
 hidden `QComboBox` controls for Plant, Section, Line, Station, and Shift because
 legacy load/save/delete functions still read those widgets. These are internal state
-holders, not a second user-facing workplace selector and not part of JROT.
+holders, not a second user-facing workplace selector and not part of JROT. The
+selected Worker Assignment and Job are maintained separately and resolved whenever
+the Worker or workplace context changes.
 
 The application also stores an authoritative assessment-context tuple. The hidden
 controls and footer must be synchronized to that tuple before assessment loading,
@@ -219,6 +234,12 @@ demographic filtering.
   constraints/cascades.
 - Cancel restores the selected saved record or clears an unsaved new record.
 - Close returns to the main assessment UI and refreshes the worker directory.
+
+The Work assignments tab lists the Worker's active workplace/shift assignments and
+their Job classification. **Add work assignment** selects from active Job Placements;
+it cannot invent a workplace or Job. Changing an existing classified assignment
+closes the former assignment and creates a new active row so earlier assessments
+retain their historical Job meaning.
 
 Worker workplace/job classification shown in Worker Management is part of the
 integrated work-risk model. Detailed JROT use of that classification is outside this

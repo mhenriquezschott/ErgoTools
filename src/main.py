@@ -40,6 +40,7 @@ from organization_window import OrganizationWindow
 from vtk_camera_director import VTKCameraDirector
 from risk_ranges import RISK_BANDS, risk_band
 from jrot_database import ensure_jrot_schema
+from job_placement_repository import worker_assignments
 
 from tooltransferdialog import ToolTransferDialog
 from worker_transfer_window import WorkerTransferDialog
@@ -225,15 +226,19 @@ class ErgoComboItemDelegate(QStyledItemDelegate):
 
 
 class AssessmentWorkplaceDialog(QDialog):
-    """Select an existing station path and shift for the assessment context."""
+    """Select one classified Worker, Job, workplace, and shift context."""
 
     def __init__(self, parent):
         super().__init__(parent)
         self.main_window = parent
         self.selected_path = None
+        self.selected_context = None
+        self.selected_assignment_id = None
+        self.selected_job_id = None
+        self.selected_job_name = None
         self.setObjectName("assessmentWorkplaceDialog")
-        self.setWindowTitle("Assessment Workplace")
-        self.setMinimumSize(560, 540)
+        self.setWindowTitle("Assessment Context")
+        self.setMinimumSize(700, 540)
         self.setStyleSheet(parent.mainWorkspaceStyleSheet() + """
             QDialog#assessmentWorkplaceDialog { background: #F4F7F9; color: #1B2933; }
             QDialog#assessmentWorkplaceDialog QTreeWidget {
@@ -252,37 +257,35 @@ class AssessmentWorkplaceDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(18, 16, 18, 16)
         layout.setSpacing(10)
-        title = QLabel("Assessment workplace")
+        title = QLabel("Assessment context")
         title.setObjectName("dialogTitle")
         layout.addWidget(title)
-        description = QLabel("Select the station where this assessment applies, then choose its work shift.")
+        worker_id = parent.currentWorkerId()
+        description = QLabel(
+            f"Select the work assignment to assess for Worker {worker_id}. "
+            "Each choice identifies both the Job and its exact workplace and shift."
+        )
         description.setObjectName("supportingText")
         description.setWordWrap(True)
         layout.addWidget(description)
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["Workplace hierarchy", "Type"])
-        self.tree.setColumnWidth(0, 390)
-        self.tree.setToolTip("Expand the hierarchy and select a station for this assessment.")
+        self.tree.setColumnCount(3)
+        self.tree.setHeaderLabels(["Workplace hierarchy", "Type", "Job"])
+        self.tree.setColumnWidth(0, 340)
+        self.tree.setColumnWidth(1, 90)
+        self.tree.setToolTip("Expand the hierarchy and select a classified work assignment.")
         self.tree.currentItemChanged.connect(self.updateSelection)
         self.tree.itemDoubleClicked.connect(lambda *_: self.acceptSelection())
         layout.addWidget(self.tree, 1)
-        shift_row = QHBoxLayout()
-        shift_label = QLabel("Shift")
-        shift_label.setObjectName("contextLabel")
-        self.shift_combo = QComboBox()
-        self.shift_combo.setToolTip("Select the shift associated with this assessment.")
-        shift_row.addWidget(shift_label)
-        shift_row.addWidget(self.shift_combo, 1)
-        layout.addLayout(shift_row)
-        self.path_label = QLabel("Select a station from the hierarchy.")
+        self.path_label = QLabel("Select a work assignment from the hierarchy.")
         self.path_label.setObjectName("contextSummary")
         self.path_label.setWordWrap(True)
         layout.addWidget(self.path_label)
         buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
         self.accept_button = buttons.button(QDialogButtonBox.Ok)
-        self.accept_button.setText("Use workplace")
+        self.accept_button.setText("Use assessment context")
         icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
-        self.accept_button.setIcon(QIcon(os.path.join(icon_root, "station.png")))
+        self.accept_button.setIcon(QIcon(os.path.join(icon_root, "jobmanagement.png")))
         self.accept_button.setIconSize(QSize(24, 24))
         self.accept_button.setObjectName("primaryOutlineButton")
         self.accept_button.setEnabled(False)
@@ -295,38 +298,45 @@ class AssessmentWorkplaceDialog(QDialog):
 
     def populate(self):
         icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
-        current = tuple(combo.currentText() for combo in (
-            self.main_window.plant_combo, self.main_window.section_combo,
-            self.main_window.line_combo, self.main_window.station_combo,
-        ))
+        self.tree.clear()
+        current = getattr(self.main_window, "_selected_assessment_context", None)
         current_item = None
         database = self.main_window.projectdatabasePath
         if database and os.path.exists(database):
             with sqlite3.connect(database) as conn:
-                for (plant,) in conn.execute("SELECT name FROM Plant ORDER BY name"):
-                    plant_item = self.addItem(None, plant, "Plant", (plant,), icon_root)
-                    for (section,) in conn.execute(
-                        "SELECT name FROM Section WHERE plant_name=? ORDER BY name", (plant,)
-                    ):
-                        section_item = self.addItem(plant_item, section, "Section", (plant, section), icon_root)
-                        for (line,) in conn.execute(
-                            "SELECT name FROM Line WHERE plant_name=? AND section_name=? ORDER BY name",
-                            (plant, section),
-                        ):
-                            line_item = self.addItem(section_item, line, "Line", (plant, section, line), icon_root)
-                            for (station,) in conn.execute(
-                                "SELECT id FROM Station WHERE plant_name=? AND section_name=? AND line_name=? ORDER BY id",
-                                (plant, section, line),
-                            ):
-                                station_item = self.addItem(
-                                    line_item, station, "Station", (plant, section, line, station), icon_root
-                                )
-                                if station_item.data(0, Qt.UserRole) == current:
-                                    current_item = station_item
-                self.shift_combo.addItems([str(row[0]) for row in conn.execute("SELECT id FROM Shift ORDER BY id")])
-        if not self.shift_combo.count():
-            self.shift_combo.addItem(self.main_window.shift_combo.currentText() or "1")
-        self.shift_combo.setCurrentText(self.main_window.shift_combo.currentText())
+                assignments = [
+                    row for row in worker_assignments(conn, self.main_window.currentWorkerId())
+                    if row["job_placement_id"] is not None and row["placement_active"]
+                ]
+        else:
+            assignments = []
+        nodes = {}
+        for assignment in assignments:
+            parent = None
+            path = ()
+            for entity, value in (
+                ("Plant", assignment["plant_name"]),
+                ("Section", assignment["section_name"]),
+                ("Line", assignment["line_name"]),
+                ("Station", assignment["station_id"]),
+            ):
+                path += (str(value),)
+                key = (entity, path)
+                if key not in nodes:
+                    nodes[key] = self.addItem(parent, value, entity, path, icon_root)
+                parent = nodes[key]
+            context = path + (str(assignment["shift_id"]),)
+            label = f"Shift {assignment['shift_id']}"
+            leaf = QTreeWidgetItem([label, "Assignment", assignment["job_id"]])
+            leaf.setIcon(0, QIcon(os.path.join(icon_root, "jobmanagement.png")))
+            leaf.setData(0, Qt.UserRole, context)
+            leaf.setData(0, Qt.UserRole + 1, assignment["assignment_id"])
+            leaf.setData(0, Qt.UserRole + 2, assignment["job_id"])
+            leaf.setData(0, Qt.UserRole + 3, assignment["job_name"] or "")
+            leaf.setToolTip(0, "Select this Job, workplace, and shift assessment context.")
+            parent.addChild(leaf)
+            if context == current:
+                current_item = leaf
         self.tree.collapseAll()
         if current_item:
             ancestor = current_item.parent()
@@ -335,6 +345,10 @@ class AssessmentWorkplaceDialog(QDialog):
                 ancestor = ancestor.parent()
             self.tree.setCurrentItem(current_item)
             self.tree.scrollToItem(current_item)
+        elif not assignments:
+            self.path_label.setText(
+                "This Worker has no classified work assignments. Add one in Worker Management."
+            )
 
     def addItem(self, parent, text, entity, path, icon_root):
         item = QTreeWidgetItem([str(text), entity])
@@ -345,16 +359,26 @@ class AssessmentWorkplaceDialog(QDialog):
         return item
 
     def updateSelection(self, current, previous=None):
-        is_station = bool(current and current.text(1) == "Station")
-        self.accept_button.setEnabled(is_station)
-        self.selected_path = current.data(0, Qt.UserRole) if is_station else None
-        self.path_label.setText(
-            "  >  ".join(self.selected_path) if self.selected_path else "Select a station from the hierarchy."
-        )
+        is_assignment = bool(current and current.text(1) == "Assignment")
+        self.accept_button.setEnabled(is_assignment)
+        self.selected_context = current.data(0, Qt.UserRole) if is_assignment else None
+        self.selected_path = self.selected_context[:4] if self.selected_context else None
+        self.selected_assignment_id = current.data(0, Qt.UserRole + 1) if is_assignment else None
+        self.selected_job_id = current.data(0, Qt.UserRole + 2) if is_assignment else None
+        self.selected_job_name = current.data(0, Qt.UserRole + 3) if is_assignment else None
+        if self.selected_context:
+            job_text = self.selected_job_id
+            if self.selected_job_name:
+                job_text += f" | {self.selected_job_name}"
+            self.path_label.setText("  >  ".join(self.selected_context) + f"  |  Job: {job_text}")
+        else:
+            self.path_label.setText("Select a work assignment from the hierarchy.")
 
     def acceptSelection(self):
-        if not self.selected_path:
-            QMessageBox.information(self, "Select a station", "Select a Station before continuing.")
+        if not self.selected_context:
+            QMessageBox.information(
+                self, "Select a work assignment", "Select a classified work assignment before continuing."
+            )
             return
         self.accept()
 
@@ -4541,9 +4565,9 @@ class ErgoTools(QtWidgets.QMainWindow):
         manage_button.clicked.connect(self.editOrganizationClicked)
         association_row = QHBoxLayout()
         association_row.setContentsMargins(0, 0, 0, 0)
-        association_title = QLabel("Assessment workplace")
+        association_title = QLabel("Assessment context")
         association_title.setObjectName("contextLabel")
-        association_title.setToolTip("Workplace and shift associated with the active tool assessment.")
+        association_title.setToolTip("Worker, Job, workplace, and shift associated with the active assessment.")
         self.context_summary_widget = QWidget()
         self.context_summary_widget.setToolTip(
             "Plant, section, line, station, and shift for the active assessment."
@@ -4566,15 +4590,25 @@ class ErgoTools(QtWidgets.QMainWindow):
                 separator.setAlignment(Qt.AlignCenter)
                 separator.setToolTip("Next workplace level")
                 context_summary_layout.addWidget(separator)
+        separator = QLabel()
+        separator.setObjectName("contextArrow")
+        separator.setPixmap(QIcon(os.path.join(icon_root, "next.png")).pixmap(QSize(14, 14)))
+        separator.setFixedSize(16, 16)
+        separator.setAlignment(Qt.AlignCenter)
+        context_summary_layout.addWidget(separator)
+        self.context_job_label = QLabel("Job: Unclassified")
+        self.context_job_label.setObjectName("contextSummary")
+        self.context_job_label.setToolTip("Job performed in this assessment context.")
+        context_summary_layout.addWidget(self.context_job_label)
         context_summary_layout.addStretch(1)
         association_row.addWidget(association_title)
         association_row.addWidget(self.context_summary_widget, 1)
-        self.choose_assessment_workplace_button = QPushButton("Select assessment workplace")
+        self.choose_assessment_workplace_button = QPushButton("Select assessment context")
         self.choose_assessment_workplace_button.setObjectName("primaryOutlineButton")
         self.choose_assessment_workplace_button.setIcon(QIcon(os.path.join(icon_root, "station.png")))
         self.choose_assessment_workplace_button.setIconSize(QSize(24, 24))
         self.choose_assessment_workplace_button.setToolTip(
-            "Select which workplace assessment to view for the current worker. This does not move data."
+            "Select which classified Job and workplace assessment to view. This does not move data."
         )
         self.choose_assessment_workplace_button.clicked.connect(self.openAssessmentWorkplaceDialog)
         association_row.addWidget(self.choose_assessment_workplace_button)
@@ -4624,6 +4658,48 @@ class ErgoTools(QtWidgets.QMainWindow):
             values,
         ):
             label.setText(f"{level_name}: {value}")
+        if hasattr(self, "context_job_label"):
+            job_id = getattr(self, "_selected_assessment_job_id", None)
+            job_name = getattr(self, "_selected_assessment_job_name", None)
+            job_text = job_id or "Unclassified"
+            if job_id and job_name:
+                job_text += f" | {job_name}"
+            self.context_job_label.setText(f"Job: {job_text}")
+
+    def currentWorkerId(self):
+        worker_text = self.workerComboBox.currentText() if hasattr(self, "workerComboBox") else ""
+        return worker_text.split(" ", 1)[0].strip() if worker_text else ""
+
+    def assessmentAssignmentForContext(self, context, worker_id=None):
+        if not context or len(context) != 5 or not self.projectdatabasePath:
+            return None
+        worker_id = worker_id or self.currentWorkerId()
+        if not worker_id:
+            return None
+        with sqlite3.connect(self.projectdatabasePath) as connection:
+            for assignment in worker_assignments(connection, worker_id):
+                assignment_context = tuple(str(assignment[key]) for key in (
+                    "plant_name", "section_name", "line_name", "station_id", "shift_id"
+                ))
+                if (
+                    assignment_context == tuple(str(value) for value in context)
+                    and assignment["job_placement_id"] is not None
+                    and assignment["placement_active"]
+                ):
+                    return assignment
+        return None
+
+    def resolveSelectedAssessmentAssignment(self):
+        assignment = self.assessmentAssignmentForContext(
+            getattr(self, "_selected_assessment_context", None)
+        )
+        self._selected_assessment_assignment_id = (
+            assignment["assignment_id"] if assignment else None
+        )
+        self._selected_assessment_job_id = assignment["job_id"] if assignment else None
+        self._selected_assessment_job_name = assignment["job_name"] if assignment else None
+        self.updateContextSummary()
+        return assignment
 
     def assessmentContextFromControls(self):
         return tuple(combo.currentText().strip() for combo in (
@@ -4666,6 +4742,7 @@ class ErgoTools(QtWidgets.QMainWindow):
             for combo in combos:
                 combo.blockSignals(False)
         self._selected_assessment_context = (plant, section, line, station, shift)
+        self.resolveSelectedAssessmentAssignment()
         self.updateContextSummary()
         if load_data:
             self.loadToolsData()
@@ -4675,7 +4752,9 @@ class ErgoTools(QtWidgets.QMainWindow):
         dialog = AssessmentWorkplaceDialog(self)
         if dialog.exec_() != QDialog.Accepted:
             return
-        context = tuple(dialog.selected_path) + (dialog.shift_combo.currentText(),)
+        context = getattr(dialog, "selected_context", None)
+        if context is None:
+            context = tuple(dialog.selected_path) + (dialog.shift_combo.currentText(),)
         self.setAssessmentWorkplaceContext(context)
 
     def setupNavigationButtons(self):
@@ -6185,6 +6264,7 @@ class ErgoTools(QtWidgets.QMainWindow):
         if getattr(self, "_loading_tools_data", False):
             return
         self.restoreSelectedAssessmentContext()
+        self.resolveSelectedAssessmentAssignment()
         self._loading_tools_data = True
         try:
             return self._loadToolsData()
@@ -6816,6 +6896,20 @@ class ErgoTools(QtWidgets.QMainWindow):
     
     
     
+    def validateAssessmentAssignmentForSave(self):
+        assignment = self.resolveSelectedAssessmentAssignment()
+        if assignment is not None:
+            return True
+        worker_id = self.currentWorkerId() or "the selected Worker"
+        QMessageBox.warning(
+            self,
+            "Work assignment required",
+            f"{worker_id} is not assigned to a Job in this workplace and shift.\n\n"
+            "Open Worker Management, add or classify a work assignment, then select that "
+            "assessment context before saving. No placeholder Job will be created automatically.",
+        )
+        return False
+
     def saveToolsData(self): 
         # Check if a project has been created 
         if not self.projectFileCreated:
@@ -6828,6 +6922,8 @@ class ErgoTools(QtWidgets.QMainWindow):
             return
 
         self.restoreSelectedAssessmentContext()
+        if not self.validateAssessmentAssignmentForSave():
+            return
         self.saveLiFFTToolData()
         self.saveDUETToolData()
         self.saveTSTToolData()

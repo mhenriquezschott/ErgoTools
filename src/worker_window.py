@@ -25,10 +25,106 @@ from PyQt5.QtCore import QRegularExpression, QRegExp
 from database import connect_database
 from job_placement_repository import (
     JobPlacementError,
+    active_job_placements,
+    assign_worker_to_job_placement,
     job_placement_options,
     update_worker_assignment_jobs,
     worker_assignments,
 )
+
+
+class WorkerJobAssignmentDialog(QDialog):
+    """Choose one active Job Placement for the selected Worker."""
+
+    def __init__(self, parent, worker_id, placements):
+        super().__init__(parent)
+        self.worker_id = worker_id
+        self.placements = placements
+        self.selected_placement_id = None
+        self.setObjectName("workerJobAssignmentDialog")
+        self.setWindowTitle("Add Work Assignment")
+        self.setMinimumSize(980, 500)
+        self.setStyleSheet(parent.workerManagementStyleSheet() + """
+            QDialog#workerJobAssignmentDialog {
+                background: #F4F7F9;
+                color: #1B2933;
+            }
+        """)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(10)
+        title = QLabel("Add work assignment")
+        title.setObjectName("dialogTitle")
+        layout.addWidget(title)
+        description = QLabel(
+            f"Choose the Job, workplace, and shift where Worker {worker_id} performs the work."
+        )
+        description.setObjectName("supportingText")
+        description.setWordWrap(True)
+        layout.addWidget(description)
+
+        self.table = QTableWidget(len(placements), 7)
+        self.table.setHorizontalHeaderLabels(
+            ["Job ID", "Job name", "Plant", "Section", "Line", "Station", "Shift"]
+        )
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(34)
+        for row, placement in enumerate(placements):
+            values = (
+                placement["job_id"], placement["job_name"], placement["plant_name"],
+                placement["section_name"], placement["line_name"],
+                placement["station_id"], placement["shift_id"],
+            )
+            for column, value in enumerate(values):
+                item = QTableWidgetItem(str(value or ""))
+                item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+                if column == 0:
+                    item.setData(Qt.UserRole, placement["placement_id"])
+                self.table.setItem(row, column, item)
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        for column in range(2, 7):
+            header.setSectionResizeMode(column, QHeaderView.ResizeToContents)
+        self.table.itemSelectionChanged.connect(self.updateSelection)
+        self.table.itemDoubleClicked.connect(lambda *_: self.acceptSelection())
+        layout.addWidget(self.table, 1)
+
+        if not placements:
+            empty = QLabel(
+                "No active Job Placements are available. Create a Job and assign it to a workplace first."
+            )
+            empty.setObjectName("notificationLabel")
+            empty.setWordWrap(True)
+            layout.addWidget(empty)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
+        self.accept_button = buttons.button(QDialogButtonBox.Ok)
+        self.accept_button.setText("Use assignment")
+        self.accept_button.setObjectName("primaryOutlineButton")
+        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
+        self.accept_button.setIcon(QIcon(os.path.join(icon_root, "jobmanagement.png")))
+        self.accept_button.setIconSize(QtCore.QSize(24, 24))
+        self.accept_button.setEnabled(False)
+        buttons.button(QDialogButtonBox.Cancel).setIcon(QIcon(os.path.join(icon_root, "cancel.png")))
+        buttons.accepted.connect(self.acceptSelection)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def updateSelection(self):
+        rows = self.table.selectionModel().selectedRows()
+        self.selected_placement_id = (
+            self.table.item(rows[0].row(), 0).data(Qt.UserRole) if rows else None
+        )
+        self.accept_button.setEnabled(self.selected_placement_id is not None)
+
+    def acceptSelection(self):
+        if self.selected_placement_id is not None:
+            self.accept()
 
 
 class WorkerWindow(QDialog):
@@ -870,7 +966,19 @@ class WorkerWindow(QDialog):
         self.assignment_status_label = QLabel()
         self.assignment_status_label.setObjectName("supportingText")
         self.assignment_status_label.setWordWrap(True)
-        layout.addWidget(self.assignment_status_label)
+        assignment_header = QHBoxLayout()
+        assignment_header.addWidget(self.assignment_status_label, 1)
+        self.add_assignment_button = QPushButton("Add work assignment")
+        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
+        self.add_assignment_button.setIcon(QIcon(os.path.join(icon_root, "jobmanagement.png")))
+        self.add_assignment_button.setIconSize(QtCore.QSize(24, 24))
+        self.add_assignment_button.setObjectName("primaryOutlineButton")
+        self.add_assignment_button.setToolTip(
+            "Assign this Worker to a Job that has been placed in a workplace and shift."
+        )
+        self.add_assignment_button.clicked.connect(self.addWorkerAssignment)
+        assignment_header.addWidget(self.add_assignment_button)
+        layout.addLayout(assignment_header)
 
         self.assignment_table = QTableWidget(0, 6)
         self.assignment_worker_id = None
@@ -893,6 +1001,40 @@ class WorkerWindow(QDialog):
             "Classify each active workplace assignment using a compatible Job Placement."
         )
         layout.addWidget(self.assignment_table, 1)
+
+    def addWorkerAssignment(self):
+        worker_id = self.worker_id_combo.currentText().strip()
+        if not worker_id:
+            self.setNotification("Save the Worker before adding a work assignment.", "warning")
+            return
+        connection = connect_database(self.parent().projectdatabasePath)
+        try:
+            worker_exists = connection.execute(
+                "SELECT 1 FROM Worker WHERE id = ?", (worker_id,)
+            ).fetchone()
+            if worker_exists is None:
+                self.setNotification("Save the Worker before adding a work assignment.", "warning")
+                return
+            placements = active_job_placements(connection)
+        finally:
+            connection.close()
+        dialog = WorkerJobAssignmentDialog(self, worker_id, placements)
+        if dialog.exec_() != QDialog.Accepted:
+            return
+        connection = connect_database(self.parent().projectdatabasePath)
+        try:
+            assign_worker_to_job_placement(
+                connection, worker_id, int(dialog.selected_placement_id)
+            )
+            connection.commit()
+        except (JobPlacementError, sqlite3.Error) as error:
+            connection.rollback()
+            QMessageBox.critical(self, "Work assignment", str(error))
+            return
+        finally:
+            connection.close()
+        self.loadWorkerAssignments(worker_id)
+        self.setNotification("Work assignment saved.", "info")
 
     def workerManagementStyleSheet(self):
         return """

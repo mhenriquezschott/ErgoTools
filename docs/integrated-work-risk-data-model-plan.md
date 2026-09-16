@@ -367,6 +367,11 @@ with numerically identical damage/probability values.
 - [x] Preserve a quick standalone Job workflow with no required organization data.
 - [x] Add worker assignment UI for selecting an existing Job Placement or marking
   the Job as not yet classified.
+- [x] Add creation of a Worker Assignment directly from an active Job Placement.
+- [x] Preserve assignment history when a Worker's Job changes instead of rewriting
+  the Job identity of earlier assessments.
+- [x] Keep the lightweight Default organization workflow without creating a fake
+  `Default Job`; a real Job Placement is still required for new assessment saves.
 
 **Gate:** The integrated fixture produces exactly 17 WorkplaceContext rows and
 100 WorkerAssignment rows, with no invented Job Placements.
@@ -384,6 +389,11 @@ with numerically identical damage/probability values.
   distinguish an unsaved context from an existing zero-valued result.
 - [x] Preserve the selected assessment workplace during worker navigation and
   fully clear tool data when the next worker has no assessment in that context.
+- [x] Replace unrestricted new-assessment workplace selection with the current
+  Worker's classified Job/workplace/shift assignments and display the Job in the
+  main assessment footer.
+- [x] Block new saves when the selected Worker and workplace lack a classified Job
+  assignment, while retaining read access to migrated unclassified assessments.
 - [ ] Refactor main-tool load/save, worker transfer, and PLOT queries to use the
   new assignment and assessment keys.
 - [ ] Verify selected, visible, enabled, locked, moved, transferred, and deleted
