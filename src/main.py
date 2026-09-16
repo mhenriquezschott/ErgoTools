@@ -262,22 +262,31 @@ class AssessmentWorkplaceDialog(QDialog):
         layout.addWidget(title)
         worker_id = parent.currentWorkerId()
         description = QLabel(
-            f"Select the work assignment to assess for Worker {worker_id}. "
+            f"Select the Job assignment to assess for Worker {worker_id}. "
             "Each choice identifies both the Job and its exact workplace and shift."
         )
         description.setObjectName("supportingText")
         description.setWordWrap(True)
         layout.addWidget(description)
+        shift_row = QHBoxLayout()
+        shift_row.setContentsMargins(0, 0, 0, 0)
+        shift_label = QLabel("Shift")
+        shift_label.setObjectName("contextLabel")
+        self.shift_combo = QComboBox()
+        self.shift_combo.setToolTip("Filter this Worker's Job assignments by shift.")
+        shift_row.addWidget(shift_label)
+        shift_row.addWidget(self.shift_combo, 1)
+        layout.addLayout(shift_row)
         self.tree = QTreeWidget()
         self.tree.setColumnCount(3)
         self.tree.setHeaderLabels(["Workplace hierarchy", "Type", "Job"])
         self.tree.setColumnWidth(0, 340)
         self.tree.setColumnWidth(1, 90)
-        self.tree.setToolTip("Expand the hierarchy and select a classified work assignment.")
+        self.tree.setToolTip("Expand the hierarchy and select a classified Job assignment.")
         self.tree.currentItemChanged.connect(self.updateSelection)
         self.tree.itemDoubleClicked.connect(lambda *_: self.acceptSelection())
         layout.addWidget(self.tree, 1)
-        self.path_label = QLabel("Select a work assignment from the hierarchy.")
+        self.path_label = QLabel("Select a Job assignment from the hierarchy.")
         self.path_label.setObjectName("contextSummary")
         self.path_label.setWordWrap(True)
         layout.addWidget(self.path_label)
@@ -297,19 +306,49 @@ class AssessmentWorkplaceDialog(QDialog):
         self.populate()
 
     def populate(self):
-        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
-        self.tree.clear()
         current = getattr(self.main_window, "_selected_assessment_context", None)
-        current_item = None
         database = self.main_window.projectdatabasePath
         if database and os.path.exists(database):
             with sqlite3.connect(database) as conn:
-                assignments = [
+                self.assignments = [
                     row for row in worker_assignments(conn, self.main_window.currentWorkerId())
                     if row["job_placement_id"] is not None and row["placement_active"]
                 ]
+                shifts = [str(row[0]) for row in conn.execute("SELECT id FROM Shift ORDER BY id")]
         else:
-            assignments = []
+            self.assignments = []
+            shifts = []
+        if not shifts:
+            shifts = sorted(
+                {str(assignment["shift_id"]) for assignment in self.assignments},
+                key=lambda value: (not value.isdigit(), int(value) if value.isdigit() else value),
+            )
+        self.shift_combo.blockSignals(True)
+        self.shift_combo.clear()
+        self.shift_combo.addItems(shifts)
+        if current and str(current[4]) in shifts:
+            self.shift_combo.setCurrentText(str(current[4]))
+        self.shift_combo.blockSignals(False)
+        self.shift_combo.currentTextChanged.connect(self.populateTree)
+        self.populateTree()
+
+    def populateTree(self, *_args):
+        icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
+        self.tree.clear()
+        self.selected_path = None
+        self.selected_context = None
+        self.selected_assignment_id = None
+        self.selected_job_id = None
+        self.selected_job_name = None
+        self.accept_button.setEnabled(False)
+        self.path_label.setText("Select a Job assignment from the hierarchy.")
+        current = getattr(self.main_window, "_selected_assessment_context", None)
+        selected_shift = self.shift_combo.currentText()
+        assignments = [
+            assignment for assignment in self.assignments
+            if str(assignment["shift_id"]) == selected_shift
+        ]
+        current_item = None
         nodes = {}
         for assignment in assignments:
             parent = None
@@ -318,17 +357,17 @@ class AssessmentWorkplaceDialog(QDialog):
                 ("Plant", assignment["plant_name"]),
                 ("Section", assignment["section_name"]),
                 ("Line", assignment["line_name"]),
-                ("Station", assignment["station_id"]),
             ):
                 path += (str(value),)
                 key = (entity, path)
                 if key not in nodes:
                     nodes[key] = self.addItem(parent, value, entity, path, icon_root)
                 parent = nodes[key]
-            context = path + (str(assignment["shift_id"]),)
-            label = f"Shift {assignment['shift_id']}"
-            leaf = QTreeWidgetItem([label, "Assignment", assignment["job_id"]])
-            leaf.setIcon(0, QIcon(os.path.join(icon_root, "jobmanagement.png")))
+            context = path + (str(assignment["station_id"]), str(assignment["shift_id"]))
+            leaf = QTreeWidgetItem([
+                str(assignment["station_id"]), "Job assignment", assignment["job_id"]
+            ])
+            leaf.setIcon(0, QIcon(os.path.join(icon_root, "station.png")))
             leaf.setData(0, Qt.UserRole, context)
             leaf.setData(0, Qt.UserRole + 1, assignment["assignment_id"])
             leaf.setData(0, Qt.UserRole + 2, assignment["job_id"])
@@ -347,7 +386,7 @@ class AssessmentWorkplaceDialog(QDialog):
             self.tree.scrollToItem(current_item)
         elif not assignments:
             self.path_label.setText(
-                "This Worker has no classified work assignments. Add one in Worker Management."
+                "This Worker has no classified Job assignments for the selected shift."
             )
 
     def addItem(self, parent, text, entity, path, icon_root):
@@ -359,7 +398,7 @@ class AssessmentWorkplaceDialog(QDialog):
         return item
 
     def updateSelection(self, current, previous=None):
-        is_assignment = bool(current and current.text(1) == "Assignment")
+        is_assignment = bool(current and current.text(1) == "Job assignment")
         self.accept_button.setEnabled(is_assignment)
         self.selected_context = current.data(0, Qt.UserRole) if is_assignment else None
         self.selected_path = self.selected_context[:4] if self.selected_context else None
@@ -372,12 +411,12 @@ class AssessmentWorkplaceDialog(QDialog):
                 job_text += f" | {self.selected_job_name}"
             self.path_label.setText("  >  ".join(self.selected_context) + f"  |  Job: {job_text}")
         else:
-            self.path_label.setText("Select a work assignment from the hierarchy.")
+            self.path_label.setText("Select a Job assignment from the hierarchy.")
 
     def acceptSelection(self):
         if not self.selected_context:
             QMessageBox.information(
-                self, "Select a work assignment", "Select a classified work assignment before continuing."
+                self, "Select a Job assignment", "Select a classified Job assignment before continuing."
             )
             return
         self.accept()
@@ -5216,6 +5255,8 @@ class ErgoTools(QtWidgets.QMainWindow):
         
         self.workers_window = WorkerWindow(self)
         self.workers_window.exec_()
+        assigned_worker_id = self.workers_window.assessment_worker_to_activate
+        assigned_context = self.workers_window.assessment_context_to_activate
         
         #self.loadWorkers(0)
         # Update the worker combobox based on the current order (numeric or alphabetic).
@@ -5245,19 +5286,20 @@ class ErgoTools(QtWidgets.QMainWindow):
                 self.loadWorkers(0)
             #self.setWorkerOrder()  
             
-            # Format the text as ID (Lastname, Firstname)
-            formatted_worker = f"{self.editWorkerWindowID} ({self.editWorkerWindowLastName}, {self.editWorkerWindowFirstName})"
-
-            # Find the index of the formatted worker text in the combo box of the main window
-            index = self.workerComboBox.findText(formatted_worker)
-
-            #print("Here...:", self.workerComboBox.currentText())
-            # TODO: check why is necesary...
-            self.loadToolsData()
- 
-            # If the index is valid, set the combo box to that index
+            target_worker_id = assigned_worker_id or self.editWorkerWindowID
+            index = next(
+                (
+                    candidate for candidate in range(self.workerComboBox.count())
+                    if self.workerComboBox.itemText(candidate).split(" ", 1)[0] == target_worker_id
+                ),
+                -1,
+            )
             if index != -1:
                 self.workerComboBox.setCurrentIndex(index)
+            if assigned_context:
+                self.setAssessmentWorkplaceContext(assigned_context)
+            else:
+                self.loadToolsData()
 
     def editJobClicked(self):
         if not self.projectFileCreated or not self.projectdatabasePath:
@@ -6903,9 +6945,9 @@ class ErgoTools(QtWidgets.QMainWindow):
         worker_id = self.currentWorkerId() or "the selected Worker"
         QMessageBox.warning(
             self,
-            "Work assignment required",
+            "Job assignment required",
             f"{worker_id} is not assigned to a Job in this workplace and shift.\n\n"
-            "Open Worker Management, add or classify a work assignment, then select that "
+            "Open Worker Management, add or classify a Job assignment, then select that "
             "assessment context before saving. No placeholder Job will be created automatically.",
         )
         return False

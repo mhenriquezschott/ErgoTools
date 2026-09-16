@@ -42,7 +42,7 @@ class WorkerJobAssignmentDialog(QDialog):
         self.placements = placements
         self.selected_placement_id = None
         self.setObjectName("workerJobAssignmentDialog")
-        self.setWindowTitle("Add Work Assignment")
+        self.setWindowTitle("Add Job Assignment")
         self.setMinimumSize(980, 500)
         self.setStyleSheet(parent.workerManagementStyleSheet() + """
             QDialog#workerJobAssignmentDialog {
@@ -54,11 +54,12 @@ class WorkerJobAssignmentDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(18, 16, 18, 16)
         layout.setSpacing(10)
-        title = QLabel("Add work assignment")
+        title = QLabel("Add Job assignment")
         title.setObjectName("dialogTitle")
         layout.addWidget(title)
         description = QLabel(
-            f"Choose the Job, workplace, and shift where Worker {worker_id} performs the work."
+            f"Choose the Job, workplace, and shift where Worker {worker_id} performs the work. "
+            "Only Jobs with an active workplace placement are listed."
         )
         description.setObjectName("supportingText")
         description.setWordWrap(True)
@@ -104,7 +105,7 @@ class WorkerJobAssignmentDialog(QDialog):
 
         buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
         self.accept_button = buttons.button(QDialogButtonBox.Ok)
-        self.accept_button.setText("Use assignment")
+        self.accept_button.setText("Use Job assignment")
         self.accept_button.setObjectName("primaryOutlineButton")
         icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
         self.accept_button.setIcon(QIcon(os.path.join(icon_root, "jobmanagement.png")))
@@ -130,6 +131,8 @@ class WorkerJobAssignmentDialog(QDialog):
 class WorkerWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.assessment_worker_to_activate = None
+        self.assessment_context_to_activate = None
         self.setWindowTitle("Worker Management")
         self.setMinimumSize(1360, 760)
         self.resize(1400, 800)
@@ -318,7 +321,7 @@ class WorkerWindow(QDialog):
         self.tabWidget.addTab(self.general_tab, "Worker details")
         self.assignments_tab = QWidget()
         self.setupAssignmentsTab()
-        self.tabWidget.addTab(self.assignments_tab, "Work assignments")
+        self.tabWidget.addTab(self.assignments_tab, "Job assignments")
         details_layout.addWidget(self.tabWidget, 1)
 
         self.notification_area = QFrame()
@@ -960,7 +963,7 @@ class WorkerWindow(QDialog):
         layout = QVBoxLayout(self.assignments_tab)
         layout.setContentsMargins(0, 4, 0, 0)
         layout.setSpacing(10)
-        heading = QLabel("Worker Job classification")
+        heading = QLabel("Worker Job assignments")
         heading.setObjectName("sectionTitle")
         layout.addWidget(heading)
         self.assignment_status_label = QLabel()
@@ -968,7 +971,7 @@ class WorkerWindow(QDialog):
         self.assignment_status_label.setWordWrap(True)
         assignment_header = QHBoxLayout()
         assignment_header.addWidget(self.assignment_status_label, 1)
-        self.add_assignment_button = QPushButton("Add work assignment")
+        self.add_assignment_button = QPushButton("Add Job assignment")
         icon_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons"))
         self.add_assignment_button.setIcon(QIcon(os.path.join(icon_root, "jobmanagement.png")))
         self.add_assignment_button.setIconSize(QtCore.QSize(24, 24))
@@ -1005,7 +1008,7 @@ class WorkerWindow(QDialog):
     def addWorkerAssignment(self):
         worker_id = self.worker_id_combo.currentText().strip()
         if not worker_id:
-            self.setNotification("Save the Worker before adding a work assignment.", "warning")
+            self.setNotification("Save the Worker before adding a Job assignment.", "warning")
             return
         connection = connect_database(self.parent().projectdatabasePath)
         try:
@@ -1013,7 +1016,7 @@ class WorkerWindow(QDialog):
                 "SELECT 1 FROM Worker WHERE id = ?", (worker_id,)
             ).fetchone()
             if worker_exists is None:
-                self.setNotification("Save the Worker before adding a work assignment.", "warning")
+                self.setNotification("Save the Worker before adding a Job assignment.", "warning")
                 return
             placements = active_job_placements(connection)
         finally:
@@ -1029,12 +1032,23 @@ class WorkerWindow(QDialog):
             connection.commit()
         except (JobPlacementError, sqlite3.Error) as error:
             connection.rollback()
-            QMessageBox.critical(self, "Work assignment", str(error))
+            QMessageBox.critical(self, "Job assignment", str(error))
             return
         finally:
             connection.close()
         self.loadWorkerAssignments(worker_id)
-        self.setNotification("Work assignment saved.", "info")
+        selected = next(
+            placement for placement in placements
+            if placement["placement_id"] == int(dialog.selected_placement_id)
+        )
+        self.assessment_worker_to_activate = worker_id
+        self.assessment_context_to_activate = tuple(str(selected[key]) for key in (
+            "plant_name", "section_name", "line_name", "station_id", "shift_id"
+        ))
+        self.setNotification(
+            "Job assignment saved. It will become the active assessment context when this window closes.",
+            "info",
+        )
 
     def workerManagementStyleSheet(self):
         return """
@@ -1677,7 +1691,7 @@ class WorkerWindow(QDialog):
         self.assignment_table.setRowCount(0)
         if not worker_id:
             self.assignment_status_label.setText(
-                "Save the Worker before classifying workplace assignments."
+                "Save the Worker before classifying Job assignments."
             )
             return
         self.assignment_worker_id = worker_id
@@ -1731,11 +1745,11 @@ class WorkerWindow(QDialog):
 
         if not assignments:
             self.assignment_status_label.setText(
-                "No active workplace assignments are available for this Worker."
+                "No active Job assignments are available for this Worker."
             )
         else:
             self.assignment_status_label.setText(
-                f"{classified} of {len(assignments)} workplace assignment(s) classified."
+                f"{classified} of {len(assignments)} Job assignment(s) classified."
             )
         for row in range(self.assignment_table.rowCount()):
             self.updateAssignmentTooltip(self.assignment_table.cellWidget(row, 5))
@@ -1761,7 +1775,7 @@ class WorkerWindow(QDialog):
             and self.assignment_table.cellWidget(row, 5).currentData() is not None
         )
         self.assignment_status_label.setText(
-            f"{classified} of {total} workplace assignment(s) classified."
+            f"{classified} of {total} Job assignment(s) classified."
         )
 
     def workerAssignmentPayload(self, worker_id):

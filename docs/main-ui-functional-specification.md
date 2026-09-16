@@ -103,7 +103,7 @@ first names. The unique Worker ID is the identity key; names are optional.
 
 Changing workers must retain the currently selected workplace and shift. The Job is
 resolved independently for the newly selected Worker. If that Worker has no
-classified work assignment there, the footer displays `Job: Unclassified`. If the
+classified Job assignment there, the footer displays `Job: Unclassified`. If the
 new Worker has no saved assessment for the active tool at that exact context, the
 form must be empty; data from another station or shift must never appear.
 
@@ -235,11 +235,16 @@ demographic filtering.
 - Cancel restores the selected saved record or clears an unsaved new record.
 - Close returns to the main assessment UI and refreshes the worker directory.
 
-The Work assignments tab lists the Worker's active workplace/shift assignments and
-their Job classification. **Add work assignment** selects from active Job Placements;
+The Job assignments tab lists the Worker's active workplace/shift assignments and
+their Job classification. **Add Job assignment** selects from active Job Placements;
 it cannot invent a workplace or Job. Changing an existing classified assignment
 closes the former assignment and creates a new active row so earlier assessments
 retain their historical Job meaning.
+
+After a Job assignment is added, closing Worker Management selects that Worker and
+new assessment context in the main UI. The Assessment Context dialog presents Shift
+as a filter above the Plant/Section/Line/Station hierarchy; Shift is not a hierarchy
+child. Only assignments in the selected Shift are displayed.
 
 Worker workplace/job classification shown in Worker Management is part of the
 integrated work-risk model. Detailed JROT use of that classification is outside this
