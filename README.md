@@ -344,6 +344,7 @@ Do not commit operational or personally identifiable worker data to a public rep
 ## Documentation
 
 - [Documentation index](docs/README.md)
+- [Development workflow](docs/development-workflow.md)
 - [ErgoTools user manual (PDF)](docs/ErgoToolManual.pdf)
 - [Main assessment UI functional specification](docs/main-ui-functional-specification.md)
 - [PLOT functional specification](docs/plot-functional-specification.md)

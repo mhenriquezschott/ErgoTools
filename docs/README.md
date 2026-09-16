@@ -13,6 +13,8 @@
 
 ## Architecture and Development Plans
 
+- [Development workflow](development-workflow.md): authoritative local Python
+  environment, visual verification, GitHub synchronization, and backup procedure.
 - [Integrated work-risk data model](integrated-work-risk-data-model-plan.md)
 - [PLOT responsive layout](plot-responsive-layout.md)
 - [PLOT redesign roadmap](plot-redesign-roadmap.md)
