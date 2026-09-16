@@ -189,6 +189,29 @@ JROT_REQUIRED_COLUMNS = {
         "transparency",
         "enable",
     },
+    "PlotStationPosition": {
+        "plant_name",
+        "section_name",
+        "line_name",
+        "station_id",
+        "x",
+        "y",
+        "position_source",
+        "updated_at",
+    },
+    "PlotWorkerAssignmentMarker": {
+        "worker_assignment_id",
+        "x",
+        "y",
+        "size",
+        "scale",
+        "line_thickness",
+        "locked",
+        "visible",
+        "enabled",
+        "position_source",
+        "updated_at",
+    },
 }
 
 
@@ -1077,6 +1100,161 @@ def _remove_unused_validity_periods_v6(connection: sqlite3.Connection) -> None:
         )
 
 
+def _create_assignment_map_positions_v7(connection: sqlite3.Connection) -> None:
+    """Normalize PLOT positions around Stations and Worker Assignments."""
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS PlotStationPosition (
+            plant_name TEXT NOT NULL,
+            section_name TEXT NOT NULL,
+            line_name TEXT NOT NULL,
+            station_id TEXT NOT NULL,
+            x REAL NOT NULL,
+            y REAL NOT NULL,
+            position_source TEXT NOT NULL CHECK (
+                position_source IN ('manual', 'worker', 'job', 'migration')
+            ),
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (plant_name, section_name, line_name, station_id),
+            FOREIGN KEY (plant_name, section_name, line_name, station_id)
+                REFERENCES Station (plant_name, section_name, line_name, id)
+                ON DELETE CASCADE
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS PlotWorkerAssignmentMarker (
+            worker_assignment_id INTEGER PRIMARY KEY,
+            x REAL,
+            y REAL,
+            size REAL NOT NULL DEFAULT 50 CHECK (size > 0),
+            scale REAL NOT NULL DEFAULT 1 CHECK (scale > 0),
+            line_thickness REAL NOT NULL DEFAULT 1 CHECK (line_thickness >= 0),
+            locked INTEGER NOT NULL DEFAULT 0 CHECK (locked IN (0, 1)),
+            visible INTEGER NOT NULL DEFAULT 0 CHECK (visible IN (0, 1)),
+            enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+            position_source TEXT NOT NULL DEFAULT 'unplaced' CHECK (
+                position_source IN ('unplaced', 'station_anchor', 'manual', 'migration')
+            ),
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CHECK ((x IS NULL) = (y IS NULL)),
+            CHECK (
+                (position_source = 'unplaced' AND x IS NULL AND y IS NULL)
+                OR
+                (position_source != 'unplaced' AND x IS NOT NULL AND y IS NOT NULL)
+            ),
+            FOREIGN KEY (worker_assignment_id) REFERENCES WorkerAssignment (id)
+                ON DELETE CASCADE
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS ix_plot_worker_marker_visibility
+        ON PlotWorkerAssignmentMarker (visible, enabled)
+        """
+    )
+
+    # A Worker Assignment has one physical position. Prefer a visible, enabled
+    # current assessment marker and use tool order only as a deterministic tie-break.
+    connection.execute(
+        """
+        WITH ranked_markers AS (
+            SELECT assessment.worker_assignment_id,
+                   marker.x, marker.y,
+                   MAX(COALESCE(marker.width, 50), COALESCE(marker.height, 50)) AS size,
+                   COALESCE(marker.scale_x, marker.scale_y, 1) AS scale,
+                   COALESCE(marker.line_thickness, 1) AS line_thickness,
+                   COALESCE(marker.lock, 0) AS locked,
+                   COALESCE(marker.visible, 0) AS visible,
+                   COALESCE(marker.enable, 1) AS enabled,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY assessment.worker_assignment_id
+                       ORDER BY COALESCE(marker.visible, 0) DESC,
+                                COALESCE(marker.enable, 1) DESC,
+                                CASE assessment.tool_id
+                                    WHEN 'LiFFT' THEN 0
+                                    WHEN 'DUET' THEN 1
+                                    WHEN 'ST' THEN 2
+                                    ELSE 3
+                                END,
+                                assessment.id
+                   ) AS marker_rank
+            FROM IndividualAssessment AS assessment
+            JOIN PlotAssessmentMarker AS marker
+              ON marker.individual_assessment_id = assessment.id
+            WHERE assessment.is_current = 1
+        )
+        INSERT OR IGNORE INTO PlotWorkerAssignmentMarker (
+            worker_assignment_id, x, y, size, scale, line_thickness,
+            locked, visible, enabled, position_source
+        )
+        SELECT worker_assignment_id, x, y, size, scale, line_thickness,
+               locked, visible, enabled,
+               CASE WHEN x IS NULL OR y IS NULL THEN 'unplaced' ELSE 'migration' END
+        FROM ranked_markers
+        WHERE marker_rank = 1
+        """
+    )
+
+    station_table_exists = connection.execute(
+        """
+        SELECT EXISTS (
+            SELECT 1 FROM sqlite_master
+            WHERE type = 'table' AND name = 'Station'
+        )
+        """
+    ).fetchone()[0]
+    if station_table_exists:
+        # Existing Station coordinates are authoritative when present.
+        connection.execute(
+            """
+            INSERT OR IGNORE INTO PlotStationPosition (
+                plant_name, section_name, line_name, station_id,
+                x, y, position_source
+            )
+            SELECT plant_name, section_name, line_name, id,
+                   x, y, 'migration'
+            FROM Station
+            WHERE x IS NOT NULL AND y IS NOT NULL
+            """
+        )
+
+    # Older projects normally positioned Workers rather than Stations. The best
+    # available active Worker marker initializes an otherwise unknown Station anchor.
+    connection.execute(
+        """
+        WITH ranked_station_markers AS (
+            SELECT context.plant_name, context.section_name, context.line_name,
+                   context.station_id, marker.x, marker.y,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY context.plant_name, context.section_name,
+                                    context.line_name, context.station_id
+                       ORDER BY assignment.active DESC,
+                                marker.visible DESC,
+                                marker.enabled DESC,
+                                assignment.id
+                   ) AS marker_rank
+            FROM PlotWorkerAssignmentMarker AS marker
+            JOIN WorkerAssignment AS assignment
+              ON assignment.id = marker.worker_assignment_id
+            JOIN WorkplaceContext AS context
+              ON context.id = assignment.workplace_context_id
+            WHERE marker.x IS NOT NULL AND marker.y IS NOT NULL
+        )
+        INSERT OR IGNORE INTO PlotStationPosition (
+            plant_name, section_name, line_name, station_id,
+            x, y, position_source
+        )
+        SELECT plant_name, section_name, line_name, station_id,
+               x, y, 'worker'
+        FROM ranked_station_markers
+        WHERE marker_rank = 1
+        """
+    )
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(
         version=1,
@@ -1131,6 +1309,15 @@ MIGRATIONS: tuple[Migration, ...] = (
         ),
         apply=_remove_unused_validity_periods_v6,
         requires_foreign_keys_off=True,
+    ),
+    Migration(
+        version=7,
+        name="station and worker assignment map positions",
+        definition=(
+            "Add normalized PLOT Station anchors and one physical marker per Worker "
+            "Assignment; deterministically migrate existing tool-assessment marker positions"
+        ),
+        apply=_create_assignment_map_positions_v7,
     ),
 )
 

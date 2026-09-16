@@ -67,7 +67,8 @@ erDiagram
 
     WORKER_ASSIGNMENT ||--o{ INDIVIDUAL_ASSESSMENT : assessed_by
     ERGO_TOOL ||--o{ INDIVIDUAL_ASSESSMENT : measures
-    INDIVIDUAL_ASSESSMENT ||--o| PLOT_ASSESSMENT_MARKER : displayed_as
+    STATION ||--o| PLOT_STATION_POSITION : anchored_at
+    WORKER_ASSIGNMENT ||--o| PLOT_WORKER_ASSIGNMENT_MARKER : displayed_as
 
     ROTATION_SCHEME ||--o{ ROTATION_SCHEME_SCOPE : applies_to
     ROTATION_SCHEME ||--o{ ROTATION_TARGET : considers
@@ -230,19 +231,41 @@ Each table has primary key `(individual_assessment_id, task_index)`, an assessme
 foreign key with cascade delete, and tool-specific validated inputs/results. The
 application must reject attaching a task row to an assessment for the wrong tool.
 
-### PlotAssessmentMarker
+### PlotStationPosition
 
-Moves PLOT visual state out of the assessment and assignment records while
-preserving independent marker positions for each tool assessment.
+Stores the optional physical map anchor of a Station independently of Shift, Job,
+or Worker. Organization records do not require coordinates.
 
-- `individual_assessment_id INTEGER PRIMARY KEY`
-- Geometry, scale, orientation, RGB adjustment, lock, visibility, transparency,
-  and enable fields currently held by `WorkerStationShiftErgoTool`.
-- Foreign key to IndividualAssessment with cascade delete.
+- Composite primary key `(plant_name, section_name, line_name, station_id)`.
+- `x REAL NOT NULL`
+- `y REAL NOT NULL`
+- `position_source TEXT NOT NULL CHECK (position_source IN
+  ('manual', 'worker', 'job', 'migration'))`
+- `updated_at TEXT NOT NULL`
+- Composite foreign key to Station with cascade delete.
 
-The integrated fixture contains different X/Y values across tool rows for all 57
-multi-tool worker contexts. These positions must be preserved per assessment and
-must not be collapsed into one marker per worker assignment.
+The first manually positioned Worker or Job marker initializes a missing Station
+anchor atomically. Later Worker movement does not silently move an established
+anchor; moving the Station itself is a separate explicit operation.
+
+### PlotWorkerAssignmentMarker
+
+Stores one physical Worker marker for an exact Worker Assignment. Tool choice
+changes the risk values and colors shown by that marker, not its map position.
+
+- `worker_assignment_id INTEGER PRIMARY KEY`
+- Nullable coordinate pair `x`, `y`; both are null only while unplaced.
+- Positive `size` and `scale`, non-negative `line_thickness`.
+- Boolean `locked`, `visible`, and `enabled` fields.
+- `position_source TEXT NOT NULL CHECK (position_source IN
+  ('unplaced', 'station_anchor', 'manual', 'migration'))`
+- `updated_at TEXT NOT NULL`
+- Foreign key to WorkerAssignment with cascade delete.
+
+New markers start hidden. When a Station anchor exists they start at that anchor;
+otherwise they remain explicitly unplaced until the user positions them. The
+legacy per-assessment marker table remains migration input only until PLOT is
+fully cut over and coordinate preservation has been audited.
 
 ### RotationScheme and RotationSchemeScope
 
@@ -394,6 +417,12 @@ with numerically identical damage/probability values.
   main assessment footer.
 - [x] Block new saves when the selected Worker and workplace lack a classified Job
   assignment, while retaining read access to migrated unclassified assessments.
+- [x] Add normalized, shift-independent Station anchors and one physical marker
+  per Worker Assignment.
+- [x] Deterministically initialize Station anchors and Worker Assignment markers
+  from legacy per-tool marker positions without deleting the migration source.
+- [x] Add tested position repository operations that initialize an unknown Station
+  from the first manually positioned Worker while preserving established anchors.
 - [ ] Refactor main-tool load/save, worker transfer, and PLOT queries to use the
   new assignment and assessment keys.
 - [ ] Verify selected, visible, enabled, locked, moved, transferred, and deleted
@@ -401,9 +430,11 @@ with numerically identical damage/probability values.
 - [ ] Preserve missing/not-available results as null/incomplete, not numeric zero
   with a valid risk color.
 
-**Gate:** The integrated fixture produces 191 IndividualAssessment and 191 marker
-rows while preserving 2,010 LiFFT, 735 DUET, and 787 Shoulder task rows and all
-tool-specific marker coordinates.
+**Gate:** The integrated fixture produces 191 IndividualAssessment rows, one
+physical marker per represented Worker Assignment, and Station anchors derived
+deterministically from existing positions while preserving 2,010 LiFFT, 735 DUET,
+and 787 Shoulder task rows. Legacy tool-specific coordinates remain available
+until the cutover audit is complete.
 
 ### Phase 5: Rotation Scope and Reproducibility
 
@@ -537,13 +568,17 @@ This UI is part of the completed integration, not an optional follow-up.
 
 ### PLOT Map
 
-- [ ] Preserve circle/triangle worker-marker semantics and the blue selection frame.
+- [ ] Preserve circle/triangle worker-marker semantics, use a square when sex is
+  not provided, and retain the blue selection frame.
 - [ ] Use marker fill for current individual risk.
-- [ ] Use a clearly separated outer ring for applicable Job risk.
+- [ ] In Comparison mode, use a clearly separated outer square frame for the
+  applicable Job risk around the individual Worker symbol.
 - [ ] Use gray for unavailable individual or Job risk without implying a valid band.
-- [ ] Add view modes for Individual Risk, Job Risk, and Difference.
-- [ ] In Difference mode, use a diverging scale centered at zero and state whether
-  individual risk is above or below the Job estimate.
+- [ ] Add view modes for Individual Risk, Job Risk, and Comparison.
+- [ ] In Job Risk mode, show Station-anchored square Job markers even when no
+  individual Worker assessment exists.
+- [ ] In Comparison mode, state numerically whether individual risk is above or
+  below the applicable Job estimate; never rely on frame/fill colors alone.
 - [ ] Keep markers legible at dense plant-map scale and verify hundreds of workers.
 - [ ] Tooltips show Worker, Job, Station, Shift, profile/version/source, individual
   result, Job result, and difference.
@@ -582,7 +617,8 @@ The integration is complete only when:
 2. Standalone JROT use requires no fabricated organization records.
 3. Scoped JROT uses actual Job Placements and persists its selected scopes.
 4. Saved optimizations retain the exact Job Risk Profile versions used.
-5. PLOT retains every worker assessment and tool-specific marker position.
+5. PLOT retains every Worker assessment while using one physical marker per Worker
+   Assignment and one optional anchor per Station.
 6. Individual and Job risk can be compared without changing either source value.
 7. New, old PLOT, old JROT, and integrated projects all pass the migration matrix.
 8. The deterministic comparative fixture passes functional and visual tests.

@@ -170,8 +170,83 @@ class IntegratedProjectMigrationTests(unittest.TestCase):
             )
             self.assertEqual(
                 connection.execute("SELECT COUNT(*) FROM CurrentJobRiskMeasurement").fetchone()[0],
-                33,
+                connection.execute("SELECT COUNT(*) FROM JobMeasurement").fetchone()[0],
             )
+            expected_worker_markers = connection.execute(
+                """
+                SELECT COUNT(DISTINCT assessment.worker_assignment_id)
+                FROM IndividualAssessment AS assessment
+                JOIN PlotAssessmentMarker AS marker
+                  ON marker.individual_assessment_id = assessment.id
+                WHERE assessment.is_current = 1
+                """
+            ).fetchone()[0]
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) FROM PlotWorkerAssignmentMarker"
+                ).fetchone()[0],
+                expected_worker_markers,
+            )
+            self.assertEqual(
+                connection.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM PlotWorkerAssignmentMarker AS worker_marker
+                    WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM IndividualAssessment AS assessment
+                        JOIN PlotAssessmentMarker AS assessment_marker
+                          ON assessment_marker.individual_assessment_id = assessment.id
+                        WHERE assessment.worker_assignment_id = worker_marker.worker_assignment_id
+                          AND assessment_marker.x IS worker_marker.x
+                          AND assessment_marker.y IS worker_marker.y
+                    )
+                    """
+                ).fetchone()[0],
+                0,
+            )
+            self.assertGreater(
+                connection.execute("SELECT COUNT(*) FROM PlotStationPosition").fetchone()[0],
+                0,
+            )
+            self.assertEqual(
+                connection.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM PlotStationPosition AS position
+                    WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM Station AS station
+                        WHERE station.plant_name = position.plant_name
+                          AND station.section_name = position.section_name
+                          AND station.line_name = position.line_name
+                          AND station.id = position.station_id
+                    )
+                    """
+                ).fetchone()[0],
+                0,
+            )
+            marker_id = connection.execute(
+                "SELECT worker_assignment_id FROM PlotWorkerAssignmentMarker LIMIT 1"
+            ).fetchone()[0]
+            with self.assertRaises(sqlite3.IntegrityError):
+                connection.execute(
+                    """
+                    UPDATE PlotWorkerAssignmentMarker
+                    SET position_source = 'unplaced'
+                    WHERE worker_assignment_id = ?
+                    """,
+                    (marker_id,),
+                )
+            with self.assertRaises(sqlite3.IntegrityError):
+                connection.execute(
+                    """
+                    UPDATE PlotWorkerAssignmentMarker
+                    SET size = 0
+                    WHERE worker_assignment_id = ?
+                    """,
+                    (marker_id,),
+                )
             migrated_job_colors = connection.execute(
                 """
                 SELECT legacy.tool_id, legacy.total_cumulative_damage, legacy.color,
@@ -210,7 +285,7 @@ class IntegratedProjectMigrationTests(unittest.TestCase):
                       AND current.probability_outcome IS legacy.probability_outcome
                     """
                 ).fetchone()[0],
-                33,
+                connection.execute("SELECT COUNT(*) FROM JobMeasurement").fetchone()[0],
             )
 
 
