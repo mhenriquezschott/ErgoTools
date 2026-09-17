@@ -98,6 +98,9 @@ class PlotRiskViewRenderingTests(unittest.TestCase):
         self._settle()
 
         self.assertEqual(self.window.outcome_result_stack.currentIndex(), 1)
+        self.assertEqual(self.window.outcome_ranges_panel.width(), 250)
+        self.assertEqual(self.window.outcome_result_stack.width(), 410)
+        self.assertEqual(self.window.outcome_range_labels[0].property("compact"), True)
         enabled_workers = [
             worker
             for worker in self.window.workerstationshifttool_dataset
@@ -141,6 +144,10 @@ class PlotRiskViewRenderingTests(unittest.TestCase):
         self.window.selectRiskViewMode("individual")
         self._settle()
         self.assertEqual(self.window.outcome_result_stack.currentIndex(), 0)
+        self.assertEqual(self.window.outcome_ranges_panel.width(), 300)
+        self.assertEqual(self.window.outcome_result_stack.width(), 360)
+        self.assertEqual(self.window.outcome_range_labels[0].property("compact"), False)
+        self.assertGreaterEqual(self.window.plot_risk_gauge.width(), 250)
 
 
 if __name__ == "__main__":

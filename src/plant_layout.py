@@ -235,7 +235,7 @@ class PlotRiskGauge(QWidget):
         self.animation = QPropertyAnimation(self, b"displayValue", self)
         self.animation.setDuration(700)
         self.animation.setEasingCurve(QEasingCurve.OutCubic)
-        self.setMinimumSize(150, 120)
+        self.setMinimumSize(250, 120)
         self.setMaximumWidth(310)
 
     @QtCore.pyqtProperty(float)
@@ -2303,14 +2303,14 @@ class PlantLayoutWindow(QDialog):
         # Outcome/highlight region. It spans beneath the map and detail panel so
         # the map retains its reference size while the gauge has useful width.
         outcome_layout = QHBoxLayout(self.outcome_group)
-        outcome_layout.setContentsMargins(14, 14, 14, 12)
+        outcome_layout.setContentsMargins(14, 12, 14, 10)
         outcome_layout.setSpacing(24)
         self.outcome_image.hide()
 
         summary_panel = QWidget(self.outcome_group)
         summary_panel.setObjectName("outcomeSummaryPanel")
         summary_panel_layout = QVBoxLayout(summary_panel)
-        summary_panel_layout.setContentsMargins(10, 8, 10, 8)
+        summary_panel_layout.setContentsMargins(10, 6, 10, 6)
         summary_panel_layout.setSpacing(0)
         summary_heading = QLabel("Filtered results", summary_panel)
         summary_heading.setObjectName("outcomeSectionHeading")
@@ -2319,7 +2319,7 @@ class PlantLayoutWindow(QDialog):
         summary_metrics = QGridLayout()
         summary_metrics.setContentsMargins(0, 0, 0, 0)
         summary_metrics.setHorizontalSpacing(16)
-        summary_metrics.setVerticalSpacing(0)
+        summary_metrics.setVerticalSpacing(2)
         summary_metrics.addWidget(self.summaryresult1_label, 0, 0)
         summary_metrics.addWidget(self.summaryresult2_label, 0, 1)
         summary_metrics.addWidget(self.summaryresult3_label, 1, 0)
@@ -2360,20 +2360,26 @@ class PlantLayoutWindow(QDialog):
         risk_cluster_layout.setContentsMargins(12, 8, 12, 8)
         risk_cluster_layout.setSpacing(8)
 
-        ranges_panel = QWidget(risk_cluster)
-        ranges_layout = QVBoxLayout(ranges_panel)
+        self.outcome_ranges_panel = QWidget(risk_cluster)
+        ranges_layout = QVBoxLayout(self.outcome_ranges_panel)
         ranges_layout.setContentsMargins(0, 0, 0, 0)
         ranges_layout.setSpacing(4)
-        ranges_heading = QLabel("Risk ranges", ranges_panel)
+        ranges_heading = QLabel("Risk ranges", self.outcome_ranges_panel)
         ranges_heading.setObjectName("outcomeSectionHeading")
         ranges_layout.addWidget(ranges_heading)
+        self.outcome_range_labels = []
         for _start, _end, label, color, range_text in RISK_BANDS:
-            band = QLabel(f"<span style='color:{color}; font-size:16px;'>●</span>  {label}   {range_text}", ranges_panel)
+            band = QLabel(
+                f"<span style='color:{color}; font-size:16px;'>●</span>  {label}   {range_text}",
+                self.outcome_ranges_panel,
+            )
             band.setObjectName("outcomeRangeLabel")
+            band.setProperty("compact", False)
+            self.outcome_range_labels.append(band)
             ranges_layout.addWidget(band)
         ranges_layout.addStretch(1)
-        ranges_panel.setFixedWidth(250)
-        risk_cluster_layout.addWidget(ranges_panel)
+        self.outcome_ranges_panel.setFixedWidth(300)
+        risk_cluster_layout.addWidget(self.outcome_ranges_panel)
 
         risk_divider = QFrame(risk_cluster)
         risk_divider.setObjectName("riskClusterDivider")
@@ -2383,7 +2389,7 @@ class PlantLayoutWindow(QDialog):
 
         self.outcome_result_stack = QtWidgets.QStackedWidget(risk_cluster)
         self.outcome_result_stack.setObjectName("outcomeResultStack")
-        self.outcome_result_stack.setFixedWidth(410)
+        self.outcome_result_stack.setFixedWidth(360)
 
         result_panel = QWidget(self.outcome_result_stack)
         result_panel.setObjectName("outcomeResultPanel")
@@ -2430,6 +2436,7 @@ class PlantLayoutWindow(QDialog):
             status.setObjectName("comparisonRiskLabel")
             status.setAlignment(Qt.AlignCenter)
             gauge = PlotRiskGauge(column)
+            gauge.setMinimumWidth(150)
             gauge.setToolTip(tooltip)
             gauge_caption = QLabel(caption, column)
             gauge_caption.setObjectName("comparisonGaugeCaption")
@@ -2729,8 +2736,9 @@ class PlantLayoutWindow(QDialog):
             QLabel#outcomeRangeLabel {
                 color: #304652;
                 font-weight: 600;
-                font-size: 11px;
+                font-size: 13px;
             }
+            QLabel#outcomeRangeLabel[compact="true"] { font-size: 12px; }
             QFrame#riskClusterDivider { background: #D5DEE5; border: 0; }
             QWidget#outcomeSummaryPanel, QFrame#outcomeRiskCluster {
                 background: #F8FBFC;
@@ -2861,6 +2869,7 @@ class PlantLayoutWindow(QDialog):
         self.plot_risk_view_mode = mode
         if hasattr(self, "outcome_result_stack"):
             self.outcome_result_stack.setCurrentIndex(1 if mode == "comparison" else 0)
+            self.updateOutcomeRiskLayout(mode)
         for key, button in self.plot_risk_view_buttons.items():
             button.setChecked(key == mode)
         if hasattr(self, "details_tabs"):
@@ -2868,6 +2877,16 @@ class PlantLayoutWindow(QDialog):
             if mode == "job":
                 self.details_tabs.setCurrentIndex(0)
         self.applyfilterButtonClicked()
+
+    def updateOutcomeRiskLayout(self, mode):
+        """Use compact geometry only when two Comparison gauges share the panel."""
+        comparison = mode == "comparison"
+        self.outcome_ranges_panel.setFixedWidth(250 if comparison else 300)
+        self.outcome_result_stack.setFixedWidth(410 if comparison else 360)
+        for label in self.outcome_range_labels:
+            label.setProperty("compact", comparison)
+            label.style().unpolish(label)
+            label.style().polish(label)
 
     def updateWorkerFilterDisclosure(self, expanded):
         """Collapse demographic fields completely instead of merely disabling them."""
