@@ -28,7 +28,7 @@ class VisualJobMarker(QGraphicsItem):
         self.profile_name = data.get("job_risk_profile_name")
         self.profile_version = data.get("job_risk_profile_version")
         self.color = QColor(data.get("color", "#9AA8B2"))
-        self.size = 50.0
+        self.size = 38.0
         self.scale_factor = float(scale_factor or 1.0)
         self.internal_scale = round(1.0 / self.scale_factor, 2)
         self.offset_x = float(display_offset[0])
@@ -64,11 +64,15 @@ class VisualJobMarker(QGraphicsItem):
         )
 
     def boundingRect(self):
+        margin = max(5.0, 5.0 * self.internal_scale)
+        return self._markerRect().adjusted(-margin, -margin, margin, margin)
+
+    def _markerRect(self):
         side = self.size * self.internal_scale
         return QRectF(0.0, 0.0, side, side)
 
     def paint(self, painter, option, widget=None):
-        rect = self.boundingRect()
+        rect = self._markerRect()
         pen = QPen(QColor("#111111"), max(1, round(2 * self.internal_scale)))
         if not self.has_anchor:
             pen.setStyle(Qt.DashLine)
@@ -78,13 +82,17 @@ class VisualJobMarker(QGraphicsItem):
         painter.setPen(QColor("#071B2D") if self.color.lightness() > 145 else Qt.white)
         font = QFont("Segoe UI")
         font.setBold(True)
-        font.setPixelSize(max(10, round(14 * self.internal_scale)))
+        font.setPixelSize(max(8, round(11 * self.internal_scale)))
         painter.setFont(font)
-        painter.drawText(rect, Qt.AlignCenter, "J")
+        marker_label = self.job_id.removeprefix("Job-")
+        painter.drawText(rect, Qt.AlignCenter, marker_label)
         if self.isSelected():
             painter.setPen(QPen(QColor("#0057D8"), max(2, round(3 * self.internal_scale))))
             painter.setBrush(Qt.NoBrush)
-            painter.drawRect(rect.adjusted(-3, -3, 3, 3))
+            selection_gap = max(3.0, 3.0 * self.internal_scale)
+            painter.drawRect(rect.adjusted(
+                -selection_gap, -selection_gap, selection_gap, selection_gap
+            ))
 
     def mousePressEvent(self, event):
         self._start_position = self.pos()

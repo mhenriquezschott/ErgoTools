@@ -198,6 +198,40 @@ class VisualWorkerTool(QGraphicsItem):
     
     
 
+    def _baseMarkerRect(self, x, y):
+        return QRectF(
+            float(x),
+            float(y),
+            float(self.width) * float(self.sfi) * float(self.scale),
+            float(self.height) * float(self.sfi) * float(self.scale),
+        )
+
+    def _workerMarkerRect(self, x, y):
+        rect = self._baseMarkerRect(x, y)
+        if self.risk_view_mode == "comparison":
+            inset = min(rect.width(), rect.height()) * 0.18
+            return rect.adjusted(inset, inset, -inset, -inset)
+        return rect
+
+    def _createWorkerShape(self, x, y):
+        rect = self._workerMarkerRect(x, y)
+        if self.shape == "circle":
+            item = QGraphicsEllipseItem(rect, self)
+        elif self.shape == "triangle":
+            item = QGraphicsPolygonItem(QPolygonF([
+                QPointF(rect.center().x(), rect.top()),
+                QPointF(rect.right(), rect.bottom()),
+                QPointF(rect.left(), rect.bottom()),
+            ]), self)
+        else:
+            item = QGraphicsRectItem(rect, self)
+        item.setBrush(QBrush(self.color, Qt.SolidPattern))
+        if self.risk_view_mode == "comparison":
+            item.setPen(QPen(QColor("#162C3A"), max(1, round(1.5 * self.sfi))))
+        else:
+            item.setPen(QPen(Qt.NoPen))
+        return item
+
     def initShapeN(self):
         """Creates and assigns the graphical shape (circle, triangle, or square) to the worker item."""
 
@@ -207,31 +241,7 @@ class VisualWorkerTool(QGraphicsItem):
         # self.sfi = Scale Factor Internal
         #self.sfi = round(2 - self.scale, 2)
         #print("sf:", self.sfi)
-        if self.shape == 'circle':
-            self.item = QGraphicsEllipseItem(self.xi, self.yi, self.width * self.sfi * float(self.scale), self.height * self.sfi * float(self.scale), self)
-    
-        elif self.shape == 'triangle': # Pointing upward
-            triangle = QPolygonF([
-                QPointF(self.xi + (self.width * self.sfi * float(self.scale)) / 2, self.yi),  # Top point
-                QPointF(self.xi + (self.width * self.sfi* float(self.scale)), self.yi + (self.height * self.sfi * float(self.scale))),  # Bottom right
-                QPointF(self.xi, self.yi + (self.height * self.sfi * float(self.scale)))  # Bottom left
-            ])
-            self.item = QGraphicsPolygonItem(triangle, self)
-    
-        #elif self.shape == 'triangle': # Pointing downward
-        #    triangle = QPolygonF([
-        #    QPointF(self.x, self.y),  # Top left (was bottom left)
-        #    QPointF(self.x + (self.width * self.sfi * scale), self.y),  # Top right (was bottom right)
-        #    QPointF(self.x + (self.width * self.sfi * scale) / 2, self.y + (self.height * self.sfi * scale))  # Bottom center (was top point)
-        #    ])
-        #    self.item = QGraphicsPolygonItem(triangle, self)
-
-        elif self.shape == 'square':  
-            self.item = QGraphicsRectItem(self.xi, self.yi, self.width * self.sfi * float(self.scale), self.height * self.sfi * float(self.scale), self)
-    
-        # Apply color and remove outline
-        self.item.setBrush(QBrush(self.color, Qt.SolidPattern))
-        self.item.setPen(QPen(Qt.NoPen))
+        self.item = self._createWorkerShape(self.xi, self.yi)
 
     def initShape(self):
         """Creates and assigns the graphical shape (circle, triangle, or square) to the worker item."""
@@ -256,31 +266,7 @@ class VisualWorkerTool(QGraphicsItem):
         # self.sfi = Scale Factor Internal
         #self.sfi = round(2 - self.scale, 2)
         #print("sf:", self.sfi)
-        if self.shape == 'circle':
-            self.item = QGraphicsEllipseItem(self.x, self.y, self.width * self.sfi * float(self.scale), self.height * self.sfi * float(self.scale), self)
-    
-        elif self.shape == 'triangle': # Pointing upward
-            triangle = QPolygonF([
-                QPointF(self.x + (self.width * self.sfi * float(self.scale)) / 2, self.y),  # Top point
-                QPointF(self.x + (self.width * self.sfi* float(self.scale)), self.y + (self.height * self.sfi * float(self.scale))),  # Bottom right
-                QPointF(self.x, self.y + (self.height * self.sfi * float(self.scale)))  # Bottom left
-            ])
-            self.item = QGraphicsPolygonItem(triangle, self)
-    
-        #elif self.shape == 'triangle': # Pointing downward
-        #    triangle = QPolygonF([
-        #    QPointF(self.x, self.y),  # Top left (was bottom left)
-        #    QPointF(self.x + (self.width * self.sfi * scale), self.y),  # Top right (was bottom right)
-        #    QPointF(self.x + (self.width * self.sfi * scale) / 2, self.y + (self.height * self.sfi * scale))  # Bottom center (was top point)
-        #    ])
-        #    self.item = QGraphicsPolygonItem(triangle, self)
-
-        elif self.shape == 'square':  
-            self.item = QGraphicsRectItem(self.x, self.y, self.width * self.sfi * float(self.scale), self.height * self.sfi * float(self.scale), self)
-    
-        # Apply color and remove outline
-        self.item.setBrush(QBrush(self.color, Qt.SolidPattern))
-        self.item.setPen(QPen(Qt.NoPen))
+        self.item = self._createWorkerShape(self.x, self.y)
 
     def initShapeAt(self): # TODO: remove it, it should not be needed
         """Creates and assigns the graphical shape (circle, triangle, or square) to the worker item."""
@@ -299,31 +285,7 @@ class VisualWorkerTool(QGraphicsItem):
         # self.sfi = Scale Factor Internal
         #self.sfi = round(2 - self.scale, 2)
         #print("sf:", self.sfi)
-        if self.shape == 'circle':
-            self.item = QGraphicsEllipseItem(self.xi, self.yi, self.width * self.sfi * float(self.scale), self.height * self.sfi * float(self.scale), self)
-    
-        elif self.shape == 'triangle': # Pointing upward
-            triangle = QPolygonF([
-                QPointF(self.xi + (self.width * self.sfi * float(self.scale)) / 2, self.yi),  # Top point
-                QPointF(self.xi + (self.width * self.sfi* float(self.scale)), self.yi + (self.height * self.sfi * float(self.scale))),  # Bottom right
-                QPointF(self.xi, self.yi + (self.height * self.sfi * float(self.scale)))  # Bottom left
-            ])
-            self.item = QGraphicsPolygonItem(triangle, self)
-    
-        #elif self.shape == 'triangle': # Pointing downward
-        #    triangle = QPolygonF([
-        #    QPointF(self.x, self.y),  # Top left (was bottom left)
-        #    QPointF(self.x + (self.width * self.sfi * scale), self.y),  # Top right (was bottom right)
-        #    QPointF(self.x + (self.width * self.sfi * scale) / 2, self.y + (self.height * self.sfi * scale))  # Bottom center (was top point)
-        #    ])
-        #    self.item = QGraphicsPolygonItem(triangle, self)
-
-        elif self.shape == 'square':  
-            self.item = QGraphicsRectItem(self.xi, self.yi, self.width * self.sfi * float(self.scale), self.height * self.sfi * float(self.scale), self)
-    
-        # Apply color and remove outline
-        self.item.setBrush(QBrush(self.color, Qt.SolidPattern))
-        self.item.setPen(QPen(Qt.NoPen))
+        self.item = self._createWorkerShape(self.xi, self.yi)
 
 
 
@@ -333,10 +295,12 @@ class VisualWorkerTool(QGraphicsItem):
         y_value = self.yi
         #y_value = round(float(y_value) - ((float(self.height) * float(self.sfi) * float(self.scale)) / 2)) 
         
-        return QRectF(float(x_value), float(y_value), float(self.width) * float(self.sfi) * float(self.scale), float(self.height) * float(self.sfi) * float(self.scale))
+        margin = max(6.0, 6.0 * float(self.sfi))
+        return self._baseMarkerRect(x_value, y_value).adjusted(-margin, -margin, margin, margin)
         
     def boundingRect(self):
-        return QRectF(float(self.x), float(self.y), float(self.width) * float(self.sfi) * float(self.scale), float(self.height) * float(self.sfi) * float(self.scale))
+        margin = max(6.0, 6.0 * float(self.sfi))
+        return self._baseMarkerRect(self.x, self.y).adjusted(-margin, -margin, margin, margin)
 
 
 
@@ -434,19 +398,19 @@ class VisualWorkerTool(QGraphicsItem):
     
 
     def paint(self, painter, option, widget=None):
+        marker_rect = self._baseMarkerRect(self.x, self.y)
         if self.risk_view_mode == "comparison":
-            frame = self.boundingRect().adjusted(-5, -5, 5, 5)
-            frame_pen = QPen(self.job_color, max(4, math.ceil(3 * self.sfi)), Qt.SolidLine)
+            frame_pen = QPen(QColor("#162C3A"), max(1, math.ceil(1.2 * self.sfi)), Qt.SolidLine)
             if self.job_probability_outcome is None:
                 frame_pen.setStyle(Qt.DashLine)
             painter.setPen(frame_pen)
-            painter.setBrush(Qt.NoBrush)
-            painter.drawRect(frame)
+            painter.setBrush(QBrush(self.job_color, Qt.SolidPattern))
+            painter.drawRect(marker_rect)
         if self.border:
             if  (self.isSaveAt == False):
-                rect = self.boundingRect()
+                rect = marker_rect
             else:
-                rect = self.boundingRectAt()
+                rect = self._baseMarkerRect(self.xi, self.yi)
                 self.isSaveAt = False
                 
             bw = math.ceil(1 * self.sfi) + 2 # TODO: more tests!!!
@@ -455,7 +419,11 @@ class VisualWorkerTool(QGraphicsItem):
             #print("border width:", bw)
             pen = QPen(Qt.blue, bw, Qt.SolidLine)
             painter.setPen(pen)
-            painter.drawRect(rect)
+            painter.setBrush(Qt.NoBrush)
+            selection_gap = max(2.0, 2.0 * float(self.sfi))
+            painter.drawRect(rect.adjusted(
+                -selection_gap, -selection_gap, selection_gap, selection_gap
+            ))
         
         
         # TODO: check why it dosn't work!!!, it seems is allways draw under the color..
@@ -467,14 +435,18 @@ class VisualWorkerTool(QGraphicsItem):
 
     def paintAt(self, painter):
         if self.border:
-            rect = self.boundingRectAt()
+            rect = self._baseMarkerRect(self.xi, self.yi)
             bw = math.ceil(1 * self.sfi) + 2 # TODO: more tests!!!
             if bw >= 5:
                 bw = 4
             #print("border width:", bw)
             pen = QPen(Qt.blue, bw, Qt.SolidLine)
             painter.setPen(pen)
-            painter.drawRect(rect)
+            painter.setBrush(Qt.NoBrush)
+            selection_gap = max(2.0, 2.0 * float(self.sfi))
+            painter.drawRect(rect.adjusted(
+                -selection_gap, -selection_gap, selection_gap, selection_gap
+            ))
     
     
     def mousePressEvent(self, event):
@@ -1075,8 +1047,6 @@ class VisualWorkerTool(QGraphicsItem):
         self.datarow["color"] = hex_color
         if hasattr(self, 'item') and self.item:
             self.item.setBrush(QBrush(self.color, Qt.SolidPattern))  # Update color immediately
-
-
 
 
 

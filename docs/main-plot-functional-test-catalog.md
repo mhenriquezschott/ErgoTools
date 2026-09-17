@@ -194,8 +194,8 @@ independently calculated reference vectors, not values copied from the applicati
 | MAP-016 | Capture cancel/save | Cancel writes nothing; save produces a nonblank image. |
 | MAP-017 | CSV export | Exported rows equal current filtered dataset and omit internal visual fields. |
 | MAP-018 | Individual Risk view | Worker shape fill uses the current individual assessment and physical marker position. |
-| MAP-019 | Job Risk view | Every active placement is a Station-anchored square, including Jobs without individual assessments. |
-| MAP-020 | Comparison view | Individual fill and Job-risk outer square are simultaneously visible. |
+| MAP-019 | Job Risk view | Every active placement is one labeled Station-anchored square, including Jobs without individual assessments. Multiple workers sharing a placement do not duplicate its marker. |
+| MAP-020 | Comparison view | A filled Job-risk square contains a smaller individual-risk worker symbol; the blue outer frame remains selection-only. |
 | MAP-021 | Missing Job risk | Missing tool measurement uses a gray dashed frame and is not calculated as zero. |
 | MAP-022 | Unknown sex | Worker marker uses a square without changing the assessment risk color. |
 | MAP-023 | Station initialization | Dragging the first unpositioned Job marker creates the Station anchor and persists after reopen. |
@@ -242,6 +242,7 @@ viewport where practical.
 | Transfer | Source, tool selection, destination hierarchy, preview, and actions. |
 | PLOT default | Complete filters, plant canvas, Tools Overview, and outcome. |
 | PLOT demographics expanded | All range controls and labels fit. |
+| PLOT filter disclosure | Risk View and Worker Demographics remain equal-height peers; the complete plant scene and tool rail remain visible. |
 | PLOT multi-workplace | Checked rows, summary text, and long IDs fit/tooltips exist. |
 | PLOT Worker Overview | Full plant canvas retained; details, Locate, and visual controls fit. |
 | PLOT risk views | Individual, Job, and Comparison markers, summaries, chart, and gauge agree. |
@@ -261,6 +262,7 @@ expected and blank/neutral only in documented empty states.
 | `tests/test_worker_navigation_context.py` | Workplace dialog identity and context retention during worker navigation. |
 | `tests/test_revised_ui_smoke.py` | Main summaries, risk presentation, worker optional fields, organization UI. |
 | `tests/test_plot_responsive_ui.py` | PLOT sizing, filters, charts, tooltips, empty states, and single-worker Locate. |
+| `tests/test_plot_risk_view_rendering.py` | Placement-level Job chart, marker paint bounds, and nested Comparison geometry. |
 | `tests/test_comparative_risk_fixture.py` | Comparative fixture schema, classification, missing-risk, square-marker, and unpositioned-Station invariants. |
 | `tests/test_schema_migrations.py` | Non-destructive schema migration. |
 

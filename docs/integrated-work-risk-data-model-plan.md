@@ -575,8 +575,8 @@ This UI is part of the completed integration, not an optional follow-up.
 - [x] Preserve circle/triangle worker-marker semantics, use a square when sex is
   not provided, and retain the blue selection frame.
 - [x] Use marker fill for current individual risk.
-- [x] In Comparison mode, use a clearly separated outer square frame for the
-  applicable Job risk around the individual Worker symbol.
+- [x] In Comparison mode, use a filled square for the applicable Job risk with
+  a smaller individual Worker symbol inside it and a dark separating outline.
 - [x] Use gray for unavailable individual or Job risk without implying a valid band.
 - [x] Add view modes for Individual Risk, Job Risk, and Comparison.
 - [x] In Job Risk mode, show Station-anchored square Job markers even when no

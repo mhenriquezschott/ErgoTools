@@ -235,7 +235,7 @@ class PlotRiskGauge(QWidget):
         self.animation = QPropertyAnimation(self, b"displayValue", self)
         self.animation.setDuration(700)
         self.animation.setEasingCurve(QEasingCurve.OutCubic)
-        self.setMinimumSize(240, 152)
+        self.setMinimumSize(220, 120)
         self.setMaximumWidth(310)
 
     @QtCore.pyqtProperty(float)
@@ -266,8 +266,9 @@ class PlotRiskGauge(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        center = QPointF(self.width() / 2.0, 105.0)
-        radius = min(self.width() / 2.0 - 20.0, 82.0)
+        center_y = min(self.height() * 0.72, self.height() - 28.0)
+        center = QPointF(self.width() / 2.0, center_y)
+        radius = min(self.width() / 2.0 - 20.0, center_y - 16.0, 72.0)
         arc_rect = QRectF(center.x() - radius, center.y() - radius, radius * 2, radius * 2)
         for start, end, _label, color, _range in RISK_BANDS:
             painter.setPen(QPen(QColor(color), 15, Qt.SolidLine, Qt.FlatCap))
@@ -296,7 +297,11 @@ class PlotRiskGauge(QWidget):
         value_font.setBold(True)
         painter.setFont(value_font)
         display_text = f"{self._display_value:.1f}%" if self.has_value else "N/A"
-        painter.drawText(QRectF(4, 80, self.width(), 36), Qt.AlignCenter, display_text)
+        painter.drawText(
+            QRectF(4, center.y() - 25.0, self.width() - 8, 34),
+            Qt.AlignCenter,
+            display_text,
+        )
 
 
 class PlotWorkerMarkerPreview(QWidget):
@@ -347,17 +352,21 @@ class PlotWorkerMarkerPreview(QWidget):
             selection_size,
         ))
         if self.comparison:
-            painter.setPen(QPen(self.job_color, 5, Qt.SolidLine))
-            comparison_size = extent - 22.0
-            painter.drawRect(QRectF(
+            comparison_size = extent - 20.0
+            job_rect = QRectF(
                 center.x() - comparison_size / 2.0,
                 center.y() - comparison_size / 2.0,
                 comparison_size,
                 comparison_size,
-            ))
-        painter.setPen(QPen(QColor("#FFFFFF"), 2))
+            )
+            painter.setPen(QPen(QColor("#162C3A"), 2))
+            painter.setBrush(self.job_color)
+            painter.drawRect(job_rect)
+            size = comparison_size * 0.28
+        else:
+            size = (extent - 30.0) / 2.0
+        painter.setPen(QPen(QColor("#162C3A"), 2))
         painter.setBrush(self.color)
-        size = (extent - 30.0) / 2.0
         if self.gender == "male":
             painter.drawPolygon(QPolygonF([
                 QPointF(center.x(), center.y() - size),
@@ -810,6 +819,25 @@ class PlantLayoutWindow(QDialog):
         # Redraw after layout activation to size the backing buffer correctly.
         QTimer.singleShot(60, self.refreshInitialSummaryPlot)
         QTimer.singleShot(250, self.refreshInitialSummaryPlot)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.schedulePlantSceneFit()
+
+    def schedulePlantSceneFit(self):
+        """Refit after Qt completes a layout pass so the full map stays visible."""
+        if hasattr(self, "plantlayout_image"):
+            QTimer.singleShot(0, self.fitPlantSceneToViewport)
+
+    def fitPlantSceneToViewport(self):
+        background = getattr(self, "pixmap_background_item", None)
+        view = getattr(self, "plantlayout_image", None)
+        scene = getattr(self, "plantlayout_scene", None)
+        if view is None or scene is None or background is None or background.scene() is not scene:
+            return
+        if view.viewport().width() <= 1 or view.viewport().height() <= 1:
+            return
+        view.fitInView(scene.sceneRect(), Qt.KeepAspectRatio)
 
     def refreshInitialSummaryPlot(self):
         if getattr(self, "workerstationshifttool_dataset", None):
@@ -1710,13 +1738,16 @@ class PlantLayoutWindow(QDialog):
         tool_filter_layout.addLayout(tool_button_row)
         self.riskview_group = QGroupBox("Risk view", self.filters_group)
         risk_view_row = QHBoxLayout(self.riskview_group)
-        risk_view_row.setContentsMargins(8, 12, 8, 8)
+        risk_view_row.setContentsMargins(8, 12, 8, 12)
         risk_view_row.setSpacing(0)
         self.plot_risk_view_buttons = {}
         for mode, label, tooltip in (
             ("individual", "Individual", "Show each Worker's individual assessment risk."),
             ("job", "Job", "Show current approved Job risk at each positioned Station."),
-            ("comparison", "Comparison", "Compare individual fill with the Job-risk outer square."),
+            (
+                "comparison", "Comparison",
+                "Compare the individual worker symbol with its filled Job-risk square.",
+            ),
         ):
             button = QToolButton(self.riskview_group)
             button.setObjectName("plotRiskViewButton")
@@ -1732,7 +1763,7 @@ class PlantLayoutWindow(QDialog):
             risk_view_row.addWidget(button, 1)
             self.plot_risk_view_buttons[mode] = button
         self.plot_risk_view_buttons["individual"].setChecked(True)
-        self.riskview_group.setFixedHeight(62)
+        self.riskview_group.setFixedHeight(68)
         self.toolsfiltersettings_button.hide()
         self.tool_combo.currentTextChanged.connect(self.syncPlotToolButtons)
         self.applied_plot_tool = self.tool_combo.currentText().strip() or "LiFFT"
@@ -1863,7 +1894,7 @@ class PlantLayoutWindow(QDialog):
         filters_layout.setColumnStretch(0, 2)
         filters_layout.setColumnStretch(1, 3)
         self.filters_group.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed)
-        self.filters_group.setFixedHeight(195)
+        self.filters_group.setFixedHeight(201)
         for group in (
             self.plantfilter_group, self.toolfilter_group,
             self.workerfilter_group,
@@ -1873,7 +1904,7 @@ class PlantLayoutWindow(QDialog):
         self.plantfilter_group.setTitle("Workplace")
         self.toolfilter_group.setFixedHeight(88)
         self.plantfilter_group.setFixedHeight(88)
-        self.workerfilter_group.setFixedHeight(42)
+        self.workerfilter_group.setFixedHeight(68)
 
         # Vertical action rail. Existing callbacks remain attached to these buttons.
         tool_actions = (
@@ -2380,7 +2411,7 @@ class PlantLayoutWindow(QDialog):
         risk_cluster.setFixedWidth(701)
         outcome_layout.addWidget(risk_cluster)
         self.outcome_group.setMinimumWidth(700)
-        self.outcome_group.setFixedHeight(220)
+        self.outcome_group.setFixedHeight(210)
 
         self.details_tabs = QtWidgets.QTabWidget()
         self.details_tabs.setObjectName("plotDetailsTabs")
@@ -2765,8 +2796,11 @@ class PlantLayoutWindow(QDialog):
     def updateWorkerFilterDisclosure(self, expanded):
         """Collapse demographic fields completely instead of merely disabling them."""
         self.worker_filter_container.setVisible(expanded)
-        self.workerfilter_group.setFixedHeight(96 if expanded else 42)
-        self.filters_group.setFixedHeight(231 if expanded else 195)
+        peer_height = 96 if expanded else 68
+        self.workerfilter_group.setFixedHeight(peer_height)
+        self.riskview_group.setFixedHeight(peer_height)
+        self.filters_group.setFixedHeight(229 if expanded else 201)
+        self.schedulePlantSceneFit()
 
     def openWorkplaceFilter(self):
         dialog = PlotWorkplaceFilterDialog(self)
@@ -3479,10 +3513,11 @@ class PlantLayoutWindow(QDialog):
             legend.set_visible(settings["show_legend"])
 
         is_heatmap = bool(primary_axis.images)
+        value_axis = getattr(primary_axis, "_ergotools_value_axis", "y")
         if settings["show_grid"] and not is_heatmap:
             primary_axis.grid(
                 True,
-                axis="y",
+                axis=value_axis,
                 color="#C7D2DA",
                 linestyle="--",
                 linewidth=0.7,
@@ -3493,9 +3528,15 @@ class PlantLayoutWindow(QDialog):
 
         mode = settings["y_axis_mode"]
         if mode == "risk":
-            primary_axis.set_ylim(0.0, 100.0)
+            if value_axis == "x":
+                primary_axis.set_xlim(0.0, 100.0)
+            else:
+                primary_axis.set_ylim(0.0, 100.0)
         elif mode == "custom":
-            primary_axis.set_ylim(0.0, settings["y_axis_max"])
+            if value_axis == "x":
+                primary_axis.set_xlim(0.0, settings["y_axis_max"])
+            else:
+                primary_axis.set_ylim(0.0, settings["y_axis_max"])
 
         if settings["show_bar_values"]:
             for container in primary_axis.containers:
@@ -3564,7 +3605,7 @@ class PlantLayoutWindow(QDialog):
             if self.plot_risk_view_mode == "comparison":
                 self.plot_compare_label.setText(
                     description[1]
-                    + " Worker fill is individual risk; the outer square is applicable Job risk."
+                    + " The inner worker symbol is individual risk; the filled square is applicable Job risk."
                 )
             else:
                 self.plot_compare_label.setText(description[1])
@@ -4316,8 +4357,10 @@ class PlantLayoutWindow(QDialog):
         
         #print("Scale Factor:", self.scale_factor)
 
-        # Set the scene rectangle to match the available view area.
-        scene.setSceneRect(0, 0, view_width, view_height)
+        # Worker and Station positions are stored in plant-image coordinates.
+        # Keeping the scene in that same coordinate space lets every later
+        # viewport resize fit the complete plant instead of a viewport-sized crop.
+        scene.setSceneRect(self.pixmap_background_item.sceneBoundingRect())
 
         # Automatically scale and center the pixmap item.
         image.fitInView(self.pixmap_background_item, Qt.KeepAspectRatio)
@@ -6148,12 +6191,12 @@ class PlantLayoutWindow(QDialog):
             "Job Risk view uses the placed-Job chart for the selected ergonomic tool."
         )
         self.plot_description_label.setText(
-            "<b>What this shows:</b> Current approved Job risk for each active placement "
-            "in the selected workplace and shift scope."
+            "<b>What this shows:</b> Current approved risk by Job in the selected scope; "
+            "the number in parentheses is its active placement count."
         )
         self.plot_compare_label.setText(
-            "<b>Map:</b> Each square is a placed Job at its Station anchor; a dashed square "
-            "has not yet been positioned."
+            "<b>Map:</b> Each labeled square is one active Job placement at its Station "
+            "anchor; a dashed square has not yet been positioned."
         )
         probabilities = [
             float(record["probability_outcome"])
@@ -6204,22 +6247,33 @@ class PlantLayoutWindow(QDialog):
             record for record in records
             if record.get("probability_outcome") is not None
         ]
+        jobs = {}
+        for record in available_records:
+            entry = jobs.setdefault(record["job_id"], {
+                "risk": float(record["probability_outcome"]),
+                "color": record.get("color", "#D9E1E6"),
+                "placements": 0,
+            })
+            entry["placements"] += 1
+        ordered_jobs = sorted(jobs.items())
         labels = [
-            f'{record["job_id"]}\n{record["station_id"]} / S{record["shift_id"]}'
-            for record in available_records
+            f"{job_id} ({entry['placements']})"
+            for job_id, entry in ordered_jobs
         ]
-        risks = [float(record["probability_outcome"]) for record in available_records]
-        colors = [record.get("color", "#D9E1E6") for record in available_records]
-        axis.bar(
-            range(len(available_records)), risks, color=colors,
-            edgecolor="black", linewidth=0.8,
+        risks = [entry["risk"] for _job_id, entry in ordered_jobs]
+        colors = [entry["color"] for _job_id, entry in ordered_jobs]
+        positions = range(len(ordered_jobs))
+        axis._ergotools_value_axis = "x"
+        axis.barh(
+            positions, risks, color=colors, edgecolor="black", linewidth=0.8,
         )
-        axis.set_xticks(range(len(available_records)))
-        axis.set_xticklabels(labels, rotation=45, ha="right", fontsize=7)
-        axis.set_ylim(0, 100)
-        axis.set_ylabel("Job risk (%)", fontsize=8, fontweight="bold")
-        axis.set_title("Placed Job Risk", fontsize=9, fontweight="bold")
-        axis.grid(axis="y", linestyle="--", alpha=0.35)
+        axis.set_yticks(list(positions))
+        axis.set_yticklabels(labels, fontsize=6.5)
+        axis.invert_yaxis()
+        axis.set_xlim(0, 100)
+        axis.set_xlabel("Job risk (%)", fontsize=8, fontweight="bold")
+        axis.set_title("Job Risk by Placed Job", fontsize=9, fontweight="bold")
+        axis.grid(axis="x", linestyle="--", alpha=0.35)
         if not available_records:
             axis.text(
                 0.5, 0.5, "No approved profile for this tool",

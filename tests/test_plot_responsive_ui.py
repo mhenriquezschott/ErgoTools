@@ -51,6 +51,17 @@ assert window.minimumSizeHint().width() <= 1460
 assert window.minimumSizeHint().height() <= 1060
 assert default_canvas_size.width() >= 960
 assert default_canvas_size.height() >= 575
+assert window.riskview_group.height() == window.workerfilter_group.height()
+assert window.riskview_group.height() == 68
+assert window.plantlayout_scene.sceneRect() == window.pixmap_background_item.sceneBoundingRect()
+mapped_scene = window.plantlayout_image.mapFromScene(
+    window.plantlayout_scene.sceneRect()
+).boundingRect()
+viewport_rect = window.plantlayout_image.viewport().rect()
+assert mapped_scene.left() >= viewport_rect.left() - 2
+assert mapped_scene.top() >= viewport_rect.top() - 2
+assert mapped_scene.right() <= viewport_rect.right() + 2
+assert mapped_scene.bottom() <= viewport_rect.bottom() + 2
 assert window.summaryplot_canvas.geometry().bottom() <= window.summaryplot_combo.geometry().top()
 assert window.summaryplot_canvas.objectName() == "plotSummaryCanvas"
 assert "QToolTip" in window.summaryplot_canvas.styleSheet()
@@ -373,7 +384,21 @@ window.agefrom_edit.setValue(30)
 collapsed_canvas_top = window.plantlayout_image.mapTo(window, QPoint(0, 0)).y()
 window.workerfilter_group.setChecked(True)
 app.processEvents()
+QTest.qWait(50)
+app.processEvents()
 assert window.agefrom_edit.isVisible()
+assert window.riskview_group.height() == window.workerfilter_group.height()
+assert window.riskview_group.height() == 96
+assert window.plantlayout_image.viewport().height() >= 580
+assert window.toolsgraphic_group.geometry().bottom() <= window.toolsgraphic_group.parentWidget().rect().bottom()
+mapped_scene = window.plantlayout_image.mapFromScene(
+    window.plantlayout_scene.sceneRect()
+).boundingRect()
+viewport_rect = window.plantlayout_image.viewport().rect()
+assert mapped_scene.left() >= viewport_rect.left() - 2
+assert mapped_scene.top() >= viewport_rect.top() - 2
+assert mapped_scene.right() <= viewport_rect.right() + 2
+assert mapped_scene.bottom() <= viewport_rect.bottom() + 2
 for button in window.plot_tool_buttons.values():
     bottom_right = button.mapTo(window.toolfilter_group, button.rect().bottomRight())
     assert bottom_right.y() <= window.toolfilter_group.contentsRect().bottom()
