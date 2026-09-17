@@ -235,7 +235,7 @@ class PlotRiskGauge(QWidget):
         self.animation = QPropertyAnimation(self, b"displayValue", self)
         self.animation.setDuration(700)
         self.animation.setEasingCurve(QEasingCurve.OutCubic)
-        self.setMinimumSize(220, 120)
+        self.setMinimumSize(150, 120)
         self.setMaximumWidth(310)
 
     @QtCore.pyqtProperty(float)
@@ -2372,7 +2372,7 @@ class PlantLayoutWindow(QDialog):
             band.setObjectName("outcomeRangeLabel")
             ranges_layout.addWidget(band)
         ranges_layout.addStretch(1)
-        ranges_panel.setFixedWidth(300)
+        ranges_panel.setFixedWidth(250)
         risk_cluster_layout.addWidget(ranges_panel)
 
         risk_divider = QFrame(risk_cluster)
@@ -2381,7 +2381,11 @@ class PlantLayoutWindow(QDialog):
         risk_divider.setFixedWidth(1)
         risk_cluster_layout.addWidget(risk_divider)
 
-        result_panel = QWidget(risk_cluster)
+        self.outcome_result_stack = QtWidgets.QStackedWidget(risk_cluster)
+        self.outcome_result_stack.setObjectName("outcomeResultStack")
+        self.outcome_result_stack.setFixedWidth(410)
+
+        result_panel = QWidget(self.outcome_result_stack)
         result_panel.setObjectName("outcomeResultPanel")
         result_layout = QVBoxLayout(result_panel)
         result_layout.setContentsMargins(0, 0, 0, 0)
@@ -2406,8 +2410,64 @@ class PlantLayoutWindow(QDialog):
         gauge_caption.setAlignment(Qt.AlignCenter)
         result_layout.addWidget(gauge_caption)
         result_layout.addStretch(1)
-        result_panel.setFixedWidth(360)
-        risk_cluster_layout.addWidget(result_panel)
+        self.outcome_result_stack.addWidget(result_panel)
+
+        comparison_panel = QWidget(self.outcome_result_stack)
+        comparison_panel.setObjectName("comparisonGaugePanel")
+        comparison_layout = QHBoxLayout(comparison_panel)
+        comparison_layout.setContentsMargins(0, 0, 0, 0)
+        comparison_layout.setSpacing(8)
+
+        def add_comparison_gauge(title, caption, tooltip):
+            column = QWidget(comparison_panel)
+            column_layout = QVBoxLayout(column)
+            column_layout.setContentsMargins(0, 0, 0, 0)
+            column_layout.setSpacing(1)
+            heading = QLabel(title, column)
+            heading.setObjectName("outcomeSectionHeading")
+            heading.setAlignment(Qt.AlignCenter)
+            status = QLabel("Not available", column)
+            status.setObjectName("comparisonRiskLabel")
+            status.setAlignment(Qt.AlignCenter)
+            gauge = PlotRiskGauge(column)
+            gauge.setToolTip(tooltip)
+            gauge_caption = QLabel(caption, column)
+            gauge_caption.setObjectName("comparisonGaugeCaption")
+            gauge_caption.setAlignment(Qt.AlignCenter)
+            column_layout.addWidget(heading)
+            column_layout.addWidget(status)
+            column_layout.addWidget(gauge, 0, Qt.AlignCenter)
+            column_layout.addWidget(gauge_caption)
+            column_layout.addStretch(1)
+            comparison_layout.addWidget(column, 1)
+            return gauge, status
+
+        (
+            self.comparison_individual_gauge,
+            self.comparison_individual_risk_label,
+        ) = add_comparison_gauge(
+            "Individual average",
+            "Worker assessments",
+            "Average individual outcome probability for enabled workers in the current filter scope.",
+        )
+
+        comparison_divider = QFrame(comparison_panel)
+        comparison_divider.setObjectName("riskClusterDivider")
+        comparison_divider.setFrameShape(QFrame.VLine)
+        comparison_divider.setFixedWidth(1)
+        comparison_layout.addWidget(comparison_divider)
+
+        (
+            self.comparison_job_gauge,
+            self.comparison_job_risk_label,
+        ) = add_comparison_gauge(
+            "Job average",
+            "Applicable Job risks",
+            "Average applicable Job risk for enabled workers with an available Job profile.",
+        )
+        self.outcome_result_stack.addWidget(comparison_panel)
+        self.outcome_result_stack.setCurrentIndex(0)
+        risk_cluster_layout.addWidget(self.outcome_result_stack)
         risk_cluster.setFixedWidth(701)
         outcome_layout.addWidget(risk_cluster)
         self.outcome_group.setMinimumWidth(700)
@@ -2656,7 +2716,21 @@ class PlantLayoutWindow(QDialog):
                 font-weight: 700;
                 font-size: 13px;
             }
-            QLabel#outcomeRangeLabel { color: #304652; font-weight: 600; }
+            QLabel#comparisonRiskLabel {
+                color: #0B326C;
+                font-weight: 700;
+                font-size: 11px;
+            }
+            QLabel#comparisonGaugeCaption {
+                color: #405462;
+                font-weight: 600;
+                font-size: 11px;
+            }
+            QLabel#outcomeRangeLabel {
+                color: #304652;
+                font-weight: 600;
+                font-size: 11px;
+            }
             QFrame#riskClusterDivider { background: #D5DEE5; border: 0; }
             QWidget#outcomeSummaryPanel, QFrame#outcomeRiskCluster {
                 background: #F8FBFC;
@@ -2785,6 +2859,8 @@ class PlantLayoutWindow(QDialog):
         if mode not in {"individual", "job", "comparison"}:
             return
         self.plot_risk_view_mode = mode
+        if hasattr(self, "outcome_result_stack"):
+            self.outcome_result_stack.setCurrentIndex(1 if mode == "comparison" else 0)
         for key, button in self.plot_risk_view_buttons.items():
             button.setChecked(key == mode)
         if hasattr(self, "details_tabs"):
@@ -6030,6 +6106,17 @@ class PlantLayoutWindow(QDialog):
             self.outcome_risk_label.setText(
                 "<span style='color:#758590;'>●</span> Not available"
             )
+        if hasattr(self, "comparison_individual_gauge"):
+            self.setComparisonGaugeValue(
+                self.comparison_individual_gauge,
+                self.comparison_individual_risk_label,
+                None,
+            )
+            self.setComparisonGaugeValue(
+                self.comparison_job_gauge,
+                self.comparison_job_risk_label,
+                None,
+            )
         self.highlight_details = []
         self.outcomeresult1_label.setText(
             f"No {subject.lower()} results match the current filters."
@@ -6039,6 +6126,20 @@ class PlantLayoutWindow(QDialog):
             f"No {subject.lower()} results match the current filters."
         )
         self.outcomemore_button.hide()
+
+    @staticmethod
+    def setComparisonGaugeValue(gauge, label, value):
+        """Apply one shared risk scale to either Comparison-mode gauge."""
+        if value is None:
+            gauge.resetValue()
+            label.setText("<span style='color:#758590;'>●</span> Not available")
+            return
+        value = float(value)
+        gauge.setValue(value)
+        _start, _end, band_label, band_color, _range_text = risk_band(value)
+        label.setText(
+            f"<span style='color:{band_color};'>●</span> {band_label} · {value:.1f}%"
+        )
 
     def clearSummaryForEmptyScope(self):
         """Reset metrics and chart together so prior filter results cannot leak."""
@@ -6995,6 +7096,22 @@ class PlantLayoutWindow(QDialog):
             score_name = "Job" if job_view else "Individual"
             self.outcome_risk_title.setText(
                 f"{self.tool_combo.currentText()} {score_name} Group Risk Score:"
+            )
+        if self.plot_risk_view_mode == "comparison":
+            comparable_job_risks = [
+                float(record["job_probability_outcome"])
+                for record in outcome_records
+                if record.get("job_probability_outcome") is not None
+            ]
+            self.setComparisonGaugeValue(
+                self.comparison_individual_gauge,
+                self.comparison_individual_risk_label,
+                average_probability,
+            )
+            self.setComparisonGaugeValue(
+                self.comparison_job_gauge,
+                self.comparison_job_risk_label,
+                np.mean(comparable_job_risks) if comparable_job_risks else None,
             )
         
         

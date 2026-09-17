@@ -97,6 +97,32 @@ class PlotRiskViewRenderingTests(unittest.TestCase):
         self.window.selectRiskViewMode("comparison")
         self._settle()
 
+        self.assertEqual(self.window.outcome_result_stack.currentIndex(), 1)
+        enabled_workers = [
+            worker
+            for worker in self.window.workerstationshifttool_dataset
+            if worker.get("enable", 0) == 1
+        ]
+        expected_individual = sum(
+            float(worker["probability_outcome"]) for worker in enabled_workers
+        ) / len(enabled_workers)
+        applicable_job_risks = [
+            float(worker["job_probability_outcome"])
+            for worker in enabled_workers
+            if worker.get("job_probability_outcome") is not None
+        ]
+        expected_job = sum(applicable_job_risks) / len(applicable_job_risks)
+        self.assertTrue(self.window.comparison_individual_gauge.has_value)
+        self.assertTrue(self.window.comparison_job_gauge.has_value)
+        self.assertAlmostEqual(
+            self.window.comparison_individual_gauge.target_value,
+            expected_individual,
+        )
+        self.assertAlmostEqual(
+            self.window.comparison_job_gauge.target_value,
+            expected_job,
+        )
+
         worker = self.window.visual_worker_tools[0]
         base_rect = worker._baseMarkerRect(worker.x, worker.y)
         individual_rect = worker._workerMarkerRect(worker.x, worker.y)
@@ -111,6 +137,10 @@ class PlotRiskViewRenderingTests(unittest.TestCase):
             -selection_gap, -selection_gap, selection_gap, selection_gap
         )
         self.assertTrue(worker.boundingRect().contains(selection_rect))
+
+        self.window.selectRiskViewMode("individual")
+        self._settle()
+        self.assertEqual(self.window.outcome_result_stack.currentIndex(), 0)
 
 
 if __name__ == "__main__":

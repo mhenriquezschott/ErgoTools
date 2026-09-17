@@ -196,9 +196,10 @@ independently calculated reference vectors, not values copied from the applicati
 | MAP-018 | Individual Risk view | Worker shape fill uses the current individual assessment and physical marker position. |
 | MAP-019 | Job Risk view | Every active placement is one labeled Station-anchored square, including Jobs without individual assessments. Multiple workers sharing a placement do not duplicate its marker. |
 | MAP-020 | Comparison view | A filled Job-risk square contains a smaller individual-risk worker symbol; the blue outer frame remains selection-only. |
-| MAP-021 | Missing Job risk | Missing tool measurement uses a gray dashed frame and is not calculated as zero. |
-| MAP-022 | Unknown sex | Worker marker uses a square without changing the assessment risk color. |
-| MAP-023 | Station initialization | Dragging the first unpositioned Job marker creates the Station anchor and persists after reopen. |
+| MAP-021 | Comparison outcome gauges | The shared risk-range legend is followed by separate Individual-average and applicable-Job-average gauges calculated from the current filtered worker scope. Both gauges use the same thresholds; the Job gauge shows Not available when no comparable approved Job risk exists. |
+| MAP-022 | Missing Job risk | Missing tool measurement uses a gray dashed frame and is not calculated as zero. |
+| MAP-023 | Unknown sex | Worker marker uses a square without changing the assessment risk color. |
+| MAP-024 | Station initialization | Dragging the first unpositioned Job marker creates the Station anchor and persists after reopen. |
 
 ## PLOT Summary and Outcome Tests
 
