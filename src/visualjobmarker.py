@@ -24,6 +24,7 @@ class VisualJobMarker(QGraphicsItem):
         self.job_id = str(data["job_id"])
         self.job_name = str(data.get("job_name") or "")
         self.shift_id = str(data["shift_id"])
+        self.assigned_worker_count = int(data.get("assigned_worker_count") or 0)
         self.probability_outcome = data.get("probability_outcome")
         self.profile_name = data.get("job_risk_profile_name")
         self.profile_version = data.get("job_risk_profile_version")
@@ -58,6 +59,7 @@ class VisualJobMarker(QGraphicsItem):
             f"Job: {self.job_id} - {self.job_name}\n"
             f"Station: {self.station_key.station_id}\n"
             f"Shift: {self.shift_id}\n"
+            f"Assigned workers: {self.assigned_worker_count}\n"
             f"Job Risk: {risk}\n"
             f"Profile: {profile}\n"
             "Drag to set or move the Station position."

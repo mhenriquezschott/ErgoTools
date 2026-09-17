@@ -224,6 +224,16 @@ class PlotPositionRepositoryTests(unittest.TestCase):
         ).fetchone()[0]
         self.assertEqual(len(records), expected)
         self.assertTrue(all("position_source" in record for record in records))
+        self.assertTrue(all("assigned_worker_count" in record for record in records))
+        for record in records:
+            expected_workers = self.connection.execute(
+                """
+                SELECT COUNT(*) FROM WorkerAssignment
+                WHERE job_placement_id = ? AND active = 1
+                """,
+                (record["job_placement_id"],),
+            ).fetchone()[0]
+            self.assertEqual(record["assigned_worker_count"], expected_workers)
 
         placement = self.connection.execute(
             """

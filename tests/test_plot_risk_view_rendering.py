@@ -69,6 +69,7 @@ class PlotRiskViewRenderingTests(unittest.TestCase):
         self.window.selectRiskViewMode("job")
         self._settle()
 
+        self.assertEqual(self.window.map_symbol_legend.mode, "job")
         records = self.window.job_risk_marker_dataset
         self.assertEqual(len(self.window.visual_job_markers), len(records))
         available_jobs = {
@@ -85,6 +86,10 @@ class PlotRiskViewRenderingTests(unittest.TestCase):
         self.assertTrue(all("(" in label.get_text() for label in axis.get_yticklabels()))
 
         marker = self.window.visual_job_markers[0]
+        self.assertIn(
+            f"Assigned workers: {marker.assigned_worker_count}",
+            marker.toolTip(),
+        )
         marker_rect = marker._markerRect()
         selection_gap = max(3.0, 3.0 * marker.internal_scale)
         selection_rect = marker_rect.adjusted(
@@ -97,6 +102,7 @@ class PlotRiskViewRenderingTests(unittest.TestCase):
         self.window.selectRiskViewMode("comparison")
         self._settle()
 
+        self.assertEqual(self.window.map_symbol_legend.mode, "comparison")
         self.assertEqual(self.window.outcome_result_stack.currentIndex(), 1)
         self.assertEqual(self.window.outcome_ranges_panel.width(), 250)
         self.assertEqual(self.window.outcome_result_stack.width(), 410)
@@ -143,6 +149,7 @@ class PlotRiskViewRenderingTests(unittest.TestCase):
 
         self.window.selectRiskViewMode("individual")
         self._settle()
+        self.assertEqual(self.window.map_symbol_legend.mode, "individual")
         self.assertEqual(self.window.outcome_result_stack.currentIndex(), 0)
         self.assertEqual(self.window.outcome_ranges_panel.width(), 300)
         self.assertEqual(self.window.outcome_result_stack.width(), 360)

@@ -200,6 +200,7 @@ independently calculated reference vectors, not values copied from the applicati
 | MAP-022 | Missing Job risk | Missing tool measurement uses a gray dashed frame and is not calculated as zero. |
 | MAP-023 | Unknown sex | Worker marker uses a square without changing the assessment risk color. |
 | MAP-024 | Station initialization | Dragging the first unpositioned Job marker creates the Station anchor and persists after reopen. |
+| MAP-025 | Mode symbol legend | Tools Overview uses neutral symbols to explain the active map encoding without assigning a risk color to the legend icons. Job mode states that one square represents one placement, and Job marker tooltips report the active assigned-worker count. |
 
 ## PLOT Summary and Outcome Tests
 

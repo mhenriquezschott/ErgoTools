@@ -304,6 +304,81 @@ class PlotRiskGauge(QWidget):
         )
 
 
+class PlotMapSymbolLegend(QWidget):
+    """Neutral shape key for the active PLOT risk-view mode."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.mode = "individual"
+        self.setFixedHeight(68)
+        self.setMinimumWidth(300)
+        self.setToolTip(
+            "Marker shape identifies the mapped subject. Marker color identifies its risk range."
+        )
+
+    def setMode(self, mode):
+        if mode in {"individual", "job", "comparison"}:
+            self.mode = mode
+            self.update()
+
+    @staticmethod
+    def _draw_shape(painter, shape, rect, *, nested=False):
+        painter.setPen(QPen(QColor("#162C3A"), 1.5))
+        painter.setBrush(QBrush(QColor("#EEF3F6")))
+        if shape == "circle":
+            painter.drawEllipse(rect)
+        elif shape == "triangle":
+            painter.drawPolygon(QPolygonF([
+                QPointF(rect.center().x(), rect.top()),
+                QPointF(rect.right(), rect.bottom()),
+                QPointF(rect.left(), rect.bottom()),
+            ]))
+        else:
+            painter.drawRect(rect)
+        if nested:
+            inset = rect.adjusted(4, 4, -4, -4)
+            painter.setBrush(QBrush(QColor("#FFFFFF")))
+            painter.drawEllipse(inset)
+
+    def _draw_entry(self, painter, x, y, shape, label, *, nested=False):
+        icon_rect = QRectF(x, y - 7, 14, 14)
+        self._draw_shape(painter, shape, icon_rect, nested=nested)
+        painter.drawText(QPointF(x + 20, y + 4), label)
+        return x + 20 + painter.fontMetrics().horizontalAdvance(label) + 16
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        title_font = QFont(painter.font())
+        title_font.setBold(True)
+        title_font.setPixelSize(12)
+        painter.setFont(title_font)
+        painter.setPen(QColor("#0B326C"))
+        painter.drawText(QRectF(0, 0, self.width(), 18), Qt.AlignLeft | Qt.AlignVCenter, "Map symbols")
+
+        label_font = QFont(painter.font())
+        label_font.setBold(False)
+        label_font.setPixelSize(11)
+        painter.setFont(label_font)
+        painter.setPen(QColor("#304652"))
+
+        if self.mode == "job":
+            self._draw_entry(
+                painter, 2, 33, "square", "Job placement (fill = Job risk)"
+            )
+            painter.setPen(QColor("#526777"))
+            painter.drawText(QPointF(22, 58), "One square per placement, not per worker")
+            return
+
+        x = self._draw_entry(painter, 2, 33, "triangle", "Male")
+        x = self._draw_entry(painter, x, 33, "circle", "Female")
+        self._draw_entry(painter, x, 33, "square", "Sex not provided")
+        if self.mode == "comparison":
+            self._draw_entry(
+                painter, 2, 57, "square", "Job outside / Individual inside", nested=True
+            )
+
+
 class PlotWorkerMarkerPreview(QWidget):
     """Compact preview of the selected worker marker used on the plant canvas."""
 
@@ -2023,6 +2098,8 @@ class PlantLayoutWindow(QDialog):
         description_layout.addStretch(2)
         description_layout.addWidget(self.plot_compare_label)
         description_layout.addStretch(1)
+        self.map_symbol_legend = PlotMapSymbolLegend(description_panel)
+        description_layout.addWidget(self.map_symbol_legend)
         summary_layout.addWidget(description_panel, 1)
         for label in (
             self.summaryresult1_label, self.summaryresult2_label, self.summaryresult3_label,
@@ -2867,6 +2944,8 @@ class PlantLayoutWindow(QDialog):
         if mode not in {"individual", "job", "comparison"}:
             return
         self.plot_risk_view_mode = mode
+        if hasattr(self, "map_symbol_legend"):
+            self.map_symbol_legend.setMode(mode)
         if hasattr(self, "outcome_result_stack"):
             self.outcome_result_stack.setCurrentIndex(1 if mode == "comparison" else 0)
             self.updateOutcomeRiskLayout(mode)

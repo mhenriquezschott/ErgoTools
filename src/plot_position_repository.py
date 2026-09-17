@@ -201,6 +201,12 @@ def plot_job_records(
                placement.job_id, job.name AS job_name,
                context.plant_name, context.section_name, context.line_name,
                context.station_id, context.shift_id,
+               (
+                   SELECT COUNT(*)
+                   FROM WorkerAssignment AS assigned_worker
+                   WHERE assigned_worker.job_placement_id = placement.id
+                     AND assigned_worker.active = 1
+               ) AS assigned_worker_count,
                position.x, position.y, position.position_source,
                risk.profile_id AS job_risk_profile_id,
                risk.profile_name AS job_risk_profile_name,
