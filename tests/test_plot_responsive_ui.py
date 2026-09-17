@@ -74,7 +74,7 @@ assert set(window.plot_tool_buttons) == {"LiFFT", "DUET", "ST"}
 assert window.summaryplot_combo.count() == 3
 assert window.plot_tool_buttons["LiFFT"].isChecked()
 assert window.outcome_group.title() == "LiFFT Tool Outcome"
-assert window.outcome_risk_title.text() == "LiFFT Group Risk Score:"
+assert window.outcome_risk_title.text() == "LiFFT Individual Group Risk Score:"
 assert len(window.findChildren(type(window.genderflt_label), "workplaceScopeType")) == 5
 for label in (
     window.genderflt_label, window.ageflt_label,
@@ -280,9 +280,11 @@ assert all(not button.icon().isNull() for button in (
     window.grtool7_button, window.grtool8_button, window.grtool9_button,
 ))
 
-window.details_tabs.setCurrentWidget(window.workerinfo_group)
+window.details_tabs.setCurrentWidget(window.worker_overview_scroll)
 for _ in range(4):
     app.processEvents()
+window.worker_overview_scroll.ensureWidgetVisible(window.worker_marker_preview)
+app.processEvents()
 window.grab().save("/tmp/plot_worker_tab.png")
 assert window.details_tabs.tabText(0) == "Tools Overview"
 assert window.details_tabs.tabText(1) == "Worker Overview"
@@ -291,12 +293,16 @@ assert window.details_tabs.tabBar().font().pointSize() >= 12
 assert window.details_tabs.tabIcon(0).actualSize(window.details_tabs.iconSize()) == window.details_tabs.iconSize()
 assert window.details_tabs.tabIcon(1).actualSize(window.details_tabs.iconSize()) == window.details_tabs.iconSize()
 assert window.worker_marker_preview.isVisible()
-assert window.worker_marker_preview.size().width() == 108
-assert window.worker_marker_preview.size().height() == 108
+assert window.worker_marker_preview.size().width() == 72
+assert window.worker_marker_preview.size().height() == 72
 assert window.worker_marker_preview.gender in ("male", "female")
 marker_image = window.worker_marker_preview.grab().toImage()
-selection_pixel = marker_image.pixelColor(12, marker_image.height() // 2)
-assert selection_pixel.blue() > 200 and selection_pixel.red() < 80
+assert any(
+    marker_image.pixelColor(x, y).blue() > 200
+    and marker_image.pixelColor(x, y).red() < 80
+    for x in range(marker_image.width())
+    for y in range(marker_image.height())
+)
 assert window.locate_worker_button.text() == "Locate"
 assert window.locate_worker_button.isVisible()
 assert not window.locate_worker_button.icon().isNull()
@@ -377,11 +383,11 @@ window.grab().save("/tmp/plot_responsive_filters_expanded.png")
 window.selectPlotTool("DUET")
 app.processEvents()
 assert window.outcome_group.title() == "LiFFT Tool Outcome"
-assert window.outcome_risk_title.text() == "LiFFT Group Risk Score:"
+assert window.outcome_risk_title.text() == "LiFFT Individual Group Risk Score:"
 window.applyfilterButtonClicked()
 app.processEvents()
 assert window.outcome_group.title() == "DUET Tool Outcome"
-assert window.outcome_risk_title.text() == "DUET Group Risk Score:"
+assert window.outcome_risk_title.text() == "DUET Individual Group Risk Score:"
 assert window.highlight_details
 assert window.outcomemore_button.isVisible()
 assert "high-risk worker" in window.outcomeresult1_label.text()
@@ -395,7 +401,7 @@ assert window.outcome_group.title() == "DUET Tool Outcome"
 window.applyfilterButtonClicked()
 app.processEvents()
 assert window.outcome_group.title() == "Shoulder Tool Outcome"
-assert window.outcome_risk_title.text() == "ST Group Risk Score:"
+assert window.outcome_risk_title.text() == "ST Individual Group Risk Score:"
 assert window.outcomeresult1_label.text()
 window.grab().save("/tmp/plot_shoulder_outcome.png")
 window.selectPlotTool("LiFFT")
@@ -454,7 +460,7 @@ assert not window.worker_marker_preview.has_worker
 assert not window.locate_worker_button.isEnabled()
 assert window._locate_worker is None
 window.grab().save("/tmp/plot_empty_filter_scope.png")
-window.details_tabs.setCurrentWidget(window.workerinfo_group)
+window.details_tabs.setCurrentWidget(window.worker_overview_scroll)
 app.processEvents()
 window.grab().save("/tmp/plot_empty_worker_overview.png")
 window.details_tabs.setCurrentWidget(window.summary_group)

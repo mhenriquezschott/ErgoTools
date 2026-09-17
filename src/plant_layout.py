@@ -309,7 +309,7 @@ class PlotWorkerMarkerPreview(QWidget):
         self.job_color = QColor("#9AA8B2")
         self.comparison = False
         self.has_worker = False
-        self.setFixedSize(108, 108)
+        self.setFixedSize(72, 72)
         self.setToolTip("Marker shape identifies sex; color identifies the selected assessment risk.")
 
     def setWorker(self, gender, color, job_color=None, comparison=False):
@@ -335,8 +335,9 @@ class PlotWorkerMarkerPreview(QWidget):
             painter.setPen(QColor("#758590"))
             painter.drawText(self.rect(), Qt.AlignCenter, "No worker\nselected")
             return
-        center = QPointF(self.width() / 2.0, self.height() / 2.0 + 2.0)
-        selection_size = 84.0
+        center = QPointF(self.width() / 2.0, self.height() / 2.0 + 1.0)
+        extent = float(min(self.width(), self.height()))
+        selection_size = extent - 10.0
         painter.setPen(QPen(Qt.blue, 3, Qt.SolidLine))
         painter.setBrush(Qt.NoBrush)
         painter.drawRect(QRectF(
@@ -347,15 +348,16 @@ class PlotWorkerMarkerPreview(QWidget):
         ))
         if self.comparison:
             painter.setPen(QPen(self.job_color, 5, Qt.SolidLine))
+            comparison_size = extent - 22.0
             painter.drawRect(QRectF(
-                center.x() - 37,
-                center.y() - 37,
-                74,
-                74,
+                center.x() - comparison_size / 2.0,
+                center.y() - comparison_size / 2.0,
+                comparison_size,
+                comparison_size,
             ))
         painter.setPen(QPen(QColor("#FFFFFF"), 2))
         painter.setBrush(self.color)
-        size = 36.0
+        size = (extent - 30.0) / 2.0
         if self.gender == "male":
             painter.drawPolygon(QPolygonF([
                 QPointF(center.x(), center.y() - size),
@@ -1708,7 +1710,7 @@ class PlantLayoutWindow(QDialog):
         tool_filter_layout.addLayout(tool_button_row)
         self.riskview_group = QGroupBox("Risk view", self.filters_group)
         risk_view_row = QHBoxLayout(self.riskview_group)
-        risk_view_row.setContentsMargins(8, 8, 8, 7)
+        risk_view_row.setContentsMargins(8, 12, 8, 8)
         risk_view_row.setSpacing(0)
         self.plot_risk_view_buttons = {}
         for mode, label, tooltip in (
@@ -1730,7 +1732,7 @@ class PlantLayoutWindow(QDialog):
             risk_view_row.addWidget(button, 1)
             self.plot_risk_view_buttons[mode] = button
         self.plot_risk_view_buttons["individual"].setChecked(True)
-        self.riskview_group.setFixedHeight(54)
+        self.riskview_group.setFixedHeight(62)
         self.toolsfiltersettings_button.hide()
         self.tool_combo.currentTextChanged.connect(self.syncPlotToolButtons)
         self.applied_plot_tool = self.tool_combo.currentText().strip() or "LiFFT"
@@ -1753,7 +1755,7 @@ class PlantLayoutWindow(QDialog):
             spin.setValue(-1.0)
             spin.setSuffix(suffix)
             spin.setKeyboardTracking(False)
-            spin.setMinimumWidth(88)
+            spin.setMinimumWidth(68)
             return spin
 
         self.agefrom_edit = optional_spin(0)
@@ -1767,14 +1769,14 @@ class PlantLayoutWindow(QDialog):
         self.worker_filter_container = worker_filter_container
         worker_filter_layout = QHBoxLayout(worker_filter_container)
         worker_filter_layout.setContentsMargins(0, 0, 0, 0)
-        worker_filter_layout.setSpacing(18)
+        worker_filter_layout.setSpacing(12)
         sex_block = QWidget(worker_filter_container)
         sex_layout = QVBoxLayout(sex_block)
         sex_layout.setContentsMargins(0, 0, 0, 0)
         sex_layout.setSpacing(3)
         sex_layout.addWidget(self.genderflt_label)
         sex_layout.addWidget(self.gender_combo)
-        self.gender_combo.setMinimumWidth(130)
+        self.gender_combo.setMinimumWidth(112)
         worker_filter_layout.addWidget(sex_block, 1)
 
         def add_range_block(label, minimum, maximum, stretch=1):
@@ -1784,15 +1786,12 @@ class PlantLayoutWindow(QDialog):
             column.setSpacing(3)
             column.addWidget(label)
             row = QHBoxLayout()
-            row.setSpacing(6)
-            min_label = QLabel("Min", block)
-            max_label = QLabel("Max", block)
-            min_label.setObjectName("rangeFieldLabel")
-            max_label.setObjectName("rangeFieldLabel")
-            row.addWidget(min_label)
+            row.setSpacing(5)
             row.addWidget(minimum, 1)
-            row.addSpacing(5)
-            row.addWidget(max_label)
+            separator = QLabel("to", block)
+            separator.setObjectName("rangeFieldLabel")
+            separator.setAlignment(Qt.AlignCenter)
+            row.addWidget(separator)
             row.addWidget(maximum, 1)
             column.addLayout(row)
             worker_filter_layout.addWidget(block, stretch)
@@ -1858,8 +1857,8 @@ class PlantLayoutWindow(QDialog):
         filters_layout.setVerticalSpacing(8)
         filters_layout.addWidget(self.toolfilter_group, 0, 0)
         filters_layout.addWidget(self.plantfilter_group, 0, 1)
-        filters_layout.addWidget(self.riskview_group, 1, 0)
-        filters_layout.addWidget(self.workerfilter_group, 1, 1)
+        filters_layout.addWidget(self.riskview_group, 1, 0, Qt.AlignTop)
+        filters_layout.addWidget(self.workerfilter_group, 1, 1, Qt.AlignTop)
         filters_layout.addWidget(filter_actions, 0, 2, 2, 1)
         filters_layout.setColumnStretch(0, 2)
         filters_layout.setColumnStretch(1, 3)
@@ -2117,6 +2116,7 @@ class PlantLayoutWindow(QDialog):
             details_grid.addWidget(right_value, row, 3)
         details_grid.setColumnStretch(1, 1)
         details_grid.setColumnStretch(3, 1)
+        details_group.setMinimumHeight(82)
         worker_layout.addWidget(details_group)
 
         assessment_group = QGroupBox("Assessment result", self.workerinfo_group)
@@ -2151,9 +2151,15 @@ class PlantLayoutWindow(QDialog):
             "Blink the selected worker's blue frame on the plant layout."
         )
         self.locate_worker_button.clicked.connect(self.locateSelectedWorker)
-        assessment_grid.addWidget(self.locate_worker_button, 6, 0, 1, 2)
-        assessment_grid.addWidget(self.worker_marker_preview, 0, 2, 7, 1, Qt.AlignCenter)
+        marker_actions = QWidget(assessment_group)
+        marker_actions_layout = QHBoxLayout(marker_actions)
+        marker_actions_layout.setContentsMargins(0, 2, 0, 0)
+        marker_actions_layout.setSpacing(10)
+        marker_actions_layout.addWidget(self.worker_marker_preview, 0, Qt.AlignLeft)
+        marker_actions_layout.addWidget(self.locate_worker_button, 1, Qt.AlignVCenter)
+        assessment_grid.addWidget(marker_actions, 6, 0, 1, 2)
         assessment_grid.setColumnStretch(1, 1)
+        assessment_group.setMinimumHeight(244)
         worker_layout.addWidget(assessment_group)
 
         self._locate_worker = None
@@ -2248,6 +2254,7 @@ class PlantLayoutWindow(QDialog):
         self.scaleallinfo_input.setFixedWidth(54)
         save_row.addWidget(self.saveallinfo_button, 1)
         visual_layout.addLayout(save_row)
+        visual_group.setMinimumHeight(116)
         worker_layout.addWidget(visual_group)
         self.visibleinfo_check.setToolTip("Show or hide the selected worker marker.")
         self.enableinfo_check.setToolTip("Include or exclude the selected worker from layout summaries.")
@@ -2256,7 +2263,7 @@ class PlantLayoutWindow(QDialog):
         self.yinfo_input.setToolTip("Vertical position of the selected worker marker.")
         self.scaleinfo_input.setToolTip("Display scale of the selected worker marker.")
         self.scaleallinfo_input.setToolTip("Scale applied when saving all worker markers.")
-        self.workerinfo_group.setMinimumHeight(0)
+        self.workerinfo_group.setMinimumHeight(590)
         self.workerinfo_group.setMinimumWidth(0)
         self.workerinfo_group.setSizePolicy(
             QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Expanding
@@ -2391,7 +2398,16 @@ class PlantLayoutWindow(QDialog):
             worker_source,
         )
         worker_painter.end()
-        self.details_tabs.addTab(self.workerinfo_group, QIcon(worker_tab_icon), "Worker Overview")
+        self.worker_overview_scroll = QtWidgets.QScrollArea()
+        self.worker_overview_scroll.setObjectName("workerOverviewScroll")
+        self.worker_overview_scroll.setWidgetResizable(True)
+        self.worker_overview_scroll.setFrameShape(QFrame.NoFrame)
+        self.worker_overview_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.worker_overview_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.worker_overview_scroll.setWidget(self.workerinfo_group)
+        self.details_tabs.addTab(
+            self.worker_overview_scroll, QIcon(worker_tab_icon), "Worker Overview"
+        )
         self.summary_group.setTitle("")
         self.workerinfo_group.setTitle("")
         self.details_tabs.setTabToolTip(0, "View aggregate charts and metrics for the current filters.")
@@ -2749,8 +2765,8 @@ class PlantLayoutWindow(QDialog):
     def updateWorkerFilterDisclosure(self, expanded):
         """Collapse demographic fields completely instead of merely disabling them."""
         self.worker_filter_container.setVisible(expanded)
-        self.workerfilter_group.setFixedHeight(94 if expanded else 42)
-        self.filters_group.setFixedHeight(247 if expanded else 195)
+        self.workerfilter_group.setFixedHeight(96 if expanded else 42)
+        self.filters_group.setFixedHeight(231 if expanded else 195)
 
     def openWorkplaceFilter(self):
         dialog = PlotWorkplaceFilterDialog(self)

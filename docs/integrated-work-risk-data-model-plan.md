@@ -572,16 +572,16 @@ This UI is part of the completed integration, not an optional follow-up.
 
 ### PLOT Map
 
-- [ ] Preserve circle/triangle worker-marker semantics, use a square when sex is
+- [x] Preserve circle/triangle worker-marker semantics, use a square when sex is
   not provided, and retain the blue selection frame.
-- [ ] Use marker fill for current individual risk.
-- [ ] In Comparison mode, use a clearly separated outer square frame for the
+- [x] Use marker fill for current individual risk.
+- [x] In Comparison mode, use a clearly separated outer square frame for the
   applicable Job risk around the individual Worker symbol.
-- [ ] Use gray for unavailable individual or Job risk without implying a valid band.
-- [ ] Add view modes for Individual Risk, Job Risk, and Comparison.
-- [ ] In Job Risk mode, show Station-anchored square Job markers even when no
+- [x] Use gray for unavailable individual or Job risk without implying a valid band.
+- [x] Add view modes for Individual Risk, Job Risk, and Comparison.
+- [x] In Job Risk mode, show Station-anchored square Job markers even when no
   individual Worker assessment exists.
-- [ ] In Comparison mode, state numerically whether individual risk is above or
+- [x] In Comparison mode, state numerically whether individual risk is above or
   below the applicable Job estimate; never rely on frame/fill colors alone.
 - [ ] Keep markers legible at dense plant-map scale and verify hundreds of workers.
 - [ ] Tooltips show Worker, Job, Station, Shift, profile/version/source, individual
@@ -589,8 +589,8 @@ This UI is part of the completed integration, not an optional follow-up.
 
 ### Worker Overview
 
-- [ ] Show Individual and Job results side by side for the selected tool.
-- [ ] Show the numeric percentage-point difference and an unambiguous direction.
+- [x] Show Individual and Job results side by side for the selected tool.
+- [x] Show the numeric percentage-point difference and an unambiguous direction.
 - [ ] Identify the exact Job Risk Profile and assessment dates used.
 - [ ] Provide direct navigation to the Worker Assignment and Job Profile editors.
 - [ ] Handle unknown Job, unplaced Job, missing profile, and missing individual
