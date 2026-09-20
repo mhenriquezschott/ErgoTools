@@ -1,10 +1,15 @@
 import sqlite3
+import sys
 import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
+
+from schema_migrations import LATEST_SCHEMA_VERSION
+
+
 PROJECT = REPOSITORY_ROOT / "tests" / "ErgoTools_ComparativeRiskTest.ergprj"
 
 
@@ -20,7 +25,10 @@ class ComparativeRiskFixtureTests(unittest.TestCase):
         self.assertTrue(self.database.is_file())
         self.assertTrue(self.images.is_dir())
         with sqlite3.connect(self.database) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 7)
+            self.assertEqual(
+                connection.execute("PRAGMA user_version").fetchone()[0],
+                LATEST_SCHEMA_VERSION,
+            )
             self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM Plant").fetchone()[0], 4)
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM Shift").fetchone()[0], 2)

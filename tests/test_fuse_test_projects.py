@@ -13,6 +13,8 @@ SPEC = importlib.util.spec_from_file_location(
 FUSION = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(FUSION)
 
+from schema_migrations import LATEST_SCHEMA_VERSION
+
 
 class FuseTestProjectsTests(unittest.TestCase):
     def test_fuses_plot_and_jrot_projects_without_broken_references(self):
@@ -40,6 +42,18 @@ class FuseTestProjectsTests(unittest.TestCase):
                     for table in expected_counts
                 }
                 self.assertEqual(actual_counts, expected_counts)
+                self.assertEqual(
+                    connection.execute("PRAGMA user_version").fetchone()[0],
+                    LATEST_SCHEMA_VERSION,
+                )
+                self.assertEqual(
+                    connection.execute("SELECT COUNT(*) FROM RotationTarget").fetchone()[0],
+                    42,
+                )
+                self.assertEqual(
+                    connection.execute("SELECT COUNT(*) FROM RotationSchemeScope").fetchone()[0],
+                    0,
+                )
                 self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
                 image_paths = [
                     row[0]

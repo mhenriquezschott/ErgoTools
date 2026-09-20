@@ -44,7 +44,10 @@ class CompareRotationWindow(QtWidgets.QDialog):
                     "color": j["color"],
                     "name": j.get("name", ""),
                     "tool": j.get("tool_id", ""),
-                    "damage": j.get("total_cumulative_damage", "")
+                    "damage": j.get("total_cumulative_damage", ""),
+                    "profile_version": j.get("profile_version"),
+                    "profile_source_type": j.get("profile_source_type", ""),
+                    "profile_source_reference": j.get("profile_source_reference", ""),
                 } for j in self.get_jobs_func(tool)
             }
 
@@ -90,11 +93,15 @@ class CompareRotationWindow(QtWidgets.QDialog):
         for c in range(table.columnCount()):
             table.horizontalHeaderItem(c).setFont(bold_font)
         table.horizontalHeader().setDefaultAlignment(Qt.AlignCenter)
-
-        table.setColumnWidth(0, 80)
-        for c in range(1, self.num_blocks + 1):
-            table.setColumnWidth(c, 100)
-        table.setColumnWidth(self.num_blocks + 1, 100)
+        header.setMinimumSectionSize(96)
+        if table.columnCount() <= 5:
+            header.setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        else:
+            header.setSectionResizeMode(QtWidgets.QHeaderView.Interactive)
+            table.setColumnWidth(0, 100)
+            for c in range(1, self.num_blocks + 1):
+                table.setColumnWidth(c, 110)
+            table.setColumnWidth(self.num_blocks + 1, 100)
         table.verticalHeader().setDefaultSectionSize(50)
 
         for row, wid in enumerate(self.worker_ids):
@@ -111,7 +118,13 @@ class CompareRotationWindow(QtWidgets.QDialog):
                 item = QtWidgets.QTableWidgetItem(f"{job_id}\n{prob:.1f}%")
                 item.setTextAlignment(Qt.AlignCenter)
                 item.setBackground(QColor(color))
-                item.setToolTip(f"{job.get('tool', '')} – {job.get('name', '')} ({job.get('damage', '')})")
+                provenance = f"Profile v{job.get('profile_version')} ({job.get('profile_source_type', '')})"
+                if job.get("profile_source_reference"):
+                    provenance += f": {job['profile_source_reference']}"
+                item.setToolTip(
+                    f"{job.get('tool', '')} - {job.get('name', '')} "
+                    f"({job.get('damage', '')})\n{provenance}"
+                )
                 table.setItem(row, b + 1, item)
 
                 total_probs.append(prob)

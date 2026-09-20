@@ -4,9 +4,16 @@
 import argparse
 import shutil
 import sqlite3
+import sys
 import xml.etree.ElementTree as ET
 from contextlib import closing
 from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from schema_migrations import migrate_database
 
 
 TABLE_ORDER = (
@@ -178,6 +185,11 @@ def fuse_projects(base_file, overlay_file, output_file, project_name, force=Fals
     shutil.copy2(base["database"], output_database)
 
     audit = merge_database(output_database, overlay["database"])
+    migrate_database(
+        output_database,
+        application_version="fused test project",
+        create_backup=False,
+    )
     base_images = copy_images(base["images"], images_folder)
     overlay_images = copy_images(overlay["images"], images_folder)
     normalize_image_paths(output_database, images_name)

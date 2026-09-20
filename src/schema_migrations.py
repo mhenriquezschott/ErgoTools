@@ -15,6 +15,7 @@ from database import (
     connect_database,
     create_verified_backup,
 )
+from rotation_schema import normalize_rotation_model_v8
 
 
 MigrationAction = Callable[[sqlite3.Connection], None]
@@ -62,13 +63,20 @@ JROT_REQUIRED_COLUMNS = {
     "RotationScheme": {
         "id",
         "name",
-        "plant_name",
-        "shift_id",
         "num_workers",
         "num_timeblocks",
-        "num_jobs",
     },
-    "RotationAssignment": {"scheme_id", "block_index", "worker_id", "job_id"},
+    "RotationSchemeScope": {"scheme_id", "workplace_context_id"},
+    "RotationTarget": {
+        "id",
+        "scheme_id",
+        "job_id",
+        "job_placement_id",
+        "job_risk_profile_id",
+    },
+    # These columns exist in both the legacy and normalized forms. Version 8
+    # tests its additional provenance columns after the migration is applied.
+    "RotationAssignment": {"scheme_id", "block_index", "worker_id"},
     "JobRiskProfile": {
         "id",
         "job_id",
@@ -1319,6 +1327,17 @@ MIGRATIONS: tuple[Migration, ...] = (
         ),
         apply=_create_assignment_map_positions_v7,
     ),
+    Migration(
+        version=8,
+        name="normalized rotation scope and risk provenance",
+        definition=(
+            "Replace legacy plant, shift, and Job-only rotation references with optional "
+            "WorkplaceContext scope, frozen Job risk-profile targets, and Worker-assignment "
+            "provenance; migrate legacy rotations as organization-wide schemes"
+        ),
+        apply=normalize_rotation_model_v8,
+        requires_foreign_keys_off=True,
+    ),
 )
 
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1].version
@@ -1337,6 +1356,11 @@ def _validate_partial_tables(connection: sqlite3.Connection) -> None:
         )
     }
     requirements = dict(JROT_REQUIRED_COLUMNS)
+    if int(connection.execute("PRAGMA user_version").fetchone()[0]) >= 8:
+        requirements["RotationAssignment"] = requirements["RotationAssignment"] | {
+            "worker_assignment_id",
+            "rotation_target_id",
+        }
     requirements["SchemaMigration"] = SCHEMA_MIGRATION_COLUMNS
     for table_name, required_columns in requirements.items():
         if table_name not in tables:

@@ -50,6 +50,18 @@ import random
 import sqlite3
 from database import connect_database
 from job_risk_repository import format_job_risk_issues, job_risk_issues, jobs_for_tool
+from risk_colors import job_risk_color
+from rotation_repository import (
+    RotationDataError,
+    load_rotation_scheme,
+    missing_target_measurements,
+    rotation_targets,
+    rotation_workers,
+    save_rotation_scheme,
+    target_measurements,
+)
+from rotation_scope_dialog import RotationScopeDialog
+from rotation_optimizer import optimize_all_tools, optimize_single_tool
 
 #from PyQt5.QtGui import QIcon, QPixmap, QFont
 #import random
@@ -146,11 +158,17 @@ class RotationLayoutWindow(QDialog):
         #self._save_lock = threading.Lock()
 
         self.operator_count = 0
+        self._scope_context_ids = []
+        self._pending_scope_context_ids = []
+        self._rotation_workers = {}
+        self._rotation_targets = {}
+        self._rotation_measurements = {}
+        self._loaded_scheme = None
         self.initResponsiveUI()
 
     def initResponsiveUI(self):
         self.resize(1480, 900)
-        self.setMinimumSize(1400, 740)
+        self.setMinimumSize(1480, 740)
         self.setObjectName("jrotWindow")
         self._icon_root = os.path.normpath(
             os.path.join(os.path.dirname(__file__), "..", "assets", "ui-icons")
@@ -171,14 +189,14 @@ class RotationLayoutWindow(QDialog):
         title_row.addStretch(1)
         root.addLayout(title_row)
 
-        self.filters_group = QGroupBox("Filters")
+        self.filters_group = QGroupBox("Rotation setup")
         filters_layout = QVBoxLayout(self.filters_group)
         filters_layout.setContentsMargins(10, 8, 10, 10)
         filters_layout.setSpacing(8)
         filters_top = QHBoxLayout()
         filters_top.setSpacing(10)
 
-        self.toolfilter_group = QGroupBox("Ergonomic Tool")
+        self.toolfilter_group = QGroupBox("Risk basis")
         tool_layout = QHBoxLayout(self.toolfilter_group)
         tool_layout.setContentsMargins(8, 8, 8, 8)
         tool_layout.setSpacing(0)
@@ -196,8 +214,8 @@ class RotationLayoutWindow(QDialog):
             button.setObjectName("toolSegment")
             button.setCheckable(True)
             button.setIcon(QIcon(os.path.join(self._icon_root, tool_icons[tool_id])))
-            button.setIconSize(QSize(28, 28))
-            button.setMinimumWidth(135)
+            button.setIconSize(QSize(24, 24))
+            button.setMinimumWidth(122)
             button.setToolTip(f"Use {tool_labels[tool_id]} job-risk measurements.")
             button.clicked.connect(lambda checked, value=tool_id: self.selectErgonomicTool(value))
             self.tool_button_group.addButton(button)
@@ -210,11 +228,34 @@ class RotationLayoutWindow(QDialog):
         workplace_layout = QHBoxLayout(workplace_group)
         workplace_layout.setContentsMargins(10, 10, 10, 8)
         workplace_layout.setSpacing(8)
-        workplace_icon = QLabel()
-        workplace_icon.setPixmap(QIcon(os.path.join(self._icon_root, "plant.png")).pixmap(QSize(34, 34)))
-        workplace_icon.setFixedSize(36, 36)
-        workplace_icon.setToolTip("Plant associated with the current JROT workplace context.")
-        workplace_layout.addWidget(workplace_icon)
+        scope_mode = QFrame(workplace_group)
+        scope_mode_layout = QVBoxLayout(scope_mode)
+        scope_mode_layout.setContentsMargins(0, 0, 0, 0)
+        scope_mode_layout.setSpacing(2)
+        scope_mode_label = QLabel("Rotation scope")
+        scope_mode_label.setObjectName("workplaceScopeType")
+        scope_mode_layout.addWidget(scope_mode_label)
+        scope_buttons = QHBoxLayout()
+        scope_buttons.setSpacing(0)
+        self.scope_button_group = QtWidgets.QButtonGroup(self)
+        self.scope_button_group.setExclusive(True)
+        self.all_jobs_scope_button = QPushButton("All Jobs")
+        self.workplace_scope_button = QPushButton("Workplace")
+        for button in (self.all_jobs_scope_button, self.workplace_scope_button):
+            button.setObjectName("scopeSegment")
+            button.setCheckable(True)
+            button.setFixedHeight(30)
+            self.scope_button_group.addButton(button)
+            scope_buttons.addWidget(button)
+        self.all_jobs_scope_button.setFixedWidth(82)
+        self.workplace_scope_button.setFixedWidth(110)
+        self.all_jobs_scope_button.setChecked(True)
+        self.all_jobs_scope_button.setToolTip("Use all active Jobs and Workers in the organization.")
+        self.workplace_scope_button.setToolTip(
+            "Use active Job placements and Worker assignments in selected Stations and one Shift."
+        )
+        scope_mode_layout.addLayout(scope_buttons)
+        workplace_layout.addWidget(scope_mode)
 
         workplace_path = QWidget(workplace_group)
         workplace_path_layout = QHBoxLayout(workplace_path)
@@ -241,6 +282,10 @@ class RotationLayoutWindow(QDialog):
             block.setObjectName("workplacePlantScope" if label_text == "Plant" else "workplaceScopeBlock")
             if label_text == "Plant":
                 block.setMinimumWidth(118)
+            else:
+                block.setMinimumWidth(
+                    {"Section": 88, "Line": 70, "Station": 90, "Shift": 68}[label_text]
+                )
             block_layout = QVBoxLayout(block)
             block_layout.setContentsMargins(6, 2, 6, 2)
             block_layout.setSpacing(0)
@@ -249,8 +294,8 @@ class RotationLayoutWindow(QDialog):
             heading_layout.setSpacing(3)
             if icon_name:
                 entity_icon = QLabel(block)
-                entity_icon.setPixmap(QIcon(os.path.join(self._icon_root, icon_name)).pixmap(QSize(24, 24)))
-                entity_icon.setFixedSize(25, 25)
+                entity_icon.setPixmap(QIcon(os.path.join(self._icon_root, icon_name)).pixmap(QSize(20, 20)))
+                entity_icon.setFixedSize(21, 21)
                 heading_layout.addWidget(entity_icon)
             heading = QLabel(label_text, block)
             heading.setObjectName("workplaceScopeType")
@@ -266,27 +311,26 @@ class RotationLayoutWindow(QDialog):
             block_layout.addWidget(value_label)
             workplace_path_layout.addWidget(block, 2 if label_text == "Plant" else 1)
         workplace_path_layout.addStretch(1)
-        self.choose_workplace_button = QPushButton("Choose\nWorkplace")
+        self.choose_workplace_button = QPushButton("Choose\nScope")
         self.choose_workplace_button.setIcon(QIcon(os.path.join(self._icon_root, "station.png")))
         self.choose_workplace_button.setIconSize(QSize(34, 34))
-        self.choose_workplace_button.setFixedSize(132, 52)
+        self.choose_workplace_button.setFixedSize(120, 52)
         self.choose_workplace_button.setEnabled(False)
-        self.choose_workplace_button.setToolTip("Workplace filtering will be enabled in a later JROT integration stage.")
+        self.choose_workplace_button.setToolTip("Select Stations and a Shift for this rotation scope.")
         workplace_layout.addWidget(workplace_path, 1)
         workplace_layout.addWidget(self.choose_workplace_button)
         filters_top.addWidget(workplace_group, 1)
 
         filter_actions = QVBoxLayout()
-        self.clearfilter_button = QPushButton("Clear Filters")
+        self.clearfilter_button = QPushButton("Clear Scope")
         self.clearfilter_button.setIcon(QIcon(os.path.join(self._icon_root, "filterreset.png")))
-        self.applyfilter_button = QPushButton("Apply Filters")
+        self.applyfilter_button = QPushButton("Apply Scope")
         self.applyfilter_button.setObjectName("primaryButton")
         self.applyfilter_button.setIcon(QIcon(os.path.join(self._icon_root, "filterapply.png")))
         for button in (self.clearfilter_button, self.applyfilter_button):
             button.setIconSize(QSize(26, 26))
-            button.setMinimumWidth(155)
-            button.setEnabled(False)
-            button.setToolTip("Workplace filtering will be enabled in a later JROT integration stage.")
+            button.setMinimumWidth(145)
+            button.setToolTip("Apply or clear the selected rotation scope.")
             filter_actions.addWidget(button)
         filters_top.addLayout(filter_actions)
         filters_layout.addLayout(filters_top)
@@ -304,7 +348,7 @@ class RotationLayoutWindow(QDialog):
         self.rotation_combo.setMinimumWidth(210)
         self.workers_label = QLabel("Workers")
         self.workersnumber_combo = QComboBox()
-        self.workersnumber_combo.addItems([str(n) for n in range(2, 11)])
+        self.workersnumber_combo.addItems([str(n) for n in range(1, 11)])
         self.timeblock_label = QLabel("Time blocks")
         self.timeblocks_combo = QComboBox()
         self.timeblocks_combo.addItems([str(n) for n in range(2, 11)])
@@ -454,6 +498,10 @@ class RotationLayoutWindow(QDialog):
         root.addWidget(self.disclaimer_label)
 
         self.applyfilter_button.clicked.connect(self.applyfilterButtonClicked)
+        self.clearfilter_button.clicked.connect(self.clearRotationScope)
+        self.choose_workplace_button.clicked.connect(self.chooseRotationScope)
+        self.all_jobs_scope_button.clicked.connect(self.selectOrganizationScope)
+        self.workplace_scope_button.clicked.connect(self.selectWorkplaceScope)
         self.tool_combo.currentIndexChanged.connect(self.ontoolComboChanged)
         self.setStyleSheet(self.jrotStyleSheet())
 
@@ -464,6 +512,9 @@ class RotationLayoutWindow(QDialog):
             if self.rotation_combo.count() > 0:
                 self.rotation_combo.setCurrentIndex(0)
                 self.loadRotationDetails()
+            else:
+                self._refreshRotationPool()
+                self._renderCurrentPool()
 
     def jrotStyleSheet(self):
         base = self.parent().mainWorkspaceStyleSheet() if hasattr(self.parent(), "mainWorkspaceStyleSheet") else ""
@@ -479,9 +530,12 @@ class RotationLayoutWindow(QDialog):
             QLabel#workplaceScopeType { color: #405866; font-size: 13px; font-weight: 700; }
             QLabel#workplaceScopeValue { color: #304652; font-size: 14px; font-weight: 600; }
             QLabel#workplacePlantValue { color: #087E91; font-size: 15px; font-weight: 700; }
-            QPushButton#toolSegment { border-radius: 0; min-height: 44px; text-align: left; padding: 2px 14px; }
+            QPushButton#toolSegment { border-radius: 0; min-height: 44px; text-align: left; padding: 2px 8px; }
             QPushButton#toolSegment:first { border-top-left-radius: 5px; border-bottom-left-radius: 5px; }
             QPushButton#toolSegment:checked { background: #DDF3F5; color: #087E91; border: 2px solid #08A9B5; }
+            QPushButton#scopeSegment { border-radius: 0; min-width: 74px; padding: 2px 3px;
+                                       font-size: 12px; }
+            QPushButton#scopeSegment:checked { background: #DDF3F5; color: #087E91; border: 2px solid #08A9B5; }
             QPushButton#primaryButton { background: #087E91; color: white; border-color: #087E91; }
             QPushButton#primaryButton:hover { background: #096D7C; }
             QPushButton:disabled { background: #F2F5F7; color: #8998A3; border-color: #D5DEE5; }
@@ -790,42 +844,162 @@ class RotationLayoutWindow(QDialog):
             button.setChecked(value == tool_id)
         if hasattr(self, "label_current_table"):
             self.label_current_table.setText(f"Current {tool_id} Rotation")
-        self.loadRotationDetails()
+        rotation_id = self.rotation_combo.currentText().strip()
+        if self._loaded_scheme and self._loaded_scheme.get("id") == rotation_id:
+            self.loadRotationDetails()
+        else:
+            for row in range(self.rotation_table.rowCount()):
+                self.handleCellChanged(row, 1)
+
+
+    def selectOrganizationScope(self):
+        self._pending_scope_context_ids = []
+        self.choose_workplace_button.setEnabled(False)
+        self._updateScopeSummary([])
+
+
+    def selectWorkplaceScope(self):
+        self.choose_workplace_button.setEnabled(True)
+        if not self._pending_scope_context_ids:
+            self.chooseRotationScope()
+
+
+    def chooseRotationScope(self):
+        dialog = RotationScopeDialog(
+            self.parent().projectdatabasePath,
+            self._pending_scope_context_ids or self._scope_context_ids,
+            self,
+        )
+        dialog.setStyleSheet(self.styleSheet())
+        if dialog.exec_() != QDialog.Accepted:
+            if not self._pending_scope_context_ids and not self._scope_context_ids:
+                self.all_jobs_scope_button.setChecked(True)
+                self.choose_workplace_button.setEnabled(False)
+            return
+        self._pending_scope_context_ids = dialog.selected_ids()
+        self.workplace_scope_button.setChecked(True)
+        self.choose_workplace_button.setEnabled(True)
+        self._updateScopeSummary(self._pending_scope_context_ids)
+
+
+    def clearRotationScope(self):
+        self._pending_scope_context_ids = []
+        self._scope_context_ids = []
+        self.all_jobs_scope_button.setChecked(True)
+        self.choose_workplace_button.setEnabled(False)
+        self._updateScopeSummary([])
+        self._refreshRotationPool()
+        self._renderCurrentPool()
+
+
+    def _updateScopeSummary(self, context_ids):
+        values = {name: "All" for name in self.workplace_value_labels}
+        if context_ids:
+            placeholders = ", ".join("?" for _ in context_ids)
+            connection = connect_database(self.parent().projectdatabasePath, read_only=True)
+            try:
+                rows = connection.execute(
+                    f"""
+                    SELECT plant_name, section_name, line_name, station_id, shift_id
+                    FROM WorkplaceContext
+                    WHERE id IN ({placeholders})
+                    ORDER BY id
+                    """,
+                    tuple(context_ids),
+                ).fetchall()
+            finally:
+                connection.close()
+            for index, name in enumerate(("Plant", "Section", "Line", "Station", "Shift")):
+                distinct = sorted({str(row[index]) for row in rows})
+                values[name] = distinct[0] if len(distinct) == 1 else f"{len(distinct)} selected"
+        for name, label in self.workplace_value_labels.items():
+            label.setText(values[name])
+            label.setToolTip(f"Rotation scope {name.lower()}: {values[name]}")
+
+
+    def _targetDisplayLabels(self, targets):
+        short_counts = {}
+        for target in targets:
+            short = target.display_name
+            short_counts[short] = short_counts.get(short, 0) + 1
+        labels = {}
+        for target in targets:
+            label = target.display_name
+            if short_counts[label] > 1:
+                label = (
+                    f"{target.job_id} @ {target.plant_name} / {target.section_name} / "
+                    f"{target.line_name} / {target.station_id} / Shift {target.shift_id}"
+                )
+            labels[target.key] = label
+        return labels
+
+
+    def _refreshRotationPool(self, *, frozen_targets=None):
+        connection = connect_database(self.parent().projectdatabasePath, read_only=True)
+        try:
+            workers = rotation_workers(connection, self._scope_context_ids)
+            targets = list(frozen_targets) if frozen_targets is not None else rotation_targets(
+                connection, self._scope_context_ids
+            )
+            measurements = target_measurements(connection, targets)
+        finally:
+            connection.close()
+        labels = self._targetDisplayLabels(targets)
+        self._rotation_workers = {worker.worker_id: worker for worker in workers}
+        self._rotation_targets = {labels[target.key]: target for target in targets}
+        self._rotation_target_labels = labels
+        self._rotation_measurements = {
+            labels[target.key]: measurements[target.key] for target in targets
+        }
+
+
+    def _renderCurrentPool(self):
+        n_blocks = int(self.timeblocks_combo.currentText())
+        worker_data = self.getWorkers()
+        job_data = self.getJobsWithMeasurement(self.tool_combo.currentText())
+        maximum_workers = min(len(worker_data), len(job_data), 10)
+        requested_workers = int(self.workersnumber_combo.currentText())
+        n_workers = min(requested_workers, maximum_workers) if maximum_workers else 1
+        self.workersnumber_combo.setCurrentText(str(n_workers))
+        worker_pool = [worker["id"] for worker in worker_data]
+        worker_tooltips = {
+            worker["id"]: f"{worker['first_name'] or ''} {worker['last_name'] or ''}".strip()
+            for worker in worker_data
+        }
+        job_pool = [job["id"] for job in job_data]
+        job_info = {
+            job["id"]: {
+                "prob": job["probability_outcome"],
+                "color": job["color"],
+                "name": job["name"],
+                "damage": job["total_cumulative_damage"],
+                "tool": job["tool_id"],
+            }
+            for job in job_data
+        }
+        self.renderEmptyRotationTable(
+            n_workers, n_blocks, worker_pool, worker_tooltips, job_pool, job_info
+        )
 
 
     def applyfilterButtonClicked(self):
-        n_workers = int(self.workersnumber_combo.currentText())
-        n_blocks = int(self.timeblocks_combo.currentText())
-        tool_id = self.tool_combo.currentText()
-    
-        # Get data from database
-        worker_data = self.getWorkers()
-        job_data = self.getJobsWithMeasurement(tool_id)
-    
-        worker_pool = [w["id"] for w in worker_data]
-        worker_tooltips = {w["id"]: f"{w['first_name']} {w['last_name']}" for w in worker_data}
-    
-        job_pool = [j["id"] for j in job_data]
-  
-        job_info = {
-            j["id"]: {
-                "prob": j["probability_outcome"],
-                "color": j["color"],
-                "name": j["name"],
-                "damage": j["total_cumulative_damage"],
-                "tool": j["tool_id"]
-            } for j in job_data
-        }
-
-        # Delegate rendering to new method
-        self.renderEmptyRotationTable(
-            n_workers=n_workers,
-            n_blocks=n_blocks,
-            worker_pool=worker_pool,
-            worker_tooltips=worker_tooltips,
-            job_pool=job_pool,
-            job_info=job_info
-        )
+        if self.workplace_scope_button.isChecked() and not self._pending_scope_context_ids:
+            QMessageBox.warning(self, "Rotation Scope", "Select at least one Workplace Station.")
+            return
+        self._scope_context_ids = list(self._pending_scope_context_ids)
+        self._loaded_scheme = None
+        self.choose_workplace_button.setEnabled(bool(self._scope_context_ids))
+        self._updateScopeSummary(self._scope_context_ids)
+        self._refreshRotationPool()
+        if not self._rotation_workers or not self._rotation_targets:
+            QMessageBox.warning(
+                self,
+                "Empty Rotation Scope",
+                "The selected scope needs at least one active Job placement and one "
+                "active Worker assignment.",
+            )
+        self._renderCurrentPool()
+        self.clearOptimizedTable()
 
 
 
@@ -858,21 +1032,16 @@ class RotationLayoutWindow(QDialog):
         worker_col_width = 80
         time_block_col_width = 100
         avg_col_width = 100
-        table_total_width = 950  # Width of the QTableWidget
-        
-        # Compute how much is left for the Suggestion column
         n_timeblocks = n_blocks
         suggestion_col_index = n_timeblocks + 2
-        
-        fixed_columns_total = worker_col_width + (time_block_col_width * n_timeblocks) + avg_col_width
-        suggestion_col_width = max(150, table_total_width - fixed_columns_total)
         
         # Apply column widths
         table.setColumnWidth(0, worker_col_width)  # Worker
         for col in range(1, n_timeblocks + 1):
             table.setColumnWidth(col, time_block_col_width)  # Time-Block columns
         table.setColumnWidth(n_timeblocks + 1, avg_col_width)  # Avg
-        table.setColumnWidth(suggestion_col_index, suggestion_col_width)  # Suggestion
+        table.setColumnWidth(suggestion_col_index, 180)
+        header.setStretchLastSection(True)
             
     
     
@@ -1037,382 +1206,233 @@ class RotationLayoutWindow(QDialog):
 
 
     def getWorkers(self):
-        """
-        Retrieves all workers from the Worker table.
-        """
-        if not self.parent().projectFileCreated or not self.parent().projectdatabasePath:
-            return []
-    
-        query = """
-            SELECT id, first_name, last_name
-            FROM Worker
-            ORDER BY id
-        """
-    
-        try:
-            conn = sqlite3.connect(self.parent().projectdatabasePath)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute(query)
-            results = cursor.fetchall()
-            return [dict(row) for row in results]
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error loading workers:\n{str(e)}")
-            return []
+        """Return Workers eligible for the active rotation scope."""
+        return [
+            {
+                "id": worker.worker_id,
+                "first_name": worker.first_name,
+                "last_name": worker.last_name,
+                "worker_assignment_id": worker.worker_assignment_id,
+            }
+            for worker in self._rotation_workers.values()
+        ]
 
     
     def getJobsWithMeasurement(self, tool_id):
-        """
-        Retrieves jobs and their measurement values for a specific ergonomic tool.
-        """
-        if not self.parent().projectFileCreated or not self.parent().projectdatabasePath:
-            return []
-    
-    
-        conn = None
-        try:
-            conn = connect_database(self.parent().projectdatabasePath)
-            return jobs_for_tool(conn, tool_id)
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error loading job data:\n{str(e)}")
-            return []
-        finally:
-            if conn is not None:
-                conn.close()
+        """Return frozen/current target measurements for the selected risk basis."""
+        jobs = []
+        for label, target in self._rotation_targets.items():
+            measurement = self._rotation_measurements.get(label, {}).get(tool_id)
+            if not measurement or measurement["probability_outcome"] is None:
+                continue
+            unit = measurement.get("unit") or "Metric"
+            jobs.append(
+                {
+                    "id": label,
+                    "job_id": target.job_id,
+                    "job_placement_id": target.job_placement_id,
+                    "profile_id": target.profile_id,
+                    "profile_version": target.profile_version,
+                    "profile_source_type": target.source_type,
+                    "profile_source_reference": target.source_reference,
+                    "name": target.job_name,
+                    "tool_id": tool_id,
+                    "total_cumulative_damage": measurement["total_cumulative_damage"],
+                    "probability_outcome": measurement["probability_outcome"],
+                    "unit": unit,
+                    "color": job_risk_color(
+                        tool_id,
+                        measurement["total_cumulative_damage"],
+                        unit,
+                    ),
+                }
+            )
+        return jobs
 
 
 
 
 
     def saveRotationScheme(self):
-        """
-        Saves or updates a rotation scheme and its assignments to the database.
-        """
-        if not self.parent().projectFileCreated:
-            QMessageBox.warning(self, "Error", "No project file has been created or loaded. Please create or load a project before saving.")
+        """Save the schedule with exact Worker, placement, and profile provenance."""
+        if not self.parent().projectFileCreated or not self.parent().projectdatabasePath:
+            QMessageBox.warning(self, "No Project", "Open or create a project before saving.")
             return
-    
-        if not hasattr(self.parent(), 'projectdatabasePath') or not self.parent().projectdatabasePath:
-            QMessageBox.critical(self, "Error", "Database path is not set. Unable to save rotation.")
-            return
-    
         rotation_id = self.rotation_combo.currentText().strip()
         if not rotation_id:
             QMessageBox.warning(self, "Validation Error", "Rotation ID is required.")
             return
-    
-        # TODO: Replace with actual UI control (e.g., QLineEdit) for scheme name
-        # TODO: Add description field to the db?
-        scheme_name = "Unnamed Scheme"
-    
-        plant_name = self.parent().plant_combo.currentText()
-        shift_id = self.parent().shift_combo.currentText()
-    
         table = self.rotation_table
         n_workers = table.rowCount()
-        n_blocks = table.columnCount() - 3  # Exclude Worker, Avg, Suggestion columns
-    
-        # Collect used jobs
-        used_jobs = set()
+        n_blocks = table.columnCount() - 3
+        assignments = []
         for row in range(n_workers):
-            for col in range(1, n_blocks + 1):
-                item = table.item(row, col)
-                if item:
-                    job_id = item.text().split("\n")[0].strip()
-                    if job_id:
-                        used_jobs.add(job_id)
-        n_jobs = len(used_jobs)
-    
-        database_path = self.parent().projectdatabasePath
-        conn = sqlite3.connect(database_path)
-        cursor = conn.cursor()
-    
+            worker_item = table.item(row, 0)
+            worker_id = worker_item.text().strip() if worker_item else ""
+            worker = self._rotation_workers.get(worker_id)
+            if worker is None:
+                QMessageBox.warning(
+                    self, "Incomplete Rotation", f"Select an eligible Worker in row {row + 1}."
+                )
+                return
+            for block in range(n_blocks):
+                target_item = table.item(row, block + 1)
+                label = target_item.text().split("\n", 1)[0].strip() if target_item else ""
+                target = self._rotation_targets.get(label)
+                if target is None:
+                    QMessageBox.warning(
+                        self, "Incomplete Rotation",
+                        f"Select an eligible Job target for row {row + 1}, time block {block + 1}.",
+                    )
+                    return
+                assignments.append({
+                    "block_index": block,
+                    "worker_id": worker.worker_id,
+                    "worker_assignment_id": worker.worker_assignment_id,
+                    "job_id": target.job_id,
+                    "job_placement_id": target.job_placement_id,
+                    "profile_id": target.profile_id,
+                })
+
+        existing_name = (
+            self._loaded_scheme.get("name")
+            if self._loaded_scheme and self._loaded_scheme.get("id") == rotation_id
+            else rotation_id
+        )
+        mode = getattr(self, "_optimization_mode", "manual")
+        connection = connect_database(self.parent().projectdatabasePath)
         try:
-            # Insert or update scheme
-            cursor.execute('''
-                INSERT INTO RotationScheme (id, name, plant_name, shift_id, num_workers, num_timeblocks, num_jobs)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    name = excluded.name,
-                    plant_name = excluded.plant_name,
-                    shift_id = excluded.shift_id,
-                    num_workers = excluded.num_workers,
-                    num_timeblocks = excluded.num_timeblocks,
-                    num_jobs = excluded.num_jobs
-            ''', (rotation_id, scheme_name, plant_name, shift_id, n_workers, n_blocks, n_jobs))
-    
-            # Delete old assignments for this scheme
-            cursor.execute("DELETE FROM RotationAssignment WHERE scheme_id = ?", (rotation_id,))
-    
-            # Insert new assignments from table
-            for row in range(n_workers):
-                worker_item = table.item(row, 0)
-                if not worker_item:
-                    continue
-                worker_id = worker_item.text().strip()
-                if not worker_id:
-                    continue
-
-                for block in range(n_blocks):
-                    col = block + 1
-                    job_item = table.item(row, col)
-                    if not job_item:
-                        continue
-                    job_id = job_item.text().split("\n")[0].strip()
-                    if not job_id:
-                        continue
-    
-                    cursor.execute('''
-                        INSERT INTO RotationAssignment (scheme_id, block_index, worker_id, job_id)
-                        VALUES (?, ?, ?, ?)
-                    ''', (rotation_id, block, worker_id, job_id))
-    
-            conn.commit()
-    
-            QMessageBox.information(self, "Success", f"Rotation scheme '{rotation_id}' has been saved successfully.")
-
-            self.loadRotationSchemes()
-            index = self.rotation_combo.findText(rotation_id)
-            if index != -1:
-                self.rotation_combo.setCurrentIndex(index)
-    
-        except sqlite3.Error as e:
-            QMessageBox.critical(self, "Database Error", f"An error occurred while saving the rotation:\n{str(e)}")
-    
+            save_rotation_scheme(
+                connection,
+                scheme_id=rotation_id,
+                name=existing_name,
+                description=(
+                    self._loaded_scheme.get("description")
+                    if self._loaded_scheme and self._loaded_scheme.get("id") == rotation_id
+                    else None
+                ),
+                num_workers=n_workers,
+                num_timeblocks=n_blocks,
+                optimization_mode=mode,
+                primary_tool_id=self.tool_combo.currentText() if mode == "single_tool" else None,
+                context_ids=self._scope_context_ids,
+                assignments=assignments,
+            )
+            connection.commit()
+        except (sqlite3.Error, RotationDataError) as error:
+            connection.rollback()
+            QMessageBox.critical(self, "Save Rotation", str(error))
+            return
         finally:
-        
-            # Enable navigation and management buttons
-            self.first_button.setEnabled(True)
-            self.previous_button.setEnabled(True)
-            self.next_button.setEnabled(True)
-            self.last_button.setEnabled(True)
-            self.delete_button.setEnabled(True)
-            self.search_button.setEnabled(True)
-            self.optimize_btn.setEnabled(True)
-            self.compare_btn.setEnabled(True)
-        
-            conn.close()
+            connection.close()
 
-
+        self.loadRotationSchemes()
+        self.rotation_combo.setCurrentIndex(self.rotation_combo.findText(rotation_id))
+        self.loadRotationDetails()
+        QMessageBox.information(
+            self, "Rotation Saved",
+            f"Rotation scheme '{rotation_id}' was saved with its risk-profile provenance.",
+        )
 
 
     def loadRotationDetails(self):
-        """
-        Loads the rotation scheme and its assignments from the database
-        based on the selected rotation ID in the combo box.
-        """
+        """Load a scheme and evaluate its frozen targets using the selected tool."""
         rotation_id = self.rotation_combo.currentText().strip()
-    
-        if not self.parent().projectFileCreated:
-            QMessageBox.warning(self, "Error", "No project file has been created or loaded.")
+        if not rotation_id or not self.parent().projectdatabasePath:
             return
-    
-        if not hasattr(self.parent(), 'projectdatabasePath') or not self.parent().projectdatabasePath:
-            QMessageBox.critical(self, "Error", "Database path is not set.")
-            return
-    
-        if not rotation_id:
-            return
-    
-    
-    
-        # Get required context keys from parent UI
-        plant_name = self.parent().plant_combo.currentText().strip()
-        shift_id = self.parent().shift_combo.currentText().strip()
-        
-        # --- Load scheme metadata fields from database ---
+        connection = connect_database(
+            self.parent().projectdatabasePath, read_only=True, row_factory=sqlite3.Row
+        )
         try:
-            conn = sqlite3.connect(self.parent().projectdatabasePath)
-            cursor = conn.cursor()
-        
-            
-            cursor.execute('''
-                SELECT name
-                FROM RotationScheme
-                WHERE id = ? AND plant_name = ? AND shift_id = ?
-            ''', (rotation_id, plant_name, shift_id))
-            
-            
-            scheme_info = cursor.fetchone()
-            if scheme_info:
-                #scheme_name, description = scheme_info
-                scheme_name = scheme_info
-        
-                # TODO: set these values into the corresponding UI fields when available
-                # self.rotation_name_input.setText(scheme_name)
-                # self.rotation_description_input.setPlainText(description)
-        
+            scheme = load_rotation_scheme(connection, rotation_id)
         finally:
-            conn.close()
-    
-    
-    
-        try:
-            conn = sqlite3.connect(self.parent().projectdatabasePath)
-            cursor = conn.cursor()
-    
-            # Get scheme metadata
-            cursor.execute('''
-                SELECT num_workers, num_timeblocks
-                FROM RotationScheme
-                WHERE id = ?
-            ''', (rotation_id,))
-            row = cursor.fetchone()
-            if not row:
-                QMessageBox.warning(self, "Error", f"No scheme found for ID: {rotation_id}")
-                return
-    
-            num_workers, num_blocks = row
-    
-           
-            # Set UI controls
-            self.workersnumber_combo.setCurrentText(str(num_workers))
-            self.timeblocks_combo.setCurrentText(str(num_blocks))
-            
-            # Prepare data 
-            worker_data = self.getWorkers()
-            worker_pool = [w["id"] for w in worker_data]
-            worker_tooltips = {w["id"]: f"{w['first_name']} {w['last_name']}" for w in worker_data}
-            tool_id = self.tool_combo.currentText()
-            
-            job_data = self.getJobsWithMeasurement(tool_id)
-            job_pool = [j["id"] for j in job_data]
-            job_info = {
-                j["id"]: {
-                    "prob": j["probability_outcome"],
-                    "color": j["color"],
-                    "name": j["name"],
-                    "damage": j["total_cumulative_damage"],
-                    "tool": j["tool_id"]
-                } for j in job_data
-            }
-            
-            # Call rendering function 
-            self.renderEmptyRotationTable(
-                n_workers=num_workers,
-                n_blocks=num_blocks,
-                worker_pool=worker_pool,
-                worker_tooltips=worker_tooltips,
-                job_pool=job_pool,
-                job_info=job_info
+            connection.close()
+        if scheme is None:
+            return
+
+        self._loaded_scheme = scheme
+        self._optimization_mode = scheme["optimization_mode"]
+        self._scope_context_ids = list(scheme["context_ids"])
+        self._pending_scope_context_ids = list(scheme["context_ids"])
+        is_scoped = bool(self._scope_context_ids)
+        self.workplace_scope_button.setChecked(is_scoped)
+        self.all_jobs_scope_button.setChecked(not is_scoped)
+        self.choose_workplace_button.setEnabled(is_scoped)
+        self._updateScopeSummary(self._scope_context_ids)
+        if scheme["primary_tool_id"] and self.tool_combo.findText(scheme["primary_tool_id"]) >= 0:
+            self.tool_combo.blockSignals(True)
+            self.tool_combo.setCurrentText(scheme["primary_tool_id"])
+            self.tool_combo.blockSignals(False)
+            for value, button in self.tool_buttons.items():
+                button.setChecked(value == scheme["primary_tool_id"])
+
+        self.workersnumber_combo.setCurrentText(str(scheme["num_workers"]))
+        self.timeblocks_combo.setCurrentText(str(scheme["num_timeblocks"]))
+        self._refreshRotationPool(frozen_targets=scheme["targets"])
+        missing_worker_ids = {
+            assignment["worker_id"] for assignment in scheme["assignments"]
+        } - set(self._rotation_workers)
+        if missing_worker_ids:
+            connection = connect_database(
+                self.parent().projectdatabasePath, read_only=True, row_factory=sqlite3.Row
             )
-    
-    
-            # Get job and worker info for tooltips
-            tool_id = self.tool_combo.currentText()
-            workers = {w["id"]: f"{w['first_name']} {w['last_name']}" for w in self.getWorkers()}
-            
-            job_info = {
-                j["id"]: {
-                    "prob": j["probability_outcome"],
-                    "color": j["color"],
-                    "name": j["name"],
-                    "damage": j["total_cumulative_damage"],
-                    "tool": j["tool_id"]
-                } for j in self.getJobsWithMeasurement(tool_id)
-            }  
-    
-            table = self.rotation_table
-    
-            # Clear current change handler to avoid recursive triggering
             try:
-                table.cellChanged.disconnect()
-            except:
-                pass
+                placeholders = ", ".join("?" for _ in missing_worker_ids)
+                rows = connection.execute(
+                    f"SELECT id, first_name, last_name FROM Worker "
+                    f"WHERE id IN ({placeholders})",
+                    tuple(sorted(missing_worker_ids)),
+                ).fetchall()
+            finally:
+                connection.close()
+            from rotation_repository import RotationWorker
+            assignment_ids = {
+                row["worker_id"]: row["worker_assignment_id"]
+                for row in scheme["assignments"]
+            }
+            for row in rows:
+                self._rotation_workers[row["id"]] = RotationWorker(
+                    row["id"], row["first_name"], row["last_name"],
+                    assignment_ids.get(row["id"]), None,
+                )
 
-            # Get assignments
-            cursor.execute('''
-                SELECT worker_id, block_index, job_id
-                FROM RotationAssignment
-                WHERE scheme_id = ?
-            ''', (rotation_id,))
-            assignments = cursor.fetchall()
-    
-            from collections import defaultdict
-            grid = defaultdict(dict)
-            for worker_id, block_index, job_id in assignments:
-                grid[worker_id][block_index] = job_id
-    
-            # Fill table row-by-row
-            worker_ids = list(grid.keys())
-            for row_idx, worker_id in enumerate(worker_ids):
-                # Set worker ID
-                worker_item = QTableWidgetItem(worker_id)
-                worker_item.setToolTip(workers.get(worker_id, ""))
-                table.setItem(row_idx, 0, worker_item)
+        self._renderCurrentPool()
+        table = self.rotation_table
+        try:
+            table.cellChanged.disconnect()
+        except TypeError:
+            pass
+        worker_order = []
+        grid = {}
+        for assignment in scheme["assignments"]:
+            worker_id = assignment["worker_id"]
+            if worker_id not in grid:
+                worker_order.append(worker_id)
+                grid[worker_id] = {}
+            grid[worker_id][assignment["block_index"]] = assignment
 
-                probs = []
-                colors = []
-    
-                for block in range(num_blocks):
-                    col = block + 1
-                    job_id = grid[worker_id].get(block)
-                    if job_id:
-                        job = job_info.get(job_id)
-                        item = QTableWidgetItem()
-                        if job:
-                            formatted_text = f"{job_id}\n{job['prob']}%"
-                            item.setText(formatted_text)
-                            item.setBackground(QColor(job["color"]))
-                            item.setTextAlignment(Qt.AlignCenter)
-                            item.setToolTip(f"{job['tool']} – {job['name']} ({job['damage']})")
-                        
-                            probs.append(job["prob"])
-                            c = QColor(job["color"])
-                            colors.append((c.red(), c.green(), c.blue()))
-                        else:
-                            # Show raw job_id if metadata is missing
-                            item.setText(job_id)
-                            item.setTextAlignment(Qt.AlignCenter)
-                        table.setItem(row_idx, col, item)
-                    else:
-                        table.setItem(row_idx, col, QTableWidgetItem(""))
-    
+        for row_index, worker_id in enumerate(worker_order[:table.rowCount()]):
+            worker = self._rotation_workers.get(worker_id)
+            worker_item = QTableWidgetItem(worker_id)
+            if worker:
+                worker_item.setToolTip(
+                    f"{worker.first_name or ''} {worker.last_name or ''}".strip()
+                )
+            table.setItem(row_index, 0, worker_item)
+            for block in range(scheme["num_timeblocks"]):
+                assignment = grid[worker_id].get(block)
+                if assignment:
+                    label = self._rotation_target_labels.get(
+                        (assignment["job_id"], assignment["job_placement_id"]),
+                        assignment["job_id"],
+                    )
+                    table.setItem(row_index, block + 1, QTableWidgetItem(label))
 
-                # Avg column
-                if probs:
-                    avg_val = round(sum(probs) / len(probs), 1)
-                    avg_item = QTableWidgetItem(f"{avg_val}%")
-                    avg_item.setTextAlignment(Qt.AlignCenter)
-                    if colors:
-                        r_avg = sum(c[0] for c in colors) // len(colors)
-                        g_avg = sum(c[1] for c in colors) // len(colors)
-                        b_avg = sum(c[2] for c in colors) // len(colors)
-                        avg_item.setBackground(QColor(r_avg, g_avg, b_avg))
-                    table.setItem(row_idx, num_blocks + 1, avg_item)
-    
-                    # Suggestion column
-                    suggestion = self.generateSuggestion(probs)
-        
-        
-                    suggestion_item = QTableWidgetItem(suggestion)
-                    suggestion_item.setTextAlignment(Qt.AlignLeft)
-                    table.setItem(row_idx, num_blocks + 2, suggestion_item)
-
-
-
-            # Re-assign combo delegates after table fill
-            table.setItemDelegateForColumn(0, ComboBoxDelegate(list(workers.keys()), table, 0, table))
-            for col in range(1, num_blocks + 1):
-                table.setItemDelegateForColumn(col, ComboBoxDelegate(list(job_info.keys()), table, col, table))
-
-
-            
-            # Avoid multiple bindings
-            try:
-                table.cellChanged.disconnect()
-            except:
-                pass
-            table.cellChanged.connect(self.handleCellChanged)
-        
-    
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to load rotation details:\n{str(e)}")
-    
-        finally:
-            conn.close()
-            self.clearOptimizedTable()
-            self.label_current_table.setText(f"Current {self.tool_combo.currentText()} Rotation")
+        table.cellChanged.connect(self.handleCellChanged)
+        for row_index in range(min(len(worker_order), table.rowCount())):
+            self.handleCellChanged(row_index, 1)
+        self.clearOptimizedTable()
+        self.label_current_table.setText(f"Current {self.tool_combo.currentText()} Rotation")
 
 
     def handleCellChanged(self, row, col):
@@ -1436,7 +1456,10 @@ class RotationLayoutWindow(QDialog):
                     "color": j["color"],
                     "name": j.get("name", ""),
                     "tool": j.get("tool_id", ""),
-                    "damage": j.get("total_cumulative_damage", "")
+                    "damage": j.get("total_cumulative_damage", ""),
+                    "profile_version": j.get("profile_version"),
+                    "profile_source_type": j.get("profile_source_type", ""),
+                    "profile_source_reference": j.get("profile_source_reference", ""),
                 } for j in job_data
             }
 
@@ -1454,7 +1477,12 @@ class RotationLayoutWindow(QDialog):
                     item.setText(f"{job_id}\n{job['prob']}%")
                     item.setBackground(QColor(job["color"]))
                     item.setTextAlignment(Qt.AlignCenter)
-                    item.setToolTip(f"{job['tool']} – {job['name']} ({job['damage']})")
+                    provenance = f"Profile v{job['profile_version']} ({job['profile_source_type']})"
+                    if job["profile_source_reference"]:
+                        provenance += f": {job['profile_source_reference']}"
+                    item.setToolTip(
+                        f"{job['tool']} - {job['name']} ({job['damage']})\n{provenance}"
+                    )
     
                     probabilities.append(job["prob"])
                     color = QColor(job["color"])
@@ -1612,6 +1640,10 @@ class RotationLayoutWindow(QDialog):
         # Clear associated metadata fields (when available)
         # self.rotation_name_input.clear()
         # self.rotation_description_input.clear()
+
+        self._loaded_scheme = None
+        self._optimization_mode = "manual"
+        self._refreshRotationPool()
 
         # Redraw table using current number of workers and time blocks
         #self.applyfilterButtonClicked()
@@ -1879,8 +1911,8 @@ class RotationLayoutWindow(QDialog):
         return sorted(job_ids)
 
     def validateOptimizationRiskData(self, tool_ids):
-        job_ids = self.rotationJobIds()
-        if not job_ids:
+        labels = self.rotationJobIds()
+        if not labels:
             QMessageBox.warning(
                 self,
                 "Incomplete Rotation",
@@ -1888,16 +1920,29 @@ class RotationLayoutWindow(QDialog):
             )
             return False
 
+        targets = [self._rotation_targets[label] for label in labels if label in self._rotation_targets]
+        if len(targets) != len(labels):
+            QMessageBox.warning(
+                self,
+                "Invalid Rotation",
+                "The rotation contains a Job target outside the active scope.",
+            )
+            return False
         connection = connect_database(self.parent().projectdatabasePath, read_only=True)
         try:
-            issues = job_risk_issues(connection, job_ids, tool_ids)
+            issues = missing_target_measurements(connection, targets, tool_ids)
         finally:
             connection.close()
         if issues:
+            details = "\n".join(
+                f"- {target.display_name} - {tool_id}: measurement is not available"
+                for target, tool_id in issues
+            )
             QMessageBox.warning(
                 self,
                 "Missing Job Risk Data",
-                format_job_risk_issues(issues),
+                "Optimization requires an approved measurement for every assigned "
+                f"Job target and selected tool.\n\n{details}",
             )
             return False
         return True
@@ -1970,6 +2015,9 @@ class RotationLayoutWindow(QDialog):
         num_blocks = int(self.timeblocks_combo.currentText())
         if not self.validateOptimizationRiskData((tool_id,)):
             return
+        worker_ids, _, current_assignments, job_risk = self.extract_rotation_data(
+            table, self.getJobsWithMeasurement, tool_id
+        )
     
    
 
@@ -1981,7 +2029,10 @@ class RotationLayoutWindow(QDialog):
                 "color": j["color"],
                 "name": j.get("name", ""),
                 "tool": j.get("tool_id", ""),
-                "damage": j.get("total_cumulative_damage", "")
+                "damage": j.get("total_cumulative_damage", ""),
+                "profile_version": j.get("profile_version"),
+                "profile_source_type": j.get("profile_source_type", ""),
+                "profile_source_reference": j.get("profile_source_reference", ""),
             } for j in job_data
         }
 
@@ -1999,9 +2050,11 @@ class RotationLayoutWindow(QDialog):
         # Setup thread and worker
         self.optimization_thread = QtCore.QThread()
         self.optimizer_worker = OptimizationWorker(
-            table=self.rotation_table,
-            tool_id=tool_id,
+            worker_ids=worker_ids,
+            current_assignments=current_assignments,
+            job_risk=job_risk,
             num_blocks=num_blocks,
+            time_limit=seconds,
             parent=None  # must not parent to the main thread!
         )
     
@@ -2010,8 +2063,9 @@ class RotationLayoutWindow(QDialog):
 
         self.optimization_thread.started.connect(self.optimizer_worker.run)
         self.optimizer_worker.optimizationCompleted.connect(self.handleOptimizationResult)
-        self.optimizer_worker.optimizationCompleted.connect(self.optimization_thread.quit)
-        self.optimizer_worker.optimizationCompleted.connect(self.optimizer_worker.deleteLater)
+        self.optimizer_worker.errorOccurred.connect(self.handleOptimizationError)
+        self.optimizer_worker.finished.connect(self.optimization_thread.quit)
+        self.optimizer_worker.finished.connect(self.optimizer_worker.deleteLater)
         self.optimization_thread.finished.connect(self.optimization_thread.deleteLater)
 
         self.optimization_thread.start()
@@ -2071,7 +2125,10 @@ class RotationLayoutWindow(QDialog):
                 "color": j["color"],
                 "name": j.get("name", ""),
                 "tool": j.get("tool_id", ""),
-                "damage": j.get("total_cumulative_damage", "")
+                "damage": j.get("total_cumulative_damage", ""),
+                "profile_version": j.get("profile_version"),
+                "profile_source_type": j.get("profile_source_type", ""),
+                "profile_source_reference": j.get("profile_source_reference", ""),
             } for j in job_data
         }
 
@@ -2096,6 +2153,7 @@ class RotationLayoutWindow(QDialog):
     
     def handleOptimizationResult(self, optimized_result):
         self.overlay.stop()
+        self._last_optimization_mode = "single_tool"
     
         tool_id = self.tool_combo.currentText()
         job_data = self.getJobsWithMeasurement(tool_id)
@@ -2105,63 +2163,14 @@ class RotationLayoutWindow(QDialog):
                 "color": j["color"],
                 "name": j.get("name", ""),
                 "tool": j.get("tool_id", ""),
-                "damage": j.get("total_cumulative_damage", "")
+                "damage": j.get("total_cumulative_damage", ""),
+                "profile_version": j.get("profile_version"),
+                "profile_source_type": j.get("profile_source_type", ""),
+                "profile_source_reference": j.get("profile_source_reference", ""),
             } for j in job_data
         }
 
         self.displayOptimizedTable(optimized_result, job_info, self.optimized_table)
-        #print("=== Optimization Completed ===\n")
-        
-        
-         # 2) re‐extract the *original* rotation exactly as the UI did:
-        _, _, original_rotation, job_risk = self.extract_rotation_data(
-            table=self.rotation_table,
-            get_job_risks_func=self.getJobsWithMeasurement,
-            tool_id=tool_id
-        )
-
-        # 3) now we have two dicts:
-        #    original_rotation: {worker_id: [job1,job2,...]}
-        #    optimized_result:   {worker_id: [job1,job2,...]}
-
-        # 4) print the two blocks side by side, matching your format
-        self._print_single_tool_comparison(tool_id,
-                                           original_rotation,
-                                           optimized_result,
-                                           job_risk)
-                                           
-                                           
-        
-    def _print_single_tool_comparison(self, tool_id, orig_rot, opt_rot, job_risk):
-        def _flatten(jobs):
-            out = []
-            for x in jobs:
-                if isinstance(x, (list,tuple)):
-                    out.extend(x)
-                else:
-                    out.append(x)
-            return out
-
-        def _block(title, rotation):
-            print(f"\n=== {title} ===\n[{tool_id}]\n")
-            for w, jobs in rotation.items():
-                flat = _flatten(jobs)
-                # only keep real job IDs
-                filtered = [jid for jid in flat if jid in job_risk]
-                pieces = []
-                for jid in filtered:
-                    r = job_risk[jid]
-                    pieces.append(f"{jid}@{r:.1f}")
-                if filtered:
-                    avg = sum(job_risk[jid] for jid in filtered)/len(filtered)
-                else:
-                    avg = 0.0
-                print(f"{w}: {' '.join(pieces)} -> Avg: {avg:.1f}%")
-            print()
-
-        # now call it twice
-        _block("Original Average Risk per Worker", orig_rot)
-        _block("Optimized Average Risk per Worker", opt_rot)
    
    
     
@@ -2175,7 +2184,10 @@ class RotationLayoutWindow(QDialog):
             "color": j["color"],
             "name": j.get("name", ""),
             "tool": j.get("tool_id", ""),
-            "damage": j.get("total_cumulative_damage", "")
+            "damage": j.get("total_cumulative_damage", ""),
+            "profile_version": j.get("profile_version"),
+            "profile_source_type": j.get("profile_source_type", ""),
+            "profile_source_reference": j.get("profile_source_reference", ""),
         } for j in job_data
     }
 
@@ -2242,7 +2254,19 @@ class RotationLayoutWindow(QDialog):
                 item.setTextAlignment(Qt.AlignCenter)
                 item.setBackground(QColor(color))
 
-                item.setToolTip(f"{job.get('tool', '')} – {job.get('name', '')} ({job.get('damage', '')})")
+                profile_version = job.get("profile_version")
+                provenance = ""
+                if profile_version is not None:
+                    provenance = (
+                        f"\nProfile v{profile_version} "
+                        f"({job.get('profile_source_type', '')})"
+                    )
+                    if job.get("profile_source_reference"):
+                        provenance += f": {job['profile_source_reference']}"
+                item.setToolTip(
+                    f"{job.get('tool', '')} - {job.get('name', '')} "
+                    f"({job.get('damage', '')}){provenance}"
+                )
                 table.setItem(row_idx, b + 1, item)
     
             # Average column
@@ -2288,6 +2312,7 @@ class RotationLayoutWindow(QDialog):
         if n_rows == 0 or n_cols < 3:  # Expect at least Worker + 1 Block + Avg
             QMessageBox.warning(self, "No Data", "Optimized table is empty. Nothing to copy.")
             return
+        self._optimization_mode = getattr(self, "_last_optimization_mode", "manual")
     
         # Resize target table to match optimized table
         target_table.blockSignals(True)
@@ -2380,6 +2405,8 @@ class RotationLayoutWindow(QDialog):
         current_tool = self.tool_combo.currentText()
         all_tools = ["LiFFT", "DUET", "ST"]
         other_tools = [t for t in all_tools if t != current_tool]
+        if not self.validateOptimizationRiskData(other_tools):
+            return
     
         # Extract current rotation layout
         worker_ids, job_list, current_assignments, _ = self.extract_rotation_data(
@@ -2420,30 +2447,13 @@ class RotationLayoutWindow(QDialog):
 
     def handleMultiToolOptimizationDone(self, result):
         self.overlay.stop()
+        self._last_optimization_mode = "all_tools"
     
         optimized_schedule = result["optimized"]
         current_assignments = result["current"]
         worker_ids = result["worker_ids"]
         tool_risk = result["tool_risk"]
         all_tools = list(tool_risk.keys())
-    
-        # Console print for debug
-        def print_schedule(title, schedule, tool_risk):
-            print(f"\n=== {title} ===")
-            for tool in tool_risk:
-                print(f"\n[{tool}]")
-                for w in sorted(schedule):
-                    risks = [tool_risk[tool].get(j, 0.0) for j in schedule[w]]
-                    avg = round(sum(risks) / len(risks), 1) if risks else 0.0
-                    jobs_str = " ".join(f"{j}@{tool_risk[tool].get(j, 0.0):04.1f}" for j in schedule[w])
-                    print(f"{w}: {jobs_str} -> Avg: {avg:.1f}%")
-
-        
-        #TODO: Multi-Op debug prints!!
-        print_schedule("Original Average Risk per Worker", current_assignments, tool_risk)
-        print_schedule("Optimized Average Risk per Worker", optimized_schedule, tool_risk)
-    
-        print("\n=== Optimization Completed ===\n")
     
         self.compare_all_window = CompareOpAllRotationWindow(
             current_assignments=current_assignments,
@@ -2464,13 +2474,28 @@ class RotationLayoutWindow(QDialog):
         all_tools = ["LiFFT", "DUET", "ST"]
         if not self.validateOptimizationRiskData(all_tools):
             return
+        worker_ids, _, current_assignments, _ = self.extract_rotation_data(
+            self.rotation_table, self.getJobsWithMeasurement, all_tools[0]
+        )
+        used_jobs = sorted({job for jobs in current_assignments.values() for job in jobs})
+        tool_risk = {
+            tool: {
+                job["id"]: job["probability_outcome"]
+                for job in self.getJobsWithMeasurement(tool)
+                if job["id"] in used_jobs
+            }
+            for tool in all_tools
+        }
 
         # Show overlay
         self.overlay = Overlay(parent=self, message="Optimizing Rotation for All Tools") #Overlay(parent=self)
         #self.overlay.label.setText("Optimizing all tools")
         self.overlay.setCancelHandler(self.cancelOptimization)
-        seconds = self.getTimeLimitInSeconds(for_multitool=True, solver_name="highs") * 2 #TODO: Check, Trick, use other solver but just for the progress bar to considere the full time since with glpk for multi-op I passing half as time-limit to complete both steps in the total time, if I use glpk time the progress bar will finish in half time...
-        self.overlay.start(duration_seconds=seconds)
+        per_stage_seconds = self.getTimeLimitInSeconds(
+            for_multitool=True, solver_name="cbc"
+        )
+        # The all-tool optimizer performs two sequential solves with this limit.
+        self.overlay.start(duration_seconds=per_stage_seconds * 2)
         
         #self.overlay.start()
     
@@ -2478,16 +2503,19 @@ class RotationLayoutWindow(QDialog):
         # Setup thread and worker
         self.optimizeall_thread = QtCore.QThread()
         self.optimizeall_worker = MultiToolOptimizationWorker(
-            table=self.rotation_table,
+            worker_ids=worker_ids,
+            current_assignments=current_assignments,
+            tool_risk=tool_risk,
             num_blocks=num_blocks,
-            all_tools=all_tools
+            time_limit=per_stage_seconds,
         )
     
         self.optimizeall_worker.moveToThread(self.optimizeall_thread)
         self.optimizeall_thread.started.connect(self.optimizeall_worker.run)
         self.optimizeall_worker.optimizationCompleted.connect(self.handleMultiToolOptimizationDone)
-        self.optimizeall_worker.optimizationCompleted.connect(self.optimizeall_thread.quit)
-        self.optimizeall_worker.optimizationCompleted.connect(self.optimizeall_worker.deleteLater)
+        self.optimizeall_worker.errorOccurred.connect(self.handleOptimizationError)
+        self.optimizeall_worker.finished.connect(self.optimizeall_thread.quit)
+        self.optimizeall_worker.finished.connect(self.optimizeall_worker.deleteLater)
         self.optimizeall_thread.finished.connect(self.optimizeall_thread.deleteLater)
     
         self.optimizeall_thread.start()
@@ -3193,23 +3221,16 @@ class RotationLayoutWindow(QDialog):
     #        self.optimization_thread.wait()
 
     def cancelOptimization(self):
-        print("[CANCEL] Optimization was manually cancelled.")
-
         if hasattr(self, "optimizer_worker"):
-            self.optimizer_worker.request_cancel()  # Correct target
-        if hasattr(self, "optimizer_worker_all"):
-            self.optimizer_worker_all.request_cancel()  # For multi-tool optimizer
+            self.optimizer_worker.request_cancel()
+        if hasattr(self, "optimizeall_worker"):
+            self.optimizeall_worker.request_cancel()
     
         if hasattr(self, "overlay"):
             self.overlay.stop()
     
-        # You can optionally wait for the thread to finish safely
-        if hasattr(self, "optimization_thread"):
-            self.optimization_thread.quit()
-            self.optimization_thread.wait()
-        if hasattr(self, "optimization_thread_all"):
-            self.optimization_thread_all.quit()
-            self.optimization_thread_all.wait()
+        # Solver calls are not force-terminated. Their result is discarded when
+        # cancellation was requested, and the worker emits finished normally.
 
 
     def getTimeLimitInSeconds(self, for_multitool=False, solver_name="glpk"):
@@ -3236,110 +3257,47 @@ class RotationLayoutWindow(QDialog):
 
 class OptimizationWorker(QtCore.QObject):
     optimizationCompleted = QtCore.pyqtSignal(dict)
+    errorOccurred = QtCore.pyqtSignal(str)
+    finished = QtCore.pyqtSignal()
 
-    def __init__(self, table, tool_id, num_blocks, parent=None):
+    def __init__(
+        self,
+        worker_ids,
+        current_assignments,
+        job_risk,
+        num_blocks,
+        time_limit,
+        parent=None,
+    ):
         super().__init__(parent)
-        self.table = table
-        self.tool_id = tool_id
+        self.worker_ids = list(worker_ids)
+        self.current_assignments = {
+            worker_id: list(jobs) for worker_id, jobs in current_assignments.items()
+        }
+        self.job_risk = dict(job_risk)
         self.num_blocks = num_blocks
+        self.time_limit = time_limit
         self.cancel_requested = False
 
     def request_cancel(self):
         self.cancel_requested = True
-        
-        
+
     def run(self):
-        from pulp import PULP_CBC_CMD
-        parent = QtWidgets.QApplication.instance().activeWindow()
-
-        # 1) extract original rotation
-        #worker_ids, job_list, current_assignments, job_risk = \
-        #    parent.extract_rotation_data(
-        #        self.table,
-        #        parent.getJobsWithMeasurement,
-        #        self.tool_id
-        #    )
-        
-        # 1) extract the original
-        worker_ids, job_list, current_assignments, job_risk = parent.extract_rotation_data(
-            self.table, parent.getJobsWithMeasurement, self.tool_id
-        )
-
-        # 2) compute and save original stats
-        orig_stats = parent.compute_tool_stats(current_assignments, job_risk)
-
-        # 3) build and solve
-        model, x = parent.build_optimization_model(
-            worker_ids, job_list, current_assignments, job_risk, self.num_blocks
-        )
-        time_limit = parent.getTimeLimitInSeconds()
-        model.solve(PULP_CBC_CMD(msg=0, timeLimit=time_limit, gapRel=0.01))
-
-        if self.cancel_requested:
-            print("[CANCELLED] Optimization was cancelled.")
-            return
-
-        # 4) extract optimized rotation
-        optimized_rotation = parent.extract_solution(
-            model, x, worker_ids, job_risk, self.num_blocks
-        )
-
-        # 5) compute optimized stats
-        #opt_stats = parent.compute_tool_stats(optimized_rotation, job_risk)
-
-        # 6) print the comparison table
-        #parent.print_single_tool_table(orig_stats, opt_stats, self.tool_id)
-        
-        
-        # 3) extract optimized
-        #opt_rot = parent.extract_solution(model, x, worker_ids, job_risk, self.num_blocks)
-
-        # 4) print both tables side by side
-        #parent.print_single_tool_rotations(orig_rot, optimized_rotation, job_risk, self.tool_id)
-
-
-        # 7) emit the optimized rotation so the UI can update
-        self.optimizationCompleted.emit(optimized_rotation)
-        
-        
-    def runOldWorking(self):
-        from pulp import PULP_CBC_CMD
-        parent = QtWidgets.QApplication.instance().activeWindow()
-
-        worker_ids, job_list, current_assignments, job_risk = parent.extract_rotation_data(
-            self.table, parent.getJobsWithMeasurement, self.tool_id
-        )
-
-
-        # compute original stats
-        orig_stats = parent.compute_tool_stats(current_assignments, job_risk)
-        
-        model, x = parent.build_optimization_model(
-            worker_ids, job_list, current_assignments, job_risk, self.num_blocks
-        )
-
-        time_limit = parent.getTimeLimitInSeconds()
-        model.solve(PULP_CBC_CMD(msg=3, timeLimit=time_limit, gapRel=0.01))
-        
-        
-        
-        if self.cancel_requested:
-            print("[CANCELLED] Optimization was cancelled before result emitted.")
-            return
-        
-        result = parent.extract_solution(model, x, worker_ids, job_risk, self.num_blocks)
-        
-        # compute optimized stats
-        opt_stats = parent.compute_tool_stats(result, job_risk)
-
-        # 4) print table
-        parent.print_single_tool_table(orig_stats, opt_stats, self.tool_id)
-
-
-        
-        self.optimizationCompleted.emit(result)
-
-
+        try:
+            result = optimize_single_tool(
+                self.worker_ids,
+                self.current_assignments,
+                self.job_risk,
+                self.num_blocks,
+                self.time_limit,
+            )
+            if not self.cancel_requested:
+                self.optimizationCompleted.emit(result)
+        except Exception as error:
+            if not self.cancel_requested:
+                self.errorOccurred.emit(str(error))
+        finally:
+            self.finished.emit()
 
 
 class Overlay(QWidget):
@@ -3534,74 +3492,54 @@ class OverlayOldWorking(QtWidgets.QWidget):
 
 class MultiToolOptimizationWorker(QtCore.QObject):
     optimizationCompleted = QtCore.pyqtSignal(dict)
+    errorOccurred = QtCore.pyqtSignal(str)
+    finished = QtCore.pyqtSignal()
 
-    def __init__(self, table, num_blocks, all_tools, parent=None):
+    def __init__(
+        self,
+        worker_ids,
+        current_assignments,
+        tool_risk,
+        num_blocks,
+        time_limit,
+        parent=None,
+    ):
         super().__init__(parent)
-        self.table = table
+        self.worker_ids = list(worker_ids)
+        self.current_assignments = {
+            worker_id: list(jobs) for worker_id, jobs in current_assignments.items()
+        }
+        self.tool_risk = {
+            tool_id: dict(risks) for tool_id, risks in tool_risk.items()
+        }
         self.num_blocks = num_blocks
-        self.all_tools = all_tools
+        self.time_limit = time_limit
         self.cancel_requested = False
 
     def request_cancel(self):
         self.cancel_requested = True
-        
-    
+
     def run(self):
-        parent = QtWidgets.QApplication.instance().activeWindow()
-
-        worker_ids, _, current_assignments, _ = parent.extract_rotation_data(
-            table=self.table,
-            get_job_risks_func=parent.getJobsWithMeasurement,
-            tool_id=self.all_tools[0]
-        )
-
-        # Restrict to used jobs only
-        job_set = set(j for jobs in current_assignments.values() for j in jobs if j)
-        job_list = sorted(job_set)
-
-        tool_risk = {
-            tool: {j["id"]: j["probability_outcome"] for j in parent.getJobsWithMeasurement(tool)}
-            for tool in self.all_tools
-        }
-
-        optimized_schedule = parent.optimise_multi_tool(
-            worker_ids=worker_ids,
-            job_list=job_list,
-            num_blocks=self.num_blocks,
-            tool_risk=tool_risk,
-            solver_name="highs",  # or "glpk", "cbc", "highs", etc.
-            time_limit=parent.getTimeLimitInSeconds(for_multitool=True, solver_name="highs"),
-            mip_gap=0.01,
-            verbose=True
-        )
-
-
-        if self.cancel_requested:
-            print("[CANCELLED] Multi-tool optimization was cancelled.")
-            return
-            
-        self.optimizationCompleted.emit({
-            "optimized": optimized_schedule,
-            "current": current_assignments,
-            "worker_ids": worker_ids,
-            "tool_risk": tool_risk
-        })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        try:
+            optimized = optimize_all_tools(
+                self.worker_ids,
+                self.current_assignments,
+                self.tool_risk,
+                self.num_blocks,
+                self.time_limit,
+            )
+            if not self.cancel_requested:
+                self.optimizationCompleted.emit({
+                    "optimized": optimized,
+                    "current": self.current_assignments,
+                    "worker_ids": self.worker_ids,
+                    "tool_risk": self.tool_risk,
+                })
+        except Exception as error:
+            if not self.cancel_requested:
+                self.errorOccurred.emit(str(error))
+        finally:
+            self.finished.emit()
 
 
 if __name__ == "__main__":

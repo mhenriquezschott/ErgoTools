@@ -7,6 +7,9 @@
   behavior.
 - [PLOT](plot-functional-specification.md): filtering, plant canvas, overview charts,
   worker inspection, group outcomes, highlights, persistence, and empty states.
+- [JROT](jrot-functional-specification.md): risk basis, organization-neutral and
+  workplace scopes, rotation persistence, frozen profile provenance, optimization,
+  comparison, and error states.
 - [Functional test catalog](main-plot-functional-test-catalog.md): stable test IDs,
   fixture definitions, automated coverage, manual checks, and visual-regression
   states for the main UI and PLOT.
@@ -22,7 +25,3 @@
 ## User Reference
 
 - [ErgoTools user manual](ErgoToolManual.pdf)
-
-JROT behavior is intentionally not included in the functional specifications above.
-It will receive its own specification after the current integration behavior is
-stabilized and reviewed.

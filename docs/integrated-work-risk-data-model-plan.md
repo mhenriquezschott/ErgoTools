@@ -280,18 +280,16 @@ Rebuild RotationScheme without mandatory Plant or Shift columns:
 
 `num_jobs` is derived from RotationTarget and is not stored.
 
-RotationSchemeScope stores zero or more workplace filters:
+RotationSchemeScope stores zero or more exact Station-plus-Shift contexts:
 
 - `scheme_id TEXT NOT NULL`
-- `plant_name TEXT NOT NULL`
-- `section_name TEXT`
-- `line_name TEXT`
-- `station_id TEXT`
-- `shift_id TEXT`
-- Hierarchy-prefix check: a Line requires a Section and a Station requires a Line.
-- Foreign keys to each hierarchy level and Shift; nullable composite foreign keys
-  allow broader Plant, Section, or Line scopes.
-- Expression-based unique index normalizes nullable fields.
+- `workplace_context_id INTEGER NOT NULL`
+- Primary key `(scheme_id, workplace_context_id)`.
+- Foreign keys to RotationScheme and WorkplaceContext.
+
+The UI hierarchy may select whole visible branches, but it expands that choice into
+normalized exact WorkplaceContext rows. This avoids nullable hierarchy fragments and
+makes Job-placement and Worker-assignment compatibility enforceable.
 
 Zero scope rows mean an organization-neutral JROT scheme. Multiple rows preserve
 multi-selection without manufacturing organization records.
@@ -442,17 +440,18 @@ until the cutover audit is complete.
 
 ### Phase 5: Rotation Scope and Reproducibility
 
-- [ ] Create RotationSchemeScope and migrate current Plant/Shift values into scope
-  rows without inventing Job Placements.
-- [ ] Create RotationTarget and freeze the selected profile version per scheme Job.
-- [ ] Rebuild RotationAssignment around RotationTarget.
-- [ ] Update JROT workplace filters to return Jobs through JobPlacement.
-- [ ] Provide an explicit organization-neutral mode that returns standalone Jobs.
-- [ ] Support multiple workplace scope selections within one Plant.
-- [ ] Validate worker, placement, shift, Job, and profile compatibility before save
+- [x] Create RotationSchemeScope; migrate legacy schemes as organization-neutral
+  because their Plant/Shift text does not prove assignment-backed scope.
+- [x] Create RotationTarget and freeze the selected profile version per scheme Job.
+- [x] Rebuild RotationAssignment around RotationTarget.
+- [x] Update JROT workplace scope to return Jobs through JobPlacement.
+- [x] Provide an explicit organization-neutral mode that returns standalone Jobs.
+- [x] Support multiple workplace scope selections with one explicit Shift.
+- [x] Validate worker, placement, shift, Job, and profile compatibility before save
   and before optimization.
-- [ ] Preserve save, reopen, optimize selected tool, optimize all tools, transfer
-  optimized rotation, and comparison workflows.
+- [x] Preserve and automatically verify save, reopen, optimize selected tool, optimize all tools,
+  transfer optimized rotation, and comparison workflows.
+- [ ] Manually verify the same workflow in the native desktop environment.
 
 **Gate:** The integrated fixture preserves 5 schemes, 42 scheme/Job targets, and
 182 assignments. Reopening a saved scheme uses the same frozen profile versions
@@ -488,7 +487,7 @@ assets are pending:
   assessments, and markers.
 - [ ] Rebuild/drop legacy LifftResults, DuetResults, and TstResults after task-table
   migration and consumer cutover.
-- [ ] Rebuild RotationScheme and RotationAssignment without obsolete columns.
+- [x] Rebuild RotationScheme and RotationAssignment without obsolete columns.
 - [ ] Remove or replace ambiguous `Station.ergonomic_risk_level`; tool-specific
   risk must come from Job or Individual assessment data.
 - [ ] Remove compatibility views, migration-only adapters, and dual-write code.
@@ -600,11 +599,11 @@ This UI is part of the completed integration, not an optional follow-up.
 
 ### JROT
 
-- [ ] Workplace filters operate through Job Placement and support multi-selection.
-- [ ] Organization-neutral mode lists standalone Jobs without fake hierarchy data.
-- [ ] Job choices display the selected approved profile and its provenance.
-- [ ] Optimization is blocked when required profiles are absent or incompatible.
-- [ ] Saved results identify frozen profile versions in comparison/detail windows.
+- [x] Workplace scope operates through Job Placement and supports multi-selection.
+- [x] Organization-neutral mode lists standalone Jobs without fake hierarchy data.
+- [x] Job choices expose the frozen approved profile and its provenance.
+- [x] Optimization is blocked when required measurements are absent or incompatible.
+- [x] Saved results identify frozen profile versions in optimization and comparison tooltips.
 
 ### Accessibility and Visual Verification
 

@@ -83,6 +83,35 @@ class IntegratedProjectMigrationTests(unittest.TestCase):
             self.assertEqual(counts_after, counts_before)
             self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
             self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], LATEST_SCHEMA_VERSION)
+            scheme_columns = {
+                row[1] for row in connection.execute("PRAGMA table_info(RotationScheme)")
+            }
+            self.assertNotIn("plant_name", scheme_columns)
+            self.assertNotIn("shift_id", scheme_columns)
+            self.assertNotIn("num_jobs", scheme_columns)
+            assignment_columns = {
+                row[1] for row in connection.execute("PRAGMA table_info(RotationAssignment)")
+            }
+            self.assertIn("worker_assignment_id", assignment_columns)
+            self.assertIn("rotation_target_id", assignment_columns)
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM RotationSchemeScope").fetchone()[0],
+                0,
+            )
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM RotationTarget").fetchone()[0],
+                connection.execute(
+                    """
+                    SELECT COUNT(*) FROM (
+                        SELECT DISTINCT RotationAssignment.scheme_id,
+                                        RotationTarget.job_id
+                        FROM RotationAssignment
+                        JOIN RotationTarget
+                          ON RotationTarget.id = RotationAssignment.rotation_target_id
+                    )
+                    """
+                ).fetchone()[0],
+            )
             for table in ("JobRiskProfile", "JobPlacement"):
                 columns = {
                     row[1] for row in connection.execute(f"PRAGMA table_info({table})")
