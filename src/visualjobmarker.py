@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PyQt5.QtCore import QRectF, Qt
 from PyQt5.QtGui import QBrush, QColor, QFont, QPen
-from PyQt5.QtWidgets import QGraphicsItem, QMessageBox
+from PyQt5.QtWidgets import QGraphicsItem
 
 from database import database_session
 from plot_position_repository import StationKey, set_station_position
@@ -21,6 +21,7 @@ class VisualJobMarker(QGraphicsItem):
             str(data["line_name"]),
             str(data["station_id"]),
         )
+        self.job_placement_id = int(data["job_placement_id"])
         self.job_id = str(data["job_id"])
         self.job_name = str(data.get("job_name") or "")
         self.shift_id = str(data["shift_id"])
@@ -38,7 +39,9 @@ class VisualJobMarker(QGraphicsItem):
         anchor_x = float(data.get("x") or 18.0)
         anchor_y = float(data.get("y") or 18.0)
         self.setPos(anchor_x + self.offset_x, anchor_y + self.offset_y)
-        self._start_position = self.pos()
+        self._saved_position = self.pos()
+        self._drag_start_position = self.pos()
+        self.position_pending = False
         self.setFlag(QGraphicsItem.ItemIsMovable, True)
         self.setFlag(QGraphicsItem.ItemIsSelectable, True)
         self.setCursor(Qt.OpenHandCursor)
@@ -97,40 +100,53 @@ class VisualJobMarker(QGraphicsItem):
             ))
 
     def mousePressEvent(self, event):
-        self._start_position = self.pos()
+        self._drag_start_position = self.pos()
         self.setCursor(Qt.ClosedHandCursor)
+        callback = getattr(self.parent_scene.parent(), "selectJobMarker", None)
+        if callback is not None:
+            callback(self)
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         super().mouseReleaseEvent(event)
         self.setCursor(Qt.OpenHandCursor)
-        if self.pos() == self._start_position:
+        if self.pos() == self._drag_start_position:
             return
-        plot_window = self.parent_scene.parent()
-        database_path = getattr(plot_window.parent(), "projectdatabasePath", "")
+        self.position_pending = True
+        callback = getattr(self.parent_scene.parent(), "jobMarkerMoved", None)
+        if callback is not None:
+            callback(self)
+
+    def anchorCoordinates(self):
+        return (
+            float(self.pos().x()) - self.offset_x,
+            float(self.pos().y()) - self.offset_y,
+        )
+
+    def setPendingAnchor(self, x, y):
+        self.setPos(float(x) + self.offset_x, float(y) + self.offset_y)
+        self.position_pending = True
+        self.update()
+
+    def cancelPendingPosition(self):
+        self.setPos(self._saved_position)
+        self.position_pending = False
+        self.update()
+
+    def commitPosition(self, database_path):
         if not database_path:
-            self.setPos(self._start_position)
-            return
-        anchor_x = float(self.pos().x()) - self.offset_x
-        anchor_y = float(self.pos().y()) - self.offset_y
-        try:
-            with database_session(database_path) as connection:
-                set_station_position(
-                    connection,
-                    self.station_key,
-                    anchor_x,
-                    anchor_y,
-                    position_source="job",
-                )
-            self.has_anchor = True
-            self.update()
-            callback = getattr(plot_window, "jobMarkerPositionSaved", None)
-            if callback is not None:
-                callback(self.station_key, anchor_x, anchor_y)
-        except Exception as error:
-            self.setPos(self._start_position)
-            QMessageBox.critical(
-                plot_window,
-                "Position not saved",
-                f"The Station position could not be saved:\n{error}",
+            raise RuntimeError("The project database path is missing.")
+        anchor_x, anchor_y = self.anchorCoordinates()
+        with database_session(database_path) as connection:
+            set_station_position(
+                connection,
+                self.station_key,
+                anchor_x,
+                anchor_y,
+                position_source="job",
             )
+        self.has_anchor = True
+        self.position_pending = False
+        self._saved_position = self.pos()
+        self.update()
+        return anchor_x, anchor_y

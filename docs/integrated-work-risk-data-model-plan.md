@@ -572,7 +572,7 @@ This UI is part of the completed integration, not an optional follow-up.
 
 ### PLOT Map
 
-- [x] Preserve circle/triangle worker-marker semantics, use a square when sex is
+- [x] Preserve circle/triangle worker-marker semantics, use a hexagon when sex is
   not provided, and retain the blue selection frame.
 - [x] Use marker fill for current individual risk.
 - [x] In Comparison mode, use a filled square for the applicable Job risk with
@@ -581,6 +581,8 @@ This UI is part of the completed integration, not an optional follow-up.
 - [x] Add view modes for Individual Risk, Job Risk, and Comparison.
 - [x] In Job Risk mode, show Station-anchored square Job markers even when no
   individual Worker assessment exists.
+- [x] Provide a Job Placement Overview whose drag/X/Y edits remain provisional
+  until Save commits the shared Station anchor; Cancel restores the prior position.
 - [x] In Comparison mode, state numerically whether individual risk is above or
   below the applicable Job estimate; never rely on frame/fill colors alone.
 - [ ] Keep markers legible at dense plant-map scale and verify hundreds of workers.

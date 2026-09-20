@@ -154,7 +154,7 @@ class VisualWorkerTool(QGraphicsItem):
         elif gender == "male":
             self.shape = "triangle"
         else:
-            self.shape = "square"  # Default for unspecified or other genders
+            self.shape = "hexagon"  # Distinct from the Job-placement square
 
         
      
@@ -222,6 +222,16 @@ class VisualWorkerTool(QGraphicsItem):
                 QPointF(rect.center().x(), rect.top()),
                 QPointF(rect.right(), rect.bottom()),
                 QPointF(rect.left(), rect.bottom()),
+            ]), self)
+        elif self.shape == "hexagon":
+            inset = rect.width() * 0.24
+            item = QGraphicsPolygonItem(QPolygonF([
+                QPointF(rect.left() + inset, rect.top()),
+                QPointF(rect.right() - inset, rect.top()),
+                QPointF(rect.right(), rect.center().y()),
+                QPointF(rect.right() - inset, rect.bottom()),
+                QPointF(rect.left() + inset, rect.bottom()),
+                QPointF(rect.left(), rect.center().y()),
             ]), self)
         else:
             item = QGraphicsRectItem(rect, self)
@@ -804,7 +814,7 @@ class VisualWorkerTool(QGraphicsItem):
     
     # **Shape Type**
     def getShape(self):
-        return self.shape  # "circle", "triangle", or "square"
+        return self.shape  # "circle", "triangle", or "hexagon"
     
     
     def setBorder(self, border):
@@ -1047,8 +1057,6 @@ class VisualWorkerTool(QGraphicsItem):
         self.datarow["color"] = hex_color
         if hasattr(self, 'item') and self.item:
             self.item.setBrush(QBrush(self.color, Qt.SolidPattern))  # Update color immediately
-
-
 
 
 

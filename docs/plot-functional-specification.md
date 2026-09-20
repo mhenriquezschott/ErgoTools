@@ -1,19 +1,17 @@
 # PLOT Functional Specification
 
-Status: current implemented behavior through 2026-09-15.
+Status: current implemented behavior through 2026-09-20.
 
-Scope: Plant-Layout Organizational Tool (PLOT), including filters, plant canvas,
-Tools Overview, Worker Overview, outcome summaries, and empty states.
+Scope: Plant-Layout Organizational Tool (PLOT), including filters, risk views,
+plant canvas, Tools Overview, Worker/Job Placement Overview, outcome summaries,
+and empty states.
 
 ## Purpose
 
-PLOT presents saved individual LiFFT, DUET, or Shoulder Tool assessments in their
-organizational and spatial context. It displays one plant layout at a time, filters
-assessment results, draws worker markers, summarizes the active scope, and identifies
-stations containing high-risk results.
-
-PLOT reads individual assessment risk. It does not substitute job-level risk profiles
-from JROT.
+PLOT presents saved individual LiFFT, DUET, or Shoulder Tool assessments and current
+approved Job risk estimates in their organizational and spatial context. It displays
+one plant layout at a time, filters assessment results and active Job placements,
+draws Worker and Job markers, and summarizes the active scope.
 
 ## Window Structure
 
@@ -22,10 +20,11 @@ The resizable PLOT window contains:
 1. Ergonomic Tool filter.
 2. Workplace filter.
 3. Optional Worker demographics filter.
-4. Clear Filters and Apply Filters commands.
-5. Plant View action rail and layout canvas.
-6. Tools Overview and Worker Overview tabs.
-7. Tool Outcome area with filtered statistics, risk ranges, group gauge, and
+4. Individual, Job, and Comparison risk-view selector.
+5. Clear Filters and Apply Filters commands.
+6. Plant View action rail and layout canvas.
+7. Tools Overview and mode-specific Worker or Job Placement Overview tab.
+8. Tool Outcome area with filtered statistics, risk ranges, group gauge(s), and
    highlights.
 
 The minimum supported window size is approximately 1300 x 900. Resizing must retain
@@ -98,10 +97,15 @@ do not replace those filters.
 The selected plant supplies the background image. Saved assessment markers are
 drawn over it using their persisted position and visual properties.
 
-Marker semantics:
+Marker semantics by view:
 
-- Shape identifies recorded sex.
-- Fill color identifies the selected assessment's risk category.
+- Individual uses a triangle for Male, circle for Female, and hexagon when sex is
+  not provided. Fill identifies the individual assessment risk category.
+- Job uses one filled square per active Job placement. Its fill identifies the
+  current approved Job risk; multiple Workers assigned to that placement do not
+  duplicate the square.
+- Comparison nests the smaller individual Worker symbol inside the applicable
+  filled Job-risk square.
 - A blue border identifies the selected marker.
 - Visible controls whether a marker is drawn.
 - Enable controls whether its result participates in summaries and outcomes.
@@ -191,6 +195,24 @@ rebuilding the scene must safely cancel the pulse.
 The plant image control must retain its allocated size when Worker Overview content
 changes.
 
+## Job Placement Overview
+
+In Job view, the second overview tab becomes **Job Placement**. It operates on the
+active placements in the current applied workplace, shift, and ergonomic-tool scope.
+
+- The selector, first/previous/next/last controls, and Locate select the exact Job
+  placement and corresponding map square.
+- The panel displays the full workplace/shift context, Job identity, assigned-Worker
+  count, current Job cumulative damage and probability, and approved profile/version.
+- X and Y represent the shared, shift-independent Station anchor. Worker-specific
+  saved marker coordinates remain separate.
+- Dragging a Job square or editing X/Y creates a provisional movement only. The
+  database must remain unchanged until **Save position** is pressed.
+- **Cancel movement** restores the prior displayed position. **Save position** commits
+  the Station anchor and refreshes every placement that shares that Station.
+- While movement is pending, placement selection/navigation is disabled so the
+  pending edit cannot be applied to a different placement.
+
 ## Filtered Results
 
 Only enabled results in the current applied tool/demographic/workplace scope contribute
@@ -211,9 +233,10 @@ Overall averages use all enabled matching results.
 
 ## Group Outcome
 
-The group score is the arithmetic mean of outcome probability across enabled matching
-results for the applied tool. The gauge, category label, percentage, and color must
-use the shared risk ranges defined in the main UI specification.
+In Individual view, the group score is the arithmetic mean of outcome probability
+across enabled matching Worker results. Job view summarizes active placed Jobs.
+Comparison shows separate Individual-average and applicable-Job-average gauges.
+Every gauge uses the same shared risk ranges defined in the main UI specification.
 
 The gauge label is tool-specific:
 

@@ -333,6 +333,16 @@ class PlotMapSymbolLegend(QWidget):
                 QPointF(rect.right(), rect.bottom()),
                 QPointF(rect.left(), rect.bottom()),
             ]))
+        elif shape == "hexagon":
+            inset = rect.width() * 0.24
+            painter.drawPolygon(QPolygonF([
+                QPointF(rect.left() + inset, rect.top()),
+                QPointF(rect.right() - inset, rect.top()),
+                QPointF(rect.right(), rect.center().y()),
+                QPointF(rect.right() - inset, rect.bottom()),
+                QPointF(rect.left() + inset, rect.bottom()),
+                QPointF(rect.left(), rect.center().y()),
+            ]))
         else:
             painter.drawRect(rect)
         if nested:
@@ -372,7 +382,7 @@ class PlotMapSymbolLegend(QWidget):
 
         x = self._draw_entry(painter, 2, 33, "triangle", "Male")
         x = self._draw_entry(painter, x, 33, "circle", "Female")
-        self._draw_entry(painter, x, 33, "square", "Sex not provided")
+        self._draw_entry(painter, x, 33, "hexagon", "Sex not provided")
         if self.mode == "comparison":
             self._draw_entry(
                 painter, 2, 57, "square", "Job outside / Individual inside", nested=True
@@ -451,12 +461,16 @@ class PlotWorkerMarkerPreview(QWidget):
         elif self.gender == "female":
             painter.drawEllipse(center, size, size)
         else:
-            painter.drawRect(QRectF(
-                center.x() - size,
-                center.y() - size,
-                size * 2,
-                size * 2,
-            ))
+            rect = QRectF(center.x() - size, center.y() - size, size * 2, size * 2)
+            inset = rect.width() * 0.24
+            painter.drawPolygon(QPolygonF([
+                QPointF(rect.left() + inset, rect.top()),
+                QPointF(rect.right() - inset, rect.top()),
+                QPointF(rect.right(), rect.center().y()),
+                QPointF(rect.right() - inset, rect.bottom()),
+                QPointF(rect.left() + inset, rect.bottom()),
+                QPointF(rect.left(), rect.center().y()),
+            ]))
 
 
 class PlotHighlightDetailsDialog(QDialog):
@@ -2557,6 +2571,7 @@ class PlantLayoutWindow(QDialog):
         self.outcome_group.setMinimumWidth(700)
         self.outcome_group.setFixedHeight(210)
 
+        self.buildJobOverviewPanel(icon_root)
         self.details_tabs = QtWidgets.QTabWidget()
         self.details_tabs.setObjectName("plotDetailsTabs")
         self.details_tabs.setIconSize(QSize(24, 24))
@@ -2580,8 +2595,11 @@ class PlantLayoutWindow(QDialog):
         self.worker_overview_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.worker_overview_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.worker_overview_scroll.setWidget(self.workerinfo_group)
+        self.marker_overview_stack = QtWidgets.QStackedWidget()
+        self.marker_overview_stack.addWidget(self.worker_overview_scroll)
+        self.marker_overview_stack.addWidget(self.job_overview_scroll)
         self.details_tabs.addTab(
-            self.worker_overview_scroll, QIcon(worker_tab_icon), "Worker Overview"
+            self.marker_overview_stack, QIcon(worker_tab_icon), "Worker Overview"
         )
         self.summary_group.setTitle("")
         self.workerinfo_group.setTitle("")
@@ -2736,6 +2754,22 @@ class PlantLayoutWindow(QDialog):
                 padding: 6px 8px;
                 font-weight: 600;
             }
+            QLabel#jobAssignmentContext {
+                color: #304652;
+                background: #F4F7F9;
+                border: 1px solid #D5DEE5;
+                border-radius: 4px;
+                padding: 4px 6px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QLabel#jobPositionNote { color: #506273; }
+            QLabel#jobPositionStatus {
+                color: #506273;
+                font-weight: 700;
+            }
+            QLabel#jobPositionStatus[pending="true"] { color: #A65A00; }
+            QLabel#jobPositionStatus[saved="true"] { color: #168A38; }
             QPushButton#plotAlphabetButton {
                 padding: 0;
                 border: 0;
@@ -2933,6 +2967,147 @@ class PlantLayoutWindow(QDialog):
             QToolTip { background: #1B2933; color: white; border: 1px solid #0B326C; padding: 6px; }
         """)
 
+    def buildJobOverviewPanel(self, icon_root):
+        """Build the placement-focused counterpart to Worker Overview."""
+        self.plot_icon_root = icon_root
+        self.job_overview_panel = QWidget()
+        self.job_overview_panel.setObjectName("jobOverviewPanel")
+        root = QVBoxLayout(self.job_overview_panel)
+        root.setContentsMargins(8, 8, 8, 8)
+        root.setSpacing(5)
+
+        selector_row = QHBoxLayout()
+        selector_row.setSpacing(7)
+        self.job_overview_combo = QComboBox(self.job_overview_panel)
+        self.job_overview_combo.setToolTip("Select a Job placement from the current map scope.")
+        self.job_overview_combo.currentIndexChanged.connect(self.jobOverviewSelectionChanged)
+        selector_row.addWidget(self.job_overview_combo, 1)
+        self.locate_job_button = QPushButton(self.job_overview_panel)
+        self.locate_job_button.setIcon(QIcon(os.path.join(icon_root, "locate.png")))
+        self.locate_job_button.setIconSize(QSize(22, 22))
+        self.locate_job_button.setFixedSize(36, 36)
+        self.locate_job_button.setToolTip("Locate the selected Job placement on the plant layout.")
+        self.locate_job_button.clicked.connect(self.locateSelectedJob)
+        selector_row.addWidget(self.locate_job_button)
+        root.addLayout(selector_row)
+
+        navigation = QHBoxLayout()
+        navigation.setSpacing(5)
+        self.job_navigation_buttons = []
+        for icon_name, tooltip, callback in (
+            ("first.png", "Select the first Job placement.", lambda: self.selectJobOverviewIndex(0)),
+            ("previous.png", "Select the previous Job placement.", lambda: self.stepJobOverview(-1)),
+            ("next.png", "Select the next Job placement.", lambda: self.stepJobOverview(1)),
+            ("last.png", "Select the last Job placement.", self.selectLastJobOverview),
+        ):
+            button = QPushButton(self.job_overview_panel)
+            button.setIcon(QIcon(os.path.join(icon_root, icon_name)))
+            button.setIconSize(QSize(20, 20))
+            button.setToolTip(tooltip)
+            button.clicked.connect(callback)
+            navigation.addWidget(button, 1)
+            self.job_navigation_buttons.append(button)
+        root.addLayout(navigation)
+
+        self.job_context_label = QLabel("No Job placement selected", self.job_overview_panel)
+        self.job_context_label.setObjectName("jobAssignmentContext")
+        self.job_context_label.setWordWrap(True)
+        self.job_context_label.setMinimumHeight(30)
+        root.addWidget(self.job_context_label)
+
+        placement_group = QGroupBox("Job placement", self.job_overview_panel)
+        placement_group.setObjectName("workerSubgroup")
+        placement_grid = QGridLayout(placement_group)
+        placement_grid.setContentsMargins(10, 10, 10, 8)
+        placement_grid.setHorizontalSpacing(8)
+        placement_grid.setVerticalSpacing(4)
+        self.job_overview_values = {}
+        for row, (key, label) in enumerate((
+            ("job", "Job"),
+            ("workers", "Assigned workers"),
+        )):
+            value = QLabel("–", placement_group)
+            value.setWordWrap(True)
+            self.job_overview_values[key] = value
+            placement_grid.addWidget(QLabel(label, placement_group), row, 0)
+            placement_grid.addWidget(value, row, 1)
+        placement_grid.setColumnStretch(1, 1)
+        root.addWidget(placement_group)
+
+        risk_group = QGroupBox("Current Job risk", self.job_overview_panel)
+        risk_group.setObjectName("workerSubgroup")
+        risk_grid = QGridLayout(risk_group)
+        risk_grid.setContentsMargins(10, 10, 10, 8)
+        risk_grid.setHorizontalSpacing(8)
+        risk_grid.setVerticalSpacing(4)
+        for row, (key, label) in enumerate((
+            ("damage", "Cumulative damage"),
+            ("risk", "Outcome probability"),
+            ("profile", "Approved profile"),
+        )):
+            value = QLabel("–", risk_group)
+            value.setWordWrap(True)
+            self.job_overview_values[key] = value
+            risk_grid.addWidget(QLabel(label, risk_group), row, 0)
+            risk_grid.addWidget(value, row, 1)
+        risk_grid.setColumnStretch(1, 1)
+        root.addWidget(risk_group)
+
+        position_group = QGroupBox("Station map position", self.job_overview_panel)
+        position_group.setObjectName("workerSubgroup")
+        position_layout = QVBoxLayout(position_group)
+        position_layout.setContentsMargins(10, 10, 10, 8)
+        position_layout.setSpacing(5)
+        position_note = QLabel(
+            "Shared by every Job placement at this Station.", position_group
+        )
+        position_note.setObjectName("jobPositionNote")
+        position_note.setWordWrap(True)
+        position_layout.addWidget(position_note)
+        coordinates = QHBoxLayout()
+        coordinates.addWidget(QLabel("X", position_group))
+        self.job_x_input = QLineEdit(position_group)
+        coordinates.addWidget(self.job_x_input, 1)
+        coordinates.addWidget(QLabel("Y", position_group))
+        self.job_y_input = QLineEdit(position_group)
+        coordinates.addWidget(self.job_y_input, 1)
+        position_layout.addLayout(coordinates)
+        self.job_position_status = QLabel("No position selected", position_group)
+        self.job_position_status.setObjectName("jobPositionStatus")
+        position_layout.addWidget(self.job_position_status)
+        action_row = QHBoxLayout()
+        self.cancel_job_position_button = QPushButton("Cancel movement", position_group)
+        self.cancel_job_position_button.setIcon(QIcon(os.path.join(icon_root, "cancel.png")))
+        self.cancel_job_position_button.setIconSize(QSize(20, 20))
+        self.cancel_job_position_button.clicked.connect(self.cancelPendingJobPosition)
+        self.save_job_position_button = QPushButton("Save position", position_group)
+        self.save_job_position_button.setIcon(QIcon(os.path.join(icon_root, "save.png")))
+        self.save_job_position_button.setIconSize(QSize(20, 20))
+        self.save_job_position_button.clicked.connect(self.savePendingJobPosition)
+        action_row.addWidget(self.cancel_job_position_button)
+        action_row.addWidget(self.save_job_position_button)
+        position_layout.addLayout(action_row)
+        root.addWidget(position_group)
+        root.addStretch(1)
+
+        self.job_x_input.textEdited.connect(self.jobCoordinateEdited)
+        self.job_y_input.textEdited.connect(self.jobCoordinateEdited)
+        self._pending_job_marker = None
+        self._locate_job_marker = None
+        self._locate_job_pulses_remaining = 0
+        self._locate_job_timer = QTimer(self)
+        self._locate_job_timer.setInterval(190)
+        self._locate_job_timer.timeout.connect(self.advanceJobLocatePulse)
+        self.setJobPositionPending(False)
+
+        self.job_overview_scroll = QtWidgets.QScrollArea()
+        self.job_overview_scroll.setObjectName("jobOverviewScroll")
+        self.job_overview_scroll.setWidgetResizable(True)
+        self.job_overview_scroll.setFrameShape(QFrame.NoFrame)
+        self.job_overview_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.job_overview_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.job_overview_scroll.setWidget(self.job_overview_panel)
+
     def selectPlotTool(self, tool_id):
         """Select a tool through the visual filter control without duplicating filter logic."""
         index = self.tool_combo.findText(tool_id, Qt.MatchFixedString)
@@ -2943,7 +3118,18 @@ class PlantLayoutWindow(QDialog):
     def selectRiskViewMode(self, mode):
         if mode not in {"individual", "job", "comparison"}:
             return
+        current_mode = getattr(self, "plot_risk_view_mode", "individual")
+        if current_mode == mode:
+            self.syncRiskViewModePresentation(mode)
+            return
+        if current_mode == "job" and mode != "job":
+            self.cancelPendingJobPosition()
         self.plot_risk_view_mode = mode
+        self.syncRiskViewModePresentation(mode)
+        self.applyfilterButtonClicked()
+
+    def syncRiskViewModePresentation(self, mode):
+        """Keep mode-specific panels and labels aligned without applying filters."""
         if hasattr(self, "map_symbol_legend"):
             self.map_symbol_legend.setMode(mode)
         if hasattr(self, "outcome_result_stack"):
@@ -2952,10 +3138,21 @@ class PlantLayoutWindow(QDialog):
         for key, button in self.plot_risk_view_buttons.items():
             button.setChecked(key == mode)
         if hasattr(self, "details_tabs"):
-            self.details_tabs.setTabEnabled(1, mode != "job")
-            if mode == "job":
-                self.details_tabs.setCurrentIndex(0)
-        self.applyfilterButtonClicked()
+            job_mode = mode == "job"
+            self.marker_overview_stack.setCurrentIndex(1 if job_mode else 0)
+            self.details_tabs.setTabText(
+                1, "Job Placement" if job_mode else "Worker Overview"
+            )
+            icon_name = "jobmanagement.png" if job_mode else "worker.png"
+            self.details_tabs.setTabIcon(
+                1, QIcon(os.path.join(self.plot_icon_root, icon_name))
+            )
+            self.details_tabs.setTabToolTip(
+                1,
+                "Inspect and position a Job placement using its shared Station anchor."
+                if job_mode else
+                "Select and control an individual worker marker on the plant layout.",
+            )
 
     def updateOutcomeRiskLayout(self, mode):
         """Use compact geometry only when two Comparison gauges share the panel."""
@@ -2966,6 +3163,218 @@ class PlantLayoutWindow(QDialog):
             label.setProperty("compact", comparison)
             label.style().unpolish(label)
             label.style().polish(label)
+
+    def selectedJobOverviewRecord(self):
+        placement_id = self.job_overview_combo.currentData()
+        return next(
+            (
+                record for record in getattr(self, "job_risk_marker_dataset", [])
+                if record.get("job_placement_id") == placement_id
+            ),
+            None,
+        )
+
+    def selectedJobMarker(self):
+        placement_id = self.job_overview_combo.currentData()
+        return next(
+            (
+                marker for marker in getattr(self, "visual_job_markers", [])
+                if marker.job_placement_id == placement_id
+            ),
+            None,
+        )
+
+    def populateJobOverview(self):
+        if not hasattr(self, "job_overview_combo"):
+            return
+        preferred = getattr(self, "_preferred_job_placement_id", None)
+        if preferred is None:
+            preferred = self.job_overview_combo.currentData()
+        self.job_overview_combo.blockSignals(True)
+        self.job_overview_combo.clear()
+        for record in getattr(self, "job_risk_marker_dataset", []):
+            self.job_overview_combo.addItem(
+                f"{record['job_id']}  |  {record['station_id']}  |  Shift {record['shift_id']}",
+                record["job_placement_id"],
+            )
+        index = self.job_overview_combo.findData(preferred)
+        self.job_overview_combo.setCurrentIndex(index if index >= 0 else (0 if self.job_overview_combo.count() else -1))
+        self.job_overview_combo.blockSignals(False)
+        self._preferred_job_placement_id = None
+        self.jobOverviewSelectionChanged()
+
+    def jobOverviewSelectionChanged(self, _index=None):
+        self.cancelJobLocatePulse()
+        record = self.selectedJobOverviewRecord()
+        if record is None:
+            self.clearJobOverview()
+            return
+        for marker in getattr(self, "visual_job_markers", []):
+            marker.setSelected(marker.job_placement_id == record["job_placement_id"])
+        self.job_context_label.setText(
+            f"{record['plant_name']}  ›  {record['section_name']}  ›  "
+            f"{record['line_name']}  ›  {record['station_id']}   •   Shift {record['shift_id']}"
+        )
+        self.job_overview_values["job"].setText(
+            f"{record['job_id']} - {record.get('job_name') or 'Unnamed Job'}"
+        )
+        self.job_overview_values["workers"].setText(
+            str(record.get("assigned_worker_count", 0))
+        )
+        damage = record.get("total_cumulative_damage")
+        probability = record.get("probability_outcome")
+        self.job_overview_values["damage"].setText(
+            f"{float(damage):.4f}" if damage is not None else "Not available"
+        )
+        self.job_overview_values["risk"].setText(
+            f"{float(probability):.1f}%" if probability is not None else "Not available"
+        )
+        profile = record.get("job_risk_profile_name") or "Not available"
+        version = record.get("job_risk_profile_version")
+        if version is not None:
+            profile += f" (v{version})"
+        self.job_overview_values["profile"].setText(profile)
+        self.job_x_input.setText("" if record.get("x") is None else f"{float(record['x']):.1f}")
+        self.job_y_input.setText("" if record.get("y") is None else f"{float(record['y']):.1f}")
+        self.job_position_status.setText(
+            "Station anchor saved" if record.get("x") is not None else "Station anchor not positioned"
+        )
+        self.setJobPositionStatus(saved=record.get("x") is not None)
+        self.setJobPositionPending(False)
+
+    def clearJobOverview(self):
+        self.job_context_label.setText("No Job placements match the current filters.")
+        for value in self.job_overview_values.values():
+            value.setText("–")
+        self.job_x_input.clear()
+        self.job_y_input.clear()
+        self.job_position_status.setText("No position selected")
+        self.setJobPositionStatus()
+        self.setJobPositionPending(False, has_selection=False)
+
+    def setJobPositionStatus(self, *, pending=False, saved=False):
+        self.job_position_status.setProperty("pending", pending)
+        self.job_position_status.setProperty("saved", saved)
+        self.job_position_status.style().unpolish(self.job_position_status)
+        self.job_position_status.style().polish(self.job_position_status)
+
+    def selectJobOverviewIndex(self, index):
+        if self.job_overview_combo.count() and self._pending_job_marker is None:
+            self.job_overview_combo.setCurrentIndex(max(0, min(index, self.job_overview_combo.count() - 1)))
+
+    def stepJobOverview(self, step):
+        self.selectJobOverviewIndex(self.job_overview_combo.currentIndex() + step)
+
+    def selectLastJobOverview(self):
+        self.selectJobOverviewIndex(self.job_overview_combo.count() - 1)
+
+    def setJobPositionPending(self, pending, *, has_selection=True):
+        self.save_job_position_button.setEnabled(pending and has_selection)
+        self.cancel_job_position_button.setEnabled(pending and has_selection)
+        self.job_overview_combo.setEnabled(not pending and has_selection)
+        self.locate_job_button.setEnabled(has_selection)
+        for button in self.job_navigation_buttons:
+            button.setEnabled(not pending and has_selection)
+        self.job_x_input.setEnabled(has_selection)
+        self.job_y_input.setEnabled(has_selection)
+
+    def jobCoordinateEdited(self, _text=None):
+        marker = self.selectedJobMarker()
+        if marker is None:
+            return
+        self._pending_job_marker = marker
+        marker.position_pending = True
+        self.job_position_status.setText("Unsaved Station position")
+        self.setJobPositionStatus(pending=True)
+        self.setJobPositionPending(True)
+
+    def selectJobMarker(self, marker):
+        if self._pending_job_marker is not None and self._pending_job_marker is not marker:
+            return
+        index = self.job_overview_combo.findData(marker.job_placement_id)
+        if index >= 0:
+            self.job_overview_combo.setCurrentIndex(index)
+        for candidate in getattr(self, "visual_job_markers", []):
+            candidate.setSelected(candidate is marker)
+        if self.plot_risk_view_mode == "job":
+            self.details_tabs.setCurrentIndex(1)
+
+    def jobMarkerMoved(self, marker):
+        self.selectJobMarker(marker)
+        self._pending_job_marker = marker
+        x_value, y_value = marker.anchorCoordinates()
+        self.job_x_input.setText(f"{x_value:.1f}")
+        self.job_y_input.setText(f"{y_value:.1f}")
+        self.job_position_status.setText("Unsaved Station position")
+        self.setJobPositionStatus(pending=True)
+        self.setJobPositionPending(True)
+        for candidate in getattr(self, "visual_job_markers", []):
+            if candidate is not marker:
+                candidate.setEnabled(False)
+
+    def savePendingJobPosition(self):
+        marker = self._pending_job_marker or self.selectedJobMarker()
+        if marker is None:
+            return
+        try:
+            x_value = float(self.job_x_input.text().strip())
+            y_value = float(self.job_y_input.text().strip())
+            marker.setPendingAnchor(x_value, y_value)
+            database_path = getattr(self.parent(), "projectdatabasePath", "")
+            marker.commitPosition(database_path)
+        except (TypeError, ValueError):
+            QMessageBox.warning(self, "Invalid position", "Station X and Y must be valid numbers.")
+            return
+        except Exception as error:
+            QMessageBox.critical(self, "Position not saved", str(error))
+            return
+        self._preferred_job_placement_id = marker.job_placement_id
+        self._pending_job_marker = None
+        self.setJobPositionPending(False)
+        self.loadWorkersAndMarkersAfterStationMove()
+
+    def cancelPendingJobPosition(self):
+        marker = getattr(self, "_pending_job_marker", None)
+        if marker is not None:
+            try:
+                marker.cancelPendingPosition()
+            except RuntimeError:
+                pass
+        self._pending_job_marker = None
+        for candidate in getattr(self, "visual_job_markers", []):
+            candidate.setEnabled(True)
+        if hasattr(self, "job_overview_combo"):
+            self.jobOverviewSelectionChanged()
+
+    def locateSelectedJob(self):
+        marker = self.selectedJobMarker()
+        if marker is None:
+            return
+        self.cancelJobLocatePulse()
+        self._locate_job_marker = marker
+        self._locate_job_pulses_remaining = 10
+        marker.setSelected(True)
+        self.plantlayout_image.ensureVisible(marker)
+        self._locate_job_timer.start()
+
+    def cancelJobLocatePulse(self):
+        if hasattr(self, "_locate_job_timer"):
+            self._locate_job_timer.stop()
+        self._locate_job_marker = None
+        self._locate_job_pulses_remaining = 0
+
+    def advanceJobLocatePulse(self):
+        marker = self._locate_job_marker
+        if marker is None or self._locate_job_pulses_remaining <= 0:
+            self._locate_job_timer.stop()
+            if marker is not None:
+                marker.setSelected(True)
+            return
+        marker.setSelected(not marker.isSelected())
+        self._locate_job_pulses_remaining -= 1
+        if self._locate_job_pulses_remaining <= 0:
+            self._locate_job_timer.stop()
+            marker.setSelected(True)
 
     def updateWorkerFilterDisclosure(self, expanded):
         """Collapse demographic fields completely instead of merely disabling them."""
@@ -3460,6 +3869,8 @@ class PlantLayoutWindow(QDialog):
         # Filtering replaces graphics-scene objects; release any pulse target
         # before Qt deletes those objects.
         self.cancelLocatePulse()
+        self.cancelJobLocatePulse()
+        self.cancelPendingJobPosition()
        	#self.loadPlantImage()
        	
         self.applied_plot_tool = self.tool_combo.currentText().strip() or "LiFFT"
@@ -3563,8 +3974,7 @@ class PlantLayoutWindow(QDialog):
         if index != -1:
             self.tool_combo.setCurrentIndex(index)
         self.plot_risk_view_mode = "individual"
-        for mode, button in getattr(self, "plot_risk_view_buttons", {}).items():
-            button.setChecked(mode == "individual")
+        self.syncRiskViewModePresentation("individual")
     
         # **Reset Gender ComboBox (Default: Both)**
         if self.gender_combo.count() > 0:
@@ -4761,6 +5171,7 @@ class PlantLayoutWindow(QDialog):
         self.workerstationshifttool_dataset = self.getWorkers(order_by)
         self.workerstationshiftAlltools_dataset = self.getWorkersAllTools(order_by)
         self.job_risk_marker_dataset = self.getJobRiskMarkers()
+        self.populateJobOverview()
     
         # Suspend signals to prevent unwanted events
         self.workerComboBox.blockSignals(True)
@@ -6097,6 +6508,15 @@ class PlantLayoutWindow(QDialog):
     def loadVisualWorkerTools(self):
         """Rebuild map markers for the selected Individual, Job, or Comparison view."""
         self.cancelLocatePulse()
+        self.cancelJobLocatePulse()
+
+        pending_marker = getattr(self, "_pending_job_marker", None)
+        if pending_marker is not None:
+            try:
+                pending_marker.cancelPendingPosition()
+            except RuntimeError:
+                pass
+            self._pending_job_marker = None
     
         # **Ensure the dataset is available**
         if not hasattr(self, 'workerstationshifttool_dataset'):
@@ -6141,6 +6561,7 @@ class PlantLayoutWindow(QDialog):
                 )
                 self.visual_job_markers.append(marker)
             self.setWorkerOverviewEnabled(False)
+            self.jobOverviewSelectionChanged()
             self.updateMapScopeFooter()
             return
 
@@ -6154,10 +6575,6 @@ class PlantLayoutWindow(QDialog):
             worker_tool = VisualWorkerTool(self.plantlayout_scene, worker_data, self.scale_factor)  # Create the object
             self.visual_worker_tools.append(worker_tool)  # Store in the list
         self.updateMapScopeFooter()
-
-    def jobMarkerPositionSaved(self, station_key, x, y):
-        """Refresh overlapping Job markers after a Station anchor is moved."""
-        QTimer.singleShot(0, self.loadWorkersAndMarkersAfterStationMove)
 
     def loadWorkersAndMarkersAfterStationMove(self):
         self.loadWorkers(0 if self.isNumberOrder else 1)

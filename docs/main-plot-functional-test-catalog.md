@@ -68,7 +68,7 @@ write to the repository's canonical `.ergprj`, database, or image files.
 - Current approved, draft, and retired Job Risk Profiles.
 - A Job profile intentionally missing its Shoulder measurement.
 - One Station without a PLOT anchor for dashed-marker drag/persistence testing.
-- A worker with sex/gender not provided for square-marker verification.
+- A worker with sex/gender not provided for hexagon-marker verification.
 - Individual values both above and below the applicable Job estimate.
 
 Rebuild it only through the script so its database, descriptor, image paths, and
@@ -198,9 +198,10 @@ independently calculated reference vectors, not values copied from the applicati
 | MAP-020 | Comparison view | A filled Job-risk square contains a smaller individual-risk worker symbol; the blue outer frame remains selection-only. |
 | MAP-021 | Comparison outcome gauges | The shared risk-range legend is followed by separate Individual-average and applicable-Job-average gauges calculated from the current filtered worker scope. Both gauges use the same thresholds; the Job gauge shows Not available when no comparable approved Job risk exists. |
 | MAP-022 | Missing Job risk | Missing tool measurement uses a gray dashed frame and is not calculated as zero. |
-| MAP-023 | Unknown sex | Worker marker uses a square without changing the assessment risk color. |
-| MAP-024 | Station initialization | Dragging the first unpositioned Job marker creates the Station anchor and persists after reopen. |
+| MAP-023 | Unknown sex | Worker marker uses a hexagon without changing the assessment risk color. This remains visually distinct from the square used for Job risk. |
+| MAP-024 | Station placement editing | Dragging a Job marker is provisional: the database remains unchanged until Save position; Cancel movement restores the prior location. Saving the first unpositioned marker creates the shared Station anchor and persists after reopen. |
 | MAP-025 | Mode symbol legend | Tools Overview uses neutral symbols to explain the active map encoding without assigning a risk color to the legend icons. Job mode states that one square represents one placement, and Job marker tooltips report the active assigned-worker count. |
+| MAP-026 | Job Placement Overview | Job mode replaces Worker Overview with the exact-placement selector, navigation, Locate, Job/risk/profile details, Station coordinates, status, Save, and Cancel. Returning to Individual or Comparison restores Worker Overview and its existing Save controls. |
 
 ## PLOT Summary and Outcome Tests
 
@@ -247,6 +248,7 @@ viewport where practical.
 | PLOT filter disclosure | Risk View and Worker Demographics remain equal-height peers; the complete plant scene and tool rail remain visible. |
 | PLOT multi-workplace | Checked rows, summary text, and long IDs fit/tooltips exist. |
 | PLOT Worker Overview | Full plant canvas retained; details, Locate, and visual controls fit. |
+| PLOT Job Placement Overview | Selector, navigation, details, coordinates, status, Save, and Cancel fit with demographics collapsed and expanded. |
 | PLOT risk views | Individual, Job, and Comparison markers, summaries, chart, and gauge agree. |
 | PLOT one worker located | Marker remains live and correctly framed. |
 | PLOT empty result | No stale graph, worker details, gauge, marker, or highlight. |
@@ -264,7 +266,7 @@ expected and blank/neutral only in documented empty states.
 | `tests/test_worker_navigation_context.py` | Workplace dialog identity and context retention during worker navigation. |
 | `tests/test_revised_ui_smoke.py` | Main summaries, risk presentation, worker optional fields, organization UI. |
 | `tests/test_plot_responsive_ui.py` | PLOT sizing, filters, charts, tooltips, empty states, and single-worker Locate. |
-| `tests/test_plot_risk_view_rendering.py` | Placement-level Job chart, marker paint bounds, and nested Comparison geometry. |
+| `tests/test_plot_risk_view_rendering.py` | Placement-level Job chart and overview, provisional/committed Station movement, hexagonal unknown-sex marker, marker paint bounds, and nested Comparison geometry. |
 | `tests/test_comparative_risk_fixture.py` | Comparative fixture schema, classification, missing-risk, square-marker, and unpositioned-Station invariants. |
 | `tests/test_schema_migrations.py` | Non-destructive schema migration. |
 

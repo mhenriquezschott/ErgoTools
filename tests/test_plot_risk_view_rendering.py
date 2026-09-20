@@ -1,5 +1,6 @@
 import os
 import shutil
+import sqlite3
 import sys
 import tempfile
 import types
@@ -9,9 +10,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 sys.path.insert(0, os.path.abspath("src"))
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import QPointF, Qt
 from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt5.QtWidgets import QApplication, QGraphicsPolygonItem, QWidget
 
 webengine = types.ModuleType("PyQt5.QtWebEngineWidgets")
 webengine.QWebEngineView = QWidget
@@ -70,8 +71,11 @@ class PlotRiskViewRenderingTests(unittest.TestCase):
         self._settle()
 
         self.assertEqual(self.window.map_symbol_legend.mode, "job")
+        self.assertEqual(self.window.marker_overview_stack.currentIndex(), 1)
+        self.assertEqual(self.window.details_tabs.tabText(1), "Job Placement")
         records = self.window.job_risk_marker_dataset
         self.assertEqual(len(self.window.visual_job_markers), len(records))
+        self.assertEqual(self.window.job_overview_combo.count(), len(records))
         available_jobs = {
             record["job_id"]
             for record in records
@@ -85,7 +89,9 @@ class PlotRiskViewRenderingTests(unittest.TestCase):
         self.assertTrue(all(label.get_rotation() == 0 for label in axis.get_yticklabels()))
         self.assertTrue(all("(" in label.get_text() for label in axis.get_yticklabels()))
 
-        marker = self.window.visual_job_markers[0]
+        marker = next(
+            marker for marker in self.window.visual_job_markers if marker.has_anchor
+        )
         self.assertIn(
             f"Assigned workers: {marker.assigned_worker_count}",
             marker.toolTip(),
@@ -97,6 +103,76 @@ class PlotRiskViewRenderingTests(unittest.TestCase):
         )
         self.assertTrue(marker.boundingRect().contains(selection_rect))
         self.assertIn(marker.job_id.removeprefix("Job-"), marker.job_id)
+
+    def test_job_position_is_provisional_until_saved_and_cancel_restores_it(self):
+        self.window.selectRiskViewMode("job")
+        self._settle()
+        marker = next(
+            marker for marker in self.window.visual_job_markers if marker.has_anchor
+        )
+        self.window.selectJobMarker(marker)
+        original_position = QPointF(marker.pos())
+        key = marker.station_key
+
+        def stored_position():
+            with sqlite3.connect(self.host.projectdatabasePath) as connection:
+                return connection.execute(
+                    """
+                    SELECT x, y, position_source
+                    FROM PlotStationPosition
+                    WHERE plant_name = ? AND section_name = ?
+                      AND line_name = ? AND station_id = ?
+                    """,
+                    (key.plant_name, key.section_name, key.line_name, key.station_id),
+                ).fetchone()
+
+        original_stored = stored_position()
+        marker.setPos(original_position + QPointF(13.0, 7.0))
+        self.window.jobMarkerMoved(marker)
+        self.assertEqual(stored_position(), original_stored)
+        self.assertTrue(self.window.save_job_position_button.isEnabled())
+        self.assertEqual(self.window.job_position_status.property("pending"), True)
+
+        self.window.cancelPendingJobPosition()
+        self.assertEqual(marker.pos(), original_position)
+        self.assertEqual(stored_position(), original_stored)
+
+        marker.setPos(original_position + QPointF(13.0, 7.0))
+        self.window.jobMarkerMoved(marker)
+        self.window.savePendingJobPosition()
+        self._settle()
+        saved = stored_position()
+        self.assertAlmostEqual(saved[0], round(original_stored[0] + 13.0, 1))
+        self.assertAlmostEqual(saved[1], round(original_stored[1] + 7.0, 1))
+        self.assertEqual(saved[2], "job")
+
+        with sqlite3.connect(self.host.projectdatabasePath) as connection:
+            connection.execute(
+                """
+                UPDATE PlotStationPosition
+                SET x = ?, y = ?, position_source = ?
+                WHERE plant_name = ? AND section_name = ?
+                  AND line_name = ? AND station_id = ?
+                """,
+                (*original_stored, key.plant_name, key.section_name,
+                 key.line_name, key.station_id),
+            )
+        self.window.loadWorkersAndMarkersAfterStationMove()
+        self._settle()
+
+    def test_unknown_sex_worker_uses_hexagon_not_job_square(self):
+        self.window.selectRiskViewMode("individual")
+        self._settle()
+        unknown_markers = [
+            marker for marker in self.window.visual_worker_tools
+            if marker.shape == "hexagon"
+        ]
+        self.assertTrue(unknown_markers)
+        marker = unknown_markers[0]
+        self.assertIsInstance(marker.item, QGraphicsPolygonItem)
+        self.assertEqual(marker.item.polygon().count(), 6)
+        self.assertEqual(self.window.marker_overview_stack.currentIndex(), 0)
+        self.assertEqual(self.window.details_tabs.tabText(1), "Worker Overview")
 
     def test_comparison_view_nests_worker_inside_job_square(self):
         self.window.selectRiskViewMode("comparison")
