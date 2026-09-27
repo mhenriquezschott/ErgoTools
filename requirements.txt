@@ -1,7 +1,7 @@
 vtk
 pyqt5
 pycountry
-pulp
+pulp>=3.3
 pyqtwebengine
 pyomo
 highspy

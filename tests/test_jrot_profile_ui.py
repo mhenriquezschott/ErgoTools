@@ -305,6 +305,32 @@ with tempfile.TemporaryDirectory() as temporary_directory:
     rotation_window.loadRotationDetails()
     assert rotation_window._loaded_scheme["id"] == "UI-Scoped-Rotation"
     assert rotation_window._scope_context_ids == selected_contexts
+    assert rotation_window.delete_button.isEnabled()
+    assert rotation_window.search_button.isEnabled()
+
+    rotation_window.clearRotationScope()
+    assert rotation_window._scheme_is_draft
+    assert not rotation_window.delete_button.isEnabled()
+    assert not rotation_window.search_button.isEnabled()
+    rotation_window.cancelRotation()
+    assert rotation_window.rotation_combo.currentText() == "UI-Scoped-Rotation"
+    assert rotation_window._loaded_scheme["id"] == "UI-Scoped-Rotation"
+    assert rotation_window._scope_context_ids == selected_contexts
+    assert rotation_window.delete_button.isEnabled()
+    assert rotation_window.search_button.isEnabled()
+
+    rotation_window.newRotation()
+    assert rotation_window._scheme_is_draft
+    assert rotation_window.rotation_combo.currentText() == ""
+    assert not rotation_window.delete_button.isEnabled()
+    assert not rotation_window.search_button.isEnabled()
+    rotation_window.cancelRotation()
+    assert rotation_window.rotation_combo.currentText() == "UI-Scoped-Rotation"
+    assert rotation_window._loaded_scheme["id"] == "UI-Scoped-Rotation"
+    assert rotation_window._scope_context_ids == selected_contexts
+    rotation_window.show()
+    app.processEvents()
+    rotation_window.grab().save("/tmp/jrot_cancel_restored.png")
 
     complete_target_label = next(
         label

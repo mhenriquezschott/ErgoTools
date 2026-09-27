@@ -61,7 +61,13 @@ previous, next, or last saved scheme.
 - **Save** requires every Worker row and time block to have an eligible value.
 - **Delete** removes the scheme, its scope, targets, and assignments after confirmation.
 - **Search** selects a saved scheme by exact Rotation ID.
-- **Cancel** abandons the current edit and reloads the first saved scheme.
+- **Cancel** abandons the current edit and restores the saved scheme that was active
+  before **New**, **Apply Scope**, or **Clear Scope**.
+
+New schedules and applied scope changes are unsaved drafts. Navigation, Delete, and
+Search are disabled while a draft is active so they cannot operate on a saved scheme
+whose table is no longer displayed. Saving or cancelling returns those controls to
+their position-appropriate states.
 
 Saving is one database transaction. It records:
 
@@ -110,7 +116,9 @@ the result for discard; an in-progress solver call is allowed to finish safely r
 than terminating its thread forcibly.
 
 The active MILP backend is HiGHS. CBC is retained only as a runtime fallback if
-HiGHS cannot initialize; GLPK is not used by the active optimization path.
+HiGHS cannot initialize; GLPK is not used by the active optimization path. JROT uses
+the model-owned variable and structured solve-status APIs available in PuLP 3.3 and
+later, including PuLP 4.
 
 **Use as Current** copies the optimized schedule into the editable table. The user must
 press **Save** to persist it. **Compare** requires an optimized result and opens the
@@ -137,4 +145,5 @@ current-versus-optimized comparison for the selected Risk basis.
   using plain data snapshots.
 - `tests/test_jrot_profile_ui.py` covers profile preflight, both background optimization
   modes, result transfer, both comparison views, scheme save/reload, provenance
-  persistence, organization-wide UI, workplace-scope UI, and visual captures.
+  persistence, organization-wide UI, workplace-scope UI, draft cancellation/control
+  states, and visual captures.

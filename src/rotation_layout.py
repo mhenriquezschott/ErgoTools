@@ -164,6 +164,8 @@ class RotationLayoutWindow(QDialog):
         self._rotation_targets = {}
         self._rotation_measurements = {}
         self._loaded_scheme = None
+        self._cancel_scheme_id = None
+        self._scheme_is_draft = False
         self.initResponsiveUI()
 
     def initResponsiveUI(self):
@@ -883,6 +885,7 @@ class RotationLayoutWindow(QDialog):
 
 
     def clearRotationScope(self):
+        self._beginSchemeDraft()
         self._pending_scope_context_ids = []
         self._scope_context_ids = []
         self.all_jobs_scope_button.setChecked(True)
@@ -890,6 +893,7 @@ class RotationLayoutWindow(QDialog):
         self._updateScopeSummary([])
         self._refreshRotationPool()
         self._renderCurrentPool()
+        self.clearOptimizedTable()
 
 
     def _updateScopeSummary(self, context_ids):
@@ -986,8 +990,8 @@ class RotationLayoutWindow(QDialog):
         if self.workplace_scope_button.isChecked() and not self._pending_scope_context_ids:
             QMessageBox.warning(self, "Rotation Scope", "Select at least one Workplace Station.")
             return
+        self._beginSchemeDraft()
         self._scope_context_ids = list(self._pending_scope_context_ids)
-        self._loaded_scheme = None
         self.choose_workplace_button.setEnabled(bool(self._scope_context_ids))
         self._updateScopeSummary(self._scope_context_ids)
         self._refreshRotationPool()
@@ -1168,6 +1172,29 @@ class RotationLayoutWindow(QDialog):
         self.rotation_combo.addItems(schemes)
         self.rotation_combo.setCurrentIndex(-1)  # No selection by default
         self.rotation_combo.blockSignals(False)
+        self._updateSchemeNavigationStates()
+
+
+    def _beginSchemeDraft(self):
+        if self._loaded_scheme:
+            self._cancel_scheme_id = self._loaded_scheme.get("id")
+        self._loaded_scheme = None
+        self._scheme_is_draft = True
+        self._updateSchemeNavigationStates()
+
+
+    def _updateSchemeNavigationStates(self):
+        if not hasattr(self, "first_button"):
+            return
+        count = self.rotation_combo.count()
+        index = self.rotation_combo.currentIndex()
+        saved_selected = not self._scheme_is_draft and 0 <= index < count
+        self.first_button.setEnabled(saved_selected and index > 0)
+        self.previous_button.setEnabled(saved_selected and index > 0)
+        self.next_button.setEnabled(saved_selected and index < count - 1)
+        self.last_button.setEnabled(saved_selected and index < count - 1)
+        self.delete_button.setEnabled(saved_selected)
+        self.search_button.setEnabled(not self._scheme_is_draft and count > 0)
 
 
     def firstRotationScheme(self):
@@ -1352,6 +1379,8 @@ class RotationLayoutWindow(QDialog):
             return
 
         self._loaded_scheme = scheme
+        self._cancel_scheme_id = scheme["id"]
+        self._scheme_is_draft = False
         self._optimization_mode = scheme["optimization_mode"]
         self._scope_context_ids = list(scheme["context_ids"])
         self._pending_scope_context_ids = list(scheme["context_ids"])
@@ -1433,6 +1462,7 @@ class RotationLayoutWindow(QDialog):
         for row_index in range(min(len(worker_order), table.rowCount())):
             self.handleCellChanged(row_index, 1)
         self.clearOptimizedTable()
+        self._updateSchemeNavigationStates()
         self.label_current_table.setText(f"Current {self.tool_combo.currentText()} Rotation")
 
 
@@ -1654,15 +1684,7 @@ class RotationLayoutWindow(QDialog):
             return
     
         
-         # Enable navigation and management buttons
-        self.first_button.setEnabled(False)
-        self.previous_button.setEnabled(False)
-        self.next_button.setEnabled(False)
-        self.last_button.setEnabled(False)
-        self.delete_button.setEnabled(False)
-        self.search_button.setEnabled(False)
-        self.optimize_btn.setEnabled(False)
-        self.compare_btn.setEnabled(False)
+        self._beginSchemeDraft()
         
         # Clear rotation ID selection
         self.rotation_combo.blockSignals(True)
@@ -1674,7 +1696,6 @@ class RotationLayoutWindow(QDialog):
         # self.rotation_name_input.clear()
         # self.rotation_description_input.clear()
 
-        self._loaded_scheme = None
         self._optimization_mode = "manual"
         self._refreshRotationPool()
 
@@ -1713,25 +1734,19 @@ class RotationLayoutWindow(QDialog):
 
     def cancelRotation(self):
         """
-        Handles the Cancel button click event for rotation layout.
-        Re-enables navigation/management buttons and reloads the first rotation scheme if available.
+        Discard the draft and restore the scheme that was active before editing.
         """
-        # Enable navigation and management buttons
-        self.first_button.setEnabled(True)
-        self.previous_button.setEnabled(True)
-        self.next_button.setEnabled(True)
-        self.last_button.setEnabled(True)
-        self.delete_button.setEnabled(True)
-        self.search_button.setEnabled(True)
-        self.optimize_btn.setEnabled(True)
-        self.compare_btn.setEnabled(True)
-    
-        # Reset the rotation combo box to the first item if available
-        if self.rotation_combo.count() > 0:
-            self.rotation_combo.setCurrentIndex(0)
+        target_index = self.rotation_combo.findText(self._cancel_scheme_id or "")
+        if target_index < 0 and self.rotation_combo.count() > 0:
+            target_index = 0
+        if target_index >= 0:
+            self.rotation_combo.setCurrentIndex(target_index)
             self.loadRotationDetails()
-
-        # Optional: Add any additional cancel/reset logic here
+        else:
+            self._loaded_scheme = None
+            self._scheme_is_draft = False
+            self._updateSchemeNavigationStates()
+            self._updateRotationActionStates()
         
 
     def deleteRotation(self):
@@ -1789,6 +1804,11 @@ class RotationLayoutWindow(QDialog):
                 self.rotation_combo.blockSignals(False)
                 self.rotation_table.setRowCount(0)
                 self.rotation_table.setColumnCount(0)
+                self._loaded_scheme = None
+                self._cancel_scheme_id = None
+                self._scheme_is_draft = False
+                self._updateSchemeNavigationStates()
+                self._updateRotationActionStates()
     
         except sqlite3.Error as e:
             QMessageBox.critical(self, "Database Error", f"An error occurred while deleting the rotation scheme:\n{e}")
