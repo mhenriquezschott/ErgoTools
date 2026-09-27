@@ -224,13 +224,13 @@ class RotationLayoutWindow(QDialog):
         filters_top.addWidget(self.toolfilter_group, 0)
 
         workplace_group = QGroupBox("Workplace")
-        workplace_group.setMinimumHeight(98)
+        workplace_group.setMinimumHeight(88)
         workplace_layout = QHBoxLayout(workplace_group)
         workplace_layout.setContentsMargins(10, 10, 10, 8)
         workplace_layout.setSpacing(8)
         scope_mode = QFrame(workplace_group)
         scope_mode_layout = QVBoxLayout(scope_mode)
-        scope_mode_layout.setContentsMargins(0, 0, 0, 3)
+        scope_mode_layout.setContentsMargins(0, 0, 0, 0)
         scope_mode_layout.setSpacing(2)
         scope_mode_label = QLabel("Rotation scope")
         scope_mode_label.setObjectName("workplaceScopeType")
@@ -244,7 +244,6 @@ class RotationLayoutWindow(QDialog):
         for button in (self.all_jobs_scope_button, self.workplace_scope_button):
             button.setObjectName("scopeSegment")
             button.setCheckable(True)
-            button.setFixedHeight(30)
             self.scope_button_group.addButton(button)
             scope_buttons.addWidget(button)
         self.all_jobs_scope_button.setFixedWidth(82)
@@ -533,8 +532,9 @@ class RotationLayoutWindow(QDialog):
             QPushButton#toolSegment { border-radius: 0; min-height: 44px; text-align: left; padding: 2px 8px; }
             QPushButton#toolSegment:first { border-top-left-radius: 5px; border-bottom-left-radius: 5px; }
             QPushButton#toolSegment:checked { background: #DDF3F5; color: #087E91; border: 2px solid #08A9B5; }
-            QPushButton#scopeSegment { border-radius: 0; min-width: 74px; padding: 2px 3px;
-                                       font-size: 12px; }
+            QPushButton#scopeSegment { border-radius: 0; min-width: 74px;
+                                       min-height: 20px; max-height: 20px;
+                                       padding: 2px 3px; font-size: 12px; }
             QPushButton#scopeSegment:checked { background: #DDF3F5; color: #087E91; border: 2px solid #08A9B5; }
             QPushButton#primaryButton { background: #087E91; color: white; border-color: #087E91; }
             QPushButton#primaryButton:hover { background: #096D7C; }
@@ -1066,6 +1066,7 @@ class RotationLayoutWindow(QDialog):
         except:
             pass
         table.cellChanged.connect(self.handleCellChanged)
+        self._updateRotationActionStates()
  
 
  
@@ -1509,6 +1510,7 @@ class RotationLayoutWindow(QDialog):
     
         finally:
             table.cellChanged.connect(self.handleCellChanged)
+            self._updateRotationActionStates()
 
 
     def generateSuggestion(self, probs):
@@ -1910,6 +1912,43 @@ class RotationLayoutWindow(QDialog):
                     job_ids.add(job_id)
         return sorted(job_ids)
 
+    def _rotationTableIsComplete(self):
+        """Return whether every schedule cell resolves to the active Worker/Job pool."""
+        table = self.rotation_table
+        num_blocks = int(self.timeblocks_combo.currentText())
+        if table.rowCount() < 1 or table.columnCount() < num_blocks + 3:
+            return False
+
+        worker_ids = []
+        for row in range(table.rowCount()):
+            worker_item = table.item(row, 0)
+            worker_id = worker_item.text().strip() if worker_item else ""
+            if worker_id not in self._rotation_workers:
+                return False
+            worker_ids.append(worker_id)
+            for column in range(1, num_blocks + 1):
+                target_item = table.item(row, column)
+                label = (
+                    target_item.text().split("\n", 1)[0].strip()
+                    if target_item else ""
+                )
+                if label not in self._rotation_targets:
+                    return False
+        return len(worker_ids) == len(set(worker_ids))
+
+    def _updateRotationActionStates(self):
+        if not hasattr(self, "optimize_btn"):
+            return
+        complete = self._rotationTableIsComplete()
+        has_optimized_result = (
+            hasattr(self, "optimized_table")
+            and self.optimized_table.rowCount() > 0
+        )
+        self.optimize_btn.setEnabled(complete)
+        self.optimizeall_btn.setEnabled(complete)
+        self.compare_btn.setEnabled(complete and has_optimized_result)
+        self.transfer_button.setEnabled(has_optimized_result)
+
     def validateOptimizationRiskData(self, tool_ids):
         labels = self.rotationJobIds()
         if not labels:
@@ -2283,6 +2322,8 @@ class RotationLayoutWindow(QDialog):
     
             table.setItem(row_idx, num_blocks + 1, avg_item)
 
+        self._updateRotationActionStates()
+
 
 
     def clearOptimizedTable(self):
@@ -2294,6 +2335,7 @@ class RotationLayoutWindow(QDialog):
         table.setRowCount(0)
         table.setColumnCount(0)
         table.setHorizontalHeaderLabels([])
+        self._updateRotationActionStates()
 
 
 

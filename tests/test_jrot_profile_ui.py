@@ -196,11 +196,18 @@ with tempfile.TemporaryDirectory() as temporary_directory:
     rotation_window.workersnumber_combo.setCurrentText("1")
     rotation_window.timeblocks_combo.setCurrentText("2")
     rotation_window._renderCurrentPool()
+    assert not rotation_window.optimize_btn.isEnabled()
+    assert not rotation_window.optimizeall_btn.isEnabled()
+    assert not rotation_window.compare_btn.isEnabled()
     worker_id = next(iter(rotation_window._rotation_workers))
     rotation_window.rotation_table.setItem(0, 0, QTableWidgetItem(worker_id))
     rotation_window.rotation_table.setItem(0, 1, QTableWidgetItem("Job-S003"))
     rotation_window.rotation_table.setItem(0, 2, QTableWidgetItem("Job-S003"))
     rotation_window.handleCellChanged(0, 1)
+
+    assert rotation_window.optimize_btn.isEnabled()
+    assert rotation_window.optimizeall_btn.isEnabled()
+    assert not rotation_window.compare_btn.isEnabled()
 
     assert rotation_window.validateOptimizationRiskData(("LiFFT",))
     messages.clear()
@@ -217,6 +224,8 @@ with tempfile.TemporaryDirectory() as temporary_directory:
     app.processEvents()
     assert not rotation_window.optimization_thread.isRunning()
     assert rotation_window.optimized_table.rowCount() == 1
+    assert rotation_window.compare_btn.isEnabled()
+    assert rotation_window.transfer_button.isEnabled()
     assert "Profile v" in rotation_window.optimized_table.item(0, 1).toolTip()
 
     rotation_window.resize(rotation_window.minimumSize())
@@ -229,6 +238,7 @@ with tempfile.TemporaryDirectory() as temporary_directory:
         rotation_window.all_jobs_scope_button.rect().bottomRight(),
     ).y()
     assert button_bottom <= workplace_group.contentsRect().bottom()
+    assert workplace_group.height() == rotation_window.toolfilter_group.height()
     rotation_window.grab().save("/tmp/jrot_organization_scope.png")
 
     scope_dialog = RotationScopeDialog(parent.projectdatabasePath, parent=rotation_window)
