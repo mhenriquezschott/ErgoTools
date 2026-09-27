@@ -406,6 +406,12 @@ For UI changes:
 3. Check the complete window at its target size so VTK content, result cards, labels, and bottom controls are not clipped.
 4. Include clear reproduction steps and screenshots with bug reports.
 
+Dependency changes are approval-gated. Contributors and coding agents must not install,
+upgrade, downgrade, replace, or broaden the allowed version of Python or any library
+without explicit project-owner approval. If work needs a feature from another version,
+document the need and compatibility risk and obtain approval before changing the
+environment, dependency files, or implementation baseline.
+
 ## Project status
 
 ErgoTools/PLOT is active research software for integrating fatigue failure-based assessment methods with worker- and facility-level ergonomic analysis. Continued development includes validation with practitioner feedback, refinement of analytical and reporting functions, and improvement of software maintainability while preserving access to existing `.ergprj` projects.

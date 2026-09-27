@@ -17,6 +17,20 @@ including PyQt5, QtWebEngine, VTK, Matplotlib, NumPy, pycountry, PuLP, Pyomo, an
 HiGHS. Do not use `/usr/bin/python3` for application verification: it currently
 points to Python 3.13 and contains only part of the required stack.
 
+### Dependency Change Approval
+
+Python and library versions are controlled project inputs, not incidental tooling.
+Do not install, upgrade, downgrade, replace, or change the permitted version range of
+Python or any dependency without explicit approval from the project owner. This also
+applies to disposable test environments: results from different versions cannot be
+used as the compatibility basis for an integration change.
+
+If an implementation appears to require functionality from a newer or different
+library version, first report the requested version, the feature that requires it, the
+expected compatibility impact, and the available alternative using the current
+baseline. Make no environment, requirements, lock-file, or compatibility-code change
+until explicit approval is received.
+
 Verify the environment from the repository root:
 
 ```bash
@@ -111,4 +125,3 @@ git -c safe.directory="$PWD" rev-list --left-right --count \
 
 The final count must be `0 0`. A local backup branch alone is not a remote backup;
 backup branches required for recovery must also be pushed to GitHub.
-
