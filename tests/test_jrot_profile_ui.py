@@ -222,6 +222,13 @@ with tempfile.TemporaryDirectory() as temporary_directory:
     rotation_window.resize(rotation_window.minimumSize())
     rotation_window.show()
     app.processEvents()
+    scope_frame = rotation_window.all_jobs_scope_button.parentWidget()
+    workplace_group = scope_frame.parentWidget()
+    button_bottom = rotation_window.all_jobs_scope_button.mapTo(
+        workplace_group,
+        rotation_window.all_jobs_scope_button.rect().bottomRight(),
+    ).y()
+    assert button_bottom <= workplace_group.contentsRect().bottom()
     rotation_window.grab().save("/tmp/jrot_organization_scope.png")
 
     scope_dialog = RotationScopeDialog(parent.projectdatabasePath, parent=rotation_window)
