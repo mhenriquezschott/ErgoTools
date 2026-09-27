@@ -11,6 +11,24 @@ class RotationOptimizationError(RuntimeError):
     pass
 
 
+def active_solver_backend():
+    """Return the preferred available MILP backend used by JROT."""
+    if hasattr(pulp, "HiGHS") and pulp.HiGHS(msg=False).available():
+        return "HiGHS"
+    if pulp.PULP_CBC_CMD(msg=False).available():
+        return "CBC"
+    raise RotationOptimizationError(
+        "No supported optimization solver is available. Install highspy or CBC."
+    )
+
+
+def _make_solver(time_limit):
+    options = {"msg": False, "timeLimit": time_limit, "gapRel": 0.01}
+    if active_solver_backend() == "HiGHS":
+        return pulp.HiGHS(**options)
+    return pulp.PULP_CBC_CMD(**options)
+
+
 def optimize_single_tool(
     worker_ids,
     current_assignments,
@@ -32,9 +50,7 @@ def optimize_single_tool(
             <= max_average * num_blocks
         )
     model += max_average
-    status = model.solve(
-        pulp.PULP_CBC_CMD(msg=0, timeLimit=time_limit, gapRel=0.01)
-    )
+    status = model.solve(_make_solver(time_limit))
     _require_solution(status)
     schedule = _extract_schedule(variables, worker_ids, job_list, num_blocks)
     return {
@@ -75,8 +91,7 @@ def optimize_all_tools(
 
     ceiling_objective = pulp.lpSum(ceilings[tool_id] for tool_id in tools)
     model += ceiling_objective
-    solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=time_limit, gapRel=0.01)
-    status = model.solve(solver)
+    status = model.solve(_make_solver(time_limit))
     _require_solution(status)
     best_ceilings = {tool_id: pulp.value(ceilings[tool_id]) for tool_id in tools}
     for tool_id, ceiling in best_ceilings.items():
@@ -84,7 +99,7 @@ def optimize_all_tools(
     model.setObjective(
         pulp.lpSum(ceilings[tool_id] - floors[tool_id] for tool_id in tools)
     )
-    status = model.solve(solver)
+    status = model.solve(_make_solver(time_limit))
     _require_solution(status)
     return _extract_schedule(variables, worker_ids, job_list, num_blocks)
 

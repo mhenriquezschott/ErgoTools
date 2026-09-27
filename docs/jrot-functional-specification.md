@@ -109,6 +109,9 @@ Solver threads do not read Qt widgets or discover an active window. Cancellation
 the result for discard; an in-progress solver call is allowed to finish safely rather
 than terminating its thread forcibly.
 
+The active MILP backend is HiGHS. CBC is retained only as a runtime fallback if
+HiGHS cannot initialize; GLPK is not used by the active optimization path.
+
 **Use as Current** copies the optimized schedule into the editable table. The user must
 press **Save** to persist it. **Compare** requires an optimized result and opens the
 current-versus-optimized comparison for the selected Risk basis.

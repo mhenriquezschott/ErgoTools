@@ -2534,7 +2534,7 @@ class RotationLayoutWindow(QDialog):
         #self.overlay.label.setText("Optimizing all tools")
         self.overlay.setCancelHandler(self.cancelOptimization)
         per_stage_seconds = self.getTimeLimitInSeconds(
-            for_multitool=True, solver_name="cbc"
+            for_multitool=True, solver_name="highs"
         )
         # The all-tool optimizer performs two sequential solves with this limit.
         self.overlay.start(duration_seconds=per_stage_seconds * 2)

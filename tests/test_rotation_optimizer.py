@@ -8,6 +8,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from rotation_optimizer import (
     RotationOptimizationError,
+    active_solver_backend,
     optimize_all_tools,
     optimize_single_tool,
 )
@@ -20,6 +21,9 @@ class RotationOptimizerTests(unittest.TestCase):
             "W1": ["J-high", "J-low"],
             "W2": ["J-low", "J-high"],
         }
+
+    def test_highs_is_the_active_backend(self):
+        self.assertEqual(active_solver_backend(), "HiGHS")
 
     def test_single_tool_keeps_job_totals_and_returns_complete_schedule(self):
         result = optimize_single_tool(
