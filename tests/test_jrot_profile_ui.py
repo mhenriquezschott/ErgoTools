@@ -209,6 +209,19 @@ with tempfile.TemporaryDirectory() as temporary_directory:
     assert rotation_window.optimizeall_btn.isEnabled()
     assert not rotation_window.compare_btn.isEnabled()
 
+    rotation_window.selectErgonomicTool("DUET")
+    app.processEvents()
+    assert rotation_window.rotation_table.item(0, 1).text().endswith("Unavailable")
+    assert rotation_window.rotation_table.item(0, 3).text() == "Unavailable"
+    assert rotation_window.rotation_table.item(0, 4).text().startswith("Unavailable:")
+    rotation_window.resize(rotation_window.minimumSize())
+    rotation_window.show()
+    app.processEvents()
+    rotation_window.grab().save("/tmp/jrot_missing_measurement.png")
+    rotation_window.selectErgonomicTool("LiFFT")
+    app.processEvents()
+    assert rotation_window.rotation_table.item(0, 1).text().endswith("13.2%")
+
     assert rotation_window.validateOptimizationRiskData(("LiFFT",))
     messages.clear()
     assert not rotation_window.validateOptimizationRiskData(("LiFFT", "DUET", "ST"))

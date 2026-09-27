@@ -1030,8 +1030,8 @@ class RotationLayoutWindow(QDialog):
     
         # Fixed width for known columns
         worker_col_width = 80
-        time_block_col_width = 100
-        avg_col_width = 100
+        time_block_col_width = 110
+        avg_col_width = 110
         n_timeblocks = n_blocks
         suggestion_col_index = n_timeblocks + 2
         
@@ -1040,7 +1040,7 @@ class RotationLayoutWindow(QDialog):
         for col in range(1, n_timeblocks + 1):
             table.setColumnWidth(col, time_block_col_width)  # Time-Block columns
         table.setColumnWidth(n_timeblocks + 1, avg_col_width)  # Avg
-        table.setColumnWidth(suggestion_col_index, 180)
+        table.setColumnWidth(suggestion_col_index, 160)
         header.setStretchLastSection(True)
             
     
@@ -1466,10 +1466,13 @@ class RotationLayoutWindow(QDialog):
 
             probabilities = []
             colors = []
+            row_complete = True
+            missing_measurement = False
     
             for c in range(1, n_cols - 2):  # Skip worker name, Avg., Suggestion
                 item = table.item(row, c)
-                if not item:
+                if not item or not item.text().strip():
+                    row_complete = False
                     continue
                 job_id = item.text().split("\n")[0].strip()
                 job = job_info.get(job_id)
@@ -1477,6 +1480,7 @@ class RotationLayoutWindow(QDialog):
                     # Reapply cell format
                     item.setText(f"{job_id}\n{job['prob']}%")
                     item.setBackground(QColor(job["color"]))
+                    item.setForeground(QColor("#1B2933"))
                     item.setTextAlignment(Qt.AlignCenter)
                     provenance = f"Profile v{job['profile_version']} ({job['profile_source_type']})"
                     if job["profile_source_reference"]:
@@ -1488,9 +1492,33 @@ class RotationLayoutWindow(QDialog):
                     probabilities.append(job["prob"])
                     color = QColor(job["color"])
                     colors.append((color.red(), color.green(), color.blue()))
+                elif job_id in self._rotation_targets:
+                    missing_measurement = True
+                    item.setText(f"{job_id}\nUnavailable")
+                    item.setBackground(QColor("#F2F5F7"))
+                    item.setForeground(QColor("#5F6F7A"))
+                    item.setTextAlignment(Qt.AlignCenter)
+                    item.setToolTip(
+                        f"{tool_id}: measurement is not available for {job_id}."
+                    )
+                else:
+                    row_complete = False
     
             # Avg column
-            if probabilities:
+            if missing_measurement:
+                avg_item = QTableWidgetItem("Unavailable")
+                avg_item.setTextAlignment(Qt.AlignCenter)
+                avg_item.setBackground(QColor("#F2F5F7"))
+                avg_item.setForeground(QColor("#5F6F7A"))
+                table.setItem(row, n_cols - 2, avg_item)
+
+                suggestion_item = QTableWidgetItem(
+                    f"Unavailable: complete {tool_id} Job risk data is required."
+                )
+                suggestion_item.setForeground(QColor("#5F6F7A"))
+                suggestion_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                table.setItem(row, n_cols - 1, suggestion_item)
+            elif row_complete and len(probabilities) == n_cols - 3:
                 avg_val = round(sum(probabilities) / len(probabilities), 1)
                 avg_item = QTableWidgetItem(f"{avg_val}%")
                 avg_item.setTextAlignment(Qt.AlignCenter)
@@ -1507,6 +1535,9 @@ class RotationLayoutWindow(QDialog):
                 suggestion_item = QTableWidgetItem(self.generateSuggestion(probabilities))
                 suggestion_item.setTextAlignment(Qt.AlignLeft)
                 table.setItem(row, n_cols - 1, suggestion_item)
+            else:
+                table.setItem(row, n_cols - 2, QTableWidgetItem(""))
+                table.setItem(row, n_cols - 1, QTableWidgetItem(""))
     
         finally:
             table.cellChanged.connect(self.handleCellChanged)
