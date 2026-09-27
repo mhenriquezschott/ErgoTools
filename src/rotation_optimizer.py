@@ -75,8 +75,8 @@ def optimize_all_tools(
         worker_ids, current_assignments, job_list, num_blocks
     )
     tools = sorted(tool_risk)
-    ceilings = model.add_variable_dicts("tool_ceiling", tools, lowBound=0)
-    floors = model.add_variable_dicts("tool_floor", tools, lowBound=0)
+    ceilings = pulp.LpVariable.dicts("tool_ceiling", tools, lowBound=0)
+    floors = pulp.LpVariable.dicts("tool_floor", tools, lowBound=0)
     averages = {}
     for worker_id in worker_ids:
         for tool_id in tools:
@@ -111,7 +111,7 @@ def _base_model(worker_ids, current_assignments, job_list, num_blocks):
         raise RotationOptimizationError("Every Worker must have one Job in every time block.")
 
     model = pulp.LpProblem("JobRotationOptimization", pulp.LpMinimize)
-    variables = model.add_variable_dicts(
+    variables = pulp.LpVariable.dicts(
         "assign", (worker_ids, range(num_blocks), job_list), cat="Binary"
     )
     for worker_id in worker_ids:
@@ -135,17 +135,11 @@ def _base_model(worker_ids, current_assignments, job_list, num_blocks):
             model += pulp.lpSum(
                 variables[worker_id][block][job_id] for worker_id in worker_ids
             ) <= 1
-    max_average = model.add_variable("max_average", lowBound=0)
+    max_average = pulp.LpVariable("max_average", lowBound=0)
     return model, variables, max_average
 
 
 def _require_solution(status):
-    if hasattr(status, "has_solution"):
-        if status.has_solution:
-            return
-        status_value = getattr(status, "status", status)
-        status_name = getattr(status_value, "name", str(status_value))
-        raise RotationOptimizationError(f"The solver finished with status: {status_name}.")
     status_name = pulp.LpStatus.get(status, str(status))
     if status_name not in {"Optimal", "Not Solved"}:
         raise RotationOptimizationError(f"The solver finished with status: {status_name}.")

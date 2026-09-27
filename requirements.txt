@@ -1,8 +1,8 @@
-vtk
-pyqt5
-pycountry
-pulp>=3.3
-pyqtwebengine
-pyomo
-highspy
+vtk==9.5.0
+pyqt5==5.15.11
+pycountry==24.6.1
+pulp==3.2.2
+pyqtwebengine==5.15.7
+pyomo==6.9.3
+highspy==1.11.0
 

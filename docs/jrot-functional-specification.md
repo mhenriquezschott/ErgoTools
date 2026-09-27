@@ -116,9 +116,8 @@ the result for discard; an in-progress solver call is allowed to finish safely r
 than terminating its thread forcibly.
 
 The active MILP backend is HiGHS. CBC is retained only as a runtime fallback if
-HiGHS cannot initialize; GLPK is not used by the active optimization path. JROT uses
-the model-owned variable and structured solve-status APIs available in PuLP 3.3 and
-later, including PuLP 4.
+HiGHS cannot initialize; GLPK is not used by the active optimization path. The tested
+optimizer baseline is Python 3.10.18, PuLP 3.2.2, and highspy 1.11.0.
 
 **Use as Current** copies the optimized schedule into the editable table. The user must
 press **Save** to persist it. **Compare** requires an optimized result and opens the

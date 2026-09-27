@@ -233,6 +233,12 @@ Together, the map, population summaries, individual inspection, and station high
 
 The Python dependencies are declared in [`requirements.txt`](requirements.txt): PyQt5, VTK, PyQtWebEngine, PyCountry, PuLP, Pyomo, and solver integrations.
 
+The integration baseline is Python 3.10 with the exact dependency versions pinned in
+`requirements.txt`. The currently verified runtime is Python 3.10.18, PuLP 3.2.2,
+highspy 1.11.0, PyQt5 5.15.11, and VTK 9.5.0. Conda and `venv` are both supported;
+the interpreter and package versions, rather than the environment manager, define the
+compatibility baseline.
+
 ### Option A: Conda environment
 
 Conda is recommended because VTK and Qt include compiled components.
