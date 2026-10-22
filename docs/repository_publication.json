@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-22",
+  "repository": "https://github.com/mhenriquezschott/ErgoTools",
+  "initial_replacement_commit": "cac9218e913e3dbd4ff178d15c1bdee2d4adafba",
+  "previous_main": "89414c52c32b585ef92630713d49f40bf1f5d883",
+  "replacement_tree": "4604b52ceb97689de986e4750b1d741918c40d15",
+  "only_remote_ref_changed": "refs/heads/main",
+  "other_branches_unchanged": 16,
+  "tags_unchanged": true,
+  "force_push": false,
+  "verification": "Direct Git remote ref comparison against repository_branch_baseline.json; all 16 other branch tips unchanged.",
+  "source_integrity": "All 1440 initial payload files staged with exact working-file bytes. No ignored environments, caches, artifacts, dist, private keys or credential files.",
+  "clean_tree_checks": "Fresh git archive imports current application and opens all four native projects; substantive documentation inventory passes without artifacts/dist/environments. Existing production/prototype checks reused.",
+  "followup": "This publication record and STATUS are a documentation-only followup; the replacement source/assets/fixtures are unchanged."
+}

@@ -1,11 +1,15 @@
-# GitHub main replacement authorized and prepared — 2026-10-22
+# GitHub main replaced and remotely verified — 2026-10-22
 
 The owner explicitly authorizes uploading the current complete workspace to GitHub
 mhenriquezschott/ErgoTools/main and leaving other branches untouched. Owner SSH access
 already works; no token or credential change is required. All 17 branch tips are
 recorded in repository_branch_baseline.json. One normal replacement commit preserves
 main history; no force push, mirror or branch deletion. Existing legal notices remain.
-See repository_setup.md. Environments, caches, artifacts/dist and personal state are
+Main now contains the current codebase at initial replacement commit
+`cac9218e913e3dbd4ff178d15c1bdee2d4adafba`. All 16 other branch tips and all tags
+are unchanged. Direct ref comparison and a clean archived-checkout import/four-native-
+project check pass; all 1,440 payload files preserve exact working bytes.
+See repository_setup.md and repository_publication.json. Environments, caches, artifacts/dist and personal state are
 excluded. No application/dependency/fixture changes or repeated functional gate are
 part of this repository operation; valid prototype/production evidence below is reused.
 Linux migration/cleanup remains 100%; native Windows/macOS remain deferred.

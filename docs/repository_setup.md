@@ -45,3 +45,11 @@ inventory/hash and remote verification reports are in ignored artifacts/reposito
 Source functional bytes and approved dependencies are unchanged by this repository
 operation. Existing validation is reused; no unrelated code repair or new CI/dependency
 is introduced. Source archive/build outputs remain generated, not committed.
+
+
+## Initial publication verified
+
+Initial main replacement: `cac9218e913e3dbd4ff178d15c1bdee2d4adafba`, parent `89414c52c32b585ef92630713d49f40bf1f5d883`. Direct remote comparison confirms all 16 other branches
+and tags unchanged. A clean Git tree passes the documentation inventory, imports the
+application and opens all four native projects without local artifacts/dist/environments.
+See repository_publication.json. The followup contains verification documentation only.
