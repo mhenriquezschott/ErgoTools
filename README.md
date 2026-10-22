@@ -59,5 +59,4 @@ historical backups; they are not synchronized with this replacement. The old mai
 history remains reachable through the replacement commit's parent.
 
 See [LICENSE.txt](LICENSE.txt), [NOTICE](NOTICE) and
-[third-party notices](THIRD_PARTY_NOTICES.txt). Applicable authorship and dependency
-notices are retained. Local original-reference checkout/environment remain untouched.
+[third-party notices](THIRD_PARTY_NOTICES.txt).
