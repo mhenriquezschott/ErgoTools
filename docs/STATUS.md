@@ -1,3 +1,37 @@
+# Public README, fresh captures and desktop trial setup verified — 2026-10-22
+
+Owner-requested README retains the logo and starts with an early index, then presents
+ErgoTools, PLOT and the current production JROT. Nineteen new real images include the
+native VTK avatar, management/calculator forms, PLOT modes/charts and real CBC/HiGHS
+production rotations. Related small images use grouped galleries; the future JROT
+workflow is not advertised. Publications/conferences remain without the Role column.
+The existing Apache License 2.0 file and logo are unchanged.
+
+Current installation.md documents Linux and explicit Windows/macOS trial recipes,
+updates and desktop shortcuts/aliases using new checkout-owned launchers. The owner
+explicitly approves Windows Qt 5.15.2 because 5.15.17 has no Windows wheel; macOS keeps
+5.15.17. Other exact pins, Linux environment, uv.lock and pyproject remain unchanged.
+Binary resolution passes on Windows x64 and Mac Intel/arm64; native installation,
+GUI/VTK, solvers and desktop activation are NOT RUN. Bash launcher behavior is tested
+on Linux; Windows batch has static review only. Native acceptance remains pending.
+
+Required native XCB gate: **2,004 passed, zero failures/skips, 94.31% coverage**;
+standards, strict types 279, architecture/naming/docs/review and both builds pass.
+The existing source-review gate now covers .cmd/.command alongside .sh; 11 focused
+inventory tests pass. Four changed/new code files substantively reviewed; all 452
+Python/stub files, 3,249 functions, 430 classes, 321 constants and four entry scripts
+reviewed, zero pending/gaps. Five GitHub-rendered stationary README sections inspected;
+all internal paths/anchors pass. Private capture copies are removed. No maintained
+fixture, production source, schema or calculation changes. Protected reference and
+its environment are not written. Linux migration/cleanup remains 100%; owner Job/
+workflow testing stays paused and native Windows/macOS acceptance stays deferred.
+
+See [README refresh validation](readme_refresh_validation.json). Main-only publication
+is owner-authorized, preserving other branches; ref evidence is recorded locally in
+artifacts/readme_refresh. No new milestone or unrelated work.
+
+---
+
 # GitHub main replaced and remotely verified — 2026-10-22
 
 The owner explicitly authorizes uploading the current complete workspace to GitHub

@@ -276,7 +276,7 @@
   "tests/test_display_preferences.py": "81bb92fc94135367fdf25a70858bf358b5baae35e46d1fd6e2e891cc72a55106",
   "tests/test_document_lifecycle.py": "876c58b491dfb0b0b01b33ca2962b9ca218df7ce2d0ffc2f3a84da24a603b373",
   "tests/test_documentation.py": "cb652c87588950902a3d4c91af3ab50eaeadcd1cb59220622fbe1ab08148e257",
-  "tests/test_documentation_review.py": "87b84d6dfc3590c0133d7e3dba0dc160681063ed0c21eb28dae33650e2964ed7",
+  "tests/test_documentation_review.py": "f17b4d1642f8f5300b23a336751ed116f0ef723587225b0b9e1dfd51dc59b727",
   "tests/test_duet_calculation.py": "e84e25585fb48fe18ce610a498786ef0219947f97193585f45a9507e7609194e",
   "tests/test_duet_integration.py": "d85511e86cd95f1d4d16941c184ebbe327d22b095c47758fcfc5f2c6f694b5ab",
   "tests/test_duet_summary.py": "97531a9467d7afd33874663dcda9ff0170b6c58ede46b3e0215a5d3221a2aac3",
@@ -419,7 +419,7 @@
   "tools/check.sh": "67ba785fb45d3a884e4471f642746fb52db6b99464223aa08ac2fe2dff080ec3",
   "tools/check_architecture.py": "65c851197f0c7dc465713fbbf5f8863eacd2629ae9935da10c3a5f1dab229c65",
   "tools/check_documentation.py": "59ef33beb48e7eeb00480de547e3850481b9f9fc89a1137f2948c0f8031af2fe",
-  "tools/check_documentation_review.py": "bb4e8ca252284cd16a61e6567255aa52938a7d5de678d47ad8e7a6891751bb01",
+  "tools/check_documentation_review.py": "d9244d935cdd81732ed6ea4740e208588c827f9e17b9403b1a741a661f65ef0e",
   "tools/check_naming.py": "5d22dc1bfd57cb2e9deee1631e4e74e2d8780a037a6eb722b44b34ea43e3a63e",
   "tools/project_migration/__init__.py": "e21a96e59a80891f896f4e51994ce901a7262ae27822bdaac2a16bb715a132ef",
   "tools/project_migration/ergotools_migration/__init__.py": "d2051794829f6c1e15a1e66c7b242c0a807e78455b10a412d0296f32528494f6",
@@ -452,5 +452,7 @@
   "src/ergotools/presentation/desktop/jrot_prototype_solve.py": "d776e9f5d9ae91a3cdd8da0aa03eb20ab8207d4ddff5eacdd7b6afb3b5414c1f",
   "tests/test_jrot_prototype.py": "a36397510ef12f4c6d7909297e1c42a64b21f5ff00c17cd8f03c364fb77281e2",
   "src/ergotools/presentation/desktop/jrot_prototype_selectors.py": "07d15003ea9031525d7833fdb3d4a7a07ccddcc149d5aac48c15a84e0da9ea12",
-  "tools/create_jrot_demo_project.py": "6f0ac261bb4c800ae5a275e1cd7c2c992e0c9df210cf66953c8ced5aa832c830"
+  "tools/create_jrot_demo_project.py": "6f0ac261bb4c800ae5a275e1cd7c2c992e0c9df210cf66953c8ced5aa832c830",
+  "tools/run_windows.cmd": "7e5877de6fac1e8e3f5d51817ff24d23e953025163d5aa2c5e7ca1299038d2ee",
+  "tools/run_macos.command": "340a4218193734dae4012542adbdb7eb9c6b555b51a987223698fd36d0cb6b53"
 }

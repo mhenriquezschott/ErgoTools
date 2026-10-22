@@ -1,0 +1,23 @@
+# Experimental native Windows/macOS desktop setup; not a replacement for uv.lock.
+# Same exact desktop versions as the Linux baseline, except owner-approved Windows
+# Qt 5.15.2 (2026-10-22): Qt 5.15.17 has no Windows wheel. No application changes.
+# Install with --only-binary :all: on CPython 3.13; missing wheels must stop setup.
+# Native GUI/OpenGL/solver acceptance on Windows/macOS is still pending.
+pulp==3.2.2
+highspy==1.11.0
+PyQt5==5.15.11
+PyQt5-Qt5==5.15.2 ; sys_platform == 'win32'
+PyQt5-Qt5==5.15.17 ; sys_platform != 'win32'
+PyQt5-sip==12.17.0
+vtk==9.5.0
+matplotlib==3.10.5
+numpy==2.2.6
+contourpy==1.3.2
+cycler==0.12.1
+fonttools==4.59.0
+kiwisolver==1.4.8
+pillow==11.3.0
+pyparsing==3.2.3
+python-dateutil==2.9.0.post0
+six==1.17.0
+packaging==26.3

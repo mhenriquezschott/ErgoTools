@@ -3,11 +3,11 @@
     "python_and_stub_files": 452,
     "files_reviewed_M4": 452,
     "files_pending_M4_review": 0,
-    "functions_including_private_and_nested": 3248,
+    "functions_including_private_and_nested": 3249,
     "functions_missing_docstring": 0,
     "functions_with_parameters_missing_args_section": 0,
     "functions_missing_return_or_yield_section": 0,
-    "functions_reviewed_M4": 3248,
+    "functions_reviewed_M4": 3249,
     "functions_pending_M4_review": 0,
     "classes_reviewed_M4": 430,
     "classes_pending_M4_review": 0,
@@ -40797,7 +40797,7 @@
     },
     {
       "path": "tests/test_documentation_review.py",
-      "sha256": "87b84d6dfc3590c0133d7e3dba0dc160681063ed0c21eb28dae33650e2964ed7",
+      "sha256": "f17b4d1642f8f5300b23a336751ed116f0ef723587225b0b9e1dfd51dc59b727",
       "has_module_docstring": true,
       "file_documentation_review": "reviewed_M4",
       "structural_issues": [],
@@ -40884,24 +40884,25 @@
         },
         {
           "qualified_name": "test_deleted_source_and_changed_shell_entry_are_detected",
-          "line": 151,
-          "end_line": 172,
+          "line": 152,
+          "end_line": 177,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
           "parameters": [
-            "tmp_path"
+            "tmp_path",
+            "extension"
           ],
           "has_args_section": true,
           "has_returns_or_yields_section": true,
-          "source_sha256": "371bb1f30053b99ba1c1d6b2e59e04f29dc08cdee05fd01cbdc3f796aafc261e",
-          "docstring_sha256": "191b32359159d1a0270bfc3a46644ca11eaab11691a74cb9974c17a92b09b942",
+          "source_sha256": "a8fc2d342154e3d5551fed7fb3e60c9c0f4deef231dd9fc1abdae9ecce6d7208",
+          "docstring_sha256": "6c5a5452a8e6c53f081c880b3fa6976a69300984f8c1b67961775914a9c9f53f",
           "documentation_review": "reviewed_M4"
         },
         {
           "qualified_name": "test_malformed_review_manifests_fail_closed",
-          "line": 176,
-          "end_line": 191,
+          "line": 181,
+          "end_line": 196,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -40917,8 +40918,8 @@
         },
         {
           "qualified_name": "test_valid_review_manifest_preserves_explicit_hashes",
-          "line": 194,
-          "end_line": 206,
+          "line": 199,
+          "end_line": 211,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -61923,7 +61924,7 @@
     },
     {
       "path": "tools/check_documentation_review.py",
-      "sha256": "bb4e8ca252284cd16a61e6567255aa52938a7d5de678d47ad8e7a6891751bb01",
+      "sha256": "d9244d935cdd81732ed6ea4740e208588c827f9e17b9403b1a741a661f65ef0e",
       "has_module_docstring": true,
       "file_documentation_review": "reviewed_M4",
       "structural_issues": [],
@@ -61945,9 +61946,25 @@
           "documentation_review": "reviewed_M4"
         },
         {
-          "qualified_name": "read_reviews",
+          "qualified_name": "maintained_entry_points",
           "line": 48,
-          "end_line": 70,
+          "end_line": 64,
+          "kind": "function",
+          "visibility": "public",
+          "has_docstring": true,
+          "parameters": [
+            "root"
+          ],
+          "has_args_section": true,
+          "has_returns_or_yields_section": true,
+          "source_sha256": "c6210e059d4c2e05772e17814215d7fdfae801e3f90459bc805940bbc31b6349",
+          "docstring_sha256": "57a5c24ab0cf3143cfa6423af38fe8f170d9ff44faf5e61e396323e52b7facb6",
+          "documentation_review": "reviewed_M4"
+        },
+        {
+          "qualified_name": "read_reviews",
+          "line": 67,
+          "end_line": 89,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -61962,8 +61979,8 @@
         },
         {
           "qualified_name": "file_record",
-          "line": 73,
-          "end_line": 196,
+          "line": 92,
+          "end_line": 215,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -61980,8 +61997,8 @@
         },
         {
           "qualified_name": "file_record.visit",
-          "line": 98,
-          "end_line": 182,
+          "line": 117,
+          "end_line": 201,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -61997,8 +62014,8 @@
         },
         {
           "qualified_name": "build_inventory",
-          "line": 199,
-          "end_line": 285,
+          "line": 218,
+          "end_line": 304,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -62008,14 +62025,14 @@
           ],
           "has_args_section": true,
           "has_returns_or_yields_section": true,
-          "source_sha256": "35f115125e11178ad007ab4e32888b94612c5abadba24fd271222e80f54036ba",
+          "source_sha256": "f35e20f5a81d051db78f41f8297bd064203761bf205effe7e92241c3cc01a728",
           "docstring_sha256": "c7961a687241cea77ad5b3ba191cd65697f3250b4eff6660a1cb131665fcfbfa",
           "documentation_review": "reviewed_M4"
         },
         {
           "qualified_name": "review_issues",
-          "line": 288,
-          "end_line": 322,
+          "line": 307,
+          "end_line": 341,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -62026,14 +62043,14 @@
           ],
           "has_args_section": true,
           "has_returns_or_yields_section": true,
-          "source_sha256": "14ebbec65687709d16b6db34537fe8c622c4889b85516438c511eecc71fcd518",
+          "source_sha256": "32765b1d75f7a00d45e118640b880e891aaf3cd341d57a011df4492080418175",
           "docstring_sha256": "68ebb2fa59b8a5cc6983b0551ead08bb5281570905a7217bb6fa0b97267612c0",
           "documentation_review": "reviewed_M4"
         },
         {
           "qualified_name": "main",
-          "line": 325,
-          "end_line": 355,
+          "line": 344,
+          "end_line": 374,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -64021,6 +64038,16 @@
     {
       "path": "tools/run.sh",
       "sha256": "ba3955eb90484ce446a948a791415b9975ae89fcf3d376b79e24183d60e8d44f",
+      "documentation_review": "reviewed_M4"
+    },
+    {
+      "path": "tools/run_macos.command",
+      "sha256": "340a4218193734dae4012542adbdb7eb9c6b555b51a987223698fd36d0cb6b53",
+      "documentation_review": "reviewed_M4"
+    },
+    {
+      "path": "tools/run_windows.cmd",
+      "sha256": "7e5877de6fac1e8e3f5d51817ff24d23e953025163d5aa2c5e7ca1299038d2ee",
       "documentation_review": "reviewed_M4"
     }
   ]

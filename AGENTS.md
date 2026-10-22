@@ -1,5 +1,19 @@
 # ErgoTools modernization rules
 
+## Owner-authorized public README and desktop trial setup — 2026-10-22
+
+Owner requests a public README following the historical ergotools-plot-new-ui branch:
+ErgoTools, PLOT, production JROT; early index, current real VTK screenshots, retained
+research/conferences without Role column, current installation and desktop launchers.
+Do not advertise the future JROT workflow. Only private project copies may be used
+for screenshots; production code/schema/fixtures and Linux lock remain unchanged.
+Owner explicitly approves separate Windows trial PyQt5-Qt5 5.15.2 because 5.15.17
+has no Windows wheel. macOS keeps 5.15.17; all other exact runtime pins stay the same.
+Native Windows/macOS testing is still pending. New tools/*.cmd and *.command scripts
+must be included in substantive documentation review alongside *.sh. Routine reviewed
+main-only publication remains authorized; no changes to other branches.
+
+
 ## Owner-authorized GitHub main setup — 2026-10-22
 
 Owner authorizes replacing remote main with the current complete codebase, retaining

@@ -1,3 +1,16 @@
+# Source-checkout installation and desktop launchers — 2026-10-22
+
+Use [installation.md](installation.md) for current Linux setup and the explicit
+Windows/macOS trial recipes, including desktop shortcuts/aliases and safe updates.
+The Windows trial has owner approval for Qt 5.15.2; Linux and macOS retain 5.15.17.
+Python/runtime pins in uv.lock and production dependency metadata are unchanged.
+The separate trial requirements resolve for Windows x64 and macOS Intel/arm64;
+native GUI/VTK/solver acceptance on those systems is still pending.
+The documentation review inventory now covers tools/*.cmd and tools/*.command
+in addition to tools/*.sh; all changed entry points require substantive review.
+
+---
+
 # Current JROT meeting prototype — 2026-10-21
 
 Use test_projects/native/jrot_workflow_demo.ergprj and docs/jrot_meeting_demo.md for

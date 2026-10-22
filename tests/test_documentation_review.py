@@ -148,25 +148,30 @@ def test_symbol_metadata_tampering_is_stale(tmp_path: Path) -> None:
     )
 
 
-def test_deleted_source_and_changed_shell_entry_are_detected(tmp_path: Path) -> None:
+@pytest.mark.parametrize("extension", ("sh", "cmd", "command"))
+def test_deleted_source_and_changed_shell_entry_are_detected(
+    tmp_path: Path, extension: str
+) -> None:
     """Check shell bytes as well as Python files and reject orphaned approvals.
 
     Args:
         tmp_path: Disposable repository containing one source and one shell entry.
+        extension: Linux, Windows or macOS entry-point suffix requiring review.
 
     Returns:
         None. Assert deleted-source and changed-shell diagnostics remain distinct.
     """
     path = source_file(tmp_path)
-    script = tmp_path / "tools" / "run.sh"
+    script = tmp_path / "tools" / f"run.{extension}"
     script.parent.mkdir()
     script.write_text("#!/bin/sh\n# Synthetic developer entry.\nexit 0\n")
-    reviews = {"src/sample.py": source_hash(path), "tools/run.sh": source_hash(script)}
+    script_name = script.relative_to(tmp_path).as_posix()
+    reviews = {"src/sample.py": source_hash(path), script_name: source_hash(script)}
     stored = build_inventory(tmp_path, reviews)
     path.unlink()
     script.write_text(script.read_text().replace("exit 0", "exit 1"))
     assert review_issues(tmp_path, reviews, stored) == (
-        "tools/run.sh: source needs documentation review",
+        f"{script_name}: source needs documentation review",
         "src/sample.py: obsolete review entry",
         "Documentation inventory is stale; regenerate after source review",
     )

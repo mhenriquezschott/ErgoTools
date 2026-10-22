@@ -1,3 +1,20 @@
+# Windows/macOS installation trial — 2026-10-22
+
+The owner requests current installation instructions and convenient desktop launchers.
+See [installation.md](installation.md). The separate exact trial requirements resolve
+for CPython 3.13 on Windows x64 and macOS Intel/arm64 without changing uv.lock or
+Linux-only production extras. The owner explicitly approves Windows Qt 5.15.2:
+5.15.17 has no Windows distribution; macOS retains 5.15.17. This is a trial baseline,
+not native acceptance. No target environment was installed or booted for this change.
+
+The macOS .command launcher's syntax, module invocation, missing-environment handling
+and forwarding of paths with spaces/Unicode were exercised with Linux Bash. The
+Windows .cmd launcher was statically reviewed; native execution, desktop shortcut/alias
+activation, VTK/OpenGL and both solvers remain to be tested on each target OS.
+The underlying M12 native checklist and deferral below remain applicable.
+
+---
+
 # M12 frontend platform review
 
 Linux XCB on Ubuntu 25.04 x86-64 is executed and validated. This review is source

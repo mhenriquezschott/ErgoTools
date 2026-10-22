@@ -45,6 +45,25 @@ def source_hash(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def maintained_entry_points(root: Path) -> tuple[Path, ...]:
+    """Find source-checkout launch/check scripts on every documented desktop OS.
+
+    Args:
+        root: Repository under review; only direct files in tools are considered.
+
+    Returns:
+        Deterministically sorted Bash, Windows command and macOS command scripts.
+        Files are inspected as bytes, never executed or granted automatic approval.
+    """
+    return tuple(
+        sorted(
+            path
+            for path in (root / "tools").glob("*")
+            if path.is_file() and path.suffix in {".sh", ".cmd", ".command"}
+        )
+    )
+
+
 def read_reviews(path: Path) -> dict[str, str]:
     """Read the explicitly certified path/hash map without accepting malformed data.
 
@@ -220,7 +239,7 @@ def build_inventory(root: Path, reviews: dict[str, str]) -> dict[str, object]:
             if reviews.get(path.relative_to(root).as_posix()) == source_hash(path)
             else "pending_M4",
         }
-        for path in sorted((root / "tools").glob("*.sh"))
+        for path in maintained_entry_points(root)
     ]
     symbols = [
         symbol
@@ -305,7 +324,7 @@ def review_issues(
         SyntaxError: Maintained source cannot be parsed.
     """
     current = build_inventory(root, reviews)
-    paths = (*maintained_sources(root), *sorted((root / "tools").glob("*.sh")))
+    paths = (*maintained_sources(root), *maintained_entry_points(root))
     names = {path.relative_to(root).as_posix() for path in paths}
     issues = [
         f"{path.relative_to(root).as_posix()}: source needs documentation review"
