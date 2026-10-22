@@ -1,0 +1,100 @@
+import json
+import shutil
+from pathlib import Path
+
+root = Path.cwd()
+docs = root / 'docs'
+native = json.loads((root / 'artifacts/cli-project-native/verification.json').read_text())
+assert not native['failures'] and all(native['checks'].values())
+package = json.loads((root / 'artifacts/cli-project-package.json').read_text())
+record = {
+    'date': '2026-10-11', 'status': 'verified', 'scope': 'Owner-requested original positional command-line project workflow; verify existing Recent Projects. No new milestone or points.',
+    'full_gate': {'passed': 1232, 'failed': 0, 'coverage_percent': json.loads((root / 'artifacts/coverage.json').read_text())['totals']['percent_covered'], 'standards_and_builds': 'pass', 'log': 'artifacts/cli-project-check.log'},
+    'focused_source_tests': 18, 'focused_wheel_tests': 34, 'wheel_subtests': 77,
+    'native': native, 'captures_inspected': native['captures'], 'packaged_checks': package,
+    'dependencies_changed': False, 'milestones_added': 0, 'points_change': 0,
+    'windows_macos': 'not_run; explicitly deferred by owner',
+}
+(docs / 'cli-project-validation.json').write_text(json.dumps(record, indent=2) + '\n')
+(docs / 'cli-project-acceptance.md').write_text('''# Original command-line project workflow restored
+
+The owner identified this original behavior as missing after Linux closure and
+reaffirmed the approved Recent Projects requirement. This is a bounded parity
+correction, not an extra milestone, dependency or point increase. Linux scope
+remains 100/100; Windows/macOS native acceptance remains explicitly deferred.
+
+The original main.py accepts optional positional project_file and calls
+openFilePath. The new launcher now accepts the same positional convention:
+
+```bash
+bash tools/run.sh "artifacts/m10-integration-final/run/M10-validated.ergprj"
+```
+
+Installed: `ergotools "/path/project.ergprj"`. Relative paths use the terminal's
+working directory; quote spaces. Opening runs after show through the existing
+Open conversion/assessment-selection/error policy. It never automatically Saves.
+Conflicting Job Management diagnostic targets are rejected before creating a GUI.
+
+Project > Recent projects / Proyecto > Proyectos recientes already existed;
+no replacement menu was introduced. Up to ten successful Open/Save paths are
+remembered newest first. Cancellation/failure does not add startup paths; the
+existing missing-file/forget, clear-history and dirty-draft policies remain.
+Clear History affects preferences only, not project files. Current per-user
+launcher settings are separate from historical diagnostic project-local settings.
+
+Eighteen focused source tests pass, including spaced relative paths, real project
+Open, recent persistence, cancellation, missing file and conflicting diagnostics.
+The required complete gate passes **1,232 tests, 96.51% coverage**, Ruff/format,
+strict mypy (240 source/tool files), architecture and wheel/source builds.
+The independent extracted wheel passes **34 tests and 77 subtests**, with all
+application imports confined to that wheel; 237 Python files and both current
+Help guides match source. Linux wheel/instructions/checksums are refreshed.
+
+Native Linux XCB startup uses the real launcher, VTK and a disposable comprehensive
+copy with a spaced path. The actual selection dialog is accepted automatically;
+the application selects a real saved assessment and persists the recent path.
+Five captures were inspected: empty Recent Projects, complete English/Spanish
+main window with VTK/cards/bottom controls, and populated EN/ES Recent Projects.
+Project bytes remain identical after startup/language/menu use. Prior conversion,
+calculation, PLOT/JROT and larger-window evidence remains valid and reused.
+
+All 500 reference-manifest files and the approved lock are unchanged. No reference
+or operational project was edited. Earlier M12 hashes/counts describe its accepted
+historical build; [current validation](cli-project-validation.json) identifies
+the corrected delivery. Guides now explain both startup and Recent Projects.
+
+Evidence: artifacts/cli-project-check.log, cli-project-wheel.log,
+cli-project-package.json and cli-project-native/verification.json.
+''')
+p = docs / 'STATUS.md'
+s = p.read_text().replace('Full final code gate: 1,226 tests, 96.42% coverage; all standards/builds pass.', 'Current code gate: 1,232 tests, 96.51% coverage; all standards/builds pass.').replace('Final wheel: 21 focused tests/77 subtests; 237 Python files and guides match source.', 'Corrected wheel: 34 focused tests/77 subtests; 237 Python files and guides match source.')
+s = s.replace('Four final native EN/ES captures inspected; original reference and lock unchanged.', 'M12 native evidence retained; five positional-startup/recent-menu EN/ES captures\ninspected. Original reference and lock unchanged.')
+s = s.replace('[Launch/install/recovery](linux-delivery.md)', '''Owner-requested original positional CLI project opening is restored:
+`bash tools/run.sh "/path/project.ergprj"`. Successful opens populate the existing
+Project > Recent projects / Proyecto > Proyectos recientes menu. No extra
+milestone/points/dependency. [Correction acceptance](cli-project-acceptance.md)
+and [current validation](cli-project-validation.json) supersede historical M12
+build hashes for the current wheel. The original completion evidence is retained.
+
+[Launch/install/recovery](linux-delivery.md)''', 1)
+p.write_text(s)
+p = docs / 'finish-progress.json'
+ledger = json.loads(p.read_text())
+ledger.setdefault('post_acceptance_corrections', []).append({
+    'id': 'CLI_PROJECT_PARITY', 'status': 'verified', 'owner_request': 'Restore original command-line project opening and confirm approved Recent Projects.',
+    'points_change': 0, 'milestones_added': 0,
+    'evidence': ['docs/cli-project-acceptance.md', 'docs/cli-project-validation.json'],
+})
+assert ledger['overall_progress'] == 100 and len(ledger['milestones']) == 12
+p.write_text(json.dumps(ledger, indent=2) + '\n')
+p = docs / 'm12-validation.json'
+validation = json.loads(p.read_text())
+validation['post_acceptance_correction'] = {'evidence': 'docs/cli-project-validation.json', 'current_delivery_hashes': 'artifacts/cli-project-package.json', 'note': 'Original M12 build evidence above retained; corrected delivery restores owner-requested CLI parity.'}
+p.write_text(json.dumps(validation, indent=2) + '\n')
+with (docs / 'm12-acceptance.md').open('a') as stream:
+    stream.write('\n\n## Subsequent bounded original-workflow correction\n\nOwner-requested positional command-line project opening is restored and the\nexisting Recent Projects workflow verified. See [correction acceptance](cli-project-acceptance.md)\nand [current validation](cli-project-validation.json) for the corrected wheel\nand current 1,232-test gate. Earlier M12 figures/hashes remain historical evidence.\nNo milestone/point/dependency change.\n')
+with (root / 'AGENTS.md').open('a') as stream:
+    stream.write('\n\n## Positional project launch correction verified\n\nThe bounded owner-requested original CLI entry point is restored through existing\nOpen policy. Recent Projects already existed and is verified in native EN/ES.\nCurrent gate 1,232 tests/96.51%, all standards/builds pass; independent wheel\n34 tests/77 subtests; five native captures inspected. Current delivery hashes\nare in artifacts/cli-project-package.json, acceptance/validation in docs/cli-project-*.\nHistorical M12 evidence remains historical. Linux scope remains 100/100; no new\nmilestone/points/dependency; reference/lock unchanged. No further unrequested work.\n')
+for name in ('restore-cli-project.py', 'cli-project-docs.py', 'cli-project-native.py', 'cli-project-package.py', 'cli-project-record.py'):
+    shutil.copyfile(Path('/tmp') / name, docs / 'reference' / (name + '.txt'))
+print('Correction accepted and documented; fixed accounting remains 100/100 Linux scope.')

@@ -1,0 +1,141 @@
+"""Verify the native wheel without the optional converter on its import path."""
+import builtins
+import hashlib
+import json
+import sys
+import traceback
+from pathlib import Path
+from unittest.mock import patch
+
+wheel_root, project_path, output = map(Path, sys.argv[1:4])
+sys.path.insert(0, str(wheel_root))
+original_import = builtins.__import__
+
+def isolated_import(name, *args, **kwargs):
+    if name == 'tools' or name.startswith(('tools.', 'ergotools_migration')):
+        raise AssertionError('Native application tried to import the converter: ' + name)
+    return original_import(name, *args, **kwargs)
+
+builtins.__import__ = isolated_import
+from PyQt5.QtCore import QPoint, Qt, QTimer
+from PyQt5.QtGui import QImage, QPainter
+from PyQt5.QtTest import QTest
+from PyQt5.QtWidgets import QApplication
+from vtkmodules.vtkIOImage import vtkPNGWriter
+from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
+from ergotools.bootstrap import create_window
+from ergotools.application.session import DocumentKey
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+from ergotools.presentation.desktop.plot_window import PlotWindow
+from ergotools.presentation.desktop.rotation_dialog import RotationDialog
+
+output.mkdir(exist_ok=True)
+before = hashlib.sha256(project_path.read_bytes()).hexdigest()
+report = {'failures': [], 'captures': [], 'checks': {}}
+with AssessmentProjectFile.open(project_path) as project:
+    metadata = project.metadata
+    observations = {entry.document_id: project.load_historical_result(DocumentKey(metadata.project_id, entry.document_id))
+                    for entry in project.load_history().entries}
+    observations = {key: value for key, value in observations.items() if value is not None}
+    saved = {entry.document_id: project.load_saved_result(DocumentKey(metadata.project_id, entry.document_id))
+             for entry in project.load_history().entries}
+    images = {plant: project.load_plant_image(plant) for plant in project.load_hierarchy().plants}
+    schemes = project.load_rotation_schemes()
+    positions = project.load_plot_positions()
+    assert observations and schemes and any(images.values())
+    for name in ('save-as', 'backup'):
+        target = project_path.parent / f'{name}.ergprj'
+        with project.snapshot(str(target), None, None) as copy:
+            assert copy.load_rotation_schemes() == schemes
+            assert copy.load_plot_positions() == positions
+            assert all(copy.load_plant_image(plant) == image for plant,image in images.items())
+            for identity, value in observations.items():
+                assert copy.load_historical_result(DocumentKey(metadata.project_id, identity)) == value
+            for identity, value in saved.items():
+                assert copy.load_saved_result(DocumentKey(metadata.project_id, identity)) == value
+    report['checks']['native-save-as-backup-results-maps-rotations'] = True
+    report['recorded_results'] = len(observations)
+    report['fresh_saved_results'] = sum(value is not None for value in saved.values())
+    report['plant_images'] = sum(value is not None for value in images.values())
+    report['rotation_schemes'] = len(schemes)
+
+app = QApplication([])
+window = create_window(project_path.parent / 'settings.json', original_controls=True,
+                       original_navigation=True, enable_vtk=True)
+
+def capture(widget, name, vtk=False):
+    app.processEvents()
+    QTest.qWait(100)
+    if vtk:
+        for component in (window.results_sidebar.risk_gauge, window.results_sidebar.damage_progress):
+            if component.has_value:
+                component.animation.setCurrentTime(component.animation.duration())
+            component.animation.stop()
+        window._body_renderer._stop_animation()
+        image = QImage(widget.size(), QImage.Format_ARGB32_Premultiplied)
+        image.fill(Qt.transparent)
+        widget.render(image, QPoint())
+        renderer = window._body_renderer
+        renderer.render_window.Render()
+        filt = vtkWindowToImageFilter()
+        filt.SetInput(renderer.render_window)
+        filt.ReadFrontBufferOff()
+        filt.Update()
+        writer = vtkPNGWriter()
+        writer.SetInputConnection(filt.GetOutputPort())
+        writer.SetFileName(str(output / 'vtk-frame.png'))
+        writer.Write()
+        viewport = window.body_panel.viewport
+        rect = viewport.geometry()
+        rect.moveTopLeft(viewport.mapTo(window, QPoint()))
+        painter = QPainter(image)
+        painter.drawImage(rect, QImage(str(output / 'vtk-frame.png')))
+        painter.end()
+    else:
+        image = widget.grab()
+    assert image.save(str(output / f'{name}.png'))
+    report['captures'].append(name)
+
+def inspect_modal(expected, name):
+    view = app.activeModalWidget()
+    try:
+        assert isinstance(view, expected)
+        capture(view, name)
+        report['checks'][name] = True
+    except Exception:
+        report['failures'].append(traceback.format_exc())
+    finally:
+        if view is not None:
+            view.reject()
+
+def exercise():
+    try:
+        label = next(label for identity,label in window.document_options(str(project_path), window.language)
+                     if identity == 'legacy-assessment-2')
+        with patch.object(window, 'choose_item', return_value=(label, True)):
+            window.open_project_location(str(project_path))
+        assert window.presenter.workspace.active is not None
+        for index, language in enumerate(('en','es')):
+            window.languages.setCurrentIndex(index)
+            capture(window, f'main-{language}', vtk=True)
+            QTimer.singleShot(150, lambda language=language: inspect_modal(PlotWindow, f'plot-{language}'))
+            window.run(window.open_plot)
+            QTimer.singleShot(150, lambda language=language: inspect_modal(RotationDialog, f'jrot-{language}'))
+            window.run(window.open_rotation)
+        report['checks']['native-bilingual-integrated-main'] = True
+        assert hashlib.sha256(project_path.read_bytes()).hexdigest() == before
+        assert all(not getattr(module,'__file__',None) or Path(module.__file__).is_relative_to(wheel_root)
+                   for name,module in tuple(sys.modules.items()) if name=='ergotools' or name.startswith('ergotools.'))
+        report['checks']['application-imports-confined-to-wheel'] = True
+    except Exception:
+        report['failures'].append(traceback.format_exc())
+    finally:
+        (output / 'verification.json').write_text(json.dumps(report,indent=2))
+        app.quit()
+
+window.show()
+QTimer.singleShot(500, exercise)
+QTimer.singleShot(45000, app.quit)
+app.exec()
+assert not report['failures'] and len(report['checks']) == 7, report
+print(json.dumps(report))

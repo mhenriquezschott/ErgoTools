@@ -1,0 +1,96 @@
+import ast,json
+from pathlib import Path
+root=Path.cwd();ref=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+trees={p.stem:ast.parse(p.read_text()) for p in (ref/'src').glob('*.py')}
+nodes={};symbols={};aliases={};parents={}
+for mod,t in trees.items():
+ sy={};al={}
+ for item in t.body:
+  if isinstance(item,ast.ImportFrom) and item.module in trees:
+   for a in item.names:al[a.asname or a.name]=(item.module,a.name)
+  if isinstance(item,ast.Import):
+   for a in item.names:
+    if a.name in trees:al[a.asname or a.name]=(a.name,'')
+  if isinstance(item,ast.ClassDef):
+   sy[item.name]=mod+'.'+item.name+'.__init__'
+   for method in item.body:
+    if isinstance(method,ast.FunctionDef):nodes[mod+'.'+item.name+'.'+method.name]=(mod,item.name,method)
+  if isinstance(item,ast.FunctionDef):nodes[mod+'.'+item.name]=(mod,'',item);sy[item.name]=mod+'.'+item.name
+ symbols[mod]=sy;aliases[mod]=al
+edges={}
+for key,(mod,cls,fn) in nodes.items():
+ refs=set()
+ for n in ast.walk(fn):
+  if isinstance(n,ast.Attribute) and isinstance(n.value,ast.Name):
+   if n.value.id in ('self','cls') and cls:refs.add(mod+'.'+cls+'.'+n.attr)
+   elif n.value.id in aliases[mod]:
+    target_mod,_=aliases[mod][n.value.id];refs.add(target_mod+'.'+n.attr)
+  if isinstance(n,ast.Name):
+   if n.id in symbols[mod]:refs.add(symbols[mod][n.id])
+   if n.id in aliases[mod]:
+    target_mod,name=aliases[mod][n.id]
+    if name in symbols[target_mod]:refs.add(symbols[target_mod][name])
+ if key.endswith('.__init__'):
+  refs.update(k for k in nodes if k.startswith(mod+'.'+cls+'.') and (k.endswith('Event') or k.rsplit('.',1)[1] in ('paint','boundingRect','shape')))
+ edges[key]=sorted(refs & nodes.keys())
+reachable=set();todo=['main.ErgoTools.__init__']
+while todo:
+ key=todo.pop()
+ if key in reachable:continue
+ reachable.add(key);todo.extend(edges.get(key,()))
+groups={
+ 'main':(['presentation/desktop/lifft_window.py','presentation/desktop/main_navigation.py','presentation/desktop/assessment_menu.py','presentation/desktop/assessment_context_dialog.py','presentation/desktop/worker_search_dialog.py','application/project_workspace.py'],['m01-acceptance.md','m04-acceptance.md','m09-acceptance.md','m10-acceptance.md']),
+ 'worker_window':(['presentation/desktop/worker_management_dialog.py','application/worker_management.py'],['m02-acceptance.md','m10-acceptance.md']),
+ 'organization_window':(['presentation/desktop/organization_dialog.py','application/organization_management.py'],['m02-acceptance.md','m10-acceptance.md']),
+ 'job_window':(['presentation/desktop/job_management_dialog.py','presentation/desktop/job_workplace_dialog.py','application/job_management.py'],['m03-acceptance.md','m10-acceptance.md']),
+ 'plant_layout':(['presentation/desktop/plot_window.py','presentation/desktop/plot_filters_panel.py','presentation/desktop/plot_graph_dialog.py','presentation/desktop/plot_graph_settings.py','presentation/desktop/plot_worker_controls.py','application/plot_history.py'],['m05-acceptance.md','m06-acceptance.md','m10-acceptance.md']),
+ 'rotation_layout':(['presentation/desktop/rotation_dialog.py','presentation/desktop/rotation_solve.py','presentation/desktop/rotation_history.py'],['m07-acceptance.md','m08-acceptance.md','m10-acceptance.md']),
+ 'worker_transfer_window':(['presentation/desktop/worker_transfer_dialog.py','domain/assessment_transfer.py','infrastructure/assessment_project_file.py'],['m04-acceptance.md','m10-acceptance.md']),
+ 'tooldatadialog':(['presentation/desktop/tool_data_dialog.py'],['m01-acceptance.md']),
+ 'rotation_scope_dialog':(['presentation/desktop/rotation_scope_dialog.py'],['m07-acceptance.md']),
+ 'visualworkertool':(['presentation/desktop/plot_marker_item.py','presentation/desktop/plot_marker_layer.py'],['m05-acceptance.md','m06-acceptance.md']),
+ 'visualjobmarker':(['presentation/desktop/plot_marker_item.py','presentation/desktop/plot_marker_layer.py'],['m05-acceptance.md','m06-acceptance.md']),
+ 'vtk_camera_director':(['presentation/desktop/rendering/vtk_camera_director.py','presentation/desktop/rendering/vtk_body_renderer.py'],['m09-acceptance.md']),
+ 'plotviewerdialog':(['presentation/desktop/plot_figure_viewer.py','presentation/desktop/plot_figure_export.py'],['m06-acceptance.md']),
+ 'multiselectcombobox':(['presentation/desktop/plot_filter_controls.py'],['m05-acceptance.md']),
+ 'compareopallrotation_window':(['presentation/desktop/rotation_comparison.py'],['m08-acceptance.md']),
+ 'comparerotation_window':(['presentation/desktop/rotation_comparison.py'],['m08-acceptance.md']),
+ 'optimizedrotation_window':(['presentation/desktop/rotation_comparison.py'],['m08-acceptance.md']),
+ 'pyLiFFT':(['domain/assessments/lifft.py','domain/assessments/lifft_summary.py'],['m01-acceptance.md','m10-acceptance.md']),
+ 'pyDUET':(['domain/assessments/duet.py','domain/assessments/duet_summary.py'],['m01-acceptance.md','m10-acceptance.md']),
+ 'pyTST':(['domain/assessments/tst.py','domain/assessments/tst_summary.py'],['m01-acceptance.md','m10-acceptance.md']),
+ 'risk_ranges':(['domain/risk.py','presentation/risk.py'],['m01-acceptance.md','m09-acceptance.md']),
+ 'risk_colors':(['presentation/assessment_colors.py'],['m01-acceptance.md']),
+ 'database':(['infrastructure/assessment_project_file.py','infrastructure/assessment_store.py'],['m04-acceptance.md','m10-acceptance.md']),
+ 'schema_migrations':(['infrastructure/legacy_conversion.py','infrastructure/legacy_reconciliation.py'],['m04-acceptance.md','m10-acceptance.md']),
+ 'job_placement_repository':(['domain/job_catalog.py','infrastructure/job_catalog_store.py'],['m03-acceptance.md']),
+ 'job_risk_repository':(['domain/job_risk.py','infrastructure/job_risk_store.py'],['m03-acceptance.md']),
+ 'plot_position_repository':(['domain/plot_positions.py','infrastructure/plot_position_store.py'],['m06-acceptance.md']),
+ 'rotation_optimizer':(['infrastructure/cbc_rotation_optimizer.py','infrastructure/highs_rotation_optimizer.py'],['m08-acceptance.md']),
+ 'rotation_repository':(['infrastructure/rotation_scheme_store.py'],['m07-acceptance.md','m08-acceptance.md']),
+ 'rotation_schema':(['domain/rotation_scheme.py','infrastructure/rotation_scheme_store.py'],['m07-acceptance.md']),
+ 'jrot_database':(['infrastructure/rotation_scheme_store.py'],['m07-acceptance.md']),
+}
+old=json.loads((root/'artifacts/m11-audit/original-entry-points.json').read_text());rows=[]
+for m in old:
+ mod=m['module'];t=trees[mod]
+ for c in m['connections']:
+  owners=[(key,fn) for key,(mo,cl,fn) in nodes.items() if mo==mod and fn.lineno<=c['line']<=fn.end_lineno]
+  owner=min(owners,key=lambda p:p[1].end_lineno-p[1].lineno)[0] if owners else None
+  c['owner']=owner;c['static_reachable']=owner in reachable
+  hidden=mod=='worker_window' and any(word in ' '.join(c['callbacks']).lower() for word in ('headneck','upperbody','lowerbody')) or mod=='plant_layout' and 'self.grtool8ButtonClicked' in c['callbacks']
+  c['disposition']='hidden_experiment_preserved_in_archive' if hidden else 'mapped' if owner in reachable else 'dormant_no_active_route'
+  c['implementation']=groups.get(mod,([],[]))[0] if c['disposition']=='mapped' else []
+ m['implementation'],m['evidence']=groups.get(mod,([],[]))
+ if mod in ('plant_window','section_window','line_window','station_window','shift_window','tooltransferdialog'):
+  m['disposition']='Imported legacy window; no constructed route from current ErgoTools. Visible replacements live in organization/context/transfer forms.'
+ elif mod in ('workertransferdialog','database_inventory','testmultiop','zcpwindow'):
+  m['disposition']='Unreachable old implementation, offline utility or hidden D3 experiment; retain original archive/source, no new UI.'
+ else:m['disposition']='Mapped active behavior; dormant methods distinguished per connection.'
+ rows.append(m)
+report={'root':'main.ErgoTools.__init__','method_graph_note':'Static conservative self/callback/class/import graph; not proof of runtime execution. Hidden controls and placeholders reviewed separately in docs/feature-inventory.md.','reachable_methods':len(reachable),'modules':rows,'total_connections':sum(len(m['connections']) for m in rows),'mapped_connections':sum(c['disposition']=='mapped' for m in rows for c in m['connections']),'hidden_connections':sum(c['disposition'].startswith('hidden') for m in rows for c in m['connections'])}
+(root/'artifacts/m11-audit/feature-map.json').write_text(json.dumps(report,indent=2)+'\n')
+for m in rows:
+ for p in m['implementation']:
+  if not (root/'src/ergotools'/p).exists():print('CHECK MAPPING PATH',m['module'],p)
+print({k:v for k,v in report.items() if k!='modules'})

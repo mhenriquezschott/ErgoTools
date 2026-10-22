@@ -1,0 +1,35 @@
+"""Independent wheel regressions, visual checks and immutable-source audit."""
+import hashlib
+import json
+import subprocess
+import sys
+import zipfile
+from pathlib import Path
+
+r=Path.cwd();wheel=r/'dist/ergotools-0.1.0.dev0-py3-none-any.whl';dest=Path('/tmp/ergotools-m11-wheel-final');dest.mkdir(exist_ok=True)
+with zipfile.ZipFile(wheel) as z:
+ z.extractall(dest)
+ files=list((r/'src/ergotools').rglob('*.py'))
+ for p in files:assert z.read('ergotools/'+str(p.relative_to(r/'src/ergotools')))==p.read_bytes(),p
+ for lang in ('en','es'):assert z.read(f'ergotools/resources/documents/user-guide-{lang}.html')==(r/f'src/ergotools/resources/documents/user-guide-{lang}.html').read_bytes()
+code="""import sys; from pathlib import Path
+sys.path.insert(0,sys.argv[1]);sys.path.append(str(Path.cwd()))
+import pytest
+status=pytest.main(['-q','-o','cache_dir=/tmp/ergotools-m11-wheel-pytest','tests/test_assessment_search.py','tests/test_help_workflow.py','tests/test_saved_tool_data.py','tests/test_resources.py'])
+assert status==0
+exec(compile(open('/tmp/m11-visual.py').read(),'/tmp/m11-visual.py','exec'))
+assert all(not getattr(m,'__file__',None) or Path(m.__file__).is_relative_to(sys.argv[1]) for n,m in tuple(sys.modules.items()) if n=='ergotools' or n.startswith('ergotools.'))
+print('Independent wheel regressions and native Search pass; all ErgoTools imports confined to extracted wheel.')
+"""
+subprocess.run([sys.executable,'-I','-c',code,str(dest)],check=True,timeout=120)
+ref=Path(json.loads((r/'docs/reference/provenance.json').read_text())['reference_root'])
+manifest=json.loads((r/'docs/reference/source-manifest.json').read_text())
+changed=[p for p,digest in manifest.items() if hashlib.sha256((ref/p).read_bytes()).hexdigest()!=digest]
+assert not changed,changed
+lock=hashlib.sha256((r/'uv.lock').read_bytes()).hexdigest()
+assert lock=='9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae'
+comparison=json.loads((r/'artifacts/m11-search/comparison.json').read_text())
+assert all(c['original']==c['new'] for size in comparison['comparisons'] for c in size['controls'].values())
+public=json.loads((r/'artifacts/m11-audit/public-api.json').read_text());assert all(p['doc'] for p in public)
+(r/'artifacts/m11-package-verification.json').write_text(json.dumps({'wheel_sha256':hashlib.sha256(wheel.read_bytes()).hexdigest(),'package_python_files_identical':len(files),'current_guide_files_identical':2,'all_imports_confined_to_wheel':True,'focused_packaged_tests':30,'reference_files_unchanged':len(manifest),'lock_sha256':lock,'public_symbols_with_docstrings':len(public),'search_original_geometry_matches_all_sizes':True,'platform':'Linux native XCB'},indent=2)+'\n')
+print('Wheel, original-reference and lock hashes verified.')

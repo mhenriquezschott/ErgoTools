@@ -1,0 +1,78 @@
+{
+  "milestone": "M11",
+  "status": "complete",
+  "date": "2026-10-11",
+  "approved_correction": "CR007",
+  "overall_progress": 97.75,
+  "fixed_points_earned": 2.5,
+  "milestones_complete": 11,
+  "full_gate": {
+    "log": "artifacts/m11-check.log",
+    "passed": 1221,
+    "coverage_percent": 96.41417534430634,
+    "ruff": "pass",
+    "format": "pass",
+    "mypy_source_files": 239,
+    "architecture_violations": 0,
+    "wheel_and_sdist": "pass",
+    "platform": "Linux native XCB"
+  },
+  "packaged_tests": {
+    "log": "artifacts/m11-final-wheel.log",
+    "passed": 30,
+    "subtests_passed": 77,
+    "all_package_imports_confined_to_wheel": true
+  },
+  "inventory": {
+    "original_top_level_modules": 41,
+    "import_reachable_modules": 38,
+    "signal_connections": 490,
+    "conservative_reachable_methods": 660,
+    "mapped_connections": 318,
+    "hidden_connections": 7,
+    "dormant_connections": 165,
+    "public_symbols_with_docstrings": 1322,
+    "missing_public_docstrings": 0,
+    "source": "artifacts/m11-audit/feature-map.json"
+  },
+  "native_search": "artifacts/m11-search/comparison.json",
+  "native_captures_inspected": [
+    "new-en-empty.png",
+    "new-en-enlarged.png",
+    "new-en-minimum.png",
+    "new-en-opening.png",
+    "new-en-selected-expanded.png",
+    "new-es-empty.png",
+    "new-es-enlarged.png",
+    "new-es-minimum.png",
+    "new-es-opening.png",
+    "original-enlarged.png",
+    "original-minimum.png",
+    "original-opening.png"
+  ],
+  "guide_validation": "artifacts/m11-guides/verification.json",
+  "guide_captures_inspected": [
+    "guide-en-top.png",
+    "guide-es-top.png",
+    "guide-en-full.png",
+    "guide-es-full.png"
+  ],
+  "guide_visual_note": "Top, middle workflow and lower recovery sections inspected in browser-rendered full pages; blank anchor timing captures rejected. Exact current bytes/cache/local anchors verified by packaged tests.",
+  "reference_manifest_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "3ac4f02f48a1c384f8ab25e8ddc3eac15abb80553125db69688397a6a900508e",
+  "wheel_source_files_equal": 236,
+  "scientific_changes": false,
+  "dependencies_changed": false,
+  "scope_change": "Owner-approved original Search restoration only; no added milestone or points.",
+  "reused_evidence": [
+    "M01\u2013M09 accepted component/shared UI/unit/localization/scientific contracts",
+    "M10 comprehensive converted-copy integration, saved results/transfer/backup and original calculators"
+  ],
+  "limitations": [
+    "Linux XCB only; Windows/macOS native VM acceptance remains deferred under M12.",
+    "Reference English Search compact surname caption/minimum-size horizontal scrolling preserved.",
+    "Current integrated-preview CLI flag retained; clean installation/launcher/independent offline recovery belong to M12.",
+    "M12 is not started or authorized in this batch."
+  ]
+}

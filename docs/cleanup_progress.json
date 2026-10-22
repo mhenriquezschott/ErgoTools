@@ -1,0 +1,47 @@
+{
+  "scope": "Owner-approved cleanup follow-up; distinct from historical M01\u2013M12",
+  "authorized_now": "M5 complete under explicit owner authorization; all fixed cleanup milestones accepted for Linux",
+  "user_testing": "ready_for_owner_acceptance_testing",
+  "progress_rule": "Completed milestones / 6; each contributes 100/6 percentage points. Owner approved M1R before M2.",
+  "milestones": [
+    {
+      "id": "M1",
+      "title": "Independent migration utility and native recorded results",
+      "status": "complete",
+      "evidence": "cleanup_m1_acceptance.md"
+    },
+    {
+      "id": "M1R",
+      "title": "Single authoritative results and recalculated native test projects",
+      "status": "complete",
+      "evidence": "cleanup_m1r_acceptance.md"
+    },
+    {
+      "id": "M2",
+      "title": "Guided migration and self-contained test projects",
+      "status": "complete",
+      "evidence": "cleanup_m2_acceptance.md"
+    },
+    {
+      "id": "M3",
+      "title": "File/resource naming standardization",
+      "status": "complete",
+      "evidence": "cleanup_m3_acceptance.md"
+    },
+    {
+      "id": "M4",
+      "title": "Complete in-code documentation and enforcement",
+      "status": "complete",
+      "evidence": "cleanup_m4_acceptance.md"
+    },
+    {
+      "id": "M5",
+      "title": "Final acceptance and delivery",
+      "status": "complete",
+      "evidence": "cleanup_m5_acceptance.md"
+    }
+  ],
+  "completed": 6,
+  "total": 6,
+  "percent": 100.0
+}

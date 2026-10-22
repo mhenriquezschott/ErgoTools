@@ -1,0 +1,79 @@
+"""Native comparison of extracted original/new measurement tables; synthetic data."""
+import ast
+import json
+from pathlib import Path
+from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtTest import QTest
+from PyQt5.QtWidgets import QApplication, QDialog, QTableWidget, QTableWidgetItem, QVBoxLayout
+from ergotools.application.settings import Language
+from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.domain.job_risk import JobRiskMeasurement
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.presentation.desktop.job_risk_table import JobRiskTable
+
+root=Path.cwd()
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+source=ast.parse((reference/'src/job_window.py').read_text())
+original=next(n for n in source.body if isinstance(n,ast.ClassDef) and n.name=='JobWindow')
+method=next(n for n in original.body if isinstance(n,ast.FunctionDef) and n.name=='createRiskMeasurementTable')
+setup=next(n for n in original.body if isinstance(n,ast.FunctionDef) and n.name=='setupUI')
+extra=next(n.value for n in ast.walk(setup) if isinstance(n,ast.Constant) and isinstance(n.value,str) and 'QDialog#jobWindow' in n.value)
+main=ast.parse((reference/'src/main.py').read_text())
+stylesheet=next(n for n in ast.walk(main) if isinstance(n,ast.FunctionDef) and n.name=='mainWorkspaceStyleSheet')
+base=next(n.value.value for n in stylesheet.body if isinstance(n,ast.Return))
+module=ast.Module(body=[ast.ClassDef(name='Original',bases=[ast.Name(id='QDialog',ctx=ast.Load())],keywords=[],body=[method],decorator_list=[])],type_ignores=[])
+namespace=globals().copy()
+exec(compile(ast.fix_missing_locations(module),'<original-table>','exec'),namespace)
+Original=namespace['Original']
+Original.handleDamageEdit=lambda self,row,column:None
+app=QApplication.instance() or QApplication([])
+out=root/'artifacts/job-risk-table'
+out.mkdir(parents=True,exist_ok=True)
+records=tuple(JobRiskMeasurement(kind,1,probability,'Imperial') for kind,probability in zip(AssessmentKind,(84.9,50,70)))
+
+def capture(dialog,name):
+    dialog.show()
+    QTest.qWait(80)
+    assert dialog.grab().save(str(out/(name+'.png')))
+
+def build(new=True,language=Language.ENGLISH):
+    dialog=QDialog() if new else Original()
+    dialog.setObjectName('jobWindow')
+    dialog.setStyleSheet(base+extra)
+    layout=QVBoxLayout(dialog)
+    layout.setContentsMargins(8,8,8,8)
+    table=JobRiskTable(MeasurementSystem.IMPERIAL,language=language) if new else dialog.createRiskMeasurementTable()
+    layout.addWidget(table)
+    dialog.resize(640,260)
+    return dialog,table
+
+old,ot=build(False)
+new,nt=build()
+nt.load(records)
+ot.blockSignals(True)
+for row,record in enumerate(records):
+    for column,value in ((1,record.cumulative_damage),(2,record.probability_percent)):
+        ot.item(row,column).setText(str(value))
+        ot.item(row,column).setBackground(nt.item(row,column).background())
+        ot.item(row,column).setFlags(nt.item(row,column).flags())
+ot.blockSignals(False)
+capture(old,'original-populated')
+capture(new,'new-populated')
+nt.setCurrentCell(1,1)
+capture(new,'new-selected')
+nt.set_editable(False)
+capture(new,'new-approved')
+nt.set_editable(True)
+nt.item(1,1).setText('invalid')
+capture(new,'new-invalid')
+nt.load(())
+capture(new,'new-empty')
+spanish,st=build(language=Language.SPANISH)
+st.load(records)
+spanish.resize(520,220)
+capture(spanish,'new-spanish-small')
+for window in (old,new,spanish):
+    window.close()
+print(out)

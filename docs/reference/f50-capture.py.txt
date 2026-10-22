@@ -1,0 +1,32 @@
+import runpy
+from pathlib import Path
+from PyQt5.QtCore import QTimer
+from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.presentation.desktop.assignment_dialog_host import AssignmentDialogHost
+scope=runpy.run_path('tests/test_context_dialog.py')
+case=scope['ContextDialogTests'];case.setUpClass();test=case();test.setUp();test.enable_historical()
+out=Path('artifacts/assignment-host');out.mkdir(parents=True,exist_ok=True)
+errors=[]
+def capture():
+ try:
+  w=test.app.activeModalWidget()
+  assert w is not None
+  w.grab().save(str(out/'selected.png'))
+  w.tree.collapseAll();test.app.processEvents();w.grab().save(str(out/'collapsed.png'))
+  w.tree.expandAll();w.shift.showPopup();test.app.processEvents()
+  test.app.activePopupWidget().grab().save(str(out/'shift-popup.png'));w.shift.hidePopup()
+  w.shift.setCurrentText('Empty');test.app.processEvents();w.grab().save(str(out/'empty.png'))
+  w.shift.setCurrentText('Day');test.workspace.read_jobs();w.use.click()
+  test.app.processEvents();w.grab().save(str(out/'stale.png'))
+ except BaseException as error:
+  errors.append(error)
+ finally:
+  test.app.activeModalWidget().reject()
+try:
+ host=AssignmentDialogHost(test.workspace,test.icons,resolve_pending=lambda:True,choose_dirty=lambda:None)
+ QTimer.singleShot(100,capture)
+ assert not host.select('w 1',AssessmentKind.LIFFT,current=test.place).completed
+ if errors: raise errors[0]
+ print('Actual modal host states captured')
+finally:
+ test.doCleanups()

@@ -1,0 +1,37 @@
+import sys,tempfile,json,shutil,sqlite3,csv,codecs
+from pathlib import Path
+sys.path.insert(0,sys.argv[1])
+from ergotools.infrastructure.legacy_project import read_legacy_descriptor
+from ergotools.infrastructure.legacy_conversion import convert_legacy_project
+from ergotools.infrastructure.summary_export import write_summary_csv
+from ergotools.application.assessment_export import saved_summary_rows
+from ergotools.application.assessments.evaluation import EvaluationStatus
+from ergotools.presentation.summary_csv import summary_csv_table,SUMMARY_HEADERS
+from ergotools.domain.assessments.document import AssessmentKind
+root=Path.cwd();reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+original=reference/'tests/ErgoTools_ComparativeRiskTest.ergprj';descriptor=read_legacy_descriptor(original,'validation');before=original.read_bytes(),descriptor.database_path.read_bytes()
+with tempfile.TemporaryDirectory() as directory:
+ folder=Path(directory);source=folder/original.name;shutil.copyfile(original,source);copy=read_legacy_descriptor(source,'validation');copy.database_path.parent.mkdir(parents=True);shutil.copyfile(descriptor.database_path,copy.database_path);shutil.copytree(descriptor.images_path,copy.images_path)
+ connection=sqlite3.connect(':memory:');connection.deserialize(copy.database_path.read_bytes())
+ try:
+  rows=connection.execute('SELECT worker_id,plant_name,section_name,line_name,station_id,shift_id,tool_id,total_cumulative_damage,probability_outcome,unit FROM WorkerStationShiftErgoTool').fetchall()
+ finally:connection.close()
+ oracle={tuple(row[:7]):row[7:] for row in rows};assert len(oracle)==len(rows)==194
+ seen=set();out=root/'artifacts/recorded-summary-export';out.mkdir(parents=True,exist_ok=True)
+ with convert_legacy_project(source,folder/'converted.ergprj','validation') as project:
+  for kind in AssessmentKind:
+   summaries=saved_summary_rows(project,kind);table=summary_csv_table(summaries,'fixed timestamp');path=out/(kind.value+'.csv')
+   if path.exists():path.unlink()
+   write_summary_csv(str(path),table);assert path.read_bytes().startswith(codecs.BOM_UTF8) and b'\r\n' in path.read_bytes()
+   with path.open(encoding='utf-8-sig',newline='') as stream:exported=list(csv.DictReader(stream))
+   for row,record in zip(exported,summaries,strict=True):
+    key=tuple(row[name] for name in SUMMARY_HEADERS[1:8]);assert key in oracle and key not in seen;seen.add(key);damage,percent,unit=oracle[key]
+    assert record.status is EvaluationStatus.RECORDED
+    assert (None if row['Total Cumulative Damage']=='' else float(row['Total Cumulative Damage']))==damage,(key,row,oracle[key])
+    assert (None if row['Probability Outcome']=='' else float(row['Probability Outcome']))==percent,(key,row,oracle[key])
+    assert row['Unit']==unit,(key,row['Unit'],unit)
+    assert row['Assessment ID']==record.document.document_id and row['Evaluation Status']=='recorded'
+ assert seen==set(oracle)
+assert (original.read_bytes(),descriptor.database_path.read_bytes())==before
+assert all(not getattr(m,'__file__',None) or Path(m.__file__).is_relative_to(sys.argv[1]) for n,m in tuple(sys.modules.items()) if n=='ergotools' or n.startswith('ergotools.'))
+print('Extracted-wheel F147 CSV compatibility: all 194 original summary identities, damage, full percent precision, recorded units, BOM/CRLF and unchanged archive passed.')

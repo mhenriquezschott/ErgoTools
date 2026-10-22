@@ -1,0 +1,98 @@
+import ast,json,os,tempfile
+from pathlib import Path
+from dataclasses import replace
+from unittest.mock import Mock
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import QSize,Qt,QTimer
+from PyQt5.QtGui import QIcon,QImage,QColor
+from PyQt5.QtWidgets import *
+from ergotools.bootstrap import load_icons
+from ergotools.domain.language import Language
+from ergotools.domain.plot_filters import PlotFilterSelection,PlotRiskView
+from ergotools.domain.plot_scope import PlotScope
+from ergotools.domain.plot_positions import PlotPoint,PlotPositions,WorkerAssignmentMarker,WorkerPositionSource
+from ergotools.application.plot_results import saved_plot_results
+from ergotools.application.plot_layout import LoadedPlantLayout
+from ergotools.infrastructure.plant_image_import import import_plant_image
+from ergotools.presentation.desktop.plot_marker_layer import PlotMarkerLayer
+from ergotools.presentation.desktop.plot_layout_canvas import PlotLayoutCanvas
+from ergotools.presentation.desktop.plot_job_overview import PlotJobOverview
+from ergotools.presentation.desktop.theme.plot import PLOT_STYLE
+root=Path.cwd();art=root/'artifacts/plot-job-overview';art.mkdir(exist_ok=True)
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+app=QApplication([])
+def settle():app.processEvents();app.processEvents()
+def grab(widget,name):
+ settle();assert widget.grab().save(str(art/(name+'.png')))
+class Original(QWidget):
+ def selectedJobOverviewRecord(self):return self.record
+ def cancelJobLocatePulse(self):pass
+ def clearJobOverview(self):pass
+ def jobOverviewSelectionChanged(self,*args):pass
+ def locateSelectedJob(self):pass
+ def selectJobOverviewIndex(self,*args):pass
+ def stepJobOverview(self,*args):pass
+ def selectLastJobOverview(self):pass
+ def cancelPendingJobPosition(self):pass
+ def savePendingJobPosition(self):pass
+ def jobCoordinateEdited(self,*args):pass
+ def advanceJobLocatePulse(self):pass
+source_tree=ast.parse((reference/'src/plant_layout.py').read_text())
+source_class=next(n for n in source_tree.body if isinstance(n,ast.ClassDef) and any(isinstance(f,ast.FunctionDef) and f.name=='buildJobOverviewPanel' for f in n.body))
+for name in ('buildJobOverviewPanel','jobOverviewSelectionChanged','clearJobOverview','setJobPositionStatus','setJobPositionPending'):
+ fn=next(n for n in source_class.body if isinstance(n,ast.FunctionDef) and n.name==name)
+ exec(compile(ast.Module([fn],type_ignores=[]),'source-job-overview','exec'),globals())
+ setattr(Original,name,globals()[name])
+def host(child,width=390,height=640):
+ dialog=QDialog();dialog.setObjectName('plotDialog');dialog.setStyleSheet(PLOT_STYLE)
+ layout=QVBoxLayout(dialog);layout.setContentsMargins(0,0,0,0);layout.addWidget(child)
+ dialog.resize(width,height);dialog.show();settle();return dialog
+nodes=[]
+for node in ast.parse((root/'tests/test_plot_results.py').read_text()).body:
+ if isinstance(node,(ast.Import,ast.ImportFrom)):
+  if (getattr(node,'module','') or '').startswith(('tests','PyQt5','ergotools.presentation','ergotools.bootstrap')):continue
+  nodes.append(node)
+ elif isinstance(node,ast.Assign):nodes.append(node)
+ elif isinstance(node,ast.FunctionDef) and node.name=='project':node.decorator_list=[];nodes.append(node)
+namespace={};exec(compile(ast.Module(nodes,type_ignores=[]),'synthetic-fixture','exec'),namespace)
+with tempfile.TemporaryDirectory() as temporary:
+ folder=Path(temporary);generator=namespace['project'](folder);repository=next(generator)
+ try:
+  positions=PlotPositions('p').with_saved_marker(WorkerAssignmentMarker(1,PlotPoint(100,100),visible=True,source=WorkerPositionSource.MANUAL),repository.load_jobs());repository.save_plot_positions(positions)
+  image=QImage(1000,600,QImage.Format_RGB32);image.fill(QColor('white'));assert image.save(str(folder/'map.png'))
+  result=saved_plot_results(repository,PlotFilterSelection(PlotScope((('P',),)),risk_view=PlotRiskView.JOB),current_year=2026)
+  old=Original();old.visual_job_markers=[];old.record=None
+  old.buildJobOverviewPanel(str(root/'src/ergotools/resources/icons'))
+  old.jobOverviewSelectionChanged();sourcehost=host(old.job_overview_scroll);grab(sourcehost,'source-empty')
+  old.record=dict(job_placement_id=1,job_id='j',job_name='Job',plant_name='P',section_name='S',line_name='L',station_id='1',shift_id='All',assigned_worker_count=3,total_cumulative_damage=0,probability_outcome=0,job_risk_profile_name=result.jobs[0].evidence.profile.name,job_risk_profile_version=result.jobs[0].evidence.profile.version,x=100,y=100)
+  for row in result.jobs:old.job_overview_combo.addItem(f'{row.job.job_id}  |  {row.placement.workplace.station_id}  |  Shift {row.placement.workplace.shift_id}',row.placement.placement_id)
+  old.jobOverviewSelectionChanged();grab(sourcehost,'source-populated');sourcehost.close()
+  for language in (Language.ENGLISH,Language.SPANISH):
+   prefix='en' if language is Language.ENGLISH else 'es'
+   canvas=PlotLayoutCanvas();canvas.set_layout(LoadedPlantLayout(namespace['SCOPE'],import_plant_image(folder/'map.png').data))
+   errors=[];layer=PlotMarkerLayer(canvas,repository.load_jobs(),repository.save_plot_positions,errors.append,current_year=2026,language=language)
+   panel=PlotJobOverview(layer,load_icons(),language=language);window=host(panel);grab(window,prefix+'-empty')
+   layer.set_results(result);grab(window,prefix+'-populated')
+   panel.navigate(1);grab(window,prefix+'-unpositioned')
+   panel.navigate(0);panel.x_input.setText('0');panel.y_input.setText('-12.5');panel.coordinate_edited('0');grab(window,prefix+'-typed-pending')
+   def fail(value):raise OSError('controlled native save failure')
+   layer.save_positions=fail;panel.save();assert layer.pending and errors;grab(window,prefix+'-failed-save')
+   panel.cancel();grab(window,prefix+'-cancelled')
+   panel.x_input.setText('250');panel.y_input.setText('200');panel.coordinate_edited('250');layer.save_positions=repository.save_plot_positions;panel.save();grab(window,prefix+'-saved')
+   # Restore fixture positions so source/new populated comparisons use identical inputs.
+   repository.save_plot_positions(positions)
+   panel.locate();panel.advance_locate();grab(window,prefix+'-locate-pulse');panel.stop_locate()
+   window.resize(510,820);grab(window,prefix+'-enlarged')
+   window.close();panel.close();canvas.close();settle()
+  # Whole component composition verifies map remains visible beside the original-width overview.
+  canvas=PlotLayoutCanvas();canvas.set_layout(LoadedPlantLayout(namespace['SCOPE'],import_plant_image(folder/'map.png').data))
+  layer=PlotMarkerLayer(canvas,repository.load_jobs(),repository.save_plot_positions,lambda x:None,current_year=2026)
+  panel=PlotJobOverview(layer,load_icons());dialog=QDialog();dialog.setObjectName('plotDialog');dialog.setStyleSheet(PLOT_STYLE)
+  layout=QHBoxLayout(dialog);layout.addWidget(canvas,1);layout.addWidget(panel);panel.setFixedWidth(390)
+  dialog.resize(1460,800);dialog.show();settle();layer.set_results(result);grab(dialog,'map-composition')
+  assert canvas.viewport().rect().contains(canvas.mapFromScene(canvas.sceneRect()).boundingRect())
+  dialog.resize(1920,1060);settle();grab(dialog,'map-composition-enlarged')
+  assert canvas.viewport().rect().contains(canvas.mapFromScene(canvas.sceneRect()).boundingRect())
+  dialog.close();panel.close();canvas.close()
+ finally:generator.close()
+print('Source-code overview captures and English/Spanish empty/populated/unpositioned/pending/error/Cancel/saved/locate/enlarged states captured; adjacent map containment passed')

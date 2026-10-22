@@ -1,0 +1,42 @@
+import ast, contextlib, hashlib, json, sqlite3, sys
+from pathlib import Path
+from types import SimpleNamespace
+root = Path.cwd()
+reference = Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+files = [reference/'src/main.py', reference/'src/job_placement_repository.py']
+namespace = {}
+for path, name in zip(files, ['assessmentAssignmentForContext', 'worker_assignments']):
+    tree = ast.parse(path.read_text())
+    node = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == name)
+    namespace['sqlite3'] = sqlite3
+    exec(compile(ast.Module(body=[node], type_ignores=[]), str(path), 'exec'), namespace)
+base = ['Plant', 'Section', 'Line', 'Station', 'Day']
+cases = []
+for label, worker, context, active, placement, placement_active, job_active in [
+    ('eligible', 'w1', base, 1, 10, 1, 1),
+    ('inactive_assignment', 'w1', base, 0, 10, 1, 1),
+    ('no_placement', 'w1', base, 1, None, 0, 1),
+    ('inactive_placement', 'w1', base, 1, 10, 0, 1),
+    ('inactive_job_still_matches', 'w1', base, 1, 10, 1, 0),
+    ('different_worker', 'w2', base, 1, 10, 1, 1),
+] + [(f'different_context_{i}', 'w1', base[:i]+['Other']+base[i+1:], 1, 10, 1, 1) for i in range(5)] + [
+    ('case_sensitive', 'w1', ['plant']+base[1:], 1, 10, 1, 1),
+    ('whitespace_significant', 'w1', ['Plant ']+base[1:], 1, 10, 1, 1),
+]:
+    with contextlib.closing(sqlite3.connect(':memory:')) as connection:
+        connection.executescript('''
+        CREATE TABLE WorkplaceContext(id,plant_name,section_name,line_name,station_id,shift_id);
+        CREATE TABLE WorkerAssignment(id,worker_id,workplace_context_id,job_placement_id,active,started_at,ended_at);
+        CREATE TABLE JobPlacement(id,job_id,active,valid_from,valid_to);
+        CREATE TABLE Job(id,name,active);
+        ''')
+        connection.execute('INSERT INTO WorkplaceContext VALUES(1,?,?,?,?,?)', context)
+        connection.execute('INSERT INTO WorkerAssignment VALUES(7,?,1,?,?,?,?)', (worker,placement,active,'2099-01-01','2099-12-31'))
+        connection.execute('INSERT INTO JobPlacement VALUES(10,?,?,?,?)', ('j1',placement_active,'2000-01-01','2000-12-31'))
+        connection.execute('INSERT INTO Job VALUES(?,?,?)', ('j1','Job one',job_active))
+        namespace['sqlite3'] = SimpleNamespace(connect=lambda _: contextlib.nullcontext(connection))
+        selected = namespace['assessmentAssignmentForContext'](SimpleNamespace(projectdatabasePath='synthetic', currentWorkerId=lambda: 'w1'), base, 'w1')
+        cases.append(dict(name=label,worker_id=worker,workplace=context,active=bool(active),job_placement_id=placement,placement_active=bool(placement_active),job_active=bool(job_active),expected_assignment_id=selected['assignment_id'] if selected else None))
+output = dict(python=sys.version.split()[0],source_sha256={str(p.relative_to(reference)):hashlib.sha256(p.read_bytes()).hexdigest() for p in files},query_worker_id='w1',query_workplace=base,assignment_id=7,cases=cases,notes='Actual AST-extracted reference query and method; isolated in-memory SQLite. Fixed past placement and future assignment dates prove lookup does not filter date ranges. No Qt imports or operational files.')
+(root/'tests/fixtures/assessment_context_reference.json').write_text(json.dumps(output,indent=2)+'\n')
+print(len(cases), 'reference cases captured')

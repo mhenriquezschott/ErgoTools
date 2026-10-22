@@ -1,0 +1,9 @@
+import os,subprocess,tempfile,zipfile,sys
+from pathlib import Path
+root=Path.cwd();checkpoint=sys.argv[1]
+with tempfile.TemporaryDirectory(prefix='ergotools-'+checkpoint+'-wheel-') as directory:
+ with zipfile.ZipFile(root/'dist/ergotools-0.1.0.dev0-py3-none-any.whl') as archive:archive.extractall(directory)
+ script='/tmp/'+checkpoint+'-wheel-checks.py'
+ command=[str(root/'.venv/bin/python'),'-I','-c',"import sys;sys.path.insert(0,sys.argv[1]);exec(compile(open(sys.argv[2]).read(),sys.argv[2],'exec'))",directory,script]
+ with (root/'artifacts'/(checkpoint+'-wheel.log')).open('w') as log:
+  subprocess.run(command,cwd=root,env=dict(os.environ,QT_QPA_PLATFORM='xcb'),stdout=log,stderr=subprocess.STDOUT,check=True)

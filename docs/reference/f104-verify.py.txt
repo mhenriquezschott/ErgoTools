@@ -1,0 +1,87 @@
+import hashlib,json,subprocess,sys,tempfile,zipfile,xml.etree.ElementTree as ET
+from pathlib import Path
+root=Path.cwd()
+def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+manifest=json.loads((root/'docs/reference/source-manifest.json').read_text())
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+assert all(digest(reference/name)==value for name,value in manifest.items())
+assert digest(root/'uv.lock')==json.loads((root/'docs/f79-validation.json').read_text())['lock_sha256']
+wheel=root/'dist/ergotools-0.1.0.dev0-py3-none-any.whl'
+code=r"""
+import sys
+from pathlib import Path
+sys.path.insert(0,sys.argv[1])
+from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication,QMessageBox
+from ergotools.bootstrap import load_icons
+from ergotools.domain.project import ProjectMetadata
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.assessments.lifft_draft import LifftDraft
+from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.domain.work_catalog import WorkCatalog
+from ergotools.domain.work_hierarchy import WorkHierarchy
+from ergotools.domain.plot_filters import PlotRiskView
+from ergotools.domain.worker_details import WorkerDetails
+from ergotools.domain.decimal_convention import DecimalConvention
+from ergotools.application.settings import Language
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+from ergotools.infrastructure.plant_image_import import import_plant_image
+from ergotools.presentation.desktop.plot_map_panel import PlotMapPanel
+from ergotools.presentation.desktop.plot_filters_panel import PlotFiltersPanel
+app=QApplication([])
+metadata=ProjectMetadata('p','Filters wheel',MeasurementSystem.METRIC)
+with AssessmentProjectFile.create_with_document(Path('project.ergprj'),metadata,'a',LifftDraft(metadata.default_units),format_version=8) as project:
+ hierarchy=WorkHierarchy(WorkCatalog('p',shifts=('1','Day')),('P',));project.save_hierarchy(hierarchy)
+ panel=PlotMapPanel(hierarchy,project,project,lambda name:import_plant_image(Path(name)),load_icons())
+ workers=(WorkerDetails(birth_date='2000-12-31',sex='Female',height_cm=170.3,weight_kg=70),WorkerDetails(sex='Male',weight_kg=80),None)
+ results=[]
+ def apply(selection):
+  results.append(tuple(i for i,d in enumerate(workers) if selection.demographics.matches(d,current_year=2026)))
+  return True
+ filters=PlotFiltersPanel(hierarchy,panel,load_icons(),apply,language=Language.SPANISH)
+ filters.clear_button.click()
+ assert filters.workplace.scope.shift=='1'
+ filters.demographics.setChecked(True);assert filters.height()==229
+ filters.sex.setCurrentIndex(filters.sex.findData('Female'))
+ for key,bounds in [('age',(20,50)),('weight',(50,100)),('height',(150,190))]:
+  for field,value in zip(filters.ranges[key],bounds):field.setValue(value)
+ filters.risk_buttons[PlotRiskView.COMPARISON].click();filters.apply_button.click()
+ previous=filters.applied;assert results==[(0,)]
+ for i in range(3):
+  filters.set_system(MeasurementSystem.IMPERIAL);assert filters.selection()==previous
+  assert filters.range_titles['weight'].text()=='Peso (lb)'
+  filters.set_system(MeasurementSystem.METRIC);assert filters.selection()==previous
+ filters.set_decimal_convention(DecimalConvention.COMMA)
+ assert filters.ranges['weight'][0].text()=='50,0'
+ filters.tools.buttons[AssessmentKind.DUET].click()
+ assert filters.applied is previous and len(results)==1
+ filters.apply_selection=lambda selection:False
+ filters.apply_button.click();assert filters.applied is previous
+ def fail(selection):raise OSError('controlled adapter failure')
+ filters.apply_selection=fail
+ def close_error():
+  box=QApplication.activeModalWidget();assert isinstance(box,QMessageBox)
+  assert 'anteriores' in box.text()
+  assert box.grab().save(sys.argv[2])
+  box.button(QMessageBox.Ok).click()
+ QTimer.singleShot(0,close_error);filters.apply_button.click()
+ assert filters.applied is previous and len(results)==1
+ filters.clear_button.click()
+ assert not filters.demographics.isChecked() and filters.height()==201
+ assert filters.tools.selected is AssessmentKind.LIFFT and filters.risk_view is PlotRiskView.INDIVIDUAL
+ assert filters.applied is previous and len(results)==1
+ assert all(f.value()==-1 for pair in filters.ranges.values() for f in pair)
+ filters.close();panel.close();app.processEvents()
+print('Extracted wheel: actual Apply/predicate result, canonical units/decimal, edited/applied intent, failure message and Clear checks passed')
+"""
+with tempfile.TemporaryDirectory() as directory:
+ with zipfile.ZipFile(wheel) as archive:archive.extractall(directory)
+ result=subprocess.run([sys.executable,'-I','-c',code,directory,str(root/'artifacts/plot-demographics/es-apply-error.png')],cwd=directory,capture_output=True,text=True,timeout=30)
+ if result.returncode:raise RuntimeError(result.stdout+result.stderr)
+ print(result.stdout.strip())
+coverage=json.loads((root/'artifacts/coverage.json').read_text())
+tests=ET.parse(root/'artifacts/tests.xml')
+evidence=dict(milestone='F104',verified_on='2026-10-07',python=sys.version.split()[0],tests_passed=len(list(tests.iter('testcase'))),new_tests=9,coverage_percent=coverage['totals']['percent_covered'],reference_files_unchanged=len(manifest),dependency_lock_unchanged=True,lock_sha256=digest(root/'uv.lock'),wheel_sha256=digest(wheel),independent_wheel_smoke='passed',plot_main_window_enabled=False,plot_filter_grid_implemented=True,demographic_predicates_implemented=True,production_assessment_result_dataset_integrated=False,scientific_gates_preserved=True,overall_completion_estimate_percent=None)
+evidence['native_screenshots']={str(p.relative_to(root)):digest(p) for p in sorted((root/'artifacts/plot-demographics').glob('*.png'))}
+(root/'docs/f104-validation.json').write_text(json.dumps(evidence,indent=2)+'\n')
+print('Verified all 500 reference hashes, unchanged dependency lock and F104 package evidence')

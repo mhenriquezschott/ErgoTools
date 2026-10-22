@@ -1,0 +1,123 @@
+{
+  "date": "2026-10-10",
+  "python": "3.13.14",
+  "baseline_versions": {
+    "PyQt5": "5.15.11",
+    "PyQt5-Qt5": "5.15.17",
+    "PyQt5-sip": "12.17.0",
+    "pulp": "3.2.2",
+    "highspy": "1.11.0",
+    "ruff": "0.16.9",
+    "mypy": "2.3.1",
+    "pytest": "9.1.1"
+  },
+  "tests_passed": 1178,
+  "new_regressions": 10,
+  "coverage_percent": 96.3963963963964,
+  "standards": "Ruff, format, strict mypy, architecture and wheel/sdist pass",
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "edb08376fe97db0e524ce51a567283f769f7b24ef1251ae298db923fc968ad3f",
+  "native_captures_inspected": [
+    "en-saved-minimum",
+    "en-scope-expanded-selected",
+    "en-scope-summary-minimum",
+    "en-scope-applied-empty",
+    "en-cbc-preview-minimum",
+    "en-single-comparison",
+    "en-all-tab-0",
+    "en-all-tab-1",
+    "en-all-tab-2",
+    "en-applied-enlarged",
+    "en-new-empty-minimum",
+    "es-saved-minimum",
+    "es-scope-expanded-selected",
+    "es-scope-summary-minimum",
+    "es-scope-applied-empty",
+    "es-cbc-preview-minimum",
+    "es-single-comparison",
+    "es-all-tab-0",
+    "es-all-tab-1",
+    "es-all-tab-2",
+    "es-applied-enlarged",
+    "es-new-empty-minimum"
+  ],
+  "native_verification": "artifacts/m07-m08-native/verification.json",
+  "full_gate": "artifacts/m07-m08-check.log",
+  "wheel_gate": "artifacts/m07-m08-wheel.log",
+  "independent_wheel": "focused JROT tests and native EN/ES comprehensive-copy workflows; imports confined to extracted wheel",
+  "known_limits": [
+    "Linux XCB acceptance only; Windows/macOS VM testing deferred per M12",
+    "Timeout behavior uses deterministic termination evidence, not a flaky timing benchmark",
+    "Solver optimal statuses retain the original 1% gap policy; no claim of exact global optimality",
+    "M09 shared UI and M10 final cross-feature acceptance remain separate fixed milestones"
+  ],
+  "milestone": "M08",
+  "overall_progress": 92.75,
+  "acceptance": [
+    "M08.1: matched original-source objectives/constraints for 3 CBC tools and HiGHS all-tools; comparison/Apply/Undo/Save/reopen retain exact profile provenance",
+    "M08.2: existing deterministic timeout/incumbent, no-incumbent, infeasible, cancel/close/backend failure paths pass"
+  ],
+  "matched_original_comparisons": [
+    {
+      "kind": "lifft",
+      "workers": 2,
+      "blocks": 3,
+      "original_objective": [
+        26.933333333333334,
+        0.0
+      ],
+      "new_objective": [
+        26.933333333333334,
+        0.0
+      ],
+      "constraints": "both independently validated",
+      "backend": "cbc"
+    },
+    {
+      "kind": "duet",
+      "workers": 2,
+      "blocks": 3,
+      "original_objective": [
+        39.73333333333333,
+        0.0
+      ],
+      "new_objective": [
+        39.73333333333333,
+        0.0
+      ],
+      "constraints": "both independently validated",
+      "backend": "cbc"
+    },
+    {
+      "kind": "tst",
+      "workers": 2,
+      "blocks": 3,
+      "original_objective": [
+        27.46666666666667,
+        0.0
+      ],
+      "new_objective": [
+        27.46666666666667,
+        0.0
+      ],
+      "constraints": "both independently validated",
+      "backend": "cbc"
+    },
+    {
+      "kind": "all_tools",
+      "workers": 2,
+      "blocks": 3,
+      "original_objective": [
+        94.13333333333333,
+        0.0
+      ],
+      "new_objective": [
+        94.13333333333333,
+        0.0
+      ],
+      "constraints": "both independently validated",
+      "backend": "highs"
+    }
+  ]
+}

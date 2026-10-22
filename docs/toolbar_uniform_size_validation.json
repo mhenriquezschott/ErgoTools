@@ -1,0 +1,186 @@
+{
+  "date": "2026-10-20",
+  "scope": "Owner-authorized uniform main toolbar button sizing only",
+  "code_files": [
+    "src/ergotools/presentation/desktop/main_navigation.py",
+    "tests/test_main_navigation.py"
+  ],
+  "gate": {
+    "command": "QT_QPA_PLATFORM=xcb xvfb-run -a bash tools/check.sh",
+    "tests_passed": 1984,
+    "failures": 0,
+    "skipped": 0,
+    "coverage_percent": 94.33079288674956,
+    "lint_format_types_architecture_naming_documentation_builds": "passed",
+    "mypy_files": 273,
+    "formatted_files": 708,
+    "documentation_review_issues": 0,
+    "log": "artifacts/toolbar_uniform_size/full_gate.log"
+  },
+  "focused_source_tests": 12,
+  "independent_wheel_tests": 12,
+  "package_evidence": "artifacts/toolbar_uniform_size/package.json",
+  "visual_captures": [
+    {
+      "path": "artifacts/toolbar_uniform_size/en_header.png",
+      "sha256": "78a9ce3fd18f60f3a59310733ebafb6b8ddf545a0b90eb7f7049585677d7ad64",
+      "visually_inspected": true
+    },
+    {
+      "path": "artifacts/toolbar_uniform_size/en_loaded_header.png",
+      "sha256": "9fa8f321dac6b51223f0410afaa2368ab4653d8aa4b43143d4900fb029f73c6a",
+      "visually_inspected": true
+    },
+    {
+      "path": "artifacts/toolbar_uniform_size/en_loaded_main.png",
+      "sha256": "0d7b97ff7876b9c4e8c924e7bcc31c08f8cfc29c8e36b5d93d7c07d54b2f7ec2",
+      "visually_inspected": true
+    },
+    {
+      "path": "artifacts/toolbar_uniform_size/en_main.png",
+      "sha256": "525562ecf8f88390a068f89a3ace15aa0a228cb890e1b24f05473595ce4aa75c",
+      "visually_inspected": true
+    },
+    {
+      "path": "artifacts/toolbar_uniform_size/es_header.png",
+      "sha256": "3a990aa9ca4965b7f2e88265c6dfff8e0cbd771ce2fc224fe05f8752d40fd2e7",
+      "visually_inspected": true
+    },
+    {
+      "path": "artifacts/toolbar_uniform_size/es_loaded_header.png",
+      "sha256": "a4898fbb0161d1cd716a97ea4fcb36a38345fd0139b7051ecd4f59476a06a6a6",
+      "visually_inspected": true
+    },
+    {
+      "path": "artifacts/toolbar_uniform_size/es_loaded_main.png",
+      "sha256": "df7f371fbdb08cc6504a6ba841a43a694e54b6d5075e4c6aa4033d636e910d45",
+      "visually_inspected": true
+    },
+    {
+      "path": "artifacts/toolbar_uniform_size/es_main.png",
+      "sha256": "c4796a52f0f8bf7f5156394613de13b191e00efe56c51bdca41be7780e0bfb5f",
+      "visually_inspected": true
+    }
+  ],
+  "native_geometry": [
+    {
+      "language": "en",
+      "button_sizes": {
+        "undo": [
+          94,
+          75
+        ],
+        "redo": [
+          94,
+          75
+        ],
+        "new": [
+          94,
+          75
+        ],
+        "open": [
+          94,
+          75
+        ],
+        "save": [
+          94,
+          75
+        ],
+        "plot": [
+          94,
+          75
+        ],
+        "jrot": [
+          94,
+          75
+        ],
+        "organization": [
+          94,
+          75
+        ],
+        "jobs": [
+          94,
+          75
+        ]
+      },
+      "main_capture": "artifacts/toolbar_uniform_size/en_main.png",
+      "header_capture": "artifacts/toolbar_uniform_size/en_header.png",
+      "window": [
+        1550,
+        1015
+      ],
+      "vtk": "unchanged, omitted from toolbar-only inspection"
+    },
+    {
+      "language": "es",
+      "button_sizes": {
+        "undo": [
+          95,
+          75
+        ],
+        "redo": [
+          95,
+          75
+        ],
+        "new": [
+          95,
+          75
+        ],
+        "open": [
+          95,
+          75
+        ],
+        "save": [
+          95,
+          75
+        ],
+        "plot": [
+          95,
+          75
+        ],
+        "jrot": [
+          95,
+          75
+        ],
+        "organization": [
+          95,
+          75
+        ],
+        "jobs": [
+          95,
+          75
+        ]
+      },
+      "main_capture": "artifacts/toolbar_uniform_size/es_main.png",
+      "header_capture": "artifacts/toolbar_uniform_size/es_header.png",
+      "window": [
+        1550,
+        1015
+      ],
+      "vtk": "unchanged, omitted from toolbar-only inspection"
+    }
+  ],
+  "vtk": "Unchanged; omitted from toolbar-only captures. Valid prior renderer evidence reused.",
+  "review_hash_evidence": "artifacts/toolbar_uniform_size/reviewed_files.json",
+  "project_files_unchanged": [
+    {
+      "path": "test_projects/native/comparative_risk_test.ergprj",
+      "sha256": "4109660c7e111dc96145ed2ec2bfae6764d4b6f8538a925b168bde3083e274a2",
+      "unchanged": true
+    },
+    {
+      "path": "test_projects/native/integrated_test.ergprj",
+      "sha256": "2a74b132eafc895ddc9d97832accc55c64a6579538788957c61b14962793473b",
+      "unchanged": true
+    },
+    {
+      "path": "test_projects/native/workflow_4_workers.ergprj",
+      "sha256": "6dad8927d0657da09d66bf4c295838633a07b238220ef41357ebd84be712c76f",
+      "unchanged": true
+    }
+  ],
+  "uv_lock_unchanged": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "reference": "Untouched; no reference writes or repeated historical audit",
+  "workflow_testing": "Owner confirms empty Job list/summary; no Job entries tested. Both interactive workflows paused.",
+  "current_status": "Superseded: owner rejected uniform sizing; previous source restored. See toolbar_restore_acceptance.md."
+}

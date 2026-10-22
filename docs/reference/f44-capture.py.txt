@@ -1,0 +1,30 @@
+import ast, hashlib, json, sqlite3
+from contextlib import closing
+from pathlib import Path
+root=Path.cwd()
+source=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])/'src/schema_migrations.py'
+tree=ast.parse(source.read_text())
+fn=next(node for node in tree.body if isinstance(node,ast.FunctionDef) and node.name=='_create_individual_assessments_v5')
+cases=[]
+for label,assignment,tool,version,status,current in [
+ ('duplicate_version',1,'LiFFT',1,'draft',0),
+ ('duplicate_current',1,'LiFFT',2,'draft',1),
+ ('older_noncurrent',1,'LiFFT',2,'superseded',0),
+ ('other_assignment',2,'LiFFT',1,'complete',1),
+ ('other_tool',1,'DUET',1,'complete',1),
+ ('zero_version',1,'LiFFT',0,'draft',0),
+ ('invalid_status',1,'LiFFT',2,'invalid',0),
+ ('superseded_current',2,'LiFFT',1,'superseded',1),
+ ('complete_noncurrent',1,'LiFFT',2,'complete',0),
+]:
+ with closing(sqlite3.connect(':memory:')) as connection:
+  # Actual table and both index statements; foreign membership tested separately.
+  exec(compile(ast.Module(body=fn.body[:3],type_ignores=[]),str(source),'exec'),{'connection':connection})
+  connection.execute("INSERT INTO IndividualAssessment(id,worker_assignment_id,tool_id,version,status,is_current) VALUES(1,1,'LiFFT',1,'draft',1)")
+  try:
+   connection.execute('INSERT INTO IndividualAssessment(id,worker_assignment_id,tool_id,version,status,is_current) VALUES(2,?,?,?,?,?)',(assignment,tool,version,status,current))
+   accepted=True
+  except sqlite3.IntegrityError:
+   accepted=False
+  cases.append(dict(name=label,assignment=assignment,tool=tool,version=version,status=status,current=bool(current),accepted=accepted))
+(root/'tests/fixtures/assessment_history_reference.json').write_text(json.dumps(dict(source_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),cases=cases),indent=2)+'\n')

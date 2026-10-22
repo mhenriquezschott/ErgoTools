@@ -1,0 +1,40 @@
+{
+  "milestone": "F60",
+  "verified_on": "2026-10-03",
+  "python": "3.13.14",
+  "tests_passed": 510,
+  "new_tests": 4,
+  "coverage_percent": 98.97587224440201,
+  "new_module_coverage": {
+    "src/ergotools/presentation/desktop/job_workplace_dialog.py": 99.13793103448276,
+    "src/ergotools/presentation/desktop/job_workplace_host.py": 100.0
+  },
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "wheel_sha256": "b338844938278b08f3ab3ffe8713bde8484a32dba25a7d615500d5eee96be7d5",
+  "independent_wheel_smoke": "passed",
+  "ui_changed": true,
+  "schema_changed": false,
+  "existing_formats_unchanged": true,
+  "reference_overlap_cases": 8,
+  "overall_completion_estimate_percent": 66,
+  "native_screenshots": {
+    "new-collapsed.png": "510730294e09303cbd2a4a93d85a8b9855f28c13892391d8acb02e9ec24c0e21",
+    "new-empty-shift.png": "c1ccf3850890a05e94d23a09f5fd8530ef86a93b4a93d94c3d2f9c5cc6bd1fff",
+    "new-empty.png": "274744f8c8276ce25ae281272d6689b7e7045a08c8fe7b93d9157875fbb0f4bd",
+    "new-error.png": "5b84461f37c231d267e66cb33cf0f972734249b6484d428862b7274322e6695f",
+    "new-expanded.png": "ecbcb14ddae608b491c50364f3a7495d16efcb92ebd28e733f0de1c6870fba50",
+    "new-filtered.png": "bea4f2067f41d94c429a19134495fa62cf8ce8159aa5e238d01d9634a27fecdc",
+    "new-minimum.png": "42ff5a3da0209ae90d7a3794d6d0a2f8929de6225c5cafb825c307809bd11d0d",
+    "original-collapsed.png": "271ac103af20a1e013223b61e0018cd0ff09ef88369b98c1a57de39610855ee6",
+    "original-expanded.png": "8a9435e0108d9562d5344d47f8c11920200b536d7cb3b6ce1ab073c2f156eae1",
+    "original-minimum.png": "251254101915814f48312886fd11d84693fe22e37a847d666837e9b223fd319a",
+    "spanish-collapsed.png": "790c622d68c99bef27235205da8c275a401e3065cf8844b54d059f652a135c42",
+    "spanish-empty-shift.png": "4c2219471b649a007b0543442bb76c6f019bcac19d718e712dd43e3d75496bf6",
+    "spanish-empty.png": "6638fc2d74ee24555fe69558ff37779fa131b46fb2fd9eda77c2ef5d731e815c",
+    "spanish-error.png": "ab4c256708ab1233017a62c43f10d3329f22fba2dbea0068fcb2ea06097770af",
+    "spanish-expanded.png": "e1d53985986f514a5ab44f4f00edc8bfb8b252a9c534003976e2d3d99649d611",
+    "spanish-filtered.png": "27578bc894490d4d26e1251dd8aef5d6c6d24cde831a89b1c30608f229b52716"
+  }
+}

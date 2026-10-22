@@ -1,0 +1,36 @@
+{
+  "milestone": "F73",
+  "verified_on": "2026-10-04",
+  "python": "3.13.14",
+  "tests_passed": 607,
+  "new_tests": 4,
+  "coverage_percent": 96.81897682553564,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "wheel_sha256": "b694e78c7da568b4cfaecad686d1b69db0cf5997cd9ef86790199338cc465e66",
+  "independent_wheel_smoke": "passed",
+  "hierarchy_payload_version": 3,
+  "reads_hierarchy_payload_versions": [
+    1,
+    2,
+    3
+  ],
+  "project_sql_schema_changed": false,
+  "overall_completion_estimate_percent": null,
+  "desktop_new_project_format": 7,
+  "native_screenshots": {
+    "artifacts/organization-management/new-collapsed.png": "430a0749eff212d2b6d4d758b3e71988b80744656acf988c44d2f5cb66375f3c",
+    "artifacts/organization-management/new-empty.png": "706001ff59a431f7a24c5dbe26c4d2730a06dbc0d6e51a39562f4aa663cae3cf",
+    "artifacts/organization-management/new-expanded-bottom.png": "56dd7c25930a793a0dfca2b3c9cc694a23e9746db24a29b6ac79e798db4a252e",
+    "artifacts/organization-management/new-expanded.png": "d89462094fa2a40738e77cda7f17309afed0bd9fc755cc9c967ee89f476b764f",
+    "artifacts/organization-management/new-shift.png": "1e3cca8c81f2d4318d4c53f82fcfd64ce41b0030d96da651faa50baf6ebc144c",
+    "artifacts/organization-management/new-station-selected.png": "59ede5ac08f27a61926fedd044da01102542d5295527d32e1089ccab9912ddfc",
+    "artifacts/organization-management/original-collapsed.png": "430a0749eff212d2b6d4d758b3e71988b80744656acf988c44d2f5cb66375f3c",
+    "artifacts/organization-management/original-expanded-bottom.png": "56dd7c25930a793a0dfca2b3c9cc694a23e9746db24a29b6ac79e798db4a252e",
+    "artifacts/organization-management/original-expanded.png": "d89462094fa2a40738e77cda7f17309afed0bd9fc755cc9c967ee89f476b764f",
+    "artifacts/organization-management/preview-minimum.png": "bcf729b06c32280139fdbf68086ea381bbd616525ac1bb6bd03e336f2c7d7aaa",
+    "artifacts/organization-management/preview-spanish-minimum.png": "498e4f2face081c1ca746c5d3a76f8ef587750f46e9975bcbe6f372fc73424d2",
+    "artifacts/organization-management/spanish-station.png": "073e6a74568f962d482e1df49302c16b6c8176cec84c9a5da39212a1ede7b9bb"
+  }
+}

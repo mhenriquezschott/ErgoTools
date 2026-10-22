@@ -1,0 +1,90 @@
+{
+  "milestone": "F113",
+  "verified_on": "2026-10-07",
+  "python": "3.13.14",
+  "tests_passed": 870,
+  "new_tests": 5,
+  "coverage_percent": 96.43082211400744,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "6fbd2494b344121d4de2c0efdac3f431150941f162b08495ea649fe001719592",
+  "wheel_sha256": "481e8bfcda2b0ac55cdc6efc9cd71aa8f3fe0a7c3fc57f4f14da0f12be028443",
+  "independent_wheel_smoke": "passed",
+  "source_chart_native_comparisons": {
+    "tool": {
+      "different_pixels": 0,
+      "size": [
+        310,
+        230
+      ],
+      "age_difference_reason": null
+    },
+    "sex": {
+      "different_pixels": 0,
+      "size": [
+        310,
+        230
+      ],
+      "age_difference_reason": null
+    },
+    "job": {
+      "different_pixels": 0,
+      "size": [
+        310,
+        230
+      ],
+      "age_difference_reason": null
+    },
+    "age": {
+      "different_pixels": 61,
+      "size": [
+        310,
+        230
+      ],
+      "age_difference_reason": "Missing intermediate age groups omit source zero-height bar strokes"
+    }
+  },
+  "native_screenshots": {
+    "en-age-empty.png": "e2eaf2554582dbc917783495d4bd4e9aa1eac61f9691bffc69165ae76ddfac28",
+    "en-age-enlarged.png": "15442fbd9b82ea1bc12108604f98e30924f0cfd1f2d4cc11a00dadbb2e644821",
+    "en-age-populated.png": "76119c15c9ef1208ed5a0886d2efabc71aa36c2abd13a7812f0b35a3f8f50f82",
+    "en-age-unavailable.png": "3eb2473587244a0b72fa5546336b81a7a3ddd64fe7e9f71625b42828b372df2a",
+    "en-job-empty.png": "8b708ae78ba15ed80120746d0843b95823cd31665de5be3bc70e95816d8fedd3",
+    "en-job-enlarged.png": "6821386bb3e68774aac566567e8627722f7a51e6be9d35c98f92e54cc18e2471",
+    "en-job-populated.png": "7725b3fa1784b8e0922f30ff1062f2023a45dae998d633dfa362519e592d53f1",
+    "en-sex-empty.png": "e2eaf2554582dbc917783495d4bd4e9aa1eac61f9691bffc69165ae76ddfac28",
+    "en-sex-enlarged.png": "4b09ab822fc54cc210df25a0fe0fc13bbbfb10b1e44248928c42bb3d0d77965d",
+    "en-sex-populated.png": "864a80fad3bb78ce042059c92df0f9ce522b4a0511612ba077fa4453150a9e7e",
+    "en-source-fixture-age.png": "910ffaa127ac104331185554d5722e2da0ca7265be385c1cd1d45d4ea2ef86c0",
+    "en-source-fixture-job.png": "7725b3fa1784b8e0922f30ff1062f2023a45dae998d633dfa362519e592d53f1",
+    "en-source-fixture-sex.png": "0cc29ff5e3c6ec95c63435d9575dff06e3acc5de5779c2e10447ca24c1e2d62f",
+    "en-source-fixture-tool.png": "fefc3f9e73cb1cac77f5bc3be352c50573f7c14d936f43a413bccf177e70c4aa",
+    "en-tool-empty.png": "e2eaf2554582dbc917783495d4bd4e9aa1eac61f9691bffc69165ae76ddfac28",
+    "en-tool-enlarged.png": "920798e9f10313b3facf9979ad8ea64661182b563d5bab33a6fadfb0855ad3c4",
+    "en-tool-populated.png": "5aa04f5cb99b43f7b55a2c41c0eb1b7716dff3df939fc62bca8421d8caf5c425",
+    "es-age-empty.png": "1a9ff174cd37ad5829243bfde96896cfafd5d67c1adf969473fa933304756fc6",
+    "es-age-enlarged.png": "b8cd69eea5c3d8c8449b542412950e2c5405e606446e746ad868906a772be8eb",
+    "es-age-populated.png": "e98c41d7696f0e93ef7265c169077760785cb2db5d02b230736cb0917546be38",
+    "es-age-unavailable.png": "17edbfdd4fa6d6692be8df02b1692e787ccb30af82c55c1282a0422f81f7ef1b",
+    "es-job-empty.png": "de17c896642f2e1c9cc2c706b59ae332080628aaaa731e10f3e2f6a904a679a3",
+    "es-job-enlarged.png": "3dd503d5102685cb651c702ad772b9267324cc942860f8b8221f2620691a74f1",
+    "es-job-populated.png": "6194151c20511b38c9b80b7b30ffc2a79dfb6104c771f3ca7cefea7484bfd1f0",
+    "es-sex-empty.png": "1a9ff174cd37ad5829243bfde96896cfafd5d67c1adf969473fa933304756fc6",
+    "es-sex-enlarged.png": "0f3d0082917ceb5d378b70bfdeb20fabfce543bcdc0f283cae345c1efefce0c0",
+    "es-sex-populated.png": "4d823549a9f42be952977dfe1d2405b253641864a6ccdea2683c7f343571a097",
+    "es-tool-empty.png": "1a9ff174cd37ad5829243bfde96896cfafd5d67c1adf969473fa933304756fc6",
+    "es-tool-enlarged.png": "a42434c26ae6c58d813ef2f3061e027dc7a35bd54540225767428480f888145f",
+    "es-tool-populated.png": "75c37ba6515a11901b292e4f72ba352695517ab1dd6dc897cd1b5496ea75116b",
+    "source-age.png": "a42043009b9426c757ba206465c65cfb44f5bcfa8e2bc676a6dad08502dcc391",
+    "source-job.png": "7725b3fa1784b8e0922f30ff1062f2023a45dae998d633dfa362519e592d53f1",
+    "source-sex.png": "0cc29ff5e3c6ec95c63435d9575dff06e3acc5de5779c2e10447ca24c1e2d62f",
+    "source-tool.png": "fefc3f9e73cb1cac77f5bc3be352c50573f7c14d936f43a413bccf177e70c4aa"
+  },
+  "summary_calculations_and_figures_complete": true,
+  "plot_tools_overview_panel_integrated": false,
+  "plot_graph_settings_integrated": false,
+  "full_plot_parent_close_consent_integrated": false,
+  "plot_main_window_enabled": false,
+  "scientific_gates_preserved": true,
+  "overall_completion_estimate_percent": null
+}

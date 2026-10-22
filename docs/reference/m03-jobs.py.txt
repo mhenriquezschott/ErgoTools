@@ -1,0 +1,99 @@
+"""Inspect the combined original/migrated Job Management layouts using synthetic data."""
+import ast
+import json
+import os
+from pathlib import Path
+import sys
+import tempfile
+from unittest.mock import patch
+from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtCore import QDate, Qt, QTimer
+from PyQt5.QtGui import QFont, QIcon, QColor
+from PyQt5.QtWidgets import *
+from PyQt5.QtTest import QTest
+sys.path.insert(0,str(Path.cwd()))
+from tests.test_workspace_job_risk import workspace_at
+from tests.test_job_management_dialog import enter_new
+from ergotools.bootstrap import load_icons
+from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.presentation.desktop.job_management_dialog import JobManagementDialog
+from ergotools.presentation.desktop.job_workplace_dialog import JobWorkplaceDialog
+from ergotools.presentation.desktop.theme.job_management import JOB_MANAGEMENT_STYLE
+
+root=Path.cwd()
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+source=ast.parse((reference/'src/job_window.py').read_text())
+original=next(n for n in source.body if isinstance(n,ast.ClassDef) and n.name=='JobWindow')
+main=ast.parse((reference/'src/main.py').read_text())
+style_method=next(n for n in ast.walk(main) if isinstance(n,ast.FunctionDef) and n.name=='mainWorkspaceStyleSheet')
+style=next(n.value.value for n in style_method.body if isinstance(n,ast.Return))
+namespace=globals().copy()
+namespace['__file__']=str(reference/'src/job_window.py')
+namespace['PROFILE_SOURCE_TYPES']=('expert','external','study','aggregate','imported')
+exec(compile(ast.fix_missing_locations(ast.Module(body=[original],type_ignores=[])),'<original-job-window>','exec'),namespace)
+namespace['JobWindow'].handleDamageEdit=lambda self,row,column:None
+class Parent(QWidget):
+    projectFileCreated=False
+    def mainWorkspaceStyleSheet(self):return style
+
+app=QApplication.instance() or QApplication([])
+out=root/'artifacts/m03-jobs'
+out.mkdir(parents=True,exist_ok=True)
+def capture(window,name):
+    window.show()
+    QTest.qWait(100)
+    assert window.grab().save(str(out/(name+'.png')))
+
+parent=Parent()
+old=namespace['JobWindow'](parent)
+old.clearProfileControls()
+for button in (old.first_button,old.previous_button,old.next_button,old.last_button,old.delete_button,old.search_button):button.setEnabled(False)
+
+from PyQt5.QtCore import QSignalBlocker,QPoint,QRect
+from tools.capture_desktop import render_widget
+report={};differences=[]
+def snap(w,name):
+    w.show();app.processEvents();QTest.qWait(60)
+    assert render_widget(w).save(str(out/(name+'.png')))
+    result={}
+    for attr in sorted(vars(w)):
+        widget=getattr(w,attr)
+        if not isinstance(widget,QWidget) or not widget.isVisible():continue
+        r=QRect(widget.mapTo(w,QPoint()),widget.size())
+        result[attr]={'rect':[r.x(),r.y(),r.width(),r.height()]}
+        if isinstance(widget,QTableWidget):result[attr]['columns']=[widget.columnWidth(c) for c in range(widget.columnCount())]
+        if isinstance(widget,QPushButton):result[attr]['icon']=[widget.iconSize().width(),widget.iconSize().height()]
+    return result
+with tempfile.TemporaryDirectory() as directory:
+    workspace=workspace_at(Path(directory));window=JobManagementDialog(workspace,load_icons(),MeasurementSystem.IMPERIAL)
+    for state in ('empty','approved','draft','evidence'):
+        if state=='empty':window.new_job()
+        elif state=='approved':
+            enter_new(window)
+            with patch.object(QMessageBox,'information'):window.save_button.click()
+        elif state=='draft':window.new_profile_button.click()
+        else:window.profile_tabs.setCurrentIndex(1)
+        for attr in set(vars(old)) & set(vars(window)):
+            a=getattr(old,attr);b=getattr(window,attr)
+            if not isinstance(a,QWidget) or not isinstance(b,QWidget):continue
+            with QSignalBlocker(a):
+                if isinstance(a,QComboBox) and isinstance(b,QComboBox):
+                    a.clear()
+                    for i in range(b.count()):a.addItem(b.itemText(i),b.itemData(i))
+                    a.setCurrentIndex(b.currentIndex())
+                    if a.isEditable():a.setEditText(b.currentText())
+                elif isinstance(a,(QLineEdit,QLabel,QPushButton)):a.setText(b.text())
+                elif isinstance(a,QTextEdit):a.setPlainText(b.toPlainText())
+                elif isinstance(a,QDateEdit):a.setDate(b.date())
+                elif isinstance(a,QSpinBox):a.setValue(b.value())
+                a.setEnabled(b.isEnabled())
+        old.profile_tabs.setCurrentIndex(window.profile_tabs.currentIndex())
+        for width,height in ((980,720),(1120,740)):
+            old.resize(width,height);window.resize(width,height)
+            key=state+'-'+str(width);a=snap(old,key+'-original');b=snap(window,key+'-new');report[key]={'original':a,'new':b}
+            for attr in a.keys() & b.keys():
+                if a[attr]!=b[attr]:differences.append({'case':key,'control':attr,'original':a[attr],'new':b[attr]})
+    window.close();workspace.close(choice=CloseChoice.DISCARD);old.close();parent.close()
+(out/'comparison.json').write_text(json.dumps({'scope':'Original form constructors/style; matched profile state projection without original DB callbacks. Approved Qt baseline. Common visible controls, icon sizes and table column geometry.','cases':report,'differences':differences},indent=2)+'\n')
+print('M03 Jobs:',len(report),'layout cases;',len(differences),'differences recorded.')

@@ -1,0 +1,47 @@
+{
+  "checkpoint": "F149",
+  "date": "2026-10-10",
+  "tests_passed": 1108,
+  "coverage_percent": 96.45324123273113,
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "200ff88376f10e372e107d9152e514d9479a6eaec09949192a46c6784c4fef4d",
+  "independent_wheel": "Warning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway.\nF149 native EN/ES all three tools minimum/enlarged/pending and empty/full-body captures; caption ink, adjacent pixels, geometry and source preservation passed.\nWarning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway.\nF149 native EN/ES all three tools minimum/enlarged/pending and empty/full-body captures; caption ink, adjacent pixels, geometry and source preservation passed.\nExtracted-wheel F149 main-window capture and resize verification passed.",
+  "ui_changes": "No application code/layout change; desktop verification capture helper added.",
+  "limits": [
+    "Final matched original-window/workflow/platform acceptance remains.",
+    "Fractional-DPI image composition tested; native fractional-DPI acceptance remains.",
+    "R008 unchanged-source fresh-result Save provenance remains next."
+  ],
+  "progress_ledger": "progress_baseline.json",
+  "visual_review": {
+    "captures": 20,
+    "languages": [
+      "en",
+      "es"
+    ],
+    "sizes": [
+      [
+        1550,
+        1015
+      ],
+      [
+        1800,
+        1200
+      ]
+    ],
+    "states": [
+      "populated",
+      "pending-invalid-text",
+      "empty-project-full-body"
+    ],
+    "source_pngs_and_contact_sheets_reviewed": true,
+    "caption_ink_and_widget_bounds_passed": true,
+    "native_compositing_adjacent_pixels_unchanged": true,
+    "full_avatar_corners_fit": true,
+    "r007": "No application layout defect established; earlier combined-preview finding corrected."
+  },
+  "application_wheel_unchanged_from_f148": true,
+  "progress_points": 74,
+  "remaining_points": 26
+}

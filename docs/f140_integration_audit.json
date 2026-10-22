@@ -1,0 +1,46 @@
+[
+  {
+    "destinations": [
+      "/mnt/088E1D428E1D29A8/Documents/Documentos Trabajos UACh/2026/research/Ergo/ErgoTools/artifacts/comprehensive-integrated/f140-adokepo8/en-converted.ergprj"
+    ],
+    "languages": [
+      "en"
+    ],
+    "assessments": 194,
+    "task_rows": 3577,
+    "saved_schemes": 7,
+    "st_edit_undo_redo_save_reopen": true,
+    "cbc_and_highs_apply_save": true,
+    "units_projection_preserves_source": true,
+    "archive_retained": true,
+    "source_unchanged": true,
+    "captures": 20,
+    "limits": [
+      "Cached assessment results are archived, not yet displayed as historical results.",
+      "Original plant transforms are archived; complete display parity remains.",
+      "Scientific gates and final UI/platform acceptance remain."
+    ]
+  },
+  {
+    "destinations": [
+      "/mnt/088E1D428E1D29A8/Documents/Documentos Trabajos UACh/2026/research/Ergo/ErgoTools/artifacts/comprehensive-integrated/f140-5oigrzy0/es-converted.ergprj"
+    ],
+    "languages": [
+      "es"
+    ],
+    "assessments": 194,
+    "task_rows": 3577,
+    "saved_schemes": 7,
+    "st_edit_undo_redo_save_reopen": true,
+    "cbc_and_highs_apply_save": true,
+    "units_projection_preserves_source": true,
+    "archive_retained": true,
+    "source_unchanged": true,
+    "captures": 20,
+    "limits": [
+      "Cached assessment results are archived, not yet displayed as historical results.",
+      "Original plant transforms are archived; complete display parity remains.",
+      "Scientific gates and final UI/platform acceptance remain."
+    ]
+  }
+]

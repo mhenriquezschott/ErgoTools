@@ -1,0 +1,13 @@
+{
+  "checkpoint": "F131",
+  "matched_summaries": 191,
+  "recovered_assessments": 3,
+  "recovered_task_rows": 45,
+  "recovered_assignment_ids": [
+    102,
+    101,
+    104
+  ],
+  "conflicts": 0,
+  "policy": "No source writes, no inferred reassignment, stable full-context/tool document IDs; all old and normalized task/cache evidence checked."
+}

@@ -1,0 +1,50 @@
+import ast,json,tempfile,os
+from pathlib import Path
+from PyQt5.QtCore import QSize,Qt,QTimer
+from PyQt5.QtGui import QIcon,QPixmap,QImage,QColor
+from PyQt5.QtWidgets import QApplication,QDialog,QGroupBox,QHBoxLayout,QVBoxLayout,QLabel,QFrame,QWidget,QPushButton
+from ergotools.bootstrap import load_icons
+from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.domain.assessments.lifft_draft import LifftDraft
+from ergotools.domain.project import ProjectMetadata
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.work_catalog import WorkCatalog,StationKey
+from ergotools.domain.work_hierarchy import WorkHierarchy,SectionKey,LineKey
+from ergotools.domain.plot_scope import PlotScope
+from ergotools.application.settings import Language
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+from ergotools.infrastructure.plant_image_import import import_plant_image
+from ergotools.presentation.desktop.plot_filter_controls import PlotWorkplaceControls,PlotToolControls
+from ergotools.presentation.desktop.plot_map_panel import PlotMapPanel
+from ergotools.presentation.desktop.plot_workplace_dialog import PlotWorkplaceDialog
+from ergotools.presentation.desktop.theme.plot import PLOT_STYLE
+root=Path.cwd();artifacts=root/'artifacts/plot-filters';artifacts.mkdir(exist_ok=True)
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+tree=ast.parse((reference/'src/plant_layout.py').read_text());cls=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='PlantLayoutWindow');method=next(n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=='configureResponsiveLayout')
+start=next(i for i,n in enumerate(method.body) if isinstance(n,ast.Assign) and isinstance(n.targets[0],ast.Name) and n.targets[0].id=='plant_layout')
+end=next(i for i,n in enumerate(method.body[start:],start) if isinstance(n,ast.For) and isinstance(n.target,ast.Tuple) and n.target.elts[0].id=='combo')
+region=compile(ast.Module(method.body[start:end],type_ignores=[]),'original-workplace-region','exec')
+app=QApplication.instance() or QApplication([])
+def settle():app.processEvents();app.processEvents()
+def grab(widget,name):settle();assert widget.grab().save(str(artifacts/name))
+original=QDialog();original.setObjectName('plotDialog');original.setStyleSheet(PLOT_STYLE);original.resize(880,120);original.plantfilter_group=QGroupBox('Workplace');original.plantfilter_group.setFixedHeight(88);original.openWorkplaceFilter=lambda:None
+scope=dict(self=original,icon_root=str(reference/'assets/ui-icons'),os=os,QSize=QSize,Qt=Qt,QIcon=QIcon,QPixmap=QPixmap,QHBoxLayout=QHBoxLayout,QVBoxLayout=QVBoxLayout,QLabel=QLabel,QFrame=QFrame,QWidget=QWidget,QPushButton=QPushButton)
+exec(region,scope);QVBoxLayout(original).addWidget(original.plantfilter_group);original.show();grab(original,'source-workplace.png');original.close()
+with tempfile.TemporaryDirectory() as temporary:
+ folder=Path(temporary);metadata=ProjectMetadata('p','PLOT filters',MeasurementSystem.IMPERIAL)
+ with AssessmentProjectFile.create_with_document(folder/'project.ergprj',metadata,'a',LifftDraft(metadata.default_units),format_version=8) as project:
+  hierarchy=WorkHierarchy(WorkCatalog('p',stations=(StationKey('P','S','L','1'),StationKey('P','S','L','2')),shifts=('All','Day','Todos')),('P','Empty'),(SectionKey('P','S'),),(LineKey('P','S','L'),));project.save_hierarchy(hierarchy)
+  image=QImage(1000,600,QImage.Format_RGB32);image.fill(QColor('#DDF2F5'));path=folder/'map.png';assert image.save(str(path),'PNG');project.save_plant_image('P',import_plant_image(path))
+  for language in (Language.ENGLISH,Language.SPANISH):
+   host=QDialog();host.setObjectName('plotDialog');host.setStyleSheet(PLOT_STYLE);host.resize(1460,820)
+   panel=PlotMapPanel(hierarchy,project,project,lambda filename:import_plant_image(Path(filename)),load_icons(),language=language,parent=host)
+   workplace=PlotWorkplaceControls(hierarchy,load_icons(),panel.set_scope,language=language,parent=host);tools=PlotToolControls(load_icons(),lambda kind:None,language=language,parent=host)
+   layout=QVBoxLayout(host);row=QHBoxLayout();row.addWidget(tools,2);row.addWidget(workplace,3);layout.addLayout(row);layout.addWidget(panel,1);host.show();grab(host,f'{language.value}-empty.png')
+   def choose():
+    dialog=QApplication.activeModalWidget();assert isinstance(dialog,PlotWorkplaceDialog);dialog.tree.expandAll();dialog.items[('P','S','L','1')].setCheckState(0,Qt.Checked);dialog.items[('P','S','L','2')].setCheckState(0,Qt.Checked);dialog.shift_combo.setCurrentIndex(dialog.shift_combo.findData('Todos'));grab(dialog,f'{language.value}-picker-expanded.png');dialog.use_button.click()
+   QTimer.singleShot(0,choose);workplace.choose_button.click();tools.buttons[AssessmentKind.DUET].click();grab(host,f'{language.value}-selected.png')
+   for caption in workplace.findChildren(QLabel,'workplaceScopeType'):assert caption.fontMetrics().horizontalAdvance(caption.text())<=caption.width(),(caption.text(),caption.width())
+   host.resize(1920,1080);settle();assert panel.canvas.viewport().rect().contains(panel.canvas.mapFromScene(panel.canvas.scene().sceneRect()).boundingRect());grab(host,f'{language.value}-enlarged.png');host.close();host.deleteLater();settle()
+  literal='<b>All & Plant</b> '+ 'Long name '*20
+  long_hierarchy=WorkHierarchy(WorkCatalog('p',shifts=('All',)),(literal,));host=QDialog();host.setStyleSheet(PLOT_STYLE);host.resize(900,120);controls=PlotWorkplaceControls(long_hierarchy,load_icons(),lambda choice:True,parent=host);QVBoxLayout(host).addWidget(controls);controls.set_scope(PlotScope(((literal,),),'All'));host.show();grab(host,'literal-long.png');host.close()
+print('Captured source workplace block, native English/Spanish empty/actual expanded picker/selected/enlarged composition and literal long-value states')

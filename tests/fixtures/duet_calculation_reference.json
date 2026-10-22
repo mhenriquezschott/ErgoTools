@@ -1,0 +1,1443 @@
+{
+  "reference_python": "3.10.18 (main, Jun  5 2025, 13:14:17) [GCC 11.2.0]",
+  "source_sha256": "53ac3bdfdaffcb6fa007505aac492af27d758987683cfc3a4bb8237bcf8c943f",
+  "damage_table": [
+    2.6e-07,
+    4.5e-07,
+    1.37e-06,
+    4.13e-06,
+    1.262e-05,
+    3.801e-05,
+    0.00011625,
+    0.00035014,
+    0.00105374,
+    0.00322581,
+    0.00970874
+  ],
+  "color_table": [
+    "#2aff00",
+    "#2eff00",
+    "#33ff00",
+    "#37ff00",
+    "#3bff00",
+    "#48ff00",
+    "#50ff00",
+    "#59ff00",
+    "#61ff00",
+    "#6aff00",
+    "#72ff00",
+    "#7bff00",
+    "#83ff00",
+    "#8cff00",
+    "#94ff00",
+    "#9dff00",
+    "#a5ff00",
+    "#aeff00",
+    "#b6ff00",
+    "#bfff00",
+    "#c7ff00",
+    "#d0ff00",
+    "#d8ff00",
+    "#e1ff00",
+    "#e9ff00",
+    "#f2ff00",
+    "#faff00",
+    "#fffa00",
+    "#fff600",
+    "#fff600",
+    "#fff200",
+    "#ffee00",
+    "#ffee00",
+    "#ffe900",
+    "#ffe500",
+    "#ffe500",
+    "#ffe100",
+    "#ffdc00",
+    "#ffdc00",
+    "#ffd800",
+    "#ffd400",
+    "#ffd400",
+    "#ffd000",
+    "#ffc700",
+    "#ffbb00",
+    "#ffae00",
+    "#ffa100",
+    "#ff9400",
+    "#ff8800",
+    "#ff7b00",
+    "#ff6e00",
+    "#ff6100",
+    "#ff5400",
+    "#ff4800",
+    "#ff3b00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00",
+    "#ff2e00"
+  ],
+  "records": [
+    {
+      "scale": 0,
+      "repetitions": 0,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 0,
+      "repetitions": 0.5,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 0,
+      "repetitions": 1,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 0,
+      "repetitions": 10,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 0,
+      "repetitions": 100,
+      "damage": 3e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 0,
+      "repetitions": 1000,
+      "damage": 0.00026,
+      "color": "#72ff00"
+    },
+    {
+      "scale": 0,
+      "repetitions": 10000,
+      "damage": 0.0026,
+      "color": "#c7ff00"
+    },
+    {
+      "scale": 0,
+      "repetitions": 100000000.0,
+      "damage": 26.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 0,
+      "repetitions": 1e+308,
+      "damage": 2.6e+301,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 0,
+      "repetitions": 19.23076923076923,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 0,
+      "repetitions": 19.230769230769234,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 0,
+      "repetitions": 19.230769230769237,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 0,
+      "repetitions": 76.92307692307692,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 0,
+      "repetitions": 76.92307692307693,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 0,
+      "repetitions": 76.92307692307695,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 0,
+      "repetitions": 523076923.076923,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 0,
+      "repetitions": 523076923.0769231,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 0,
+      "repetitions": 523076923.07692313,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 0,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 0.5,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 1,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 10,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 100,
+      "damage": 4e-05,
+      "color": "#50ff00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 1000,
+      "damage": 0.00045,
+      "color": "#83ff00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 10000,
+      "damage": 0.0045,
+      "color": "#e1ff00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 100000000.0,
+      "damage": 45.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 1e+308,
+      "damage": 4.5e+301,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 11.11111111111111,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 11.111111111111112,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 11.111111111111114,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 44.44444444444444,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 44.44444444444445,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 44.44444444444446,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 302222222.22222215,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 302222222.2222222,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 1,
+      "repetitions": 302222222.22222227,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 2,
+      "repetitions": 0,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 2,
+      "repetitions": 0.5,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 2,
+      "repetitions": 1,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 2,
+      "repetitions": 10,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 2,
+      "repetitions": 100,
+      "damage": 0.00014,
+      "color": "#6aff00"
+    },
+    {
+      "scale": 2,
+      "repetitions": 1000,
+      "damage": 0.00137,
+      "color": "#aeff00"
+    },
+    {
+      "scale": 2,
+      "repetitions": 10000,
+      "damage": 0.0137,
+      "color": "#fff200"
+    },
+    {
+      "scale": 2,
+      "repetitions": 100000000.0,
+      "damage": 137.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 2,
+      "repetitions": 1e+308,
+      "damage": 1.37e+302,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 2,
+      "repetitions": 3.6496350364963503,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 2,
+      "repetitions": 3.649635036496351,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 2,
+      "repetitions": 3.6496350364963512,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 2,
+      "repetitions": 14.598540145985401,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 2,
+      "repetitions": 14.598540145985403,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 2,
+      "repetitions": 14.598540145985405,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 2,
+      "repetitions": 99270072.99270071,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 2,
+      "repetitions": 99270072.99270073,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 2,
+      "repetitions": 99270072.99270074,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 0,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 0.5,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 1,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 10,
+      "damage": 4e-05,
+      "color": "#50ff00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 100,
+      "damage": 0.00041,
+      "color": "#83ff00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 1000,
+      "damage": 0.00413,
+      "color": "#e1ff00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 10000,
+      "damage": 0.0413,
+      "color": "#ffdc00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 100000000.0,
+      "damage": 413.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 1e+308,
+      "damage": 4.13e+302,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 1.2106537530266341,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 1.2106537530266344,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 1.2106537530266346,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 4.8426150121065366,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 4.842615012106537,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 4.842615012106538,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 32929782.08232445,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 32929782.082324453,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 3,
+      "repetitions": 32929782.082324456,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 4,
+      "repetitions": 0,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 4,
+      "repetitions": 0.5,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 4,
+      "repetitions": 1,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 4,
+      "repetitions": 10,
+      "damage": 0.00013,
+      "color": "#61ff00"
+    },
+    {
+      "scale": 4,
+      "repetitions": 100,
+      "damage": 0.00126,
+      "color": "#a5ff00"
+    },
+    {
+      "scale": 4,
+      "repetitions": 1000,
+      "damage": 0.01262,
+      "color": "#fff200"
+    },
+    {
+      "scale": 4,
+      "repetitions": 10000,
+      "damage": 0.1262,
+      "color": "#ff9400"
+    },
+    {
+      "scale": 4,
+      "repetitions": 100000000.0,
+      "damage": 1262.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 4,
+      "repetitions": 1e+308,
+      "damage": 1.262e+303,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 4,
+      "repetitions": 0.39619651347068147,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 4,
+      "repetitions": 0.3961965134706815,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 4,
+      "repetitions": 0.3961965134706816,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 4,
+      "repetitions": 1.5847860538827259,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 4,
+      "repetitions": 1.584786053882726,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 4,
+      "repetitions": 1.5847860538827263,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 4,
+      "repetitions": 10776545.166402534,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 4,
+      "repetitions": 10776545.166402536,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 4,
+      "repetitions": 10776545.166402537,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 0,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 0.5,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 1,
+      "damage": 4e-05,
+      "color": "#50ff00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 10,
+      "damage": 0.00038,
+      "color": "#83ff00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 100,
+      "damage": 0.0038,
+      "color": "#d8ff00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 1000,
+      "damage": 0.03801,
+      "color": "#ffdc00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 10000,
+      "damage": 0.3801,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 100000000.0,
+      "damage": 3801.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 1e+308,
+      "damage": 3.801e+303,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 0.13154433043935806,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 0.1315443304393581,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 0.13154433043935812,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 0.5261773217574323,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 0.5261773217574324,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 0.5261773217574325,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 3578005.787950539,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 3578005.7879505395,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 5,
+      "repetitions": 3578005.78795054,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 6,
+      "repetitions": 0,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 6,
+      "repetitions": 0.5,
+      "damage": 6e-05,
+      "color": "#59ff00"
+    },
+    {
+      "scale": 6,
+      "repetitions": 1,
+      "damage": 0.00012,
+      "color": "#61ff00"
+    },
+    {
+      "scale": 6,
+      "repetitions": 10,
+      "damage": 0.00116,
+      "color": "#a5ff00"
+    },
+    {
+      "scale": 6,
+      "repetitions": 100,
+      "damage": 0.01162,
+      "color": "#fff600"
+    },
+    {
+      "scale": 6,
+      "repetitions": 1000,
+      "damage": 0.11625,
+      "color": "#ffa100"
+    },
+    {
+      "scale": 6,
+      "repetitions": 10000,
+      "damage": 1.1625,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 6,
+      "repetitions": 100000000.0,
+      "damage": 11625.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 6,
+      "repetitions": 1e+308,
+      "damage": 1.1625000000000001e+304,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 6,
+      "repetitions": 0.04301075268817204,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 6,
+      "repetitions": 0.043010752688172046,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 6,
+      "repetitions": 0.04301075268817205,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 6,
+      "repetitions": 0.17204301075268816,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 6,
+      "repetitions": 0.17204301075268819,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 6,
+      "repetitions": 0.1720430107526882,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 6,
+      "repetitions": 1169892.4731182794,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 6,
+      "repetitions": 1169892.4731182796,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 6,
+      "repetitions": 1169892.4731182798,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 0,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 0.5,
+      "damage": 0.00018,
+      "color": "#6aff00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 1,
+      "damage": 0.00035,
+      "color": "#7bff00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 10,
+      "damage": 0.0035,
+      "color": "#d8ff00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 100,
+      "damage": 0.03501,
+      "color": "#ffdc00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 1000,
+      "damage": 0.35014,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 10000,
+      "damage": 3.5014,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 100000000.0,
+      "damage": 35014.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 1e+308,
+      "damage": 3.5014e+304,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 0.014280002284800366,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 0.014280002284800367,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 0.014280002284800369,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 0.05712000913920146,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 0.05712000913920147,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 0.057120009139201476,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 388416.0621465699,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 388416.06214656995,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 7,
+      "repetitions": 388416.06214657,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 8,
+      "repetitions": 0,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 8,
+      "repetitions": 0.5,
+      "damage": 0.00053,
+      "color": "#8cff00"
+    },
+    {
+      "scale": 8,
+      "repetitions": 1,
+      "damage": 0.00105,
+      "color": "#a5ff00"
+    },
+    {
+      "scale": 8,
+      "repetitions": 10,
+      "damage": 0.01054,
+      "color": "#fff600"
+    },
+    {
+      "scale": 8,
+      "repetitions": 100,
+      "damage": 0.10537,
+      "color": "#ffa100"
+    },
+    {
+      "scale": 8,
+      "repetitions": 1000,
+      "damage": 1.05374,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 8,
+      "repetitions": 10000,
+      "damage": 10.5374,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 8,
+      "repetitions": 100000000.0,
+      "damage": 105374.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 8,
+      "repetitions": 1e+308,
+      "damage": 1.05374e+305,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 8,
+      "repetitions": 0.004745003511302598,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 8,
+      "repetitions": 0.004745003511302599,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 8,
+      "repetitions": 0.0047450035113025995,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 8,
+      "repetitions": 0.01898001404521039,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 8,
+      "repetitions": 0.018980014045210394,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 8,
+      "repetitions": 0.018980014045210398,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 8,
+      "repetitions": 129064.09550743065,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 8,
+      "repetitions": 129064.09550743067,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 8,
+      "repetitions": 129064.09550743068,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 9,
+      "repetitions": 0,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 9,
+      "repetitions": 0.5,
+      "damage": 0.00161,
+      "color": "#b6ff00"
+    },
+    {
+      "scale": 9,
+      "repetitions": 1,
+      "damage": 0.00323,
+      "color": "#d0ff00"
+    },
+    {
+      "scale": 9,
+      "repetitions": 10,
+      "damage": 0.03226,
+      "color": "#ffe100"
+    },
+    {
+      "scale": 9,
+      "repetitions": 100,
+      "damage": 0.32258,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 9,
+      "repetitions": 1000,
+      "damage": 3.22581,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 9,
+      "repetitions": 10000,
+      "damage": 32.2581,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 9,
+      "repetitions": 100000000.0,
+      "damage": 322581.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 9,
+      "repetitions": 1e+308,
+      "damage": 3.22581e+305,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 9,
+      "repetitions": 0.0015499982950018755,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 9,
+      "repetitions": 0.0015499982950018757,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 9,
+      "repetitions": 0.001549998295001876,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 9,
+      "repetitions": 0.006199993180007502,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 9,
+      "repetitions": 0.006199993180007503,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 9,
+      "repetitions": 0.006199993180007504,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 9,
+      "repetitions": 42159.953624051006,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 9,
+      "repetitions": 42159.95362405101,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 9,
+      "repetitions": 42159.95362405102,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 10,
+      "repetitions": 0,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 10,
+      "repetitions": 0.5,
+      "damage": 0.00485,
+      "color": "#e1ff00"
+    },
+    {
+      "scale": 10,
+      "repetitions": 1,
+      "damage": 0.00971,
+      "color": "#fff600"
+    },
+    {
+      "scale": 10,
+      "repetitions": 10,
+      "damage": 0.09709,
+      "color": "#ffae00"
+    },
+    {
+      "scale": 10,
+      "repetitions": 100,
+      "damage": 0.97087,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 10,
+      "repetitions": 1000,
+      "damage": 9.70874,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 10,
+      "repetitions": 10000,
+      "damage": 97.0874,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 10,
+      "repetitions": 100000000.0,
+      "damage": 970874.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 10,
+      "repetitions": 1e+308,
+      "damage": 9.70874e+305,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 10,
+      "repetitions": 0.0005149998867000249,
+      "damage": 0.0,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 10,
+      "repetitions": 0.000514999886700025,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 10,
+      "repetitions": 0.0005149998867000251,
+      "damage": 1e-05,
+      "color": "#2aff00"
+    },
+    {
+      "scale": 10,
+      "repetitions": 0.0020599995468000994,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 10,
+      "repetitions": 0.0020599995468001,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 10,
+      "repetitions": 0.0020599995468001003,
+      "damage": 2e-05,
+      "color": "#48ff00"
+    },
+    {
+      "scale": 10,
+      "repetitions": 14007.996918240675,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 10,
+      "repetitions": 14007.996918240677,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    },
+    {
+      "scale": 10,
+      "repetitions": 14007.996918240678,
+      "damage": 136.0,
+      "color": "#ff2e00"
+    }
+  ],
+  "probabilities": [
+    {
+      "damage": 5e-324,
+      "probability": 2.3041040515278927e-105,
+      "color": "#2aff00"
+    },
+    {
+      "damage": 1e-12,
+      "probability": 0.00022684879255499508,
+      "color": "#2aff00"
+    },
+    {
+      "damage": 1e-08,
+      "probability": 0.004482864932413156,
+      "color": "#2aff00"
+    },
+    {
+      "damage": 1e-05,
+      "probability": 0.04062103997968439,
+      "color": "#2aff00"
+    },
+    {
+      "damage": 1.9999999999999998e-05,
+      "probability": 0.050348292235624176,
+      "color": "#2aff00"
+    },
+    {
+      "damage": 2e-05,
+      "probability": 0.050348292235624176,
+      "color": "#48ff00"
+    },
+    {
+      "damage": 2.0000000000000005e-05,
+      "probability": 0.050348292235624176,
+      "color": "#48ff00"
+    },
+    {
+      "damage": 0.001,
+      "probability": 0.15869101296098023,
+      "color": "#9dff00"
+    },
+    {
+      "damage": 0.1,
+      "probability": 0.45660941923426257,
+      "color": "#ffae00"
+    },
+    {
+      "damage": 1,
+      "probability": 0.6394551209237722,
+      "color": "#ff2e00"
+    },
+    {
+      "damage": 10,
+      "probability": 0.7891817065222527,
+      "color": "#ff2e00"
+    },
+    {
+      "damage": 135.99999999999997,
+      "probability": 0.8972239884830485,
+      "color": "#ff2e00"
+    },
+    {
+      "damage": 136,
+      "probability": 0.8972239884830485,
+      "color": "#ff2e00"
+    },
+    {
+      "damage": 136.00000000000003,
+      "probability": 0.8972239884830485,
+      "color": "#ff2e00"
+    },
+    {
+      "damage": 1e+100,
+      "probability": 1.0,
+      "color": "#ff2e00"
+    },
+    {
+      "damage": 1e+308,
+      "probability": 1.0,
+      "color": "#ff2e00"
+    }
+  ],
+  "unsupported_observations": [
+    {
+      "scale": -1,
+      "repetitions": 100,
+      "result": [
+        0.97087,
+        "#ff2e00"
+      ]
+    },
+    {
+      "scale": 11,
+      "repetitions": 100,
+      "error": "IndexError"
+    },
+    {
+      "scale": 1.9,
+      "repetitions": 100,
+      "result": [
+        4e-05,
+        "#50ff00"
+      ]
+    },
+    {
+      "scale": 10.9,
+      "repetitions": 100,
+      "result": [
+        0.97087,
+        "#ff2e00"
+      ]
+    },
+    {
+      "scale": true,
+      "repetitions": 100,
+      "result": [
+        4e-05,
+        "#50ff00"
+      ]
+    },
+    {
+      "scale": 0,
+      "repetitions": -100,
+      "result": [
+        -3e-05,
+        "#2aff00"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "milestone": "F35",
+  "verified_on": "2026-09-30",
+  "python": "3.13.14",
+  "tests_passed": 367,
+  "new_tests": 14,
+  "coverage_percent": 98.7335092348285,
+  "new_module_coverage": {
+    "src/ergotools/infrastructure/work_hierarchy_store.py": 100.0
+  },
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "wheel_sha256": "14226af275259f67e06ca905598c54205afc043c5a6ab4c600d5d81ac25af34c",
+  "independent_wheel_smoke": "passed",
+  "ui_changed": false,
+  "new_opt_in_project_version": 4,
+  "existing_formats_unchanged": true,
+  "overall_completion_estimate_percent": 58
+}

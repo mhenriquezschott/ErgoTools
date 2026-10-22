@@ -1,0 +1,33 @@
+{
+  "milestone": "F89",
+  "verified_on": "2026-10-05",
+  "python": "3.13.14",
+  "tests_passed": 692,
+  "new_tests": 7,
+  "coverage_percent": 96.84336388999601,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "6fbd2494b344121d4de2c0efdac3f431150941f162b08495ea649fe001719592",
+  "wheel_sha256": "782f527a4873ecc7fca37a2711df81b3fb655c351a6ebf5b2360830d50b970bc",
+  "independent_wheel_smoke": "passed",
+  "duet_main_tab_enabled": true,
+  "st_main_tab_enabled": true,
+  "scientific_gates_preserved": true,
+  "overall_completion_estimate_percent": null,
+  "native_screenshots": {
+    "artifacts/recent-projects/close-cancel-main-vtk.png": "ba1e2dd8f91d6d70e42079ab83b149eda8d2bd4577094fdf3d6b531b973f990f",
+    "artifacts/recent-projects/close-cancel-main.png": "9cc97798ecd1ec98fd79b7ba2daf1d651c51d0121326c73d07e76c864fa77024",
+    "artifacts/recent-projects/close-dirty-confirmation.png": "d1f2395ed5ca23c48b31a41b4ea02eb0c1c3eaccba77df4c806d3fcff489427a",
+    "artifacts/recent-projects/close-invalid-main-vtk.png": "694f2fbcd3a3516a401bec1ff2c1a3dbe5f6e229fb22af9881aae2eb44d7054b",
+    "artifacts/recent-projects/close-invalid-main.png": "75f828329052539fefde2aff75e51c1c226e16a5b4fe0ae9622bc9ef7726410d",
+    "artifacts/recent-projects/closed-main-vtk.png": "349950e92875252d3e01d571d02edace0b50eb8e669bd738092414222ba86ff7",
+    "artifacts/recent-projects/closed-main.png": "c0d7cbdf9846e9e306dbb3b43f2b88f850b4eef2ef3ee845d92bbc86999183f4",
+    "artifacts/recent-projects/missing-confirmation.png": "ac74c8ec50a878dbf809f124979812ab852d5a874f752313f891ac84b6f2c654",
+    "artifacts/recent-projects/project-populated.png": "53da09a9a951bbdf8e442a9bff8d2441a2096fbf02f60a6b476b1a4dd8e5616d",
+    "artifacts/recent-projects/recent-populated.png": "a4e9becf4f56b02b69a9b60c98489b2b8f7e9909afd6ae93d4659d67a69526c2",
+    "artifacts/recent-projects/spanish-closed-main-vtk.png": "c57d4f8403245a2b65a14da6dc3f6bdbe2ce34f08c85db3140ece7c94ec9a535",
+    "artifacts/recent-projects/spanish-closed-main.png": "e533d8731961f3ed5ed4d3ca761cabc04e0faced390ec837efc876fe790138f3",
+    "artifacts/recent-projects/spanish-project-closed.png": "f4ca90f386364298dab391607c419283554ead5250257af9d6c081679d580604",
+    "artifacts/recent-projects/spanish-recent-empty.png": "119d1a90f31f5d2663e34af3d6590a36b10bb10ae647329ac144ae3c466cfa47"
+  }
+}

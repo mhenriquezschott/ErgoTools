@@ -1,0 +1,106 @@
+{
+  "milestone": "F77",
+  "verified_on": "2026-10-04",
+  "python": "3.13.14",
+  "tests_passed": 632,
+  "new_tests": 5,
+  "coverage_percent": 96.85623123123123,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "wheel_sha256": "f67f61311e5fc21118397ab7b83dead8fae3014c33ce189d2344d38c908b83e7",
+  "independent_wheel_smoke": "passed",
+  "hierarchy_payload_version": 3,
+  "reads_hierarchy_payload_versions": [
+    1,
+    2,
+    3
+  ],
+  "project_sql_schema_changed": false,
+  "overall_completion_estimate_percent": null,
+  "desktop_new_project_format": 7,
+  "native_capture_dimensions": {
+    "english-partial": [
+      1550,
+      1015
+    ],
+    "original-task-count": [
+      183,
+      112
+    ],
+    "english-task-count": [
+      183,
+      112
+    ],
+    "english-maximum-count": [
+      183,
+      112
+    ],
+    "spanish-partial": [
+      1550,
+      1015
+    ],
+    "spanish-task-count": [
+      249,
+      112
+    ],
+    "spanish-reset-five": [
+      1550,
+      1015
+    ],
+    "spanish-confirmation": [
+      286,
+      94
+    ],
+    "empty": [
+      1550,
+      1015
+    ],
+    "complete": [
+      1550,
+      1015
+    ],
+    "new-sidebar": [
+      238,
+      667
+    ],
+    "new-body": [
+      285,
+      667
+    ],
+    "original-sidebar": [
+      238,
+      667
+    ],
+    "spanish-complete": [
+      1550,
+      1015
+    ],
+    "spanish-100-empty": [
+      1550,
+      1015
+    ],
+    "spanish-bottom": [
+      1550,
+      1015
+    ]
+  },
+  "native_screenshots": {
+    "artifacts/main-panels/complete.png": "7437376f625068429a036738319b10fbc32d3761cc320fe65be5672407aad040",
+    "artifacts/main-panels/empty.png": "fca519879f5f3cef0f806c85b51c94ee3ab930ccce7c1188d8b2b0ba34029b92",
+    "artifacts/main-panels/english-maximum-count.png": "88c727addfab15088b569352d885baa886182018d944ac5949bc29680dfedf81",
+    "artifacts/main-panels/english-partial.png": "1970343b852046fcaf5c864048357eb04ac17c8502fac95324181f39207ccd89",
+    "artifacts/main-panels/english-task-count.png": "38028756f80204456062cd6b30544923d64f8352116fd720404d1e005a3d2fd5",
+    "artifacts/main-panels/new-body.png": "64d11321ffc67e3336a8548781c6e4b05ad990757e6fa2c5483cb41660a33632",
+    "artifacts/main-panels/new-sidebar.png": "a1fab7864ad484e36f52f5bf044e1bf555b9808aa9eb224c8adac6a79b098cb2",
+    "artifacts/main-panels/original-sidebar.png": "a1fab7864ad484e36f52f5bf044e1bf555b9808aa9eb224c8adac6a79b098cb2",
+    "artifacts/main-panels/original-task-count.png": "38028756f80204456062cd6b30544923d64f8352116fd720404d1e005a3d2fd5",
+    "artifacts/main-panels/spanish-100-empty.png": "4ec5fc4fe3600c7167e4b8b48a86c731ceaa643719515e3d67bb091a4e006142",
+    "artifacts/main-panels/spanish-bottom.png": "ff9f58daed79cf72fea1d56a53275735cd7cd537f396b4230b52ac788204cf8e",
+    "artifacts/main-panels/spanish-complete.png": "e27bd0c6f123fad968b32e6c3d3f647d1bd3a7e0f6f773b3beda3469cd299269",
+    "artifacts/main-panels/spanish-confirmation.png": "8ed710da8feab0fe3d127b68c6bf7190223bac52901d46ec2c0dfdae615194df",
+    "artifacts/main-panels/spanish-partial.png": "9f40ba916824da64bcdc2560e7a2702656908dd091af890455b06777634bbdfa",
+    "artifacts/main-panels/spanish-reset-five.png": "8f1616cbfb792a2515b9bd13233b25f52af9ce8f1b31e9040f4e120d22b8dda5",
+    "artifacts/main-panels/spanish-task-count.png": "236543371eaf7effb70a5750ff0e3ab549dab1c69832c30bb487c79a46b2c69f"
+  }
+}

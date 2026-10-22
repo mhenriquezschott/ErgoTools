@@ -1,0 +1,120 @@
+{
+  "source_sha256": "e69c08404b78f478a52091543525085c0c93de2ac5d1f7777bee2577abd131fd",
+  "cases": [
+    {
+      "name": "new",
+      "initial": null,
+      "result": 1,
+      "rows": [
+        [
+          1,
+          2,
+          "2026-10-01",
+          null,
+          1,
+          "Created from Worker Management."
+        ]
+      ]
+    },
+    {
+      "name": "same",
+      "initial": [
+        1,
+        2,
+        "2020-01-01",
+        null,
+        "original"
+      ],
+      "result": 1,
+      "rows": [
+        [
+          1,
+          2,
+          "2020-01-01",
+          null,
+          1,
+          "original"
+        ]
+      ]
+    },
+    {
+      "name": "unclassified",
+      "initial": [
+        1,
+        null,
+        null,
+        null,
+        "original"
+      ],
+      "result": 1,
+      "rows": [
+        [
+          1,
+          2,
+          "2026-10-01",
+          null,
+          1,
+          "Classified from Worker Management."
+        ]
+      ]
+    },
+    {
+      "name": "classified",
+      "initial": [
+        1,
+        1,
+        "2020-01-01",
+        null,
+        "original"
+      ],
+      "result": 2,
+      "rows": [
+        [
+          1,
+          1,
+          "2020-01-01",
+          "2026-10-01",
+          0,
+          "original"
+        ],
+        [
+          2,
+          2,
+          "2026-10-01",
+          null,
+          1,
+          "Job assignment changed from Worker Management."
+        ]
+      ]
+    },
+    {
+      "name": "existing_bounds",
+      "initial": [
+        1,
+        1,
+        "2020-01-01",
+        "2026-09-01",
+        "original"
+      ],
+      "result": 2,
+      "rows": [
+        [
+          1,
+          1,
+          "2020-01-01",
+          "2026-09-01",
+          0,
+          "original"
+        ],
+        [
+          2,
+          2,
+          "2026-10-01",
+          null,
+          1,
+          "Job assignment changed from Worker Management."
+        ]
+      ]
+    }
+  ]
+}

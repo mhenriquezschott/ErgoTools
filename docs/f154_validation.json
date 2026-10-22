@@ -1,0 +1,21 @@
+{
+  "checkpoint": "F154",
+  "date": "2026-10-10",
+  "tests_passed": 1144,
+  "coverage_percent": 96.47683397683397,
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "86693698287c8126b9a0f921c69ffd0c4dad406380f67869ca07c04bee20307a",
+  "independent_wheel": "Warning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway.\nF154 original populated metric/imperial LiFFT/DUET vectors, row outputs, summary style, saved/projection/pending and EN/ES native wheel checks passed.\nExtracted-wheel F154 main-window capture and resize verification passed.",
+  "ui_changes": "Original inline DUET totals and LiFFT/DUET typography, contrast, backgrounds and damage-column alignment restored.",
+  "limits": [
+    "Reference compatibility is not scientific certification.",
+    "Final original-window and supported-platform acceptance remain.",
+    "Original active header uses in; migrated/constructor use inch. Final text/whole-window dispositions remain, including possible Spanish sidebar text clipping; see review_register.md."
+  ],
+  "progress_ledger": "progress_baseline.json",
+  "original_oracle": "artifacts/f154-f155-original-oracle/populated.json",
+  "original_oracle_environment": "Existing reference Python 3.10.18/PyQt5 5.15.11/Qt5.15.14, isolated copied tree only; not migrated compatibility baseline.",
+  "migrated_compatibility_environment": "Approved project-local Python 3.13.14/Qt 5.15.17; unchanged uv.lock.",
+  "visual_inspection": "Individual native populated, ES enlarged/projected, pending, saved and (F155) reset/deleted and modal states inspected. Full VTK and adjacent controls stay inside owned rectangles. Complete text/whole-window parity remains open."
+}

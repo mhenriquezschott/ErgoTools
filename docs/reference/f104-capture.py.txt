@@ -1,0 +1,62 @@
+import ast,json,tempfile,os
+from pathlib import Path
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import Qt,QSize
+from PyQt5.QtGui import QIcon,QPixmap,QImage,QColor,QPainter
+from PyQt5.QtWidgets import QApplication,QDialog,QGroupBox,QPushButton,QLabel,QComboBox,QLineEdit,QVBoxLayout,QHBoxLayout,QGridLayout,QWidget,QFrame,QToolButton
+from ergotools.bootstrap import load_icons
+from ergotools.domain.project import ProjectMetadata
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.assessments.lifft_draft import LifftDraft
+from ergotools.domain.plot_filters import PlotRiskView
+from ergotools.domain.plot_scope import PlotScope
+from ergotools.domain.work_catalog import WorkCatalog
+from ergotools.domain.work_hierarchy import WorkHierarchy
+from ergotools.application.settings import Language
+from ergotools.domain.decimal_convention import DecimalConvention
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+from ergotools.infrastructure.plant_image_import import import_plant_image
+from ergotools.presentation.desktop.plot_map_panel import PlotMapPanel
+from ergotools.presentation.desktop.plot_filters_panel import PlotFiltersPanel
+from ergotools.presentation.desktop.theme.plot import PLOT_STYLE
+root=Path.cwd();artifacts=root/'artifacts/plot-demographics';artifacts.mkdir(exist_ok=True)
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root']);tree=ast.parse((reference/'src/plant_layout.py').read_text());cls=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='PlantLayoutWindow');method=next(n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=='configureResponsiveLayout')
+start=next(i for i,n in enumerate(method.body) if isinstance(n,ast.Assign) and isinstance(n.targets[0],ast.Name) and n.targets[0].id=='plant_layout');end=next(i for i,n in enumerate(method.body) if isinstance(n,ast.Assign) and isinstance(n.targets[0],ast.Name) and n.targets[0].id=='tool_actions')
+app=QApplication([])
+def settle():app.processEvents();app.processEvents()
+def grab(widget,name):settle();assert widget.grab().save(str(artifacts/name))
+source=QDialog();source.setObjectName('plotDialog');source.setStyleSheet(PLOT_STYLE);source.resize(1460,255)
+for name,title in (('filters_group','Filters'),('plantfilter_group','Workplace'),('toolfilter_group','Ergonomic Tool'),('workerfilter_group','Worker demographics'),('shiftfilter_group','Shift'),('otheroptionsfilter_group','')):setattr(source,name,QGroupBox(title,source))
+source.workerfilter_group.setCheckable(True);source.workerfilter_group.setChecked(False)
+for name in ('plant_combo','section_combo','line_combo','station_combo','shift_combo','tool_combo','gender_combo'):setattr(source,name,QComboBox(source))
+source.tool_combo.addItems(['LiFFT','DUET','ST']);source.gender_combo.addItems(['Both','Female','Male'])
+for name in ('plantid_label','sectionid_label','lineid_label','stationid_label','shiftid_label','toolsid_label','genderflt_label','ageflt_label','weightftl_label','heightflt_label','ageto_label','label_10','label_12'):setattr(source,name,QLabel('Sex :' if name=='genderflt_label' else '',source))
+for name in ('agefrom_edit','ageto_edit','weightfrom_edit','weightto_edit','heightfrom_edit','heightto_edit'):setattr(source,name,QLineEdit(source))
+for name,text in (('clearfilter_button','Clear Filters'),('applyfilter_button','Apply Filters'),('toolsfiltersettings_button',''),('summarysettings_button','')):setattr(source,name,QPushButton(text,source))
+source.openWorkplaceFilter=lambda:None;source.selectPlotTool=lambda selected:None;source.selectRiskViewMode=lambda selected:None;source.openGraphSettings=lambda:None
+source.syncPlotToolButtons=lambda selected:[button.setChecked(key==selected) for key,button in source.plot_tool_buttons.items()]
+def disclose(expanded):
+ source.worker_filter_container.setVisible(expanded);source.workerfilter_group.setFixedHeight(96 if expanded else 68);source.riskview_group.setFixedHeight(96 if expanded else 68);source.filters_group.setFixedHeight(229 if expanded else 201)
+source.updateWorkerFilterDisclosure=disclose
+scope=dict(self=source,icon_root=str(reference/'assets/ui-icons'),os=os,Qt=Qt,QtWidgets=QtWidgets,QSize=QSize,QIcon=QIcon,QPixmap=QPixmap,QHBoxLayout=QHBoxLayout,QVBoxLayout=QVBoxLayout,QGridLayout=QGridLayout,QWidget=QWidget,QLabel=QLabel,QPushButton=QPushButton,QFrame=QFrame,QToolButton=QToolButton,QGroupBox=QGroupBox)
+exec(compile(ast.Module(method.body[start:end],type_ignores=[]),'original-filter-grid','exec'),scope);QVBoxLayout(source).addWidget(source.filters_group);source.show();grab(source,'source-collapsed.png');source.workerfilter_group.setChecked(True);grab(source,'source-expanded.png');source.close()
+with tempfile.TemporaryDirectory() as temporary:
+ folder=Path(temporary);metadata=ProjectMetadata('p','PLOT filters',MeasurementSystem.METRIC)
+ with AssessmentProjectFile.create_with_document(folder/'project.ergprj',metadata,'a',LifftDraft(metadata.default_units),format_version=8) as project:
+  hierarchy=WorkHierarchy(WorkCatalog('p',shifts=('1',)),('P',));project.save_hierarchy(hierarchy)
+  image=QImage(1000,600,QImage.Format_RGB32);image.fill(QColor('white'));painter=QPainter(image);painter.setPen(QColor('#0B4167'));painter.drawRect(3,3,992,592);painter.drawText(15,25,'Top left');painter.drawText(875,25,'Top right');painter.drawText(15,580,'Bottom left');painter.drawText(850,580,'Bottom right');painter.fillRect(180,150,640,300,QColor('#DDF2F5'));painter.end();path=folder/'map.png';assert image.save(str(path),'PNG');project.save_plant_image('P',import_plant_image(path))
+  for language in (Language.ENGLISH,Language.SPANISH):
+   host=QDialog();host.setObjectName('plotDialog');host.setStyleSheet(PLOT_STYLE);host.resize(1460,1060)
+   panel=PlotMapPanel(hierarchy,project,project,lambda filename:import_plant_image(Path(filename)),load_icons(),language=language,parent=host)
+   filters=PlotFiltersPanel(hierarchy,panel,load_icons(),lambda selected:True,language=language,parent=host)
+   layout=QVBoxLayout(host);layout.addWidget(filters);layout.addWidget(panel,1)
+   filters.clear_button.click();host.show();grab(host,f'{language.value}-collapsed.png')
+   filters.demographics.setChecked(True);grab(host,f'{language.value}-expanded-empty.png')
+   filters.sex.setCurrentIndex(filters.sex.findData('Female'))
+   for key,values in (('age',(20,50)),('weight',(50,100)),('height',(150,190))):
+    for field,value in zip(filters.ranges[key],values):field.setValue(value)
+   filters.risk_buttons[PlotRiskView.COMPARISON].click();filters.apply_button.click();grab(host,f'{language.value}-populated-metric.png')
+   filters.set_system(MeasurementSystem.IMPERIAL);filters.set_decimal_convention(DecimalConvention.COMMA);grab(host,f'{language.value}-populated-imperial-comma.png')
+   host.resize(1920,1200);settle();assert panel.canvas.viewport().rect().contains(panel.canvas.mapFromScene(panel.canvas.scene().sceneRect()).boundingRect());grab(host,f'{language.value}-enlarged.png')
+   filters.clear_button.click();grab(host,f'{language.value}-cleared.png');host.close();host.deleteLater();settle()
+print('Captured source collapsed/expanded grid and native English/Spanish demographic disclosure, metric/imperial-comma populated, enlarged and Clear states with full-map containment')

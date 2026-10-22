@@ -1,0 +1,17 @@
+{
+  "reference_files_verified_unchanged": 500,
+  "wheel": "ergotools-0.1.0.dev0-py3-none-any.whl",
+  "wheel_sha256": "6c21a154592964ea2136e9924ad27a0040527c317dd9322176dbeb9952bc0e31",
+  "packaged_assets_verified": 69,
+  "quality_probe_detected": [
+    "ANN001",
+    "ANN201",
+    "D100",
+    "D103",
+    "N802"
+  ],
+  "risk_reference_vectors": 1013,
+  "tests_passed": 18,
+  "coverage_percent": 96.35,
+  "python": "3.13.14"
+}

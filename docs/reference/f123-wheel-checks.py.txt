@@ -1,0 +1,41 @@
+import sys,tempfile
+from pathlib import Path
+from PyQt5.QtWidgets import QApplication,QComboBox,QStyleOptionViewItem
+from PyQt5.QtTest import QSignalSpy,QTest
+from PyQt5.QtCore import Qt
+import ergotools
+from ergotools.application.rotation_pool import RotationPool,RotationTargetChoice,RotationWorkerChoice
+from ergotools.domain.rotation_scheme import RotationWorkerLink,RotationTarget
+from ergotools.domain.work_catalog import WorkerEntry
+from ergotools.domain.job_risk import JobRiskProfile,JobRiskStatus,JobRiskMeasurement
+from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.domain.language import Language
+from ergotools.presentation.desktop.rotation_table import RotationTable
+app=QApplication.instance() or QApplication([])
+target=RotationTarget('job\nñ',1)
+profile=JobRiskProfile(1,target.job_id,'Evidence',1,JobRiskStatus.APPROVED,True,measurements=(JobRiskMeasurement(AssessmentKind.LIFFT,0,0,'Imperial'),))
+pool=RotationPool('project',(RotationWorkerChoice(RotationWorkerLink('worker ñ'),WorkerEntry('worker ñ','Name','Family')),),(RotationTargetChoice(target,'Job',profile),))
+for language in Language:
+ table=RotationTable(pool,blocks=2,language=language);table.resize(900,400);table.show();app.processEvents()
+ changed=QSignalSpy(table.changed)
+ table.set_choice(0,0,'worker ñ')
+ for column in (1,2):
+  index=table.model().index(0,column);delegate=table.itemDelegate()
+  editor=delegate.createEditor(table,QStyleOptionViewItem(),index)
+  assert isinstance(editor,QComboBox);delegate.setEditorData(editor,index)
+  editor.setCurrentIndex(editor.findData(target.key));delegate.setModelData(editor,table.model(),index)
+ assert len(changed)==3 and table.item(0,3).text()=='0.0%'
+ assert 'Imperial' in table.item(0,1).toolTip()
+ saved=table.current_scheme('R ñ');assert saved.targets==(target,)
+ table.load_scheme(saved);assert len(changed)==3
+ table.set_kind(AssessmentKind.DUET);assert table.item(0,3).text() in ('Unavailable','No disponible')
+ assert table.current_scheme('R ñ')==saved
+ table.set_kind(AssessmentKind.LIFFT)
+ table.item(0,1).setSelected(True);QTest.keyClick(table,Qt.Key_Delete)
+ assert len(changed)==4 and table.choice_key(0,1) is None
+ table.close()
+for name,module in tuple(sys.modules.items()):
+ if name=='ergotools' or name.startswith('ergotools.'):
+  path=getattr(module,'__file__',None)
+  if path:assert Path(path).resolve().is_relative_to(Path(sys.argv[1]).resolve()),path
+print('Independent wheel: EN/ES actual delegate editing, zero/missing evidence, exact multiline identities, saved-grid reload and Delete passed.')

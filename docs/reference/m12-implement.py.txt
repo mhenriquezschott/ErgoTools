@@ -1,0 +1,92 @@
+import json
+from pathlib import Path
+r=Path.cwd()
+p=r/'docs/finish-progress.json';l=json.loads(p.read_text());next(m for m in l['milestones'] if m['id']=='M12')['status']='in_progress';l['implementation_status']='M12_in_progress';l['batch_authorization']='Owner authorizes M12 on 2026-10-11.';p.write_text(json.dumps(l,indent=2)+'\n')
+with (r/'AGENTS.md').open('a') as f:f.write('\n\n## Owner authorization — M12, 2026-10-11\n\nOwner directs M12 native delivery/handoff. Start 97.75/100. Verify independent\nLinux installation/launcher, assets/VTK/CBC/HiGHS/offline backup/restore and known\nfrontend platform requirements. Native Windows/macOS acceptance is not inferred;\nif targets unavailable, prepare Linux evidence/instructions then ask explicit\ndeferral decision under M12.3. Fixed scope/weights/dependencies/reference rules stay.\n')
+p=r/'docs/STATUS.md';s=p.read_text();p.write_text('# Active milestone — M12 delivery\n\nOwner authorizes M12. Independent Linux install/launcher/offline recovery and\nplatform review in progress. Remains 97.75/100 until fixed criteria close.\n\n---\n\n'+s)
+p=r/'src/ergotools/bootstrap.py';s=p.read_text().replace('def main() -> int:\n', 'def main(argv: list[str] | None = None) -> int:\n').replace('args = parser.parse_args()', 'args = parser.parse_args(argv)');p.write_text(s)
+(r/'src/ergotools/launcher.py').write_text('''"""Launch the integrated application independently of the working directory."""
+
+import sys
+from pathlib import Path
+
+from PyQt5.QtCore import QCoreApplication, QStandardPaths
+
+from ergotools.bootstrap import main as desktop_main
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run the integrated desktop with per-user settings or an explicit override.
+
+    Installed console scripts and module execution share this entry point. The
+    original development bootstrap flags remain available for diagnostic use.
+    Assets are loaded from the installed package, never from the launch folder.
+    No dependency installation, project opening or saving occurs here.
+
+    Raises:
+        OSError: If Qt cannot locate a writable per-user configuration directory.
+    """
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    QCoreApplication.setApplicationName("ErgoTools")
+    QCoreApplication.setOrganizationName("ErgoTools")
+    if not any(a == "--settings" or a.startswith("--settings=") for a in arguments):
+        directory = QStandardPaths.writableLocation(QStandardPaths.AppConfigLocation)
+        if not directory:
+            raise OSError("No per-user application configuration directory is available.")
+        arguments.extend(("--settings", str(Path(directory) / "settings.json")))
+    return desktop_main(["--integrated-preview", *arguments])
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+''')
+p=r/'pyproject.toml';s=p.read_text().replace('[project.optional-dependencies]', '[project.scripts]\nergotools = "ergotools.launcher:main"\n\n[project.optional-dependencies]');p.write_text(s)
+(r/'tools/run.sh').write_text('''#!/usr/bin/env bash
+# Launch from this checkout using only its approved environment.
+set -euo pipefail
+project_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+exec "$project_root/.venv/bin/python" -m ergotools.launcher "$@"
+''')
+(r/'tests/test_launcher.py').write_text('''"""Installed integrated entry point never depends on the launch directory."""
+
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
+from ergotools.launcher import main
+
+
+@pytest.mark.parametrize("arguments", [[], ["--disable-vtk"]])
+def test_launch_uses_integrated_ui_and_user_config(tmp_path: Path, arguments: list[str]) -> None:
+    """Integrated rendering is default and explicit diagnostic options pass through."""
+    with (
+        patch("ergotools.launcher.QStandardPaths.writableLocation", return_value=str(tmp_path)),
+        patch("ergotools.launcher.desktop_main", return_value=7) as desktop,
+    ):
+        assert main(arguments)==7
+    desktop.assert_called_once_with(["--integrated-preview", *arguments, "--settings", str(tmp_path/"settings.json")])
+    assert not (tmp_path/"settings.json").exists()
+
+
+@pytest.mark.parametrize("arguments", [["--settings", "custom.json"], ["--settings=custom.json"]])
+def test_explicit_settings_are_preserved(arguments: list[str]) -> None:
+    """Do not replace an explicitly selected settings file or mutate caller arguments."""
+    before=list(arguments)
+    with patch("ergotools.launcher.desktop_main", return_value=0) as desktop:
+        main(arguments)
+    assert arguments==before
+    desktop.assert_called_once_with(["--integrated-preview", *arguments])
+
+
+def test_unavailable_config_path_fails_before_launch() -> None:
+    """No implicit working-directory fallback can scatter preferences beside projects."""
+    with (
+        patch("ergotools.launcher.QStandardPaths.writableLocation", return_value=""),
+        patch("ergotools.launcher.desktop_main") as desktop,
+        pytest.raises(OSError,match="configuration directory"),
+    ):
+        main([])
+    desktop.assert_not_called()
+''')
+print('M12 authorization and integrated installed launcher prepared; versions unchanged.')

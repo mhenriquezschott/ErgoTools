@@ -1,0 +1,9 @@
+{
+  "reference_root": "/mnt/088E1D428E1D29A8/Documents/Documentos Trabajos UACh/2026/research/Ergo/PLOT/plot_branch_currentwork/ErgoTools",
+  "reference_python": "/home/mhenriquez/anaconda3/envs/ergotools/bin/python",
+  "reference_python_version": "3.10.18",
+  "reference_head": "1aeb2d056ea4d9dd60dbe2ea127389c7d858e4a9",
+  "reference_is_dirty": true,
+  "captured_on": "2026-09-27",
+  "note": "Reference only; not a runtime dependency."
+}

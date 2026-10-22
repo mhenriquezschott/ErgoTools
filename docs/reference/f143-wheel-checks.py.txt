@@ -1,0 +1,6 @@
+import sys,subprocess
+from pathlib import Path
+for language in ('en','es'):
+ command=[sys.executable,'-I','-c',"import sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);sys.path.append(str(Path.cwd()));exec(compile(open('/tmp/f143-view.py').read(),'/tmp/f143-view.py','exec'));assert all(not getattr(m,'__file__',None) or Path(m.__file__).is_relative_to(sys.argv[1]) for n,m in tuple(sys.modules.items()) if n=='ergotools' or n.startswith('ergotools.'))",sys.argv[1],language]
+ subprocess.run(command,check=True,timeout=60)
+print('Extracted-wheel F139 composed desktop conversion and native EN/ES workflows passed.')

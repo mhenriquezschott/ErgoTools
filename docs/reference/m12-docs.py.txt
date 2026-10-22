@@ -1,0 +1,156 @@
+import hashlib
+import json
+import shutil
+import tomllib
+from pathlib import Path
+
+r=Path.cwd();out=r/'artifacts/m12-delivery';stage=Path('/tmp/ergotools-m12-clean')
+shutil.copytree(stage/'evidence',out/'native',dirs_exist_ok=True)
+shutil.copyfile('/tmp/m12-vms-session.txt',out/'vm-session.txt');shutil.copyfile('/tmp/m12-vms-system.txt',out/'vm-system.txt')
+delivery=r/'dist/linux';delivery.mkdir(exist_ok=True)
+shutil.copyfile('/tmp/ergotools-m12-runtime-requirements.txt',delivery/'runtime-linux-requirements.txt')
+shutil.copyfile(r/'dist/ergotools-0.1.0.dev0-py3-none-any.whl',delivery/'ergotools-0.1.0.dev0-py3-none-any.whl')
+install='''# ErgoTools Linux delivery
+
+This is the integrated LiFFT/DUET/ST/PLOT/JROT desktop, validated on Ubuntu 25.04
+x86-64 using XCB/XWayland and the approved Python 3.13.14 baseline. It contains
+its own icons, avatar models, guides and calculation/storage code. The original
+checkout is neither installed nor needed. Native Windows/macOS acceptance is
+not included in this Linux delivery; see the platform review and M12 status.
+
+## Run the existing new project
+
+From the new project folder:
+
+```bash
+bash tools/run.sh
+```
+
+This launches the integrated application with VTK. Preferences now default to
+Qt's per-user application configuration directory rather than the launch folder.
+To reuse the prior development preferences explicitly:
+
+```bash
+bash tools/run.sh --settings "$PWD/.cache/desktop-settings.json"
+```
+
+The installed console command is `ergotools`; the equivalent module command is
+`python -m ergotools.launcher`. `--disable-vtk` remains diagnostics only.
+The old bootstrap and its preview flags remain diagnostic compatibility paths;
+their historical help description does not define the delivered UI.
+
+## Install independently on Linux x86-64
+
+Use the already approved uv 0.11.25 and exact Python/library baseline. These
+instructions do not authorize upgrading versions. In a new writable installation
+folder, copy the delivered wheel and runtime-linux-requirements.txt here, then:
+
+```bash
+uv python install 3.13.14 --install-dir "$PWD/python" --no-bin --no-registry
+uv venv --python "$PWD/python/cpython-3.13.14-linux-x86_64-gnu/bin/python3.13" .venv
+uv pip install --python .venv/bin/python --require-hashes -r runtime-linux-requirements.txt
+uv pip install --python .venv/bin/python --no-deps ./ergotools-0.1.0.dev0-py3-none-any.whl
+.venv/bin/ergotools
+```
+
+Initial installation can require network downloads. The requirement export
+contains exact approved versions and distribution hashes, with no development
+tools or editable source requirement. The clean test used a separately copied
+approved interpreter and a fresh environment, downloaded only hash-approved
+distributions, and ran the installed program with external networking disabled.
+This delivery is not an offline wheelhouse or a self-contained OS image.
+After installation, the application, both solvers and packaged guides operate
+offline; a working native Qt/X11/OpenGL system remains necessary. Only this
+tested Linux host is claimed, not every Linux distribution.
+
+Do not move an already created virtual environment: recreate it at the new
+location using these same pinned files. The installed script's absolute shebang
+belongs to that environment. All Python/library and solver version changes need
+explicit approval. Desktop dependency markers intentionally target Linux; do
+not use this requirements file to assert Windows/macOS compatibility.
+
+## Use and recovery
+
+Launch from any folder; package assets do not depend on the current directory.
+Use `--settings /absolute/path/settings.json` for a separate preference file.
+The original-project Open workflow converts to a new destination, retaining the
+original descriptor/database/images as immutable evidence. Preserve the original
+sidecars until conversion. New-format projects embed their images and archive.
+
+Save assessment and PLOT/JROT edits before Backup if you want them included.
+Backup copies persisted data only. To restore, retain the current file separately,
+Open a separately named backup and inspect workers/contexts, all assessment tools,
+PLOT image/markers and JROT schemes before Save As. Undo histories/preferences
+are not part of a project backup. Keep backups; confirmed saved-record deletion
+is not a global undoable action.
+
+The installed offline acceptance reopened a disposable copy of the comprehensive
+converted original project, exercised Backup, matched complete SQL dumps and all
+owned catalog/history/PLOT/JROT/archive data, and reopened the backup in Spanish.
+CBC handles one tool; HiGHS handles all tools. GLPK is not included.
+
+Current EN/ES Help ships inside the wheel. Full user, developer, architecture,
+API and recovery documentation is in the source distribution's docs/ folder.
+The migration evidence is in docs/m01-acceptance.md through m12-validation.json
+as applicable; M12's remaining platform decision is stated explicitly.
+'''
+(r/'docs/linux-delivery.md').write_text(install);(delivery/'INSTALL.md').write_text(install)
+platform='''# M12 frontend platform review
+
+Linux XCB on Ubuntu 25.04 x86-64 is executed and validated. This review is source
+inspection and a native-target checklist, not evidence that Windows/macOS ran.
+Existing system libvirt Windows VMs are shut off; no validated new-application
+Windows baseline has been prepared. No macOS test target is configured. No VM
+was booted or modified. Approval to defer native acceptance is requested before
+closing M12; no milestone or point weight is added.
+
+| Concern | Current implementation / evidence | Native follow-up |
+|---|---|---|
+| Assets and paths | importlib.resources package bytes, pathlib paths, QUrl.fromLocalFile; installed-only asset hashes and non-ASCII/space launch folder pass | Windows drive/Unicode paths, case sensitivity and bundle layout |
+| Configuration | Qt QStandardPaths AppConfigLocation in composition root; explicit --settings supported | Verify actual per-user locations/permissions and installed launcher |
+| Fonts, layout, DPI | Existing reference-derived layouts, stretch regions, synchronized task headers, font-metric text fitting and owned native viewport captures | Windows scaling 100/125/150/200%, macOS Retina, font fallback, full VTK/cards/bottom controls |
+| Menus/shortcuts | Qt actions and standard Undo/Redo bindings; localized menus remain intact on Linux | macOS menu placement/roles and Cmd shortcuts; native dialog button order |
+| Threads and lifetime | Solver thread publishes validated outcomes, UI stays GUI-owned; modal close/cancel and VTK teardown already accepted | Exercise close/cancel/render teardown with native event loops/drivers |
+| Native binaries | CBC 2.10.3 bundled through approved PuLP, HiGHS/highspy 1.11.0, VTK 9.5.0 work in isolated installed Linux app | Approve and install exact target wheels/Qt runtime/native executables first |
+| Files and transactions | Parameterized SQLite, exclusive publication, QSaveFile preferences/Help; installed backup/reopen equivalence passes | Native file locks, antivirus interference, save dialogs and permissions |
+
+Qt 5's documented DPI support distinguishes logical coordinates and device pixels,
+with OpenGL requiring attention. Fractional scales/font metrics need native visual
+acceptance; changing global scaling/style without that evidence could alter the
+accepted Linux layout. No speculative global DPI override was introduced.
+[Qt 5.15 high-DPI documentation](https://doc.qt.io/archives/qt-5.15/highdpi.html).
+
+Qt documents QObject/thread affinity and GUI ownership. Existing solver/renderer
+boundaries retain that separation; no new cross-platform thread framework is
+needed. [Qt 5.15 threads and QObjects](https://doc.qt.io/archives/qt-5.15/threads-qobject.html).
+
+The current desktop dependency metadata intentionally has Linux markers. A pure
+Python wheel tag does not certify the native dependencies or this UI on another
+OS. Python 3.13.14 and target package/Qt/solver versions must be explicitly approved
+before creating a different baseline. Do not remove markers, substitute Qt builds,
+claim native success from Linux tests, or modify the working reference app.
+
+Native acceptance, when authorized: boot disposable VM/copy, establish approved
+versions, launch installed app, compare original/current at matching DPI/theme/
+fonts, exercise project conversion/assessment/workers/jobs/PLOT/JROT/Transfer/
+backup and both languages/units, check teardown, record exact results. No native
+Windows/macOS success is claimed by the present source review.
+'''
+(r/'docs/platform-review.md').write_text(platform)
+p=r/'README.md';s=p.read_text().replace('.venv/bin/python -m ergotools.bootstrap --integrated-preview','bash tools/run.sh',1)
+start=s.index('The integrated-preview flag');end=s.index('- [User guide]',start)
+s=s[:start]+'''The launcher opens the integrated application with VTK and per-user preferences.
+For an installed wheel, run `ergotools` or `python -m ergotools.launcher`.
+See [Linux install/run/recovery](docs/linux-delivery.md). Diagnostic bootstrap
+flags remain available for development; they are not the delivered entry point.
+
+'''+s[end:];p.write_text(s)
+p=r/'docs/development.md';s=p.read_text().replace('.venv/bin/python -m ergotools.bootstrap --integrated-preview','bash tools/run.sh',1).replace('This existing flag selects the complete shared desktop and VTK renderer. Add','The launcher selects the complete shared desktop and VTK renderer. Add').replace('project-local. Preferences store', 'project-local for diagnostic bootstrap. The delivered launcher instead uses Qt\'s\nper-user AppConfigLocation. Preferences store').replace('otherwise `.cache/desktop-settings.json` is','the diagnostic bootstrap defaults to `.cache/desktop-settings.json`, which is');s+='\n\n## M12 delivery\n\nUse [Linux delivery](linux-delivery.md) for an installed wheel and launcher, and\n[platform review](platform-review.md) for executed versus deferred native checks.\nThe approved baseline remains exact; M12 changed entry-point metadata, not versions.\n';p.write_text(s)
+for language in ('en','es'):
+ md=r/'docs'/('user-guide.md' if language=='en' else 'user-guide-es.md')
+ text=md.read_text().replace('.venv/bin/python -m ergotools.bootstrap --integrated-preview','bash tools/run.sh (installed / instalado: ergotools)');md.write_text(text)
+ html=r/f'src/ergotools/resources/documents/user-guide-{language}.html';text=html.read_text().replace('.venv/bin/python -m ergotools.bootstrap --integrated-preview','bash tools/run.sh (installed: ergotools)' if language=='en' else 'bash tools/run.sh (instalado: ergotools)');html.write_text(text)
+# Record artifacts before the one final package rebuild for these guide changes.
+for name in ('m12-implement.py','m12-correction.py','m12-native-installed.py','m12-docs.py'):
+ shutil.copyfile('/tmp/'+name,r/'docs/reference'/(name+'.txt'))
+print('Concrete Linux delivery files, run/recovery documentation and platform review prepared.')

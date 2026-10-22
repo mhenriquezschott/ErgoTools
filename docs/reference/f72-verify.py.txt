@@ -1,0 +1,58 @@
+import hashlib,json,subprocess,sys,tempfile,zipfile,xml.etree.ElementTree as ET
+from pathlib import Path
+root=Path.cwd()
+def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+manifest=json.loads((root/'docs/reference/source-manifest.json').read_text())
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+assert all(digest(reference/name)==value for name,value in manifest.items())
+assert digest(root/'uv.lock')==json.loads((root/'docs/f71-validation.json').read_text())['lock_sha256']
+wheel=root/'dist/ergotools-0.1.0.dev0-py3-none-any.whl'
+code='''
+import sys
+from pathlib import Path
+sys.path.insert(0,sys.argv[1])
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QTimer
+from ergotools.bootstrap import create_job_management_demo,create_window
+from ergotools.application.settings import Language
+from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.presentation.desktop.worker_management_dialog import WorkerManagementDialog
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+app=QApplication([])
+path=Path('worker-demo.ergprj')
+create_job_management_demo(path)
+window=create_window(Path('settings.json'))
+window.presenter.workspace.switch(str(path),'assessment')
+window.refresh()
+completed=[]
+def enter_worker():
+ dialog=QApplication.activeModalWidget()
+ assert isinstance(dialog,WorkerManagementDialog)
+ dialog.worker_id_combo.setEditText('wheel-worker')
+ dialog.first_name_input.setText('María')
+ dialog.height_input.setText('70')
+ dialog.save_button.click()
+ assert dialog.selected_worker_id=='wheel-worker'
+ completed.append(True)
+ dialog.close()
+QTimer.singleShot(0,enter_worker)
+window.buttons['worker_management'].click()
+assert completed==[True]
+window.presenter.workspace.close(choice=CloseChoice.DISCARD)
+window.close()
+with AssessmentProjectFile.open(path) as project:
+ worker=project.load_hierarchy().work.workers[0]
+ assert worker.first_name=='María'
+ assert worker.details.height_cm==177.8
+print('Isolated wheel worker modal/save/reopen passed')
+'''
+with tempfile.TemporaryDirectory() as directory:
+ with zipfile.ZipFile(wheel) as archive:archive.extractall(directory)
+ result=subprocess.run([sys.executable,'-I','-c',code,directory],cwd=directory,capture_output=True,text=True)
+ if result.returncode:raise RuntimeError(result.stderr)
+ print(result.stdout.strip())
+coverage=json.loads((root/'artifacts/coverage.json').read_text())
+evidence=dict(milestone='F72',verified_on='2026-10-04',python=sys.version.split()[0],tests_passed=sum(1 for _ in ET.parse(root/'artifacts/tests.xml').iter('testcase')),new_tests=9,coverage_percent=coverage['totals']['percent_covered'],reference_files_unchanged=len(manifest),dependency_lock_unchanged=True,lock_sha256=digest(root/'uv.lock'),wheel_sha256=digest(wheel),independent_wheel_smoke='passed',hierarchy_payload_version=2,reads_hierarchy_payload_versions=[1,2],project_sql_schema_changed=False,overall_completion_estimate_percent=None)
+evidence['native_screenshots']={str(p.relative_to(root)):digest(p) for p in sorted((root/'artifacts/worker-management').glob('*.png'))}
+(root/'docs/f72-validation.json').write_text(json.dumps(evidence,indent=2)+'\n')
+print(json.dumps(evidence,indent=2))

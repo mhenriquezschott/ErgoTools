@@ -1,0 +1,39 @@
+{
+  "milestone": "M1R",
+  "status": "accepted",
+  "completed": 2,
+  "total": 6,
+  "percent": 33.333333333333336,
+  "tests_passed": 1256,
+  "coverage_percent": 96.37213535203111,
+  "coverage_is_execution_coverage_not_test_pass_rate": true,
+  "strict_mypy_modules": 246,
+  "architecture_violations": 0,
+  "functional_gate": "../artifacts/cleanup-m1r-check.log",
+  "native_verification": "../artifacts/cleanup-m1r-native/verification.json",
+  "visually_inspected_captures": [
+    "main-lifft-en",
+    "main-duet-en",
+    "main-st-en",
+    "plot-en",
+    "jrot-en",
+    "main-lifft-es",
+    "main-duet-es",
+    "main-st-es",
+    "plot-es",
+    "jrot-es"
+  ],
+  "package_verification": "../artifacts/cleanup-m1r-package.json",
+  "original_calculator_comparison": "../artifacts/cleanup-m1r-original-oracle.json",
+  "assessment_versions_matching_original_calculators": 388,
+  "task_rows_matching_original_calculators": 7154,
+  "old_cached_st_totals_corrected_per_project": 29,
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "post_gate_changes": "Documentation only; executable AST equals the functional/native-tested wheel.",
+  "limitations": [
+    "Two other original samples remain unsupported: earlier JROT schema and blank required title. No repair or new schema scope authorized.",
+    "M2 guided migration remains unstarted.",
+    "Whole-code substantive documentation acceptance remains M4; user testing remains held."
+  ]
+}

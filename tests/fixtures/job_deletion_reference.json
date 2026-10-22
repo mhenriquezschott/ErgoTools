@@ -1,0 +1,51 @@
+{
+  "python": "3.10.18",
+  "source_sha256": {
+    "src/schema_migrations.py": "38b4ef55d0ce0d3f7acaab998f90292f25f0bf40723eb50d27357027b8c18972",
+    "src/rotation_schema.py": "dbda479a9b1d69a84842a803437f13778b0e0ad4527bd4616e037e521c458f10"
+  },
+  "cases": [
+    {
+      "assessed": false,
+      "rotating": false,
+      "blocked": false,
+      "counts": {
+        "Job": 0,
+        "JobRiskProfile": 0,
+        "JobRiskMeasurement": 0,
+        "JobPlacement": 0,
+        "WorkerAssignment": 1,
+        "IndividualAssessment": 0
+      },
+      "assignment_placement": null
+    },
+    {
+      "assessed": true,
+      "rotating": false,
+      "blocked": false,
+      "counts": {
+        "Job": 0,
+        "JobRiskProfile": 0,
+        "JobRiskMeasurement": 0,
+        "JobPlacement": 0,
+        "WorkerAssignment": 1,
+        "IndividualAssessment": 1
+      },
+      "assignment_placement": null
+    },
+    {
+      "assessed": false,
+      "rotating": true,
+      "blocked": true,
+      "counts": {
+        "Job": 1,
+        "JobRiskProfile": 1,
+        "JobRiskMeasurement": 1,
+        "JobPlacement": 1,
+        "WorkerAssignment": 1,
+        "IndividualAssessment": 0
+      },
+      "assignment_placement": 1
+    }
+  ]
+}

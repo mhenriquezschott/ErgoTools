@@ -1,0 +1,30 @@
+{
+  "milestone": "F55",
+  "verified_on": "2026-10-03",
+  "python": "3.13.14",
+  "tests_passed": 474,
+  "new_tests": 3,
+  "coverage_percent": 98.91952309985096,
+  "new_module_coverage": {
+    "src/ergotools/presentation/desktop/lifft_window.py": 96.85534591194968
+  },
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "wheel_sha256": "e806dcafb9d7b4642c29a835a4b8a5a4fbdc74766871a614748adddc8734f93f",
+  "independent_wheel_smoke": "passed",
+  "ui_changed": true,
+  "schema_changed": false,
+  "existing_formats_unchanged": true,
+  "reference_overlap_cases": 8,
+  "overall_completion_estimate_percent": 66,
+  "native_screenshots": {
+    "confirm.png": "1dc6c85d6908d716d678b609769a9dc2c3206f3d8df35446f66d637da013385b",
+    "dirty-choice.png": "ebb89401df08cda9c9746d4570d70da1c7eae19c912cfb5f9fe2102c5f26f08d",
+    "empty.png": "1fdfa5004bc99092620fad1eb40d4903cef2ff7898f7f74ec3fdc931bebce1f2",
+    "new-blank.png": "2ef0ec32e30198eef23b35562b08d99f653bf8d404ee4dbb1feeaf9462a73dc4",
+    "pending.png": "582f9a54c67fb1f5687b1dd56a7406398be1e7a005cacf12d49a3ca06db024a7",
+    "spanish-confirm.png": "c527fa881e8ef17c1c8312116e9c2bbeb5323c7c936266bffcd578a6aecb9465",
+    "spanish-minimum.png": "982117551c36058ad2ea8000f443f9a307d1fe91d098d0b831d76a23c4eff6d9"
+  }
+}

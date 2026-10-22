@@ -1,0 +1,45 @@
+import ast,os,tempfile,json
+from pathlib import Path
+from PyQt5 import QtWidgets,QtCore
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import QDoubleValidator,QIntValidator,QFont,QIcon,QPalette,QColor
+from PyQt5.QtCore import Qt,QSize
+from PyQt5.QtTest import QTest
+from ergotools.bootstrap import create_window,load_icons
+from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.application.settings import Language
+from ergotools.domain.assessments.duet import DuetTask
+from ergotools.domain.assessments.duet_draft import DuetDraft
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.project import ProjectMetadata
+from ergotools.presentation.desktop.duet_presenter import DuetPresenter
+from ergotools.presentation.desktop.duet_task_panel import DuetTaskPanel
+from ergotools.presentation.desktop.theme.main_workspace import MAIN_WORKSPACE_STYLE
+root=Path.cwd();reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root']);path=reference/'src/main.py';module=ast.parse(path.read_text());legacy=next(n for n in module.body if isinstance(n,ast.ClassDef) and n.name=='ErgoTools')
+methods={'setupDUETTab','createStickyHeader','bindStickyHeader','syncStickyHeaders','styleAssessmentControls'}
+extra=[n for n in module.body if isinstance(n,ast.ClassDef) and n.name in {'SyncedHeaderLayout','ErgoComboItemDelegate'}]
+body=[n for n in legacy.body if isinstance(n,ast.FunctionDef) and n.name in methods]
+node=ast.ClassDef(name='Reference',bases=[ast.Name(id='QMainWindow',ctx=ast.Load())],keywords=[],body=body,decorator_list=[])
+context=globals().copy();context['__file__']=str(path);exec(compile(ast.fix_missing_locations(ast.Module(body=[*extra,node],type_ignores=[])),str(path),'exec'),context)
+app=QApplication([]);out=root/'artifacts/duet-task-panel';out.mkdir(parents=True,exist_ok=True)
+def capture(widget,name):
+ widget.show();QTest.qWait(120);widget.grab().save(str(out/(name+'.png')))
+with tempfile.TemporaryDirectory() as directory:
+ harness=create_window(Path(directory)/'preferences.json');workspace=harness.presenter.workspace
+ tasks=tuple(DuetTask(str(i),5,100) for i in range(15))
+ workspace.create(str(Path(directory)/'duet.ergprj'),ProjectMetadata('p','DUET',MeasurementSystem.IMPERIAL),'d',DuetDraft(tasks))
+ original=context['Reference']();original.num_task=15;original.tabWidget=QTabWidget();original.setStyleSheet(MAIN_WORKSPACE_STYLE)
+ for name in ('duetDropdownChanged','duetInputChanged','duetResetForm','duetCalculateResultsClicked','duetDeleteAction','toolGridAction'):setattr(original,name,lambda *args:None)
+ original.setupDUETTab();original.setCentralWidget(original.duet_tab);original.duet_tab.show();original.resize(980,650);original.styleAssessmentControls();capture(original,'original-empty');original.syncStickyHeaders();capture(original,'original-empty')
+ panel=DuetTaskPanel(DuetPresenter(workspace),load_icons(),report_issue=lambda issue:None,changed=lambda:None)
+ host=QMainWindow();host.setStyleSheet(MAIN_WORKSPACE_STYLE);host.setCentralWidget(panel);host.resize(980,650)
+ panel.load_source(panel.presenter.bind());capture(host,'new-populated');panel.calculate_button.click();capture(host,'new-calculated')
+ panel.inputs[0][0].showPopup();QTest.qWait(100);panel.inputs[0][0].view().grab().save(str(out/'dropdown.png'));panel.inputs[0][0].hidePopup()
+ panel.language=Language.SPANISH;panel.translate();capture(host,'spanish')
+ panel.inputs[1][1].setText('bad');panel.inputs[1][1].textEdited.emit('bad');panel.calculate_button.click();capture(host,'invalid-retained')
+ panel.reset_button.click();capture(host,'new-empty')
+ host.resize(620,380);capture(host,'narrow');panel.body_scroll.horizontalScrollBar().setValue(panel.body_scroll.horizontalScrollBar().maximum());panel.body_scroll.verticalScrollBar().setValue(panel.body_scroll.verticalScrollBar().maximum());capture(host,'narrow-bottom')
+ panel.load_source(None);host.resize(980,650);capture(host,'no-project')
+ print('Original body/buttons',original.scroll_area_duet.geometry().getRect(),original.duet_calculate_button.geometry().getRect());print('New body/buttons',panel.body_scroll.geometry().getRect(),panel.calculate_button.geometry().getRect())
+ workspace.close(choice=CloseChoice.DISCARD);harness.close();host.close();original.close()
+ print('Native original/new DUET component and expanded/empty/populated/error/localized/scroll states captured')

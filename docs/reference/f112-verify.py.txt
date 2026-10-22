@@ -1,0 +1,39 @@
+import ast, hashlib, json, subprocess, sys, tempfile, zipfile
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from PIL import Image, ImageChops
+root = Path.cwd()
+def digest(path): return hashlib.sha256(path.read_bytes()).hexdigest()
+manifest = json.loads((root/'docs/reference/source-manifest.json').read_text())
+reference = Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+assert all(digest(reference/name) == value for name,value in manifest.items())
+assert digest(root/'uv.lock') == json.loads((root/'docs/f79-validation.json').read_text())['lock_sha256']
+nodes=[]
+for node in ast.parse((root/'tests/test_plot_results.py').read_text()).body:
+ if isinstance(node,(ast.Import,ast.ImportFrom)):
+  if (getattr(node,'module','') or '').startswith(('tests','PyQt5','ergotools.presentation','ergotools.bootstrap')): continue
+  nodes.append(node)
+ elif isinstance(node,ast.Assign): nodes.append(node)
+ elif isinstance(node,ast.FunctionDef) and node.name=='project':
+  node.decorator_list=[]; nodes.append(node)
+fixture=ast.unparse(ast.Module(nodes,type_ignores=[]))
+checks="\nfrom PyQt5.QtWidgets import QApplication\nfrom PyQt5.QtGui import QImage,QColor\nfrom unittest.mock import patch\nfrom ergotools.bootstrap import create_window\nfrom ergotools.application.plot_layout import LoadedPlantLayout\nfrom ergotools.application.plot_results import saved_plot_results\nfrom ergotools.application.document_lifecycle import CloseChoice\nfrom ergotools.domain.plot_filters import PlotFilterSelection\nfrom ergotools.domain.plot_positions import PlotPoint,PlotPositions,WorkerAssignmentMarker,WorkerPositionSource\nfrom ergotools.infrastructure.plant_image_import import import_plant_image\nfrom ergotools.presentation.desktop.plot_layout_canvas import PlotLayoutCanvas\nfrom ergotools.presentation.desktop.plot_marker_layer import PlotMarkerLayer\napp=QApplication([]);generator=project(Path.cwd());repository=next(generator)\ntry:\n positions=PlotPositions('p')\n for identity,x in ((1,100),(3,200)):positions=positions.with_saved_marker(WorkerAssignmentMarker(identity,PlotPoint(x,100),visible=True,source=WorkerPositionSource.MANUAL),repository.load_jobs())\n repository.save_plot_positions(positions)\n image=QImage(640,400,QImage.Format_RGB32);image.fill(QColor('white'));assert image.save('map.png')\n canvas=PlotLayoutCanvas();canvas.set_layout(LoadedPlantLayout(SCOPE,import_plant_image(Path('map.png')).data))\n view=create_window(Path('settings.json'),original_navigation=True)\n view.presenter.workspace.switch(str(Path('plot.ergprj').absolute()),'lifft-1');view.refresh()\n errors=[]\n layer=PlotMarkerLayer(canvas,repository.load_jobs(),repository.save_plot_positions,errors.append,current_year=2026,load_assessment=view.load_plot_assessment)\n layer.set_results(saved_plot_results(repository,PlotFilterSelection(SCOPE),current_year=2026))\n menu=layer.worker_menu(3);assert [a.text() for a in menu.actions()]==['Lock','Save','Load into Tool Window']\n menu.actions()[0].trigger();assert layer.pending and layer.items['worker',3].locked\n assert not layer.load_worker(3) and errors\n menu.actions()[1].trigger();assert not layer.pending and repository.load_plot_positions().marker(3).locked\n before=repository.load_plot_positions()\n field=view.task_panel.inputs[0][2];field.setText('999');field.textEdited.emit('999')\n original=view.presenter.workspace.active\n with patch.object(view,'dirty_choice',return_value=CloseChoice.CANCEL):assert not layer.load_worker(3)\n assert view.presenter.workspace.active is original\n with patch.object(view,'dirty_choice',return_value=CloseChoice.SAVE):assert layer.load_worker(3)\n assert view.presenter.workspace.active.document.document_id=='lifft-3'\n assert repository.load(original.document).tasks[0].repetitions==999\n for kind in AssessmentKind:\n  layer.set_results(saved_plot_results(repository,PlotFilterSelection(SCOPE,tool=kind),current_year=2026))\n  assert layer.load_worker(3) and view.active_kind() is kind\n  expected=next(r.assessment for r in layer.results.workers if r.assessment.assignment_id==3)\n  assert view.presenter.workspace.active.document==expected.document\n  assert view.presenter.workspace.active.state==repository.load(expected.document)\n assert repository.load_plot_positions()==before\n menu.close();canvas.close();view.presenter.workspace.close(choice=CloseChoice.DISCARD);view.close()\nfinally:generator.close()\nwith AssessmentProjectFile.open(Path('plot.ergprj')) as reopened:assert reopened.load_plot_positions()==before\nprint('Extracted wheel: original menu, lock/save/reopen, pending-map interlock, exact integrated LiFFT/DUET/ST handoff, actual editor Cancel/Save and recorded source preservation passed')\n"
+code='import sys\nfrom pathlib import Path\nsys.path.insert(0,sys.argv[1])\n'+fixture+'\n'+checks
+wheel=root/'dist/ergotools-0.1.0.dev0-py3-none-any.whl'
+with tempfile.TemporaryDirectory() as directory:
+ with zipfile.ZipFile(wheel) as archive: archive.extractall(directory)
+ result=subprocess.run([sys.executable,'-I','-c',code,directory],cwd=directory,capture_output=True,text=True,timeout=30)
+ if result.returncode: raise RuntimeError(result.stdout+result.stderr)
+ print(result.stdout.strip())
+
+
+
+art=root/'artifacts/plot-context-actions';comparisons={}
+for mode in ('normal','load-selected'):
+ a=Image.open(art/f'source-{mode}.png').convert('RGB');b=Image.open(art/f'en-{mode}.png').convert('RGB')
+ assert a.size==b.size and ImageChops.difference(a,b).getbbox() is None
+ comparisons[mode]={'different_pixels':0,'size':list(a.size)}
+coverage=json.loads((root/'artifacts/coverage.json').read_text());tests=ET.parse(root/'artifacts/tests.xml')
+evidence=dict(milestone='F112',verified_on='2026-10-07',python=sys.version.split()[0],tests_passed=len(list(tests.iter('testcase'))),new_tests=5,coverage_percent=coverage['totals']['percent_covered'],reference_files_unchanged=len(manifest),dependency_lock_unchanged=True,lock_sha256=digest(root/'uv.lock'),wheel_sha256=digest(wheel),independent_wheel_smoke='passed',source_worker_menu_native_comparisons=comparisons,native_screenshots={p.name:digest(p) for p in sorted(art.glob('*.png'))},worker_marker_context_actions_integrated=True,assessment_editor_handoff_integrated=True,full_plot_parent_close_consent_integrated=False,plot_main_window_enabled=False,plot_summaries_integrated=False,scientific_gates_preserved=True,overall_completion_estimate_percent=None)
+(root/'docs/f112-validation.json').write_text(json.dumps(evidence,indent=2)+'\n')
+print('Original/native normal and selected menus match pixel-for-pixel; all reference hashes and approved lock unchanged; F112 evidence saved')

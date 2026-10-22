@@ -1,0 +1,28 @@
+exec(compile(open('/tmp/m03-org.py').read().split('with tempfile.TemporaryDirectory()')[0],'/tmp/m03-org.py','exec'))
+with tempfile.TemporaryDirectory() as d:
+ directory=Path(d);path=directory/'reference.sqlite'
+ with closing(sqlite3.connect(path)) as conn,conn:
+  for entity,fields in namespace['ENTITY_FIELDS'].items():
+   columns=namespace['PARENT_KEYS'][entity]+[name for name,_,_ in fields]
+   conn.execute('CREATE TABLE '+entity+' ('+', '.join(name+' TEXT' for name in columns)+')')
+   keys={'Plant':['P'],'Section':['P','S'],'Line':['P','S','L'],'Station':['P','S','L','1'],'Shift':['Day']}[entity]
+   conn.execute('INSERT INTO '+entity+' ('+', '.join(columns[:len(keys)])+') VALUES ('+', '.join('?' for _ in keys)+')',keys)
+ parent=QWidget();parent.projectdatabasePath=str(path)
+ for name in ('plant_combo','section_combo','line_combo','station_combo','shift_combo'):setattr(parent,name,QComboBox())
+ old=Original(parent);ws=workspace_at(directory);new=OrganizationDialog(ws,load_icons())
+ for state in ('shift-selected',):
+  for prefix,w in (('original',old),('new',new)):
+   w.resize(1120,740)
+   if state.startswith('station'):
+    w.location_tree.expandAll()
+    if prefix=='original':w.selectKeys('Station',['P','S','L','1'])
+    else:w.select_keys(OrganizationKind.STATION,('P','S','L','1'))
+    if state=='station-expanded':w.optional_toggle.click()
+   else:
+    w.directory_tabs.setCurrentIndex(1)
+    if prefix=='original':w.selectKeys('Shift',['Day'])
+    else:w.select_keys(OrganizationKind.SHIFT,('Day',))
+   w.form_scroll.verticalScrollBar().setValue(0)
+   capture(w,prefix+'-'+state+'.png');w.hide()
+ old.close();new.close();ws.close(choice=CloseChoice.DISCARD)
+print('M03 selected Organization/Shift source comparison: four states captured.')

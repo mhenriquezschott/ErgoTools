@@ -1,0 +1,51 @@
+{
+  "checkpoint": "F133",
+  "date": "2026-10-09",
+  "tests_passed": 1046,
+  "coverage_percent": 96.68840712842183,
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "f5481d28fc8342ff0de42cddbfd549ad731bb988c08b4d3fc54d8253bd7db1de",
+  "independent_wheel": "Warning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway.\nNative EN/ES original saved JROT controls: all seven schemes, exact scopes/profile links, actual CBC and HiGHS/Apply passed; read-only host cannot persist.\nExtracted-wheel F133 copied comprehensive seven saved JROT schemes/45 targets/179 cells; native EN/ES all saved forms and actual CBC/HiGHS/Apply passed.",
+  "ui_changes": false,
+  "visual_validation": "22 captures inspected: seven copied saved schemes minimum EN/ES; large/scoped enlarged/scrolled forms; actual CBC and HiGHS comparison. Panels/bottom controls visible. Wide/tall grids retain original scrolling. No UI code change; no full integrated legacy import claim.",
+  "limits": [
+    "Legacy adapters read version 8 only; destination conversion and comprehensive integrated UI validation remain.",
+    "Overall completion percentage/finish date unvalidated.",
+    "ST source conversion waits for the owner direction-label/formula choice; raw evidence remains intact.",
+    "Complete destination conversion and main integrated copied-project validation remain."
+  ],
+  "native_screenshots": {
+    "en-Large01_10x8-enlarged-bottom.png": "ce6990886425c5d22bc56a7a0e1cc35f2713ef51c8be9a0eab05a17ba20df798",
+    "en-Large01_10x8-minimum.png": "9bdbd3c04ee0863532e3b3e24adc767cf1fdfb16b584507cf6f9572512dadfb6",
+    "en-Medium01_10x5-minimum.png": "88bddfa515e925d5419cd42dc80e7e8d005b667c4a2768a05dc5c0b89c48ffb5",
+    "en-Medium02_8x3-minimum.png": "a983a105fff2e0af41396ed8782e44e62f6f8b437b619775720f737558861ef3",
+    "en-Simple01_4x4-minimum.png": "50207aa5cca8c98c8bba3baa78e1b3d14162444ad77b756b373ade23ddefc471",
+    "en-Simple02_6x2-minimum.png": "319b8ed823d7c4a8090bc375910c5577419ee3354594c708e9c877168c4e8a6c",
+    "en-TEST-All-2x3-minimum.png": "ae7ddbf8b7b58883342f646223a0c2c8b7c26c076b21f756bd227fdbccd6b0e3",
+    "en-TEST-Workplace-2x3-enlarged-bottom.png": "47eb712cf399fe3885f2a2ac1a557dd5c80efde80e71e4c09a53c909bd1fe0fe",
+    "en-TEST-Workplace-2x3-minimum.png": "0c7a253919b1a8383eddf8b49a3557e2510d3d85f17a3afd2d386a20d66d90c1",
+    "en-saved-scheme-cbc.png": "944d930cebeaa98d5e4c56f814dba404a139151c70c746f3a0e58f8eae25a7fd",
+    "en-saved-scheme-highs.png": "cb1f07da4b86ef278d8720bc1f4a263b1f824613e0171405c9f18dff92623873",
+    "es-Large01_10x8-enlarged-bottom.png": "dc1b79f026753b6a273a1ede7a0bfdfa4d9aea3916db3830eb2a8570c7b8fc5b",
+    "es-Large01_10x8-minimum.png": "75ee7a0def771d396e344558986a3874441b426d48f6233be8e1eb3e16312bf5",
+    "es-Medium01_10x5-minimum.png": "051a6ac8edf1de386158b245f57669efe66865119635a34570626eacf461e8a4",
+    "es-Medium02_8x3-minimum.png": "6965def74e629846572a18425974cb4feefac9e32ea2e90bc84379d06a57e421",
+    "es-Simple01_4x4-minimum.png": "870b5767501653e970f9959621c4a25bb99e46253ec2f01dec6885314e2b269e",
+    "es-Simple02_6x2-minimum.png": "63e69d226a7f8707cfcdbf103ff83484fd9cc748e1198177d62ace6bdfd7d0e6",
+    "es-TEST-All-2x3-minimum.png": "1ab1c7edace6a907fd3390d701ebfde295e7c04900f11fdce5d837454610db81",
+    "es-TEST-Workplace-2x3-enlarged-bottom.png": "49d3c0bf9af6cc04f5298634894157a5a8623a6987737e51cfdea4e6233ee36a",
+    "es-TEST-Workplace-2x3-minimum.png": "39f79ef80b98a4d12334f2cceb43024fe07f480735b89846773467fdb51a6752",
+    "es-saved-scheme-cbc.png": "cc431618dd77e259df7834919adeeb95bdbd6c6b49300be4f3d9dce0095245af",
+    "es-saved-scheme-highs.png": "16449a62450b38135973b76d3f80435d7578016e40645c154fdaa137635d140e"
+  },
+  "original_project_and_companions_unchanged": {
+    "tests/ErgoTools_ComparativeRiskTest.ergprj": "618fc1e804821af47e6e163577196a493bab96ccbe532e62454d9bab3a58eca6",
+    "tests/ErgoTools_ComparativeRiskTest_data/ErgoTools_ComparativeRiskTest_data.db": "cf039faf713224bf480814f6721c80af647ba8fc23dd5f94c8bd772db283d222",
+    "tests/ErgoTools_ComparativeRiskTest_images/Default_layout.png": "b52bd2cbf372a7f9e7f110119bf8fcea340708cd615e07f818d537a21b7782a0",
+    "tests/ErgoTools_ComparativeRiskTest_images/TheRenewPlant_layout.png": "b35fd40f709205b064b213e7fc620e440dc5646027f12f78303d1e1bccc989db",
+    "tests/ErgoTools_ComparativeRiskTest_images/mainplant_layout.png": "4982be0b8bbe44e1e1cee21d521164ffc9d1d5226b9a46795e3eef2274645b61",
+    "tests/ErgoTools_ComparativeRiskTest_images/thenewnewplant_layout.png": "341516ecc41a9770f9bc61d00308f1c3da7bb0db90e9d27082c68166161bfe62"
+  },
+  "comprehensive_audit": "f133_legacy_audit.json"
+}

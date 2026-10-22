@@ -1,0 +1,13 @@
+{
+  "milestone": "F8",
+  "verified_on": "2026-09-28",
+  "reference_files_unchanged": 500,
+  "tests_passed": 106,
+  "new_project_tests": 12,
+  "coverage_percent": 99.2108229988726,
+  "python": "3.13.14",
+  "wheel_sha256": "3f48abcd312cd0b41342680839e266899cd8ab34335d66d597d28ff8ab48deba",
+  "lock_sha256": "d8f1a8c9131748308c6973aefa6ddaa4e9df344f2f997fa3bc2f244f6403c841",
+  "dependency_lock_unchanged": true,
+  "independent_wheel_smoke": "passed"
+}

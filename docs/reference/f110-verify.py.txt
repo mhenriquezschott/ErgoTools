@@ -1,0 +1,39 @@
+import ast, hashlib, json, subprocess, sys, tempfile, zipfile
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from PIL import Image, ImageChops
+root = Path.cwd()
+def digest(path): return hashlib.sha256(path.read_bytes()).hexdigest()
+manifest = json.loads((root/'docs/reference/source-manifest.json').read_text())
+reference = Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+assert all(digest(reference/name) == value for name,value in manifest.items())
+assert digest(root/'uv.lock') == json.loads((root/'docs/f79-validation.json').read_text())['lock_sha256']
+nodes=[]
+for node in ast.parse((root/'tests/test_plot_results.py').read_text()).body:
+ if isinstance(node,(ast.Import,ast.ImportFrom)):
+  if (getattr(node,'module','') or '').startswith(('tests','PyQt5','ergotools.presentation','ergotools.bootstrap')): continue
+  nodes.append(node)
+ elif isinstance(node,ast.Assign): nodes.append(node)
+ elif isinstance(node,ast.FunctionDef) and node.name=='project':
+  node.decorator_list=[]; nodes.append(node)
+fixture=ast.unparse(ast.Module(nodes,type_ignores=[]))
+checks="\nfrom PyQt5.QtWidgets import QApplication\nfrom PyQt5.QtGui import QImage,QColor\nfrom ergotools.bootstrap import load_icons\nfrom ergotools.application.plot_layout import LoadedPlantLayout\nfrom ergotools.application.plot_results import saved_plot_results\nfrom ergotools.domain.plot_filters import PlotFilterSelection,PlotRiskView\nfrom ergotools.domain.model_units import MeasurementSystem\nfrom ergotools.domain.plot_positions import PlotPoint,PlotPositions,WorkerAssignmentMarker,WorkerPositionSource\nfrom ergotools.infrastructure.plant_image_import import import_plant_image\nfrom ergotools.infrastructure.assessment_project_file import AssessmentProjectFile\nfrom ergotools.presentation.desktop.plot_layout_canvas import PlotLayoutCanvas\nfrom ergotools.presentation.desktop.plot_marker_layer import PlotMarkerLayer\nfrom ergotools.presentation.desktop.plot_worker_overview import PlotWorkerOverview\napp=QApplication([]);generator=project(Path.cwd());repository=next(generator)\ntry:\n initial=PlotPositions('p')\n for identity,x in ((1,100),(3,200)):initial=initial.with_saved_marker(WorkerAssignmentMarker(identity,PlotPoint(x,100),visible=True,source=WorkerPositionSource.MANUAL),repository.load_jobs())\n repository.save_plot_positions(initial)\n image=QImage(640,400,QImage.Format_RGB32);image.fill(QColor('white'));assert image.save('map.png')\n canvas=PlotLayoutCanvas();canvas.set_layout(LoadedPlantLayout(SCOPE,import_plant_image(Path('map.png')).data))\n layer=PlotMarkerLayer(canvas,repository.load_jobs(),repository.save_plot_positions,lambda text:None,current_year=2026)\n panel=PlotWorkerOverview(layer,load_icons(),show_success=lambda text:None);panel.resize(390,740);panel.show();app.processEvents()\n results=saved_plot_results(repository,PlotFilterSelection(SCOPE),current_year=2026);layer.set_results(results)\n assert panel.selected_id==1 and panel.controls.identity==1 and panel.values['tool'].text()=='LiFFT'\n panel.controls.x_input.setText('-25.5');panel.controls.field_edited('-25.5');panel.navigate(1)\n panel.controls.x_input.setText('325');panel.controls.field_edited('325');panel.navigate(0)\n assert panel.controls.x_input.text()=='-25.5'\n panel.controls.save_all();assert not layer.pending\n assert repository.load_plot_positions().marker(3).point.x==325\n panel.toggle_order();assert panel.combo.itemData(0)==3 and panel.selected_id==1\n panel.set_letter('A');assert panel.combo.count()==1 and panel.selected_id==3\n layer.select(layer.items['worker',1]);assert panel.letter=='All' and panel.selected_id==1\n applied=layer.results;layer.set_results(replace(applied,selection=replace(applied.selection,risk_view=PlotRiskView.COMPARISON)))\n assert panel.selected_id==1 and panel.preview.appearance.comparison\n canonical=repository.load_hierarchy();panel.system=MeasurementSystem.IMPERIAL;panel.refresh()\n assert panel.body_labels['weight'].text().endswith('(lb):') and 154<float(panel.values['weight'].text())<155\n assert repository.load_hierarchy()==canonical\n panel.locate();assert panel.timer.isActive()\n for _ in range(10):panel.advance_locate()\n assert not panel.timer.isActive()\n expected=repository.load_plot_positions();layer.clear();app.processEvents()\n assert panel.selected_id is None and panel.preview.appearance is None and panel.controls.x_input.text()==''\n panel.close();canvas.close()\nfinally:generator.close()\nwith AssessmentProjectFile.open(Path('plot.ergprj')) as reopened:assert reopened.load_plot_positions()==expected\nprint('Extracted wheel: selector/ordering/alphabet, stable refresh, per-worker draft navigation and Save All, comparison/units, Locate/clear, packaged assets and reopen passed')\n"
+code='import sys\nfrom pathlib import Path\nsys.path.insert(0,sys.argv[1])\n'+fixture+'\n'+checks
+wheel=root/'dist/ergotools-0.1.0.dev0-py3-none-any.whl'
+with tempfile.TemporaryDirectory() as directory:
+ with zipfile.ZipFile(wheel) as archive: archive.extractall(directory)
+ result=subprocess.run([sys.executable,'-I','-c',code,directory],cwd=directory,capture_output=True,text=True,timeout=30)
+ if result.returncode: raise RuntimeError(result.stdout+result.stderr)
+ print(result.stdout.strip())
+
+
+
+art=root/'artifacts/plot-worker-overview';comparisons={}
+for mode in ('empty','individual','comparison'):
+ a=Image.open(art/f'source-preview-{mode}.png').convert('RGB');b=Image.open(art/f'en-preview-{mode}.png').convert('RGB')
+ assert a.size==b.size and ImageChops.difference(a,b).getbbox() is None
+ comparisons[mode]={'different_pixels':0,'size':list(a.size)}
+coverage=json.loads((root/'artifacts/coverage.json').read_text());tests=ET.parse(root/'artifacts/tests.xml')
+evidence=dict(milestone='F110',verified_on='2026-10-07',python=sys.version.split()[0],tests_passed=len(list(tests.iter('testcase'))),new_tests=3,coverage_percent=coverage['totals']['percent_covered'],reference_files_unchanged=len(manifest),dependency_lock_unchanged=True,lock_sha256=digest(root/'uv.lock'),wheel_sha256=digest(wheel),independent_wheel_smoke='passed',source_worker_preview_native_comparisons=comparisons,native_screenshots={p.name:digest(p) for p in sorted(art.glob('*.png'))},worker_overview_selector_details_results_integrated=True,worker_search_picker_integrated=False,plot_main_window_enabled=False,plot_summaries_integrated=False,scientific_gates_preserved=True,ui_layout_changed=True,overall_completion_estimate_percent=None)
+(root/'docs/f110-validation.json').write_text(json.dumps(evidence,indent=2)+'\n')
+print('Three original/native preview fixtures match pixel-for-pixel; all 500 reference hashes and approved lock unchanged; F110 evidence saved')

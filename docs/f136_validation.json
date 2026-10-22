@@ -1,0 +1,37 @@
+{
+  "checkpoint": "F136",
+  "date": "2026-10-09",
+  "tests_passed": 1072,
+  "coverage_percent": 96.53927717366783,
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "31e538bc580c36157c4639d447e3d6ceffe394a12eb51f25167cf2e8b619f50c",
+  "independent_wheel": "Warning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway.\nExtracted-wheel F136 explicit complete synthetic conversion/native integrated main with VTK/reopen and complete source archive; comprehensive 56-ST-source gate; 138-source isolated LiFFT/DUET subset passed.",
+  "ui_changes": false,
+  "visual_validation": "Twelve native EN/ES converted-fixture captures inspected: integrated LiFFT minimum/enlarged, historical DUET, selected Worker Management, selected JROT, populated PLOT; six actual VTK backbuffers composited. No UI code changes.",
+  "limits": [
+    "ST conversion remains blocked pending explicit preservation of original UI-to-model mapping; mapping/comment discrepancy is not proof of incorrect science. No owner correction decision was made.",
+    "Desktop Open conversion integration, cached-result display compatibility, remaining legacy display fields and complete comprehensive UI/workflow parity remain.",
+    "Overall completion percentage/finish date unvalidated; Windows/macOS not validated."
+  ],
+  "native_capture_sha256": {
+    "artifacts/legacy-conversion/en-converted-duet-minimum-vtk.png": "8afe261056210751f380a4dbe6ae0320e9d597fbc1ed2151818fb86451ce15a1",
+    "artifacts/legacy-conversion/en-converted-duet-minimum.png": "e476a454e77242241cb720d621bb8fb7471c5789ef5bbd3c8e8e8fc63f39c5c4",
+    "artifacts/legacy-conversion/en-converted-jrot-selected.png": "ebeaabe73577a104977cf215d4b6fdc1e16a5d2cdd98a3c7cb584ee7daebe631",
+    "artifacts/legacy-conversion/en-converted-lifft-enlarged-vtk.png": "c701ca0f50e7c8e15a82be7d9bdd42aba238c36c0f06d1abca10c1abf7406c08",
+    "artifacts/legacy-conversion/en-converted-lifft-enlarged.png": "b3832378213c7641e7a1a3c5465fdc85d868c193d89649320e3fbfa911c3ab60",
+    "artifacts/legacy-conversion/en-converted-lifft-minimum-vtk.png": "183e04fcccfeb169ffcd9d86da6864f7f377a934c686ce3ccee8237b257c30e1",
+    "artifacts/legacy-conversion/en-converted-lifft-minimum.png": "dcf87636252a8587c3e2f167f6d03232ee7b22a611eb88fdde4cbfd378eb8f2c",
+    "artifacts/legacy-conversion/en-converted-plot-populated.png": "21844f470be83d7d5ad3f3909432b0e9e25e3d9a2381fe7b3add7b2aed8c6634",
+    "artifacts/legacy-conversion/en-converted-workers-selected.png": "ec711d304a2f7e325481e5bb76475a8174e528568e78380a8faf016042fbadd1",
+    "artifacts/legacy-conversion/es-converted-duet-minimum-vtk.png": "2dfe26f4f778525e8ba03985fc7d7da818c5ff67f1bf1c3eb6b04f1c58fa38dd",
+    "artifacts/legacy-conversion/es-converted-duet-minimum.png": "4ccf762037f2f375516aef9491e111c84d8aad8d51bd13dde931c63efb5d30e7",
+    "artifacts/legacy-conversion/es-converted-jrot-selected.png": "b5ac1a33dd9ba0fb0e28573de3a9b8f1ab11150eb6e87247163b3f01f977677c",
+    "artifacts/legacy-conversion/es-converted-lifft-enlarged-vtk.png": "4aece16bcf46fd29ec81986ee07b21565d526bbff67643c52e0007f48609c1db",
+    "artifacts/legacy-conversion/es-converted-lifft-enlarged.png": "5a1c842e2194ffcdd0fcc0c5659db0c0288162b89305dbadd7ab2e937497452b",
+    "artifacts/legacy-conversion/es-converted-lifft-minimum-vtk.png": "953469b64ff5e33007bb9245a87ba237271b6e71701c002c490666f3f5d8969c",
+    "artifacts/legacy-conversion/es-converted-lifft-minimum.png": "4341b9430924821871aa119ccdf24aee920fea37cdbe340cf72f11f2aa39d087",
+    "artifacts/legacy-conversion/es-converted-plot-populated.png": "35dcaf5a861a19d12d584ed9a4765dc8557b6ea77e9731363162508ef90d8175",
+    "artifacts/legacy-conversion/es-converted-workers-selected.png": "9e44497346a6644b8312bf80c6e2d59a60baa4f6692772a6a61776404a564dfe"
+  }
+}

@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ErgoProject>
+  <Name>ErgoTools Integrated PLOT and JROT Test</Name>
+  <Description />
+  <Date>2025-02-04</Date>
+  <Time>21:23:53</Time>
+  <DatabaseName>ErgoTools_IntegratedTest_data.db</DatabaseName>
+  <DatabasePath>ErgoTools_IntegratedTest_data/ErgoTools_IntegratedTest_data.db</DatabasePath>
+  <ProjectPath>ErgoTools Integrated PLOT and JROT Test</ProjectPath>
+  <ProjectFolder>ErgoTools Integrated PLOT and JROT Test</ProjectFolder>
+  <DataPath>ErgoTools_IntegratedTest_data</DataPath>
+  <ImagesPath>ErgoTools_IntegratedTest_images</ImagesPath>
+  <Language>English</Language>
+  <MeasurementSystem>Metric</MeasurementSystem>
+</ErgoProject>

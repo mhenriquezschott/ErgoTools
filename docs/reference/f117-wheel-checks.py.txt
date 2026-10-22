@@ -1,0 +1,42 @@
+from io import BytesIO
+from PIL import Image
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QPoint,Qt
+from PyQt5.QtGui import QPixmap,QImage
+from PyQt5.QtTest import QTest
+from ergotools.bootstrap import load_icons
+from ergotools.domain.language import Language
+from ergotools.domain.plant_layout_image import PlantLayoutImage
+from ergotools.domain.plot_positions import PlotPositions,WorkerAssignmentMarker,PlotPoint,WorkerPositionSource
+from ergotools.domain.plot_scope import PlotScope
+from ergotools.presentation.desktop.plot_window import PlotWindow
+app=QApplication.instance() or QApplication([])
+with tempfile.TemporaryDirectory() as directory:
+ fixture=project(Path(directory));repo=next(fixture)
+ data=BytesIO();Image.new('RGB',(640,400),'white').save(data,format='PNG');image=PlantLayoutImage(data.getvalue())
+ repo.save_plant_image('P',image)
+ repo.save_plot_positions(PlotPositions('p',workers=(WorkerAssignmentMarker(1,point=PlotPoint(100,100),visible=True,source=WorkerPositionSource.MANUAL),)))
+ snapshot=repo.read('P'),repo.load_plot_positions(),repo.list_assessments()
+ for language in Language:
+  host=PlotWindow(repo,repo,repo,lambda _:image,load_icons(),current_year=2026,language=language)
+  host.show();app.processEvents();QTest.qWait(25)
+  panel=host.map_panel;canvas=panel.canvas;initial=canvas.transform().m11();saved=host.layer.results
+  panel.buttons['zoom_in'].click();assert canvas.zoom_pending
+  QTest.mouseClick(canvas.viewport(),Qt.LeftButton,pos=QPoint(250,200))
+  assert abs(canvas.transform().m11()-initial*1.5)<1e-9 and not canvas.zoom_pending
+  for expected in (.9,.8,.7,1.):
+   panel.buttons['opacity'].click();assert canvas.background.opacity()==1. and all(item.opacity()==expected for item in host.layer.items.values())
+  host.layer.preview_worker(WorkerAssignmentMarker(1,visible=True,scale=1.3));pending=dict(host.layer.worker_drafts)
+  panel.buttons['actual_size'].click();assert abs(canvas.transform().m11()-initial)<1e-9
+  assert host.layer.results is saved and host.layer.worker_drafts==pending
+  for size in ((1300,1045),(1800,1200)):
+   host.resize(*size);app.processEvents();QTest.qWait(20)
+   destination=str(Path(directory)/(language.value+str(size[0])+'.png'));panel.choose_capture=lambda:destination
+   panel.buttons['capture'].click()
+   actual=QPixmap(destination).toImage().convertToFormat(QImage.Format_RGBA8888)
+   assert actual==canvas.grab().toImage().convertToFormat(QImage.Format_RGBA8888)
+  assert (repo.read('P'),repo.load_plot_positions(),repo.list_assessments())==snapshot
+  host.confirm_close=lambda:True;host.close();host.deleteLater();app.processEvents()
+ try:next(fixture)
+ except StopIteration:pass
+print('Extracted wheel: EN/ES real map clicks, opacity, reset with pending edits, minimum/enlarged exact PNG pixels and no-write lifecycle pass')

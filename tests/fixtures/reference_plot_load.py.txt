@@ -1,0 +1,49 @@
+def loadImageNew(self, file_path, scene, image):
+        pixmap = QPixmap(file_path)
+        if pixmap.isNull():
+            print(f"Failed to load the image: {file_path}")
+            return
+
+        scene.clear()  # Remove previous content
+        self.pixmap_background_item = scene.addPixmap(pixmap)  # Add the pixmap to the scene
+        image.setScene(scene)
+
+        # Use the viewport's dimensions (the actual drawing area) rather than the widget’s full size.
+        view_width = image.viewport().width()
+        view_height = image.viewport().height()
+        
+        
+        # **Get the size of the pixmap**
+        pixmap_width = pixmap.width()
+        pixmap_height = pixmap.height()
+    
+        # **Calculate the best scale factor**
+        scale_x = view_width / pixmap_width
+        scale_y = view_height / pixmap_height
+        self.scale_factor = min(scale_x, scale_y)  # Ensure the image fits without overflow
+    
+        self.scale_factor = round(self.scale_factor, 2)
+        
+        #print("Scale Factor:", self.scale_factor)
+
+        # Worker and Station positions are stored in plant-image coordinates.
+        # Keeping the scene in that same coordinate space lets every later
+        # viewport resize fit the complete plant instead of a viewport-sized crop.
+        scene.setSceneRect(self.pixmap_background_item.sceneBoundingRect())
+
+        # Automatically scale and center the pixmap item.
+        image.fitInView(self.pixmap_background_item, Qt.KeepAspectRatio)
+
+        self.pixmap_background_item.setZValue(-1) # TODO: check if it helps...
+        
+        image.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        #image.setAlignment(Qt.AlignCenter)
+        #image.setAlignment(Qt.AlignCenter | Qt.AlignLeft)
+        #image.setAlignment(Qt.AlignLeft)
+        
+        #image.setAlignment(Qt.AlignTop) # TODO: play with the alignments....FIX!!! https://qtcentre.org/threads/70174-How-to-properly-show-image-in-QGraphicsView
+        #image.setAlignment(Qt.AlignCenter)
+        
+        # Disable scrollbars.
+        image.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        image.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)

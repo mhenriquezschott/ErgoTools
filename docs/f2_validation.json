@@ -1,0 +1,12 @@
+{
+  "milestone": "F2",
+  "reference_files_unchanged": 500,
+  "tests_passed": 31,
+  "reference_conversion_vectors": 48,
+  "coverage_percent": 97.34848484848484,
+  "python": "3.13.14",
+  "wheel_sha256": "37acc8726662be88fe82d8363cf24cafce5aa9bc3dd58114b6afae83923131df",
+  "lock_sha256": "d8f1a8c9131748308c6973aefa6ddaa4e9df344f2f997fa3bc2f244f6403c841",
+  "independent_wheel_smoke": "passed",
+  "dependency_changes": false
+}

@@ -1,8 +1,0 @@
-vtk
-pyqt5
-pycountry
-pulp
-pyqtwebengine
-pyomo
-highspy
-

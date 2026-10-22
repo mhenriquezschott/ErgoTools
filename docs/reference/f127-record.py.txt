@@ -1,0 +1,149 @@
+import hashlib,json,re,shutil,sys,xml.etree.ElementTree as ET
+from pathlib import Path
+root=Path.cwd()
+def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+manifest=json.loads((root/'docs/reference/source-manifest.json').read_text())
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+assert len(manifest)==500 and all(digest(reference/name)==expected for name,expected in manifest.items())
+lock=digest(root/'uv.lock');assert lock==json.loads((root/'docs/f126-validation.json').read_text())['lock_sha256']
+coverage=json.loads((root/'artifacts/coverage.json').read_text())['totals']['percent_covered']
+tests=len(list(ET.parse(root/'artifacts/tests.xml').iter('testcase')))
+log=(root/'artifacts/f127-check.log').read_text();assert tests==1003 and '1003 passed' in log
+formatted=int(re.search(r'(\d+) files already formatted',log)[1]);typed=int(re.search(r'(?:checked |in )(\d+) source files',log)[1])
+assert '18 passed' in (root/'artifacts/f127-focused.log').read_text()
+assert 'Extracted-wheel actual main toolbar/modal EN/ES' in (root/'artifacts/f127-wheel.log').read_text()
+art=root/'artifacts/jrot-main';captures=sorted(art.glob('*.png'));geometry=json.loads((art/'geometry.json').read_text());assert len(captures)==28 and len(geometry)==20
+for name in ['capture','wheel-checks','record']:shutil.copyfile('/tmp/f127-'+name+'.py',root/'docs/reference'/('f127-'+name+'.py.txt'))
+record={'checkpoint':'F127','verified_on':'2026-10-09','python':sys.version.split()[0],'tests_passed':tests,'new_tests':11,'focused_tests_passed':18,'coverage_percent':coverage,'ruff_formatted_files':formatted,'mypy_source_files':typed,'architecture_violations':0,'reference_files_unchanged':500,'dependency_lock_unchanged':True,'lock_sha256':lock,'wheel_sha256':digest(root/'dist/ergotools-0.1.0.dev0-py3-none-any.whl'),'independent_wheel_smoke':'Actual main toolbar/modal EN/ES CBC/comparison and HiGHS/all tabs/Apply/explicit Save/reopen; workspace-owned connection, format upgrade, VTK and exact profile/worker links plus mixed-unit evidence. All package imports verified under extracted wheel.','native_screenshots':{p.name:digest(p) for p in captures},'capture_geometry':geometry,'visual_review':'All 28 images inspected: 20 native window captures plus eight actual VTK backbuffers. EN/ES main no-project/project minimum/enlarged/return, modal JROT empty/populated minimum/selected enlarged/CBC/all-tool selected tab/applied saved. Original layouts unchanged; main VTK, cards and bottom controls retained; source wide-grid horizontal scrolling retained. Main captures compose actual VTK buffers at their Qt widget coordinates because QWidget.grab omits the native VTK surface.','limits':['Main integrated preview is not final full parity.','Legacy-project compatibility/import and comprehensive copied-project validation remain.','Final menu/workflow/visual and Windows/macOS acceptance remain.','Overall completion percentage/finish date remain unvalidated.']}
+(root/'docs/f127-validation.json').write_text(json.dumps(record,indent=2)+'\n')
+(root/'docs/jrot-main-integration.md').write_text(f'''# Original main JROT integration — F127, 2026-10-09
+
+The integrated main toolbar now opens the original JROT form modally on a full
+new-format project. CBC single-tool and HiGHS all-tool workflows are available
+through that actual entry point. No new dependencies or reference changes.
+
+## Source mapping and ownership
+
+Reference src/main.py openRotationLayout and toolbaropenRotationLayout open
+RotationLayoutWindow modally over the current project; their existing toolbar
+asset, dimensions, tooltip and layout are retained. Source controls/layouts were
+already mapped and visually compared in jrot-form.md, jrot-selected-optimization.md
+and jrot-comparison.md. This checkpoint changes composition, not those layouts.
+
+ProjectWorkspace supplies the runtime-checked application RotationRepository
+capability, borrowing its one owned AssessmentProjectFile. Capability checks
+perform no project reads/writes. The same adapter supplies PLOT. Bootstrap injects
+PulpRotationOptimizer into RotationDialog; views import no concrete solver/storage.
+The modal owns its worker/comparison windows, and bootstrap disposes it only when
+its actual modal lifetime ends. Normal close during a solve defers until bounded
+completion; the project connection stays owned and usable by the workspace.
+
+JROT is enabled only with a supported full project and an installed opener. No
+project or assessment-only format-two projects disable it. Runtime failure uses
+the existing logged/localized GUI boundary and retains assessment text.
+
+Opening JROT browses saved job risks, without parsing, calculating or saving
+unfinished LiFFT/DUET/ST inputs. Explicit JROT Save writes only scheme data and
+updates the borrowed adapter's format state. Subsequent reopen, PLOT access and
+assessment Save retain the saved schemes. This does not introduce project-switch
+callbacks or multi-user machinery while the modal is open.
+
+## Intentional behavior and remaining parity
+
+The reference calls ensure_jrot_schema on opening JROT. The migrated reader
+continues its established non-migrating policy: only explicit first scheme Save
+upgrades a supported full project to format eleven. Opening, solving, comparing,
+Apply, and closing perform no scheme/schema writes. Approved historical profile
+and worker/placement links and their recorded unit evidence remain unchanged.
+CBC stays single-tool and HiGHS stays multi-tool; no GLPK or fallback.
+
+Main toolbar JROT is now usable. Final menu parity remains an acceptance item
+alongside legacy-project compatibility/import and comprehensive copied-project
+integration. Current native validation uses isolated new-format projects, not an
+operational dataset. Windows/macOS packaging and overall final UI/workflow parity
+are not established by these Linux tests.
+
+## Validation
+
+{tests} native tests pass, eleven new focused cases; {coverage:.2f}% coverage.
+Ruff/format ({formatted} files), strict mypy ({typed} source files), architecture,
+wheel and sdist pass. Focused main/JROT tests cover actual EN/ES CBC/HiGHS
+Apply/Save/reopen, exact profile links, format upgrade and subsequent workspace
+Save, all three tools' invalid pending input, no/missing/full-project capability,
+concrete opener errors and deferred modal closure with an owned worker.
+
+28 native images inspected: 20 window captures and eight actual VTK backbuffers.
+Main no-project/open-project minimum/enlarged/return, JROT empty/populated minimum,
+selected/enlarged/CBC/all-tool selected tab/applied saved are covered in EN/ES.
+Main VTK, result cards, labels and bottom controls remain in their original
+regions; JROT panels and bottom controls are visible. Wide empty grids retain
+source horizontal scrolling. QWidget.grab omits the native VTK surface, so main
+captures composite its actual backbuffer at the widget's Qt coordinates; those
+raw buffers are retained separately. No whole-window pixel parity is claimed.
+
+Independent extracted-wheel native actual main toolbar -> modal JROT -> CBC and
+HiGHS comparisons -> Apply -> explicit Save -> reopen passes in EN/ES with VTK
+initialized. Every imported ergotools module resolves under the wheel extraction.
+All 500 reference hashes and the approved dependency lock are unchanged.
+Evidence: f127-validation.json, artifacts/f127-check.log, f127-focused.log,
+f127-wheel.log and artifacts/jrot-main; scripts in reference/f127-*.py.txt.
+
+Next: audit legacy-project compatibility against a read-only source review and
+isolated copies; then comprehensive copied-project cross-feature validation and
+final UI/workflow/platform acceptance. No reliable overall percentage or finish
+date is established yet; previous foundation estimates remain withdrawn.
+''')
+p=root/'docs/STATUS.md';s=p.read_text();start=s.index('## Latest checkpoint: F126');end=s.index('## F125 historical checkpoint',start)
+old=s[start:end].replace('## Latest checkpoint: F126','## F126 historical checkpoint',1)
+latest=f'''## Latest checkpoint: F127
+
+Main JROT toolbar navigation now opens the original modal form over the
+workspace-owned project connection, with bootstrap-composed approved CBC/HiGHS.
+Actual EN/ES solve -> comparison/Apply -> explicit Save -> reopen works. Opening
+JROT preserves unfinished LiFFT/DUET/ST input; its worker finishes safely before
+modal disposal. Full-project capability controls availability. No UI redesign.
+[Source mapping and limits](jrot-main-integration.md).
+
+{tests} native tests pass (eleven new focused cases), {coverage:.2f}% coverage;
+Ruff/format ({formatted} files), strict mypy ({typed} source files), architecture,
+builds and independent extracted-wheel actual main/modal/solver/Save/reopen pass.
+28 native images inspected, including main VTK buffers, minimum/enlarged main,
+empty/populated/selected JROT and actual solver results in EN/ES. All 500 reference
+hashes and the approved dependency lock are unchanged. Evidence:
+f127-validation.json, artifacts/f127-check.log, artifacts/f127-wheel.log and
+artifacts/jrot-main.
+
+Next: legacy-project compatibility/import audit, comprehensive copied-project
+cross-feature validation, then final UI/menu/workflow/platform acceptance. Main
+JROT is now enabled for supported full projects. Overall completion percentage
+and finish date remain unvalidated; the earlier 67% remains withdrawn.
+
+'''
+s=s[:start]+latest+old+s[end:];s=s.replace('LiFFT/DUET/ST/PLOT preview with worker, job and organization management.', 'LiFFT/DUET/ST/PLOT/JROT preview with worker, job and organization management.',1);p.write_text(s)
+p=root/'docs/architecture.md';p.write_text(p.read_text()+'''
+
+## F127 — workspace-owned main JROT composition
+
+RotationRepository is a runtime-checkable application capability combining pool
+reads with explicit scheme persistence. ProjectWorkspace borrows that capability
+from its one full-project adapter, with no new connection or implicit schema
+migration. Bootstrap alone composes the concrete PulpRotationOptimizer and modal
+RotationDialog. The integrated main navigation checks project capability/opener
+availability and opens JROT without committing any assessment panel's pending
+text. Modal worker/comparison ownership is unchanged; disposal follows actual
+completion and leaves the workspace repository open. See jrot-main-integration.md.
+''')
+p=root/'docs/development.md';p.write_text(p.read_text()+f'''
+
+## F127 integrated main JROT — 2026-10-09
+
+{tests} native tests pass, {coverage:.2f}% coverage. tests/test_rotation_integration.py
+checks actual main-toolbar EN/ES CBC/HiGHS save/reopen, borrowed connection/format
+upgrade, unfinished LiFFT/DUET/ST fields, capabilities, opener failure and safe
+modal worker closure. Main JROT now enables on supported full projects. Native
+main/VTK/JROT captures and extracted-wheel actual main-workflow scripts are
+archived in docs/reference/f127-*.py.txt. See jrot-main-integration.md and
+f127-validation.json. Legacy compatibility and comprehensive copied-project
+validation are next; original operational files remain untouched.
+''')
+print('F127 recorded:',tests,'tests;',round(coverage,2),'coverage;',len(captures),'reviewed native images; 500 reference hashes and approved lock unchanged.')

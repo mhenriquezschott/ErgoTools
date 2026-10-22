@@ -1,0 +1,78 @@
+{
+  "python": "3.10.18",
+  "source_sha256": "38b4ef55d0ce0d3f7acaab998f90292f25f0bf40723eb50d27357027b8c18972",
+  "cases": [
+    {
+      "name": "open",
+      "start": null,
+      "end": null,
+      "active": true,
+      "job": "j",
+      "context": 1,
+      "accepted": false
+    },
+    {
+      "name": "before",
+      "start": "1999-01-01",
+      "end": "1999-12-31",
+      "active": true,
+      "job": "j",
+      "context": 1,
+      "accepted": true
+    },
+    {
+      "name": "touch_start",
+      "start": null,
+      "end": "2000-01-01",
+      "active": true,
+      "job": "j",
+      "context": 1,
+      "accepted": false
+    },
+    {
+      "name": "touch_end",
+      "start": "2000-12-31",
+      "end": null,
+      "active": true,
+      "job": "j",
+      "context": 1,
+      "accepted": false
+    },
+    {
+      "name": "after",
+      "start": "2001-01-01",
+      "end": null,
+      "active": true,
+      "job": "j",
+      "context": 1,
+      "accepted": true
+    },
+    {
+      "name": "inactive",
+      "start": null,
+      "end": null,
+      "active": false,
+      "job": "j",
+      "context": 1,
+      "accepted": true
+    },
+    {
+      "name": "other_job",
+      "start": null,
+      "end": null,
+      "active": true,
+      "job": "other",
+      "context": 1,
+      "accepted": true
+    },
+    {
+      "name": "other_place",
+      "start": null,
+      "end": null,
+      "active": true,
+      "job": "j",
+      "context": 2,
+      "accepted": true
+    }
+  ]
+}

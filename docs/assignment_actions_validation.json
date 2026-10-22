@@ -1,0 +1,21 @@
+{
+  "requested_implementation_areas_complete": 2,
+  "requested_implementation_areas_total": 2,
+  "percent_complete": 100,
+  "tests_passed": 1337,
+  "tests_failed": 0,
+  "tests_skipped": 0,
+  "combined_coverage_percent": 95.74,
+  "typed_sources_tools": 258,
+  "reviewed_maintained_files": 415,
+  "changed_maintained_files_reviewed": 6,
+  "native_validation": "artifacts/assignment_actions_review/validation.json",
+  "native_captures_visually_inspected": 28,
+  "menu_icon_logical_pixels": 25,
+  "all_194_saved_sources_results_unchanged": true,
+  "original_fixture_unchanged": true,
+  "reference_application_changed": false,
+  "dependencies_changed": false,
+  "jrot_solver_changed": false,
+  "existing_undo_redo_artwork_bytes_preserved": true
+}

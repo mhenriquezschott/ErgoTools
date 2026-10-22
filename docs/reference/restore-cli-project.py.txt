@@ -1,0 +1,118 @@
+from pathlib import Path
+
+root = Path.cwd()
+p = root / 'src/ergotools/bootstrap.py'
+s = p.read_text().replace('from PyQt5.QtCore import QCoreApplication, QStandardPaths', 'from PyQt5.QtCore import QCoreApplication, QStandardPaths, QTimer')
+s = s.replace('    """Launch the preview; settings default to an explicit project-local cache."""\n    parser = argparse.ArgumentParser(description="ErgoTools LiFFT desktop preview")', '''    """Launch the desktop and optionally open a project through its normal policy.
+
+    A positional project path follows the original command-line convention.
+    Opening occurs after show, through the same conversion, selection, failure
+    reporting and recent-history workflow as the Project menu. No startup Save
+    is performed. Diagnostic bootstrap settings remain project-local by default.
+    """
+    parser = argparse.ArgumentParser(description="ErgoTools ergonomic assessment tools")
+    parser.add_argument(
+        "project_file", nargs="?", type=Path, help="Open this .ergprj project"
+    )''')
+s = s.replace('    job_language = Language(args.job_language) if args.job_language else None', '''    if args.project_file is not None and (
+        args.job_management_demo or args.job_management is not None
+    ):
+        parser.error("project_file cannot be combined with Job Management diagnostics")
+    job_language = Language(args.job_language) if args.job_language else None''')
+s = s.replace('    window.show()\n    return app.exec()', '''    window.show()
+    if args.project_file is not None:
+        location = str(args.project_file.absolute())
+        QTimer.singleShot(
+            0, lambda: window.run(lambda: window.open_project_location(location))
+        )
+    return app.exec()''')
+assert 'project_file cannot be combined' in s and 'QTimer.singleShot' in s
+p.write_text(s)
+
+p = root / 'src/ergotools/launcher.py'
+s = p.read_text().replace('    No dependency installation, project opening or saving occurs here.', '    A positional project path is forwarded to the normal desktop Open workflow.\n    No dependency installation or automatic project saving occurs here.')
+p.write_text(s)
+
+p = root / 'tests/test_launcher.py'
+s = p.read_text().replace('@pytest.mark.parametrize("arguments", [[], ["--disable-vtk"]])', '@pytest.mark.parametrize(\n    "arguments", [[], ["--disable-vtk"], ["a project with spaces.ergprj"]]\n)')
+p.write_text(s)
+
+(root / 'tests/test_startup_project.py').write_text('''"""Positional startup paths share Open, cancellation and recent-history policy."""
+
+from collections.abc import Callable
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+import pytest
+
+from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.bootstrap import main
+from ergotools.presentation.desktop.lifft_window import LifftWindow
+from tests.test_saved_tool_data import window as window
+
+
+@pytest.mark.parametrize("case", ["open", "cancel", "missing"])
+def test_startup_project_uses_real_open_and_recent_history(
+    window: LifftWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, case: str
+) -> None:
+    """Relative spaced paths open after show; cancel/errors never add recents."""
+    workspace = window.presenter.workspace
+    source = Path(workspace.location)
+    target = tmp_path / "project with spaces.ergprj"
+    workspace.backup(str(target))
+    workspace.close(choice=CloseChoice.DISCARD)
+    window.refresh()
+    store = window._settings_store
+    assert store is not None
+    store.save(store.load().clear_recent())
+    if case == "missing":
+        target.unlink()
+        label = ""
+    else:
+        label = window.document_options(str(target), window.language)[0][1]
+    monkeypatch.chdir(tmp_path)
+    scheduled: list[Callable[[], None]] = []
+
+    def schedule(delay: int, callback: Callable[[], None]) -> None:
+        assert delay == 0
+        scheduled.append(callback)
+
+    def event_loop() -> int:
+        assert window.isVisible() and len(scheduled) == 1
+        scheduled[0]()
+        return 0
+
+    app = Mock()
+    app.exec.side_effect = event_loop
+    with (
+        patch("ergotools.bootstrap.QApplication", return_value=app),
+        patch("ergotools.bootstrap.create_window", return_value=window),
+        patch("ergotools.bootstrap.QTimer.singleShot", side_effect=schedule),
+        patch.object(window, "choose_item", return_value=(label, case == "open")),
+    ):
+        assert main(["--integrated-preview", str(target.relative_to(tmp_path))]) == 0
+    if case == "open":
+        assert workspace.location == str(target)
+        assert workspace.active is not None
+        assert store.load().recent_documents == (str(target),)
+        window.refresh_recent_projects()
+        assert window._assessment_menu.recent.actions()[0].data() == str(target)
+    else:
+        assert workspace.location is None and workspace.active is None
+        assert store.load().recent_documents == ()
+        if case == "missing":
+            assert window.message.text() == window.text("error")
+    assert source.exists()
+
+
+@pytest.mark.parametrize("option", ["--job-management-demo", "--job-management"])
+def test_startup_rejects_conflicting_diagnostic_target(option: str) -> None:
+    """Reject ambiguous projects before creating a GUI or opening either file."""
+    arguments = ["normal.ergprj", option]
+    if option == "--job-management":
+        arguments.append("diagnostic.ergprj")
+    with patch("ergotools.bootstrap.QApplication") as app, pytest.raises(SystemExit):
+        main(arguments)
+    app.assert_not_called()
+''')
+print('Bounded positional CLI restoration and focused regressions written.')

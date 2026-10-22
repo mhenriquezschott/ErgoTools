@@ -1,0 +1,30 @@
+import runpy
+from pathlib import Path
+from PyQt5.QtCore import QTimer
+from PyQt5.QtTest import QTest
+from PyQt5.QtWidgets import QInputDialog, QMessageBox
+scope=runpy.run_path('tests/test_desktop.py');test=scope['DesktopTests']();test.setUp()
+app=scope['_APP'];out=Path('artifacts/window-create-version');out.mkdir(parents=True,exist_ok=True)
+try:
+ w=test.window;app.processEvents();w.grab().save(str(out/'empty.png'))
+ test.seed_historical();w.resize(960,680);QTest.qWait(75);app.processEvents()
+ w.languages.setCurrentIndex(1);app.processEvents();w.grab().save(str(out/'spanish-minimum.png'))
+ def cancel_spanish():
+  dialog=app.activeModalWidget();dialog.grab().save(str(out/'spanish-confirm.png'));dialog.reject()
+ QTimer.singleShot(100,cancel_spanish);w.create_blank_version()
+ w.languages.setCurrentIndex(0);test.type_value('15');app.processEvents();w.grab().save(str(out/'pending.png'))
+ w.apply_edit()
+ def proceed():
+  dialog=app.activeModalWidget()
+  if isinstance(dialog,QInputDialog):
+   dialog.grab().save(str(out/'confirm.png'));QTimer.singleShot(100,proceed);dialog.accept()
+  elif isinstance(dialog,QMessageBox):
+   dialog.grab().save(str(out/'dirty-choice.png'))
+   next(button for button in dialog.buttons() if button.text()=='Save').click()
+ QTimer.singleShot(100,proceed);w.create_blank_version()
+ app.processEvents();w.grab().save(str(out/'new-blank.png'))
+ assert test.workspace.active.state.tasks==()
+ assert 'Not current' in w.source_label.text()
+ print('Native blank-version creation and dirty choice captured')
+finally:
+ test.doCleanups()

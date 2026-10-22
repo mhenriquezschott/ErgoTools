@@ -1,0 +1,67 @@
+from io import BytesIO
+from PyQt5.QtWidgets import QApplication,QWidget
+from PyQt5.QtCore import Qt,QTimer,QPoint,QRect,QAbstractAnimation
+from PyQt5.QtTest import QTest
+from PIL import Image
+from ergotools.bootstrap import load_icons
+from ergotools.application.plot_results import saved_plot_results
+from ergotools.application.plot_layout import LoadedPlantLayout
+from ergotools.application.plot_summaries import plot_highlights
+from ergotools.domain.language import Language
+from ergotools.domain.plot_scope import PlotScope
+from ergotools.domain.plot_filters import PlotFilterSelection,PlotRiskView
+from ergotools.presentation.desktop.plot_layout_canvas import PlotLayoutCanvas
+from ergotools.presentation.desktop.plot_marker_layer import PlotMarkerLayer
+from ergotools.presentation.desktop.plot_outcome_panel import PlotOutcomePanel
+from ergotools.presentation.desktop.plot_highlight_dialog import PlotHighlightDialog
+from ergotools.presentation.desktop.plot_risk_gauge import PlotRiskGauge
+app=QApplication.instance() or QApplication([])
+iterator=project(Path.cwd());repo=next(iterator)
+try:
+ before=repo.load_plot_positions();history=repo.load_history()
+ results=saved_plot_results(repo,PlotFilterSelection(PlotScope((('P',),))),current_year=2026)
+ results=replace(results,workers=tuple(replace(row,assessment=replace(row.assessment,probability={1:.7,3:.5,5:.9}[row.assessment.assignment_id])) for row in results.workers))
+ details=plot_highlights(results)
+ assert len(details)==2 and [row.station.section_name for row in details]==['S','T']
+ for language in Language:
+  canvas=PlotLayoutCanvas();encoded=BytesIO();Image.new('RGB',(640,400),'white').save(encoded,format='PNG');canvas.set_layout(LoadedPlantLayout(results.selection.scope,encoded.getvalue()))
+  layer=PlotMarkerLayer(canvas,repo.load_jobs(),repo.save_plot_positions,lambda msg:None,current_year=2026)
+  panel=PlotOutcomePanel(layer,load_icons(),language=language);panel.show();layer.set_results(results);panel.resize(700,210);app.processEvents()
+  assert panel.gauge.target_value==70 and len(panel.highlights)==2 and not panel.details_button.isHidden()
+  assert panel.width()>=panel.layout().minimumSize().width()
+  for child in panel.findChildren(QWidget):
+   if child.isVisible():assert panel.rect().contains(QRect(child.mapTo(panel,QPoint()),child.size()))
+  errors=[];visited=[]
+  def inspect():
+   dialog=QApplication.activeModalWidget()
+   try:
+    assert isinstance(dialog,PlotHighlightDialog);visited.append(True)
+    assert dialog.table.topLevelItemCount()==2
+    assert dialog.table.topLevelItem(0).text(0)=='P / S / L / 1'
+    assert dialog.table.topLevelItem(1).text(0)=='P / T / L / 1'
+    assert dialog.table.topLevelItem(1).text(3)=='90.0%'
+    dialog.table.setCurrentItem(dialog.table.topLevelItem(0))
+    QTest.mouseClick(dialog.close_button,Qt.LeftButton)
+   except BaseException as error:
+    errors.append(error)
+    if dialog is not None:dialog.reject()
+  QTimer.singleShot(0,inspect);QTest.mouseClick(panel.details_button,Qt.LeftButton)
+  assert not errors and visited==[True]
+  comparison=replace(results,selection=replace(results.selection,risk_view=PlotRiskView.COMPARISON));layer.set_results(comparison)
+  assert panel.stack.currentIndex()==1 and panel.individual_gauge.target_value==70
+  assert panel.job_gauge.target_value==0 and panel.job_gauge.has_value
+  job=replace(results,selection=replace(results.selection,risk_view=PlotRiskView.JOB));layer.set_results(job)
+  assert panel.gauge.target_value==0 and panel.gauge.has_value
+  layer.set_results(replace(job,jobs=tuple(replace(row,evidence=None) for row in job.jobs)));app.processEvents()
+  assert not panel.gauge.has_value and not panel.highlights
+  assert panel.highlight_label.height()>=panel.highlight_label.heightForWidth(panel.highlight_label.width())
+  layer.clear();assert panel.summary is None and panel.details_button.isHidden()
+  panel.close();canvas.close()
+  assert all(g.animation.state()==QAbstractAnimation.Stopped for g in (panel.gauge,panel.individual_gauge,panel.job_gauge))
+ gauge=PlotRiskGauge();gauge.set_probability(100);gauge.animation.setCurrentTime(700);assert gauge.display_value==100
+ gauge.set_probability(None);assert not gauge.has_value;gauge.close()
+ assert repo.load_plot_positions()==before and repo.load_history()==history
+finally:iterator.close()
+with AssessmentProjectFile.open(Path('plot.ergprj')) as reopened:
+ assert reopened.load_plot_positions()==before and reopened.load_history()==history
+print('Extracted wheel: full station identity/strict threshold, native localized metrics/gauges, actual warning dialog Close/selection, true minimum child bounds, comparison/job zero and absence, wrapped unavailable messages, clear/animation closure, 100-percent endpoint and no-write reopen passed')

@@ -1,0 +1,33 @@
+{
+  "milestone": "F59",
+  "verified_on": "2026-10-03",
+  "python": "3.13.14",
+  "tests_passed": 506,
+  "new_tests": 6,
+  "coverage_percent": 98.96799020465279,
+  "new_module_coverage": {
+    "src/ergotools/presentation/desktop/job_workplace_dialog.py": 99.11111111111111
+  },
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "wheel_sha256": "59387a72fe1bd4def428cfa330c15044dbe357f6c78912f9612bc1ca14416ff2",
+  "independent_wheel_smoke": "passed",
+  "ui_changed": true,
+  "schema_changed": false,
+  "existing_formats_unchanged": true,
+  "reference_overlap_cases": 8,
+  "overall_completion_estimate_percent": 66,
+  "native_screenshots": {
+    "new-collapsed.png": "510730294e09303cbd2a4a93d85a8b9855f28c13892391d8acb02e9ec24c0e21",
+    "new-empty-shift.png": "e3266b98cd6c2781cf3a87ec5c4dac4e34cd8f313b477668b35d0ecdd2494671",
+    "new-empty.png": "274744f8c8276ce25ae281272d6689b7e7045a08c8fe7b93d9157875fbb0f4bd",
+    "new-error.png": "be002cc8fa79ad4a3f46ab69b6a71f809dd058283833835d1f59f40cafb6fa95",
+    "new-expanded.png": "ecbcb14ddae608b491c50364f3a7495d16efcb92ebd28e733f0de1c6870fba50",
+    "new-filtered.png": "bea4f2067f41d94c429a19134495fa62cf8ce8159aa5e238d01d9634a27fecdc",
+    "new-minimum.png": "42ff5a3da0209ae90d7a3794d6d0a2f8929de6225c5cafb825c307809bd11d0d",
+    "original-collapsed.png": "271ac103af20a1e013223b61e0018cd0ff09ef88369b98c1a57de39610855ee6",
+    "original-expanded.png": "8a9435e0108d9562d5344d47f8c11920200b536d7cb3b6ce1ab073c2f156eae1",
+    "original-minimum.png": "251254101915814f48312886fd11d84693fe22e37a847d666837e9b223fd319a"
+  }
+}

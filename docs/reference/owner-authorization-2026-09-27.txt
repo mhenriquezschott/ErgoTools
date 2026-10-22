@@ -1,0 +1,70 @@
+Ok, I agree.
+
+The destination folder for the full new and improved version of the codebase is:
+
+"/mnt/088E1D428E1D29A8/Documents/Documentos Trabajos UACh/2026/research/Ergo/ErgoTools"
+
+Inside that folder, you can create the required folder structure, documentation, source code files, assets, tests, configuration files, development environment, etc.
+
+Regarding the UI and assets, the icons and overall visual style must remain consistent with the current application. I am NOT asking for a visual redesign. Since the current version of the application is functional in terms of features and already follows the visual style we want, I do not expect the visual aspects of the UI to change as part of this migration.
+
+Of course, all assets required by the new codebase, such as icons and other visual resources, must be copied to appropriate locations within the new project structure, change file names if need according to the new standards and proper software rules. Do not make the new codebase depend on asset files located in the old code tree.
+
+I also do NOT expect you to improve and migrate all code files at once. Quite the opposite.
+
+I expect this to be an incremental migration. Start by moving or recreating the most basic components in their appropriate locations, using the new standardized structure, naming conventions, and coding standards. Then progressively migrate functionality, function by function and component by component, into the appropriate modules and files.
+
+During this process, rewrite or refactor anything that needs to be updated, corrected, standardized, documented, or adapted to the new architecture. Each migrated component should also be tested before moving on whenever reasonably possible.
+
+The objective is NOT to get the entire application running in the new location as quickly as possible. The objective is to build the new codebase correctly and progressively.
+
+You should set up a proper development environment inside the new project so that the application can be developed and tested using more recent versions of Python and its dependency libraries.
+
+You can use the current code tree to run comparison tests whenever needed. There is no problem with using the existing application as a behavioral reference. In fact, comparisons with the current functional version should be used when useful to verify that the migrated functionality still behaves correctly.
+
+If additional dependencies are needed for the new codebase or for testing, that is fine. However, let me know when they are introduced and keep all dependencies properly documented.
+
+I also expect testing to cover more than just whether the code produces the expected results. Where possible, I want automated checks for code quality itself, including things such as:
+
+- documentation and docstrings
+- naming conventions for variables, functions, classes, modules, etc.
+- formatting and coding standards
+- architectural boundaries and organization
+- imports and dependencies
+- tests for migrated functionality
+- other static or automated quality checks that are appropriate for the standards we agreed on
+
+In other words, the tests and development tools should help us detect not only broken functionality but also code that does not comply with the standards of the new codebase.
+
+Because this will be an incremental process, organize the work into reasonable and clearly documented milestones. I do not expect the complete application to run successfully in one go.
+
+This is also important because the work must be resumable. We may run out of tokens, the context window may be compacted, or it may become necessary to change the AI model working on the project. OpenAI also retires or replaces models from time to time. Therefore, the project documentation itself must preserve enough information about decisions, progress, tests, pending work, and next steps so that another session or model can reliably continue the migration without having to reconstruct what was done from the conversation history.
+
+Whenever a reasonable milestone is completed, give me a summary containing:
+
+- what was completed
+- what was tested and the results
+- any problems or limitations found
+- decisions made during that stage
+- remaining or upcoming tasks
+- an estimated overall percentage of completion
+
+The percentage does not need to be mathematically exact. It is intended to give me a reasonable idea of how much of the migration has been completed and how much remains.
+
+The development environment in the new code tree should eventually allow you to launch and visually inspect the application as well. I am NOT saying that getting the complete GUI running should be the first task. Do this when it becomes appropriate for testing the components being migrated.
+
+From previous experience with Codex, displaying the VTK avatar through whatever environment the AI uses to launch and inspect the application has been challenging. If this is still not possible, that is fine. Tell me when something requires manual visual verification and I can check it for you. The same applies to other aspects that you cannot reliably verify yourself.
+
+There is also an architectural consideration regarding VTK that I want you to take into account.
+
+Currently, VTK is used primarily to display the 3D avatar, and it has made packaging the application as a Windows .exe more challenging. I would therefore like the VTK-specific implementation to be sufficiently isolated from the rest of the application.
+
+I am NOT asking you to replace VTK now.
+
+For this migration, continue using it where required to preserve the current functionality. However, design the relevant interfaces and module boundaries so that, if we later decide to replace VTK with another 3D library, doing so will not require major changes throughout the rest of the codebase.
+
+Before proceeding, review these instructions together with the architecture, coding standards, and migration plan we already discussed.
+
+If there are any important ambiguities or architectural decisions that require my input before you can proceed safely, ask me now.
+
+Otherwise, you can proceed step by step. Take the time needed to do the migration properly rather than trying to move everything quickly.

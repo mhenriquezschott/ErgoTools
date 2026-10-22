@@ -1,0 +1,22 @@
+{
+  "milestone": "F45",
+  "verified_on": "2026-10-01",
+  "python": "3.13.14",
+  "tests_passed": 446,
+  "new_tests": 11,
+  "coverage_percent": 98.92739273927393,
+  "new_module_coverage": {
+    "src/ergotools/infrastructure/assessment_history_store.py": 97.1830985915493
+  },
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "wheel_sha256": "0e2797d67e567ddb35bf496071b0ff14d71a9861382d25a5622e7d77f1a5b536",
+  "independent_wheel_smoke": "passed",
+  "ui_changed": false,
+  "schema_changed": true,
+  "new_opt_in_format": 6,
+  "existing_formats_unchanged": true,
+  "reference_overlap_cases": 8,
+  "overall_completion_estimate_percent": 63
+}

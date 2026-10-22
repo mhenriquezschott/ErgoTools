@@ -1,0 +1,142 @@
+{
+  "milestone": "F114",
+  "verified_on": "2026-10-07",
+  "python": "3.13.14",
+  "tests_passed": 877,
+  "new_tests": 7,
+  "coverage_percent": 96.56685739681129,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "6fbd2494b344121d4de2c0efdac3f431150941f162b08495ea649fe001719592",
+  "wheel_sha256": "8ca0766c0266cdd024c0d7bf702f5b1a83a3db8d64de7a1679727c3171cb75c2",
+  "independent_wheel_smoke": "passed",
+  "source_native_comparisons": {
+    "settings-default": {
+      "different_pixels": 0,
+      "size": [
+        520,
+        436
+      ]
+    },
+    "settings-custom": {
+      "different_pixels": 0,
+      "size": [
+        520,
+        436
+      ]
+    },
+    "legend-individual": {
+      "different_pixels": 0,
+      "size": [
+        300,
+        68
+      ]
+    },
+    "legend-comparison": {
+      "different_pixels": 0,
+      "size": [
+        300,
+        68
+      ]
+    },
+    "legend-job": {
+      "different_pixels": 0,
+      "size": [
+        300,
+        68
+      ]
+    },
+    "panel": {
+      "different_pixels": 2906,
+      "size": [
+        330,
+        600
+      ]
+    },
+    "panel-focus-normalized": {
+      "different_pixels": 0,
+      "size": [
+        330,
+        600
+      ]
+    }
+  },
+  "settings_child_geometries_equal": true,
+  "panel_child_geometries_equal": true,
+  "panel_difference_reason": "Only native focus highlight differs; focus-normalized complete panel matches exactly.",
+  "viewer_difference_reason": "Separate owned figure, actual-size chart margins, processed toolbar equivalents where available.",
+  "native_screenshots": {
+    "en-legend-comparison.png": "98295a4dea16bde0350150dac8ee2499422e520940d7f44ef4c44def898deb90",
+    "en-legend-individual.png": "60f3c6bf2c334345f81cee66c4c34e5b6f3dbf2cf65424880bb92c6c31d6ebe5",
+    "en-legend-job.png": "bd046d811ba042ad5339e0644bf2a426b644a1ae6e63fd94c9c6ed7e1525ce10",
+    "en-map-and-panel-1100.png": "1dc80ab8e8f029a83ef585cd21cdbd3e195c93b007a0fc70dd2b8b926d7d55bc",
+    "en-map-and-panel-1500.png": "bfeac423d63e4ddff885d2ecbef1a70d65b0a4f4780b09cf6de54917b8918c84",
+    "en-panel-chart-0.png": "a09e7eda350d5d2c980dd5c0da86edd6b2320006365ca16d561e01a7d3ec2793",
+    "en-panel-chart-1.png": "9df32f6656a19faaceec86faa9b5f0f9abf3d9c2d41e8f4588d8f3343fbb4691",
+    "en-panel-chart-2.png": "ea93cd4107b4ebd2f205de095919fd9702b1542bcfd7f5cf2be4c21b84ae27a9",
+    "en-panel-comparison-330.png": "854e1994395e008673a792a4a3678551e12be88e967eedb111a765fd56fb8f70",
+    "en-panel-comparison-420.png": "b0d11b63d8d37dadb42ef0194ad356dfc2cfa1bb3d6a7e5863c19b080ac4508e",
+    "en-panel-empty.png": "831090933e6baa40ed71bcdaa2f267794704b8ddb2edecfdb3e16205d0bf69fd",
+    "en-panel-expanded.png": "ed3fcdc43324e4a7f8fd8213da6aa1f0321e73710edef64597f0cfd9c4abc329",
+    "en-panel-focus-normalized.png": "538e09d2b58448689f9cadb2ee82e70e0b37f44579a946ca884946e79101606b",
+    "en-panel-individual-330.png": "538e09d2b58448689f9cadb2ee82e70e0b37f44579a946ca884946e79101606b",
+    "en-panel-individual-420.png": "a09e7eda350d5d2c980dd5c0da86edd6b2320006365ca16d561e01a7d3ec2793",
+    "en-panel-job-330.png": "cfd12b8044552017dc3ef74124d934dfe224be1246f62c9a485139e7df21dcf8",
+    "en-panel-job-420.png": "cd2486278a7429ddc0b95d551cc5a6133ad7af23f2430880ebb92e7fd709e346",
+    "en-panel-source-fixture.png": "538e09d2b58448689f9cadb2ee82e70e0b37f44579a946ca884946e79101606b",
+    "en-panel-values-140.png": "2a9fcbbf34ea2799cdd5acc7bee7be87e8aa75e8a69eecd0c3e666e9093e0894",
+    "en-settings-custom.png": "294f758bc5a223bcc06f89cc4c48b1ab57826acfe1bef9d920e60789cfa0244e",
+    "en-settings-default.png": "a3b127286e1a032855773a9ae7b18cb687bc2b4bafbe5e9398afa2a35220155e",
+    "en-settings-expanded.png": "2d32152df49f1209081f3d17668d8c7d0419d25f254be433aac924c43558e41c",
+    "en-settings-export-error.png": "e4bbb966596d1dc56bb5da9730514b72ed99f1efca6b61e418a2e11af686b2ec",
+    "en-settings-maximum.png": "88471512cec0c11c8ffd27834fc6d203888c8467bcc7d06aa43da194316572c8",
+    "en-settings-minimum.png": "a3b127286e1a032855773a9ae7b18cb687bc2b4bafbe5e9398afa2a35220155e",
+    "en-viewer-empty.png": "cad7f6eb78d5902b6fca441d23c2653398f8bc5a6b6ae47a8233fa44b08d0ee4",
+    "en-viewer-export-error.png": "e4bbb966596d1dc56bb5da9730514b72ed99f1efca6b61e418a2e11af686b2ec",
+    "en-viewer-pan.png": "e5c2c5d0d8dc9cc0203fe62ab866dc74ea92112a17796925ac4e20b988ae78b3",
+    "en-viewer-zoom.png": "44e91b7faab8187520129aafb211b0d7837c4db8b7502bde2208052835b2db25",
+    "en-viewer.png": "a44af373451f5b49db35dd43f100bc189edd3cde0d953f0a5d3b2cf59dd5b2b3",
+    "es-legend-comparison.png": "0426b5320e4d2f816658edf09f060bf7fd2e789b486af1c760a8fabe52cce0c0",
+    "es-legend-individual.png": "1685fcadec1fb02526b7834b56c6adcc1782e658a8167db8946332e4cacffb64",
+    "es-legend-job.png": "d9e24a7f1d3d48c1ea4213715e8c586e4736f0b359b09ec7ed670bb7a1d6ad35",
+    "es-map-and-panel-1100.png": "3ce85e48252935e2278290b270e6dcc7eda644a7ebb93dd50b1ec0406efebb82",
+    "es-map-and-panel-1500.png": "022ff2cde2fe2b09ab0229e734673cebe696ac3d1259de92ecead258981a7c38",
+    "es-panel-chart-0.png": "63f101bcbf13c2e6bf79d48cfc0137bc0e2793986afd585228c09fd434f7857b",
+    "es-panel-chart-1.png": "0cfc3a00420fea3235572e5126a6e41907bd448fae5120e1dd51c5218c7b8ffe",
+    "es-panel-chart-2.png": "3297060102a06d189c66d160832b25e807b60c0ff146437b88f543142d9df6c6",
+    "es-panel-comparison-330.png": "e2db316227d94c5200dd64a40c9b97a607570632ad93252237c65240afda602b",
+    "es-panel-comparison-420.png": "b6383f4a45b3e82782e6e8736bbee5e7c05e03806588e00b6790ab3cf3275136",
+    "es-panel-empty.png": "5d53ef0defa9e3f4f8c7d5e8a29328180b69e78ecc167c7e7f1e13f674e95b6f",
+    "es-panel-expanded.png": "7c27a0bc27371fb7968d2beb23fbd1e5853af96315cc82e195a1a6fcd34dbbb2",
+    "es-panel-individual-330.png": "f309189950cf21b4829a1a1d75134b222359a4ceb8c8d87ce5c169623a7ae04c",
+    "es-panel-individual-420.png": "63f101bcbf13c2e6bf79d48cfc0137bc0e2793986afd585228c09fd434f7857b",
+    "es-panel-job-330.png": "335fddfa29eda76951e42192f77fa7f0b6f4d6705f84dd2519005521be58d679",
+    "es-panel-job-420.png": "64a01e3b9a39318e8896aa689568a783e06c0313c9a57172c11c21a3a3a93cb7",
+    "es-panel-values-140.png": "ea58ff83ebd5a98bfe5fb61a138712089a6f386343cd28a2397bfc55eb59b100",
+    "es-settings-expanded.png": "7651879702be7e5f774b6057fd18c356f4284675ffffb93264af81cb73bdcd96",
+    "es-settings-export-error.png": "533b857f9d0a510fe192a7c5f7dcbff98b3f7b4d19c8de4de8f97861e0daaba4",
+    "es-settings-maximum.png": "1d57dc0da9c27460fe890fe93726daf6d33fac8e376c9e0a911bd1f404e7dbfa",
+    "es-settings-minimum.png": "ae9bee520c124d404020d3902ada84bdca8e640b94badf927644adec7b645d48",
+    "es-viewer-empty.png": "fbd4dcec8b4d97e67d0489abe1e139e1046e94e0a7856fa16ab5f44a5db82dc5",
+    "es-viewer-export-error.png": "533b857f9d0a510fe192a7c5f7dcbff98b3f7b4d19c8de4de8f97861e0daaba4",
+    "es-viewer-pan.png": "19dacebe209844fbf356d50373ad27c5b346680d2a1d0eb2d99274d8c45ee6cd",
+    "es-viewer-zoom.png": "6b8989f5924f33df03e66ea9cf58c1369adb458b7bcd18f9052405dddc64e176",
+    "es-viewer.png": "4712f78d2a2157aa9dc4ac43cdbe920fbf0adc2c94a32f6a053df83bbba1f9fb",
+    "source-legend-comparison.png": "98295a4dea16bde0350150dac8ee2499422e520940d7f44ef4c44def898deb90",
+    "source-legend-individual.png": "60f3c6bf2c334345f81cee66c4c34e5b6f3dbf2cf65424880bb92c6c31d6ebe5",
+    "source-legend-job.png": "bd046d811ba042ad5339e0644bf2a426b644a1ae6e63fd94c9c6ed7e1525ce10",
+    "source-panel-focus-normalized.png": "538e09d2b58448689f9cadb2ee82e70e0b37f44579a946ca884946e79101606b",
+    "source-panel.png": "11036f95dbc45fd5a3568627b3835ca2f6c98f9012035bef892e2acef40fccfc",
+    "source-settings-custom.png": "294f758bc5a223bcc06f89cc4c48b1ab57826acfe1bef9d920e60789cfa0244e",
+    "source-settings-default.png": "a3b127286e1a032855773a9ae7b18cb687bc2b4bafbe5e9398afa2a35220155e",
+    "source-viewer.png": "679819d80c5297ce4b533744a4486894a747ed5bde2c97e22643a2eb84c02573"
+  },
+  "plot_tools_overview_composed": true,
+  "plot_graph_settings_composed": true,
+  "plot_expanded_viewer_composed": true,
+  "plot_outcome_summary_composed": false,
+  "full_plot_parent_close_consent_integrated": false,
+  "plot_main_window_enabled": false,
+  "scientific_gates_preserved": true,
+  "overall_completion_estimate_percent": null
+}

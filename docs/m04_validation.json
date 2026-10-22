@@ -1,0 +1,40 @@
+{
+  "milestone": "M04",
+  "status": "complete",
+  "owner_worker_unit_policy": "Owner directs interpretation of legacy worker height/weight according to the declared project measurement system. Normalize only converted editable records to cm/kg; preserve exact raw XML/database archive and untouched originals. No numeric-range guessing or new import prompt. Existing new-format canonical storage/display conversion prevents reinterpretation when display units change.",
+  "correction_focused_tests_passed": 49,
+  "correction_focused_gate": "artifacts/m04-correction-focused.log",
+  "prior_focused_packaged_tests_passed": 136,
+  "prior_comparison": "docs/m04_review.md",
+  "full_quality_gate": "artifacts/m04-check.log",
+  "full_tests_passed": 1162,
+  "combined_coverage_percent": 96.44,
+  "standards": "Ruff check/format, strict mypy, architecture, approved Python 3.13.14, wheel/sdist build passed",
+  "final_packaged_native_gate": "artifacts/m04-final-wheel.log",
+  "native_workflow_evidence": "artifacts/m04-lifecycle/verification.json",
+  "visual_inspection": "Eight lifecycle PNGs inspected individually; complete native VTK/Qt adjacent regions and 1550x1015/1800x1200 bounds checked. Current Properties and prior original-form Details/Save As/Transfer comparison reused.",
+  "original_summary_rows_matched": 194,
+  "body_measurement_audit": "artifacts/m04-copy/body-audit.json",
+  "source_archive_backup_reopened": true,
+  "reused_result_save_evidence": [
+    "docs/f150_compatibility.md",
+    "docs/f153_compatibility.md"
+  ],
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "b397168456100528b1b1dbf767ec70b61942cfceb812c494fbdcda5247cdcc29",
+  "remaining_M04_items": [],
+  "progress": {
+    "overall": 85.25,
+    "milestones_complete": 4,
+    "earned_remaining_points": 11.25,
+    "points_still_to_earn": 14.75,
+    "M04_points_awarded": 2.5
+  },
+  "next": "M05 PLOT filters and risk results; not started",
+  "limitations": [
+    "Unknown historical worker entry units cannot be reconstructed; owner-approved project-declared policy applies.",
+    "M09 shared localization/units/resize review remains; existing Spanish Transfer paragraphs tracked.",
+    "Windows/macOS VM checks remain deferred, untested."
+  ]
+}

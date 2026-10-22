@@ -1,0 +1,43 @@
+import sys,tempfile
+from pathlib import Path
+from dataclasses import replace
+from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.domain.assessments.lifft_draft import LifftDraft
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.project import ProjectMetadata
+from ergotools.domain.work_catalog import StationKey, WorkCatalog, WorkerEntry
+from ergotools.domain.work_hierarchy import LineKey, SectionKey, WorkHierarchy
+from ergotools.domain.job_catalog import Job, JobCatalog, JobPlacement, WorkerJobAssignment
+from ergotools.domain.job_risk import JobRiskMeasurement
+from ergotools.domain.rotation import WorkerRotation
+from ergotools.domain.rotation_scheme import RotationScheme,RotationTarget,RotationWorkerLink
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+station=StationKey('P','S','L','1')
+hierarchy=WorkHierarchy(WorkCatalog('p',(WorkerEntry('w'),),(station,),('Day',)),('P',),(SectionKey('P','S'),),(LineKey('P','S','L'),))
+owner=hierarchy.work.worker_context('w',station.at_shift('Day'))
+jobs=JobCatalog('p',(Job('j','Job'),),(JobPlacement(1,'j',owner.workplace),),(WorkerJobAssignment(1,owner,1),))
+target=RotationTarget('j',1,1)
+scheme=RotationScheme('p','R','Rotation',(RotationWorkerLink('w',1),),(target,),(WorkerRotation('w',(target.key,target.key)),),(owner.workplace,))
+with tempfile.TemporaryDirectory() as directory:
+ path=Path(directory)/'project.sqlite'
+ with AssessmentProjectFile.create_with_document(path,ProjectMetadata('p','Project',MeasurementSystem.IMPERIAL),'source',LifftDraft(MeasurementSystem.IMPERIAL),format_version=7) as project:
+  project.save_hierarchy(hierarchy);project.save_jobs(jobs)
+  risks=project.create_job_risk_draft(project.load_job_risk(),'j',1)
+  profile=replace(risks.profile(1),measurements=(JobRiskMeasurement(AssessmentKind.LIFFT,0,0,'Imperial'),))
+  project.approve_job_risk(risks,1,replacement=profile)
+  assert project.load_rotation_schemes()==() and project.format_version==7
+  project.save_rotation_scheme(scheme)
+  assert project.format_version==11 and project.load_rotation_schemes()==(scheme,)
+  try:project.delete_job(project.load_jobs(),project.load_job_risk(),'j')
+  except ValueError:pass
+  else:raise AssertionError('Referenced job deletion must fail')
+  with project.snapshot(str(Path(directory)/'copy.sqlite'),None,None) as copied:
+   assert copied.load_rotation_schemes()==(scheme,)
+ with AssessmentProjectFile.open(path) as project:
+  assert project.load_rotation_schemes()==(scheme,)
+  project.delete_rotation_scheme('R')
+  assert project.load_rotation_schemes()==()
+for name,module in tuple(sys.modules.items()):
+ if name.startswith('ergotools') and getattr(module,'__file__',None):
+  assert Path(module.__file__).resolve().is_relative_to(Path(sys.argv[1]).resolve()),name
+print('Extracted-wheel explicit JROT save/upgrade, reopen/copy, referenced-job protection and deletion passed; package imports confined to extraction.')

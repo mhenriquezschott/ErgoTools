@@ -1,0 +1,713 @@
+{
+  "schema_version": 1,
+  "baseline_id": "finish-plan-v1",
+  "date": "2026-10-11",
+  "approval_status": "approved_by_owner",
+  "implementation_status": "complete_linux_migration; native_windows_macos_acceptance_deferred_by_owner",
+  "inherited_overall_anchor": 74,
+  "remaining_points": 26,
+  "completed_remaining_points": 26.0,
+  "overall_progress": 100.0,
+  "remaining_milestones_completed": 12,
+  "remaining_milestones_total": 12,
+  "formula": "74 + sum(points of complete, evidenced milestones); no fractional credit inside a milestone",
+  "source_baseline_sha256": "000d77055ec550b9125b4e26130acb44828f612b17a7d5da84e712ae7886afd8",
+  "milestones": [
+    {
+      "id": "M01",
+      "title": "Assessments and shared editing",
+      "legacy_rows": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "points": 5.0,
+      "overall_after_completion": 79.0,
+      "status": "complete",
+      "acceptance": [
+        {
+          "id": "M01.1",
+          "text": "Close remaining integrated LiFFT, DUET and ST control/layout comparisons against original code; use F151\u2013F155 numeric/style evidence rather than repeat it.",
+          "status": "verified",
+          "evidence": [
+            "artifacts/m01-comparison/comparison.json: 6 tool/unit cases x 2 sizes, task columns/headers/summary/buttons equal; only ST focus differs",
+            "docs/f151_compatibility.md",
+            "docs/f152_compatibility.md",
+            "docs/f154_compatibility.md",
+            "docs/f155_compatibility.md"
+          ]
+        },
+        {
+          "id": "M01.2",
+          "text": "Close worker/context navigation, task-count, Reset/Delete, versions, keyboard focus and modal cancellation; reuse F152/F155 evidence for cases already passed.",
+          "status": "verified",
+          "evidence": [
+            "docs/f152_compatibility.md: assessment chooser exact identity, expanded EN/ES and modal cancellation",
+            "docs/f155_compatibility.md: versions/count/reset/undo/No-Yes delete/reopen",
+            "tests/test_context_dialog.py",
+            "tests/test_task_count_integration.py",
+            "tests/test_assessment_deletion.py",
+            "tests/test_saved_tool_data.py",
+            "artifacts/m01-comparison/comparison.json: LiFFT/DUET first six editable controls match by type/order; ST visits combos first in original, rows in new",
+            "artifacts/m01-keyboard-comparison/comparison.json: original ST 20 selectors then numeric fields, both units/sizes; zero differences",
+            "tests/test_tst_task_panel.py: exact forward/backward identity order and rebuild preservation",
+            "artifacts/m01-keyboard-main-window/verification.json: final packaged keyboard and VTK/summary display checks"
+          ]
+        },
+        {
+          "id": "M01.3",
+          "text": "Dispose of the known in/inch and saved-versus-fresh shade differences (R010) explicitly; retain source/result provenance and original ST direction mapping. No scientific corrections.",
+          "status": "verified",
+          "evidence": [
+            "tests/test_inline_tool_summaries.py: 12 tool/unit/language Save/reopen style and header cases",
+            "tests/test_historical_result_display.py: rounded-summary palette boundaries, archive preservation, fallback/missing/zero",
+            "artifacts/m01-main-window/verification.json: six source/tool cases, 18 integrated live-VTK states",
+            "docs/m01_acceptance.md"
+          ]
+        }
+      ],
+      "completion_evidence": [
+        "docs/m01_validation.json",
+        "docs/m01_acceptance.md"
+      ],
+      "passes": {
+        "comparison": "complete",
+        "correction": "complete; CR002 original-order correction explicitly approved and verified"
+      }
+    },
+    {
+      "id": "M02",
+      "title": "Worker Management",
+      "legacy_rows": [
+        "D1"
+      ],
+      "points": 1.5,
+      "overall_after_completion": 80.5,
+      "status": "complete",
+      "acceptance": [
+        {
+          "id": "M02.1",
+          "text": "Compare original worker form: empty/new, populated/selected and optional-details states; retain original visible fields, layout, icons and actions.",
+          "status": "verified",
+          "evidence": [
+            "artifacts/m02-comparison/comparison.json: 16 matched cases, zero compared control differences",
+            "artifacts/m02-packaged/verification.json and 11 inspected window/popup PNGs",
+            "docs/m02_acceptance.md"
+          ]
+        },
+        {
+          "id": "M02.2",
+          "text": "Verify height/weight in both units, assignment edit, validation, Save/Cancel and independent reopen; preserve historical assessment ownership.",
+          "status": "verified",
+          "evidence": [
+            "tests/test_worker_management.py: both body units/opposite projection/unchanged Save, dates/sex, classification rollback/retry and historical ownership",
+            "tests/test_worker_assessment_integration.py: LiFFT/DUET/ST exact assignment activation; nested modal retains text, Close discards edits; independent reopen",
+            "artifacts/m02-focused.log: 12 passed",
+            "artifacts/m02-wheel.log: independent packaged Save/reopen/Cancel/validation/empty project"
+          ]
+        }
+      ],
+      "completion_evidence": [
+        "docs/m02_validation.json",
+        "docs/m02_acceptance.md"
+      ],
+      "passes": {
+        "comparison": "complete",
+        "correction": "complete; original notification prefix only"
+      }
+    },
+    {
+      "id": "M03",
+      "title": "Organization and Jobs",
+      "legacy_rows": [
+        "D2",
+        "D3"
+      ],
+      "points": 2.25,
+      "overall_after_completion": 82.75,
+      "status": "complete",
+      "acceptance": [
+        {
+          "id": "M03.1",
+          "text": "Compare hierarchy/shift and Jobs/profile/placement forms in empty, populated and selected/expanded states.",
+          "status": "verified",
+          "evidence": [
+            "artifacts/m03-organization/comparison.json: 7 byte-identical source pairs",
+            "artifacts/m03-jobs/comparison.json: 8 layout cases, zero compared differences",
+            "docs/job_workplace_dialog.md and docs/job_workplace_localization.md: original-source placement comparison reused",
+            "artifacts/m03-packaged/verification.json: 8 inspected windows and profile popup"
+          ]
+        },
+        {
+          "id": "M03.2",
+          "text": "Close organization create/edit/delete and shift relationships; close job/profile version, approval/current/retirement and placement workflows with Save/Cancel/reopen and referenced-record protection.",
+          "status": "verified",
+          "evidence": [
+            "artifacts/m03-wheel.log: 64 focused packaged regressions",
+            "artifacts/m03-integration-wheel.log: actual integrated toolbar/footer Save/Close/reopen smoke",
+            "docs/m03_acceptance.md: workflow coverage and existing behavior dispositions",
+            "artifacts/m02-check.log: unchanged-source full standards/build gate reused"
+          ]
+        }
+      ],
+      "completion_evidence": [
+        "docs/m03_validation.json",
+        "docs/m03_acceptance.md"
+      ],
+      "passes": {
+        "comparison": "complete; existing evidence plus bounded missing-state comparisons",
+        "correction": "not required; existing documented noncritical dispositions retained"
+      }
+    },
+    {
+      "id": "M04",
+      "title": "Project lifecycle and original-data compatibility",
+      "legacy_rows": [
+        "B1",
+        "B2"
+      ],
+      "points": 2.5,
+      "overall_after_completion": 85.25,
+      "status": "complete",
+      "acceptance": [
+        {
+          "id": "M04.1",
+          "text": "Close New/Open/Save/Save As/Close, recent/missing files, properties/details, transfer, CSV, backup/restore against the original supported workflows and approved differences.",
+          "status": "verified",
+          "evidence": [
+            "artifacts/m04-wheel.log: 136 currently supported lifecycle/transfer/export cases passed",
+            "artifacts/m04-copy-wheel.log: all 194 original summary rows/precision/units match",
+            "docs/m04_acceptance.md",
+            "docs/m04_validation.json"
+          ]
+        },
+        {
+          "id": "M04.2",
+          "text": "Reuse F150/F153 atomic Save/Save As and failure evidence; do not reimplement these completed paths.",
+          "status": "verified",
+          "evidence": [
+            "docs/f150_compatibility.md: atomic explicit Save/result provenance",
+            "docs/f153_compatibility.md: all-tool transition Save and Save As failure guarantees; existing results reused",
+            "docs/m04_acceptance.md",
+            "docs/m04_validation.json"
+          ]
+        },
+        {
+          "id": "M04.3",
+          "text": "On comprehensive-project copies, verify original archived fields, record ownership, conversion output identity and export precision/status; confirm originals remain unchanged.",
+          "status": "verified",
+          "evidence": [
+            "docs/f138_legacy_compatibility.md: full typed identity evidence reused",
+            "docs/m04_acceptance.md",
+            "docs/m04_validation.json"
+          ]
+        }
+      ],
+      "completion_evidence": [
+        "docs/m04_acceptance.md",
+        "docs/m04_validation.json"
+      ],
+      "passes": {
+        "comparison": "complete; existing lifecycle gaps and worker-unit provenance explicitly recorded",
+        "correction": "complete; original New/first-Save timing, empty Open and owner-approved declared-unit normalization verified"
+      }
+    },
+    {
+      "id": "M05",
+      "title": "PLOT filters and risk results",
+      "legacy_rows": [
+        "E1"
+      ],
+      "points": 1.25,
+      "overall_after_completion": 86.5,
+      "status": "complete",
+      "acceptance": [
+        {
+          "id": "M05.1",
+          "text": "Compare matched copied-data filters, worker/job counts, missingness and Individual/Job/Comparison outputs with original PLOT.",
+          "status": "verified",
+          "evidence": [
+            "docs/m05_acceptance.md",
+            "docs/m05_validation.json"
+          ]
+        },
+        {
+          "id": "M05.2",
+          "text": "Close original filter/result control appearance and Apply/Cancel/empty-result behavior; retain approved aggregation semantics.",
+          "status": "verified",
+          "evidence": [
+            "docs/m05_acceptance.md",
+            "docs/m05_validation.json"
+          ]
+        }
+      ],
+      "completion_evidence": [
+        "docs/m05_acceptance.md",
+        "docs/m05_validation.json"
+      ],
+      "passes": {
+        "comparison": "complete; original SQL, matched comprehensive data and native states",
+        "correction": "not required; no production changes"
+      }
+    },
+    {
+      "id": "M06",
+      "title": "PLOT maps, charts and exports",
+      "legacy_rows": [
+        "E2",
+        "E3"
+      ],
+      "points": 2.5,
+      "overall_after_completion": 89.0,
+      "status": "complete",
+      "acceptance": [
+        {
+          "id": "M06.1",
+          "text": "Close original map image/marker placement, selection, worker/job controls and Save/load behavior, including undo/redo.",
+          "status": "verified",
+          "evidence": [
+            "docs/m06_acceptance.md",
+            "docs/m06_validation.json",
+            "docs/plot_history.md"
+          ]
+        },
+        {
+          "id": "M06.2",
+          "text": "Close chart settings, highlights, details and export content against original controls/results, including empty/populated/selected states. Dormant transforms remain archived.",
+          "status": "verified",
+          "evidence": [
+            "docs/m06_acceptance.md",
+            "docs/m06_validation.json"
+          ]
+        }
+      ],
+      "completion_evidence": [
+        "docs/m06_acceptance.md",
+        "docs/m06_validation.json",
+        "artifacts/m06-history-check.log",
+        "artifacts/m06-history-wheel.log",
+        "artifacts/m06-history-native/verification.json"
+      ],
+      "passes": {
+        "comparison": "complete; original source comparisons and current copied-project map/chart/export evidence",
+        "correction": "complete; approved PLOT history, exact source Save and station ordering; required gates and native EN/ES acceptance pass"
+      }
+    },
+    {
+      "id": "M07",
+      "title": "JROT schedule and scope",
+      "legacy_rows": [
+        "F1"
+      ],
+      "points": 1.5,
+      "overall_after_completion": 90.5,
+      "status": "complete",
+      "acceptance": [
+        {
+          "id": "M07.1",
+          "text": "Close original worker/job scope chooser, targets, schedule grid, profile/assignment relationships, edit/undo/redo and Save/reopen.",
+          "status": "verified",
+          "evidence": [
+            "docs/m07_acceptance.md",
+            "docs/m07_validation.json",
+            "docs/m07_m08_review.md",
+            "tests/test_rotation_history.py",
+            "artifacts/m07-m08-native/verification.json",
+            "artifacts/m07-m08-check.log",
+            "artifacts/m07-m08-wheel.log"
+          ]
+        },
+        {
+          "id": "M07.2",
+          "text": "Resolve known Spanish scope-summary clipping R006 at its documented minimum size; verify selected IDs and expanded scope selection.",
+          "status": "verified",
+          "evidence": [
+            "docs/m07_acceptance.md",
+            "docs/m07_validation.json",
+            "docs/m07_m08_review.md",
+            "tests/test_rotation_history.py",
+            "artifacts/m07-m08-native/verification.json",
+            "artifacts/m07-m08-check.log",
+            "artifacts/m07-m08-wheel.log"
+          ]
+        }
+      ],
+      "completion_evidence": [
+        "docs/m07_acceptance.md",
+        "docs/m07_validation.json",
+        "docs/m07_m08_review.md"
+      ],
+      "passes": {
+        "comparison": "complete; original source and retained valid F121\u2013F126 evidence",
+        "correction": "complete; bounded history/Apply integration and R006 fix"
+      }
+    },
+    {
+      "id": "M08",
+      "title": "JROT optimization and Apply",
+      "legacy_rows": [
+        "F2",
+        "F3"
+      ],
+      "points": 2.25,
+      "overall_after_completion": 92.75,
+      "status": "complete",
+      "acceptance": [
+        {
+          "id": "M08.1",
+          "text": "Close matched-input single-tool CBC and multi-tool HiGHS feasibility/objective comparisons, result comparison, Apply/Undo/Save/reopen and frozen profile provenance.",
+          "status": "verified",
+          "evidence": [
+            "docs/m08_acceptance.md",
+            "docs/m08_validation.json",
+            "docs/m07_m08_review.md",
+            "tests/test_rotation_history.py",
+            "artifacts/m07-m08-native/verification.json",
+            "artifacts/m07-m08-check.log",
+            "artifacts/m07-m08-wheel.log"
+          ]
+        },
+        {
+          "id": "M08.2",
+          "text": "Verify existing timeout/cancel/infeasible paths; compare objective/constraints rather than demand identical alternative optima. No GLPK, solver replacement or new optimization feature.",
+          "status": "verified",
+          "evidence": [
+            "docs/m08_acceptance.md",
+            "docs/m08_validation.json",
+            "docs/m07_m08_review.md",
+            "tests/test_rotation_history.py",
+            "artifacts/m07-m08-native/verification.json",
+            "artifacts/m07-m08-check.log",
+            "artifacts/m07-m08-wheel.log"
+          ]
+        }
+      ],
+      "completion_evidence": [
+        "docs/m08_acceptance.md",
+        "docs/m08_validation.json",
+        "docs/m07_m08_review.md"
+      ],
+      "passes": {
+        "comparison": "complete; original source and retained valid F121\u2013F126 evidence",
+        "correction": "complete; bounded history/Apply integration and R006 fix"
+      }
+    },
+    {
+      "id": "M09",
+      "title": "Shared UI, localization, units and avatar",
+      "legacy_rows": [
+        "G1",
+        "G2"
+      ],
+      "points": 1.75,
+      "overall_after_completion": 94.5,
+      "status": "complete",
+      "acceptance": [
+        {
+          "id": "M09.1",
+          "text": "Close integrated header/footer/navigation plus approved menu/settings exceptions; retain original style, controls and workflows.",
+          "status": "verified",
+          "evidence": [
+            "docs/m09_review.md: source layout/style comparison and owner-approved original live caption restoration CR005",
+            "tests/test_main_navigation.py: EN/ES caption lifecycle and pending input preservation",
+            "tests/test_project_details.py and tests/test_save_as_details.py: exact literal metadata and localized header",
+            "artifacts/m09-caption-native/verification.json: 14 final packaged native states, long-title ink fits both sizes",
+            "artifacts/m09-caption-check.log",
+            "artifacts/m09-caption-wheel.log"
+          ]
+        },
+        {
+          "id": "M09.2",
+          "text": "Complete EN/ES visible labels/tooltips/dialogs and metric/imperial display/save/export matrix on the forms listed below; resolve known sidebar-caption concern R011 after checking individual images and font geometry.",
+          "status": "verified",
+          "evidence": [
+            "docs/m09_review.md: current/reused shared surface and unit matrix",
+            "docs/m09_validation.json",
+            "artifacts/m09-native/verification.json",
+            "artifacts/m09-check.log",
+            "artifacts/m09-native-wheel.log"
+          ]
+        },
+        {
+          "id": "M09.3",
+          "text": "Close VTK region/camera/rotate/zoom/reset, settled gauge values, keyboard navigation and minimum/enlarged window checks with no clipping. Reuse existing widget evidence; no renderer replacement.",
+          "status": "verified",
+          "evidence": [
+            "docs/m09_review.md: current/reused shared surface and unit matrix",
+            "docs/m09_validation.json",
+            "artifacts/m09-native/verification.json",
+            "artifacts/m09-check.log",
+            "artifacts/m09-native-wheel.log"
+          ]
+        }
+      ],
+      "completion_evidence": [
+        "docs/m09_acceptance.md",
+        "docs/m09_validation.json",
+        "docs/m09_review.md"
+      ]
+    },
+    {
+      "id": "M10",
+      "title": "Final comprehensive-project acceptance",
+      "legacy_rows": [
+        "G3"
+      ],
+      "points": 0.75,
+      "overall_after_completion": 95.25,
+      "status": "complete",
+      "acceptance": [
+        {
+          "id": "M10.1",
+          "text": "Run one recorded copied-project scenario: workers/organization/jobs, all three assessments Calculate/Save, PLOT, CBC/HiGHS Apply/Save, transfer/export/backup and reopen.",
+          "status": "verified",
+          "evidence": [
+            "docs/m10_acceptance.md",
+            "docs/m10_validation.json",
+            "artifacts/m10-integration-final/verification.json",
+            "artifacts/m10-final-wheel.log"
+          ]
+        },
+        {
+          "id": "M10.2",
+          "text": "Compare final persisted results, ownership, risk outputs and workflows with the original; verify original file hashes. Reuse component-level evidence instead of repeating all unit tests manually.",
+          "status": "verified",
+          "evidence": [
+            "docs/m10_acceptance.md",
+            "docs/m10_validation.json",
+            "artifacts/m10-integration-final/verification.json",
+            "artifacts/m10-final-wheel.log",
+            "artifacts/m10-transfer-final.json",
+            "artifacts/m10-check.log"
+          ]
+        }
+      ],
+      "completion_evidence": [
+        "docs/m10_acceptance.md",
+        "docs/m10_validation.json"
+      ]
+    },
+    {
+      "id": "M11",
+      "title": "Code/feature inventory and final documentation",
+      "legacy_rows": [
+        "A3",
+        "H1"
+      ],
+      "points": 2.5,
+      "overall_after_completion": 97.75,
+      "status": "complete",
+      "acceptance": [
+        {
+          "id": "M11.1",
+          "text": "Close the original-active-entry-point inventory with each item mapped to its migrated implementation/evidence or an explicitly approved exclusion; classify hidden experimental data and dormant fields without enabling new UI.",
+          "status": "verified",
+          "evidence": [
+            "docs/m11_acceptance.md",
+            "docs/m11_validation.json",
+            "docs/feature_inventory.md"
+          ]
+        },
+        {
+          "id": "M11.2",
+          "text": "Complete the public API/units/errors/scientific-source documentation review and remaining behavior dispositions within existing features.",
+          "status": "verified",
+          "evidence": [
+            "docs/m11_acceptance.md",
+            "docs/m11_validation.json",
+            "docs/api_contracts.md"
+          ]
+        },
+        {
+          "id": "M11.3",
+          "text": "Update the actual user/developer/recovery guides, retire obsolete preview instructions, verify Help opens the packaged current guide; no new documentation framework.",
+          "status": "verified",
+          "evidence": [
+            "docs/m11_acceptance.md",
+            "docs/m11_validation.json",
+            "docs/user_guide.md"
+          ]
+        }
+      ],
+      "completion_evidence": [
+        "docs/m11_acceptance.md",
+        "docs/m11_validation.json"
+      ]
+    },
+    {
+      "id": "M12",
+      "title": "Native delivery and handoff",
+      "legacy_rows": [
+        "H2"
+      ],
+      "points": 2.25,
+      "overall_after_completion": 100.0,
+      "status": "complete",
+      "acceptance": [
+        {
+          "id": "M12.1",
+          "text": "Verify clean independent Linux installation/launcher, packaged assets, VTK, CBC/HiGHS, offline use and backup/restore without the reference checkout.",
+          "status": "verified",
+          "evidence": [
+            "docs/m12_validation.json",
+            "artifacts/m12-delivery/native/verification.json",
+            "artifacts/m12-delivery/final-package.json",
+            "docs/m12_acceptance.md"
+          ]
+        },
+        {
+          "id": "M12.2",
+          "text": "After Linux functionality/visual parity and original-project compatibility are ready, use Windows/macOS VMs for reasonable native acceptance. Review known Qt/Python frontend platform requirements before Linux handoff; do not claim unexecuted native checks.",
+          "status": "accepted_with_owner_deferral",
+          "evidence": [
+            "docs/platform_review.md",
+            "docs/m12_review.md",
+            "docs/m12_acceptance.md",
+            "docs/m12_validation.json"
+          ],
+          "native_platform_tests": "not_run; explicitly deferred by owner",
+          "owner_decision": "The migration finishes with Linux. Windows/macOS native tests will be added later; first confirm the new application works as expected and reflects the previous codebase."
+        },
+        {
+          "id": "M12.3",
+          "text": "Deliver install/run/recovery instructions and final evidence. Do not replace/publish the reference application. If native targets are unavailable, report incomplete and ask for an explicit deferral decision; never call untested platforms complete.",
+          "status": "verified",
+          "evidence": [
+            "docs/linux_delivery.md",
+            "dist/linux/SHA256SUMS",
+            "docs/m12_acceptance.md",
+            "docs/m12_validation.json"
+          ]
+        }
+      ],
+      "completion_evidence": [
+        "docs/m12_acceptance.md",
+        "docs/m12_validation.json"
+      ]
+    }
+  ],
+  "known_blockers": [
+    {
+      "milestone": "M12",
+      "description": "Windows/macOS native acceptance is later work by owner decision. Neither platform has passed native testing. No remaining blocker to Linux migration closure.",
+      "status": "resolved_for_linux_by_explicit_owner_deferral"
+    }
+  ],
+  "change_requests": [
+    {
+      "id": "CR001",
+      "status": "approved",
+      "owner_instruction": "Go one by one, starting M01. Prioritize Linux functionality/visual parity and old-project conversion; Windows/macOS VM testing follows a working Linux version. Address known frontend platform requirements as applicable.",
+      "effect": "One milestone per batch. M12 sequences Linux delivery/portable-frontend review before later native VM acceptance; 12 milestones/26 points unchanged.",
+      "points_change": 0
+    },
+    {
+      "id": "CR002",
+      "status": "approved_and_implemented",
+      "milestone": "M01",
+      "finding": "Original ST Tab visits all direction selectors first, then numeric fields. Migrated ST visits direction/arm/load/repetitions row by row.",
+      "proposal": "Either approve one local setTabOrder correction plus focused forward/backward regression and required validation, or approve existing row order as an intentional improvement. No layout, data, formula, dependency or milestone/point change.",
+      "approval_reason": "Owner requires approval before newly discovered repair/extra work; not hidden inside M01.",
+      "points_change": 0,
+      "owner_decision": "AS THE ORIGINAL BASE CODE DO IT; record the alternative for later review. Calculations must remain the same.",
+      "result": "Restored selectors-first Tab order locally, no model/source/formula change; focused, original-constructor, final full gate and packaged native checks passed."
+    },
+    {
+      "id": "CR003",
+      "milestone": "M04",
+      "status": "approved_and_implemented",
+      "owner_decision": "Owner directs interpretation of legacy worker height/weight according to the declared project measurement system. Normalize only converted editable records to cm/kg; preserve exact raw XML/database archive and untouched originals. No numeric-range guessing or new import prompt. Existing new-format canonical storage/display conversion prevents reinterpretation when display units change.",
+      "points_change": 0,
+      "result": "No source rewrite; destination canonical normalization verified for both units, archive retained. Existing finite M04 work closed."
+    },
+    {
+      "id": "CR004",
+      "status": "closed_removal_rejected_requirement_reaffirmed",
+      "milestone": "M06",
+      "finding": "Agent incorrectly treated absence in original PLOT as exclusion from migration. Accepted modernization plan explicitly requires PLOT marker move/scale history.",
+      "proposal": "Withdraw removal; retain M06.1 unchanged and implement existing history requirement.",
+      "effort": "Bounded PLOT history correction and focused acceptance within existing M06; reuse valid original-workflow evidence.",
+      "points_change": 0,
+      "approval_reason": "No new scope approval needed: accepted plan and latest owner clarification require undo/redo across the app, including PLOT.",
+      "owner_decision": "PLOT and the whole app require undo/redo. Localization initially fully supports English and Spanish and must support adding languages later."
+    },
+    {
+      "id": "CR005",
+      "milestone": "M09",
+      "status": "approved_and_implemented",
+      "finding": "Original live project header/footer include Current Project: and header Loaded indicator; migrated view displays bare name.",
+      "proposal": "Restore original captions/empty-unsaved behavior with EN/ES text using prepared patch, or explicitly approve current captions as UI exception.",
+      "approval_reason": "Owner fixed-scope rule requires approval for newly discovered repairs.",
+      "points_change": 0,
+      "reviewable_patch": "docs/reference/m09-header-proposal.patch.txt",
+      "owner_decision": "Yes: restore the original project captions.",
+      "result": "Original caption and EN/ES no-project/Loaded behavior restored; pending/metadata regressions, full gate, independent wheel and native visual checks pass."
+    },
+    {
+      "id": "CR006",
+      "milestone": "M10",
+      "status": "approved_and_implemented",
+      "finding": "Transfer copies assessment inputs but omits exact saved/archived results, losing recorded summaries, units and provenance.",
+      "proposal": "One bounded atomic transfer/result-envelope correction with focused Copy/Move, rollback, reopen/export tests and final M10 scenario.",
+      "reviewable_proposal": "docs/m10_transfer_result_proposal.md",
+      "approval_reason": "Owner requires approval before newly discovered defect repairs.",
+      "points_change": 0,
+      "owner_decision": "Yes on 2026-10-11 after explanation of summary rounding and missing saved-result provenance. Preserve exact saved results; formulas unchanged.",
+      "result": "Atomic source-bound saved/recorded result transfer; version-one compatibility plus strict recorded-copy envelopes; 23 new regressions, full 1207-test gate and final packaged native scenario pass."
+    },
+    {
+      "id": "CR007",
+      "milestone": "M11",
+      "status": "approved_implemented_verified",
+      "finding": "Original active Find Assessment search form is missing; Search currently opens selected-worker context chooser.",
+      "proposal": "Restore original Search form/layout/filtering using existing selection services, with focused/native/full/package validation.",
+      "reviewable_proposal": "docs/m11_search_proposal.md",
+      "points_change": 0,
+      "approval_reason": "Owner requires approval before newly discovered repairs.",
+      "owner_decision": "Approve original Search restoration",
+      "result": "Original Search restored; all-tool exact historical/cross-worker selection and dirty/cancel tests, matching original geometry, bilingual native states, full gate and independent wheel pass."
+    }
+  ],
+  "rules": [
+    "No additional, split, replacement or expanded milestone without explicit owner approval recorded with scope/effort/progress impact.",
+    "New defects or additional work, even when related to an existing milestone, must be reported before implementation; do not hide scope growth inside an existing milestone.",
+    "One reference/evidence comparison pass and one bounded correction pass per milestone; if more work is required, stop affected work and request approval for the extension.",
+    "Completion requires all listed acceptance items and applicable standards, regression/build and visual evidence. Blocked/partial/failed is not complete.",
+    "Reuse valid prior evidence. No repeated full suites or screenshots without code changes, failures or a concrete unresolved criterion.",
+    "Owner-approved one milestone at a time, M01\u2013M12 in order; no invented F checkpoints or unapproved scope extensions."
+  ],
+  "milestones_per_batch": 1,
+  "batch_authorization": "Owner accepts Linux as migration completion target and defers Windows/macOS native testing on 2026-10-11.",
+  "completion_scope": "Linux migration and original-codebase parity; Windows/macOS native testing is later work, not a passed test.",
+  "owner_platform_decision": {
+    "date": "2026-10-11",
+    "instruction": "The migration finishes with Linux. Windows/macOS native tests will be added later; first confirm the new application works as expected and reflects the previous codebase."
+  },
+  "post_acceptance_corrections": [
+    {
+      "id": "CLI_PROJECT_PARITY",
+      "status": "verified",
+      "owner_request": "Restore original command-line project opening and confirm approved Recent Projects.",
+      "points_change": 0,
+      "milestones_added": 0,
+      "evidence": [
+        "docs/cli_project_acceptance.md",
+        "docs/cli_project_validation.json"
+      ]
+    }
+  ],
+  "post_acceptance_extensions": [
+    {
+      "id": "ANALYSIS_SELECTION_HISTORY",
+      "status": "verified",
+      "owner_request": "PLOT/JROT analysis configuration Undo/Redo and main document shortcuts; keyboard/menu only.",
+      "points_change": 0,
+      "milestones_added": 0,
+      "evidence": [
+        "docs/analysis_history_acceptance.md",
+        "docs/analysis_history_validation.json"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "milestone": "F85",
+  "verified_on": "2026-10-05",
+  "python": "3.13.14",
+  "tests_passed": 673,
+  "new_tests": 5,
+  "coverage_percent": 96.91373224985635,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "6fbd2494b344121d4de2c0efdac3f431150941f162b08495ea649fe001719592",
+  "wheel_sha256": "11933977299b1f9fc77a842d5c9cc2d4074e5f12eea7956ffec45275a67e38f3",
+  "independent_wheel_smoke": "passed",
+  "duet_main_tab_enabled": true,
+  "st_main_tab_enabled": true,
+  "scientific_gates_preserved": true,
+  "overall_completion_estimate_percent": null,
+  "native_screenshots": {
+    "artifacts/saved-tool-data/duet-loaded-main-vtk.png": "b3fd0d7684d4dd1a78469d9e674e11af2d73b185e2166780bbbfc4e81cc928ac",
+    "artifacts/saved-tool-data/duet-loaded-main.png": "2e482264bc47f4538f0c877fe66f53126f26863a45bda77e0e9e346bf452ed22",
+    "artifacts/saved-tool-data/duet-selected.png": "75352886b8777f424a19b9df152ef9b69c9bdfa661f306c688411675e6c39c63",
+    "artifacts/saved-tool-data/duet-unselected.png": "a0bcb660299675b628a02eaa03ac81846c1d04d2c31b2166e44dd9fd30d2829f",
+    "artifacts/saved-tool-data/lifft-loaded-main-vtk.png": "6c8421331cb3c40c6d55c2c076a6d8a1d2bbb8bcea1815371210f5e741a9e4d0",
+    "artifacts/saved-tool-data/lifft-loaded-main.png": "8e9a34d0a100989ad8a9d2e40ae19cdb5e27933021eddc6b52178fe768dd3705",
+    "artifacts/saved-tool-data/lifft-selected.png": "47a20b1518995df50f1992f30295bee392eef6b11dd0f87a461b44969ce03f85",
+    "artifacts/saved-tool-data/lifft-unselected.png": "c55279f10240d06ca435553b98e4d6d761d7c3d3c6a9d9482cc577730914279d",
+    "artifacts/saved-tool-data/spanish-empty.png": "f8a742467bb84a208f82614642005242f469b508ff03de149183c2bf37290c90",
+    "artifacts/saved-tool-data/st-loaded-main-vtk.png": "e1c5e5f6b2d9e7c96a658754dfef92a0b3acf4f93b8662418e08be8952c69bc5",
+    "artifacts/saved-tool-data/st-loaded-main.png": "8094da4cde1ee46be1c93aac416d4003cd0b568fb78df6a216a9c76e072a8a05",
+    "artifacts/saved-tool-data/st-selected.png": "b6f7afc00bcdad5ebc1ff5b46343230ad7d637e0ec27a8434b87b6e7d5b2d3c9",
+    "artifacts/saved-tool-data/st-spanish-selected.png": "12b4f40926be3b42a96d13ccd51898aabc8b6b50b4a1d62cfee9cd18eb9c733d",
+    "artifacts/saved-tool-data/st-unselected.png": "2fa8b9a1b3c6d5e72105cea2c963fa50594942dc4b679616282c6d3cfe777c41"
+  }
+}

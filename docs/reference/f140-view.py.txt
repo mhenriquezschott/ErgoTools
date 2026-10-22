@@ -1,0 +1,155 @@
+import sys
+import json,tempfile
+from pathlib import Path
+from unittest.mock import patch
+from PyQt5.QtCore import QTimer,QPoint
+from PyQt5.QtGui import QPainter,QPixmap
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtTest import QTest
+from ergotools.bootstrap import create_window
+from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.domain.language import Language
+from ergotools.presentation.desktop.rotation_dialog import RotationDialog
+from tests.test_rotation_persistence import seed
+from tests.test_rotation_comparison import all_risks
+from tests.test_rotation_solve import fill_rotation,wait_for
+app=QApplication.instance() or QApplication([])
+app.setQuitOnLastWindowClosed(False)
+out=Path('artifacts/comprehensive-integrated');out.mkdir(parents=True,exist_ok=True)
+geometry={}
+def settle(win,width,height):
+ win.show();win.raise_();win.activateWindow();app.processEvents();QTest.qWait(100)
+ win.resize(width,height);app.processEvents();QTest.qWait(100)
+ assert win.size().width()==width and win.size().height()==height,(win.size(),width,height)
+def capture(win,name):
+ app.processEvents();QTest.qWait(70)
+ pixmap=win.grab()
+ renderer=getattr(win,'_body_renderer',None)
+ if renderer:
+  from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
+  from vtkmodules.vtkIOImage import vtkPNGWriter
+  renderer.render_window.Render()
+  image_filter=vtkWindowToImageFilter();image_filter.SetInput(renderer.render_window);image_filter.ReadFrontBufferOff();image_filter.Update()
+  buffer=out/(name+'-vtk.png');writer=vtkPNGWriter();writer.SetFileName(str(buffer));writer.SetInputConnection(image_filter.GetOutputPort());writer.Write()
+  painter=QPainter(pixmap);painter.drawPixmap(renderer.widget.mapTo(win,QPoint(0,0)),QPixmap(str(buffer)));painter.end()
+ assert pixmap.save(str(out/(name+'.png')))
+ geometry[name]={'size':[win.width(),win.height()]}
+ if isinstance(win,RotationDialog):
+  geometry[name]['controls']={key:[getattr(win,key).mapTo(win,QPoint(0,0)).x(),getattr(win,key).mapTo(win,QPoint(0,0)).y(),getattr(win,key).width(),getattr(win,key).height()] for key in ['save_button','optimize_button','optimize_all_button','close_button','transfer_button']}
+  assert all(win.rect().contains(getattr(win,key).mapTo(win,getattr(win,key).rect().bottomRight())) for key in geometry[name]['controls'])
+
+import sqlite3
+from contextlib import closing
+from ergotools.infrastructure.legacy_conversion import convert_legacy_project
+from ergotools.infrastructure.legacy_project import read_legacy_descriptor
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+from ergotools.presentation.desktop.worker_management_dialog import WorkerManagementDialog
+from ergotools.presentation.desktop.plot_window import PlotWindow
+from tests.test_legacy_catalogs import legacy_catalog
+from tests.test_legacy_plot import mapped
+from tests.test_legacy_reconciliation import old_source
+from tests.test_legacy_rotations import rotated
+
+def modal(main,opener,expected,name,width,height,configure):
+ failures=[];timer=QTimer(main);timer.setSingleShot(True)
+ def interact():
+  dialog=QApplication.activeModalWidget()
+  try:
+   assert isinstance(dialog,expected),type(dialog)
+   configure(dialog);settle(dialog,width,height);capture(dialog,name)
+  except BaseException as error:failures.append(error)
+  finally:
+   if dialog is not None:dialog.reject()
+ timer.timeout.connect(interact);timer.start(0);opener();timer.stop();assert not failures,failures
+
+
+import shutil,hashlib,time
+from ergotools.presentation.desktop.job_management_dialog import JobManagementDialog
+from ergotools.presentation.desktop.organization_dialog import OrganizationDialog
+from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.domain.assessments.tst_draft import TstDirectionConvention
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.rotation_scheme import RotationMode
+from ergotools.application.session import DocumentKey
+from ergotools.infrastructure.pulp_rotation_optimizer import PulpRotationOptimizer
+root=Path.cwd();reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+original_path=reference/'tests/ErgoTools_ComparativeRiskTest.ergprj';original=read_legacy_descriptor(original_path,'validation')
+run_folder=Path(tempfile.mkdtemp(prefix='f140-',dir=out));report={'destinations':[],'languages':[]}
+with tempfile.TemporaryDirectory() as directory:
+ folder=Path(directory);source=folder/original_path.name;shutil.copyfile(original_path,source)
+ descriptor=read_legacy_descriptor(source,'validation');descriptor.database_path.parent.mkdir(parents=True);shutil.copyfile(original.database_path,descriptor.database_path);shutil.copytree(original.images_path,descriptor.images_path)
+ before=source.read_bytes(),descriptor.database_path.read_bytes(),{p.name:p.read_bytes() for p in descriptor.images_path.iterdir()}
+ for language in (Language(sys.argv[2]),):
+  tag=language.value;destination=run_folder/(tag+'-converted.ergprj');main=create_window(folder/(tag+'-settings.json'),original_navigation=True,enable_vtk=True)
+  main.language=language;main.translate()
+  try:
+   with patch.object(main,'choose_file',return_value=str(destination)),patch.object(main,'choose_item',side_effect=lambda _,__,ids:(ids[0],True)):
+    main.open_project_location(str(source))
+   workspace=main.presenter.workspace;repository=workspace.rotation_repository();assert repository is workspace.plot_repository()
+   with AssessmentProjectFile.open(destination) as check:
+    assert check.format_version==12 and len(check.list_assessments())==194
+    entries=check.list_assessments();evidence=check.load_legacy_evidence();assert evidence is not None
+    schemes_before=check.load_rotation_schemes();positions_before=check.load_plot_positions()
+   ids={kind:next(e.document.document_id for e in entries if e.kind is kind) for kind in AssessmentKind}
+   for kind,identity in ids.items():
+    workspace.switch(str(destination),identity);main.refresh();state=workspace.active.state
+    for units in MeasurementSystem:
+     main.units.setCurrentIndex(list(MeasurementSystem).index(units));app.processEvents()
+     assert workspace.active.state==state and not workspace.active.is_dirty
+    settle(main,1550,1015);capture(main,tag+'-'+kind.value+'-minimum')
+    settle(main,1800,1200);capture(main,tag+'-'+kind.value+'-enlarged')
+   # Real original ST controls, one edit/undo/redo/save and archive retention.
+   workspace.switch(str(destination),ids[AssessmentKind.TST]);main.refresh();panel=main.tst_panel;active=workspace.active
+   assert active.state.direction_convention is TstDirectionConvention.REFERENCE_UI
+   old=active.state;field=panel.inputs[0][3];field.setText('321');field.textEdited.emit('321');assert panel.commit_inputs()
+   changed=active.state;assert changed.tasks[0].repetitions==321 and changed.direction_convention is TstDirectionConvention.REFERENCE_UI
+   active.undo();assert active.state==old;active.redo();assert active.state==changed
+   main.save_project();workspace.close(choice=CloseChoice.DISCARD);workspace.switch(str(destination),ids[AssessmentKind.TST]);main.refresh();assert workspace.active.state==changed
+   repository=workspace.rotation_repository()
+   modal(main,main.open_worker_management,WorkerManagementDialog,tag+'-workers-selected',1360,900,lambda view:view.worker_table.selectRow(0))
+   modal(main,main.open_job_management,JobManagementDialog,tag+'-jobs-populated',1120,850,lambda view:None)
+   modal(main,main.open_organization,OrganizationDialog,tag+'-organization-expanded',1180,850,lambda view:view.location_tree.expandAll())
+   def inspect_plot(view):
+    assert view.repository is repository
+   modal(main,main.open_plot,PlotWindow,tag+'-plot-populated',1550,1080,inspect_plot)
+   # Saved large/small schemes, solver routing and explicit Apply/Save on the full copy.
+   failures=[];timer=QTimer(main);timer.setSingleShot(True);saved=[]
+   def inspect_rotation():
+    view=app.activeModalWidget()
+    try:
+     assert isinstance(view,RotationDialog) and view.repository is repository
+     for scheme in schemes_before:
+      index=view.scheme_combo.findText(scheme.scheme_id);assert index>=0
+      view.scheme_combo.setCurrentIndex(index);view.scheme_combo.activated.emit(index);app.processEvents()
+      assert view.loaded==scheme and view.grid.current_scheme(scheme.scheme_id).current==scheme.current
+      settle(view,1480,740);capture(view,tag+'-jrot-'+scheme.scheme_id)
+      if scheme.scheme_id=='Large01_10x8':
+       settle(view,1800,1100);view.grid.scrollToBottom();capture(view,tag+'-jrot-large-bottom')
+     index=view.scheme_combo.findText('TEST-All-2x3');view.scheme_combo.setCurrentIndex(index);view.scheme_combo.activated.emit(index)
+     settle(view,1800,1100);view.optimize_button.click();wait_for(lambda:not view.optimization.busy)
+     assert view.optimization.preview is not None;capture(view,tag+'-jrot-cbc')
+     view.optimize_all_button.click();wait_for(lambda:not view.optimization.busy);comparison=view.optimization.comparison
+     assert comparison is not None and comparison.tabs.count()==3
+     comparison.tabs.setCurrentIndex(2);capture(comparison,tag+'-jrot-highs')
+     comparison.apply_button.click();assert view.optimization.preview.mode is RotationMode.ALL_TOOLS
+     view._message=lambda *args,**kwargs:None;view.save_button.click();saved.append(view.loaded)
+     assert next(s for s in repository.load_rotation_schemes() if s.scheme_id=='TEST-All-2x3')==saved[0]
+    except BaseException as error:
+     import traceback;traceback.print_exc();failures.append(error)
+    finally:
+     if isinstance(view,RotationDialog):view.reject()
+   timer.timeout.connect(inspect_rotation);timer.start(0);main.open_rotation();timer.stop();assert not failures,failures
+   with AssessmentProjectFile.open(destination) as check:
+    assert check.format_version==12 and len(check.list_assessments())==194
+    assert check.load_legacy_evidence()==evidence and check.load_plot_positions()==positions_before
+    assert check.load(DocumentKey(check.metadata.project_id,ids[AssessmentKind.TST]))==changed
+    assert len(check.load_rotation_schemes())==7 and saved[0].mode is RotationMode.ALL_TOOLS
+    with check.snapshot(str(run_folder/(tag+'-backup.ergprj')),None,None) as backup:
+     assert backup.load_legacy_evidence()==evidence and backup.load_rotation_schemes()==check.load_rotation_schemes()
+   report['destinations'].append(str(destination));report['languages'].append(tag)
+  finally:
+   main.presenter.workspace.close(choice=CloseChoice.DISCARD);main.close();main.deleteLater();app.processEvents()
+ assert (source.read_bytes(),descriptor.database_path.read_bytes(),{p.name:p.read_bytes() for p in descriptor.images_path.iterdir()})==before
+report.update({'assessments':194,'task_rows':3577,'saved_schemes':7,'st_edit_undo_redo_save_reopen':True,'cbc_and_highs_apply_save':True,'units_projection_preserves_source':True,'archive_retained':True,'source_unchanged':True,'captures':len(geometry),'limits':['Cached assessment results are archived, not yet displayed as historical results.','Original plant transforms are archived; complete display parity remains.','Scientific gates and final UI/platform acceptance remain.']})
+(out/(language.value+'-geometry.json')).write_text(json.dumps(geometry,indent=2)+'\n');(root/('artifacts/f140-'+language.value+'-integration-audit.json')).write_text(json.dumps(report,indent=2)+'\n')
+print('Native comprehensive desktop Open -> LiFFT/DUET/ST, units, ST edit/history/save/reopen, Workers/PLOT and all seven JROT schemes, actual CBC/HiGHS/Apply/Save/backup EN/ES passed. Archive and source unchanged.')

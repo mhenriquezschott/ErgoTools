@@ -1,0 +1,19 @@
+{
+  "checkpoint": "F130",
+  "date": "2026-10-09",
+  "tests_passed": 1030,
+  "coverage_percent": 96.7127867025722,
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "b80c1912eff25b1e60c9ac97f4af97fc2e06e02f621eeaca4e59e9b4dc98cc6d",
+  "independent_wheel": "Extracted-wheel F130 copied comprehensive 191 historical assessments/3532 tasks, exact ownership and raw ST selectors passed.",
+  "ui_changes": false,
+  "visual_validation": "No UI changes; no new visual parity claim. F127 integrated UI evidence retained.",
+  "limits": [
+    "Legacy adapters read version 8 only; destination conversion and comprehensive integrated UI validation remain.",
+    "Overall completion percentage/finish date unvalidated.",
+    "Raw ST selector indices retained; no silent model-direction inference.",
+    "Three older context/tool records and 45 old task rows require explicit reconciliation before complete conversion."
+  ],
+  "comprehensive_audit": "f130_legacy_audit.json"
+}

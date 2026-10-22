@@ -1,0 +1,69 @@
+{
+  "status": "accepted_linux",
+  "tests_passed": 1295,
+  "tests_failed": 0,
+  "tests_skipped": 0,
+  "coverage_percent": 95.97485271440434,
+  "strict_mypy_modules": 252,
+  "required_checks": "all passed",
+  "documentation_inventory": {
+    "python_and_stub_files": 404,
+    "files_reviewed_M4": 404,
+    "files_pending_M4_review": 0,
+    "functions_including_private_and_nested": 2713,
+    "functions_missing_docstring": 0,
+    "functions_with_parameters_missing_args_section": 0,
+    "functions_missing_return_or_yield_section": 0,
+    "functions_reviewed_M4": 2713,
+    "functions_pending_M4_review": 0,
+    "classes_reviewed_M4": 396,
+    "classes_pending_M4_review": 0,
+    "constants_reviewed_M4": 301,
+    "constants_pending_review": 0,
+    "structural_gaps": 0
+  },
+  "changed_files_reviewed": 5,
+  "native_visual_checks": {
+    "hover_teal_en": true,
+    "hover_teal_es": true,
+    "fixture_and_copy_unchanged": true
+  },
+  "captures_inspected": [
+    "main_en",
+    "worker_popup_initial_en",
+    "worker_popup_hover_en",
+    "worker_popup_keyboard_en",
+    "plot_default_en",
+    "plot_apply_hover_en",
+    "plot_enlarged_en",
+    "main_es",
+    "worker_popup_initial_es",
+    "worker_popup_hover_es",
+    "worker_popup_keyboard_es",
+    "plot_default_es",
+    "plot_apply_hover_es",
+    "plot_enlarged_es"
+  ],
+  "risk_palette": {
+    "LiFFT": {
+      "palette_entries_exact": 103,
+      "damage_color_comparisons_exact": 10014
+    },
+    "DUET": {
+      "palette_entries_exact": 105,
+      "damage_color_comparisons_exact": 10014
+    },
+    "TST": {
+      "palette_entries_exact": 105,
+      "damage_color_comparisons_exact": 10014
+    }
+  },
+  "gauge_categories_match_original": true,
+  "reference_modified": false,
+  "dependencies_changed": false,
+  "risk_colors_changed": false,
+  "project_data_modified": false,
+  "fixed_milestone_ledgers_changed": false,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "gate": "../artifacts/visual_corrections_check.log"
+}

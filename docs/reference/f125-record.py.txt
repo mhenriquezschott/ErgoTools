@@ -1,0 +1,147 @@
+import hashlib,json,re,shutil,sys,xml.etree.ElementTree as ET
+from pathlib import Path
+root=Path.cwd()
+def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+manifest=json.loads((root/'docs/reference/source-manifest.json').read_text())
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+assert len(manifest)==500 and all(digest(reference/name)==sha for name,sha in manifest.items())
+previous=json.loads((root/'docs/f124-validation.json').read_text());lock=digest(root/'uv.lock');assert lock==previous['lock_sha256']
+coverage=json.loads((root/'artifacts/coverage.json').read_text())['totals']['percent_covered']
+tests=len(list(ET.parse(root/'artifacts/tests.xml').iter('testcase')));assert tests==982
+log=(root/'artifacts/f125-check.log').read_text();assert '982 passed' in log
+formatted=int(re.search(r'(\d+) files already formatted',log)[1]);typed=int(re.search(r'(?:checked |in )(\d+) source files',log)[1])
+art=root/'artifacts/jrot-single-solve';geometry=json.loads((art/'geometry.json').read_text());assert all(geometry['comparison'].values())
+captures=sorted(art.glob('*.png'));assert len(captures)==22
+wheel=root/'dist/ergotools-0.1.0.dev0-py3-none-any.whl'
+assert 'Extracted-wheel native EN/ES actual CBC' in (root/'artifacts/f125-wheel.log').read_text()
+for name in ['capture','wheel-checks','record']:shutil.copyfile('/tmp/f125-'+name+'.py',root/'docs/reference'/('f125-'+name+'.py.txt'))
+record={'checkpoint':'F125','verified_on':'2026-10-09','python':sys.version.split()[0],'tests_passed':tests,'new_tests':10,'focused_tests_passed':17,'coverage_percent':coverage,'ruff_formatted_files':formatted,'mypy_source_files':typed,'architecture_violations':0,'reference_files_unchanged':len(manifest),'dependency_lock_unchanged':True,'lock_sha256':lock,'wheel_sha256':digest(wheel),'independent_wheel_smoke':'Native EN/ES actual CBC preview, known 40% minimax sample, Use as Current, explicit Save/reopen; unchanged bytes until Save and exact links/mixed-unit evidence retained.','native_screenshots':{p.name:digest(p) for p in captures},'source_result_geometry_and_text':geometry['comparison'],'visual_review':'22 captures inspected: source result at minimum/enlarged; EN/ES empty/manual, busy minimum/enlarged, cancelling, actual result minimum/enlarged, selected, transferred and invalid-limit message. Both panels, labels and bottom controls remain visible. Source wide-table horizontal scrolling retained. Full pixel parity not claimed.','worker_contract':'One owned bounded CBC worker; GUI responsive; cancellation suppresses publication; Escape/window closure deferred until worker exits. No force termination or GUI/repository access from worker.','limits':['HiGHS multi-tool/comparison windows and main JROT wiring remain pending.','Cancel waits for bounded solver completion; does not forcibly interrupt CBC.','Legacy compatibility, comprehensive copied-project integration and final UI/workflow/platform acceptance remain.','Whole-application completion percentage and finish date remain unvalidated.']}
+(root/'docs/f125-validation.json').write_text(json.dumps(record,indent=2)+'\n')
+(root/'docs/jrot-selected-optimization.md').write_text(f'''# Selected-tool JROT workflow — F125, 2026-10-09
+
+The existing original-layout RotationDialog now accepts an injected
+RotationOptimizer and connects Optimize Tool, the right-hand result table and
+Use as Current. CBC handles the selected LiFFT/DUET/ST problem through the F120
+adapter. Multi-tool optimization/comparison and the main JROT action are still
+pending. No dependency, reference-code or operational-project change occurred.
+
+## Source mapping and retained behavior
+
+Reviewed reference src/rotation_layout.py: onOptimizeClicked (2101),
+handleOptimizationError (2239), handleOptimizationResult (2244),
+displayOptimizedTable (2285), clearOptimizedTable (2380),
+transferOptimizedToCurrent (2394), cancelOptimization (3316),
+OptimizationWorker (3351) and Overlay (3397). Line numbers describe the frozen
+working reference, not this package. The source controls are reused through the
+F124 form, rather than reconstructed from screenshots.
+
+The original worker/time-block result headers, 50px result rows, 70px worker
+column, 100px block columns, 700px column budget, one-decimal percentages and
+averages, damage colors and integer mean RGB are retained. Narrow tables retain
+the source horizontal scrollbar. Actual English result/transfer rectangles,
+row heights, column widths and cell text match source-generated controls at
+1480x740 and 1720x1000. Spanish labels follow the established localized form.
+Result cells are read-only: allowing arbitrary edits to an optimizer result
+would invalidate its constraints. Exact identities live in UserRole; transfer
+never parses displayed/localized text. Recorded unit strings are retained and
+not converted by the optimizer or transfer. Missing unit captions follow the
+existing manual-grid Metric display fallback; stored evidence is not modified.
+
+Use as Current replaces current assignments, keeps the right-hand preview and
+updates the existing row calculations/recommendations. It never saves. Explicit
+Save persists the frozen worker/assignment/profile/placement links with
+SINGLE_TOOL provenance only after transfer. Saving a preview alone leaves the
+current scheme's provenance unchanged. Manual edits clear preview/applied
+provenance; changing the displayed tool clears the mismatched preview without
+mislabeling an already transferred schedule. New/load/scope reset clears results.
+Current column widths remain those of the migrated F123 grid instead of the
+source transfer's hardcoded 950px allocation, which could clip recommendations.
+
+## Ownership, boundaries and concrete corrections
+
+application.rotation_preparation freezes only scheduled profiles' required
+probabilities into RotationProblem. Zero is valid; missing tool probabilities,
+foreign projects/profiles and nonpositive limits are rejected. No UI, storage
+read, unit conversion or concrete solver enters the application layer.
+
+RotationSolveController owns one QThread for one immutable problem and injected
+optimizer port. The thread reads no widgets/repository, validates the returned
+schedule/backend/stage evidence and exposes its result only after completion.
+GUI callbacks then render or report failure; neither optimization nor transfer
+writes the project. The limit field accepts 1–180 whole minutes; invalid input
+produces a localized prompt rather than silently falling back to another limit.
+The selected-tool button requires a complete grid with selected-tool evidence.
+No speculative project-switch or multi-user mechanism was added.
+
+The source dim overlay, centered animated white heading and original progress
+bar style/size are retained. Progress represents elapsed time budget, never
+scientific confidence or backend progress. The heading box is wider to fit
+localized cancellation text. The overlay uses the dialog's local rectangle and
+resizes with it, correcting the source child/global-geometry mismatch. A real
+styled Cancel control with the packaged asset makes the source's cancellation
+handler accessible (its original control was commented out).
+
+Cancel marks the owned run for discard; it does not forcibly terminate CBC or
+release ownership while the solver is running. The bounded solver may continue
+until its configured time limit. The overlay remains visible, editing/another
+solve is blocked, and the GUI stays responsive. Escape and the window-manager
+close action cancel/defer rejection until the finished callback joins final
+thread cleanup. Errors unlock the form, retain current edits and report a
+localized failure with logged diagnostics. Closing does not save implicitly.
+
+## Validation and remaining work
+
+{tests} native tests pass, including ten new focused cases ({coverage:.2f}% combined
+statement/branch coverage). Ruff/format ({formatted} files), strict mypy ({typed}
+source files), architecture and wheel/sdist gates pass. Actual CBC balances a
+two-worker/two-target sample from 0%/80% averages to 40% each while retaining
+all target occurrences. Controlled workers verify GUI responsiveness, one-run
+ownership, Cancel/Escape/window close, invalid backend/error retention and
+provenance boundaries. Preparation tests cover exact ownership, zero, missing
+measurements and unused pool jobs. Synthetic projects only.
+
+Twenty-two native captures were inspected: two original result comparisons and
+20 new EN/ES empty/manual, minimum/enlarged busy/result, cancelling, selected,
+transferred and invalid-limit message states. Both panels, adjacent controls,
+labels and bottom rail remain visible. There is no VTK/avatar in the original
+JROT form. Whole-window pixel identity is not claimed: source comparison stubs
+leave unrelated source controls enabled/empty and locale/selection states differ.
+Independent extracted-wheel native EN/ES actual CBC preview/transfer/Save/reopen
+passes with exact mixed-unit evidence and no project writes before Save. All
+500 reference hashes and the approved dependency lock are unchanged. Capture,
+wheel and evidence scripts are archived as docs/reference/f125-*.py.txt.
+
+Next: connect HiGHS multi-tool optimization to the original comparison windows,
+single-tool comparison and result transfer, then main workspace composition.
+Compare/Optimize All Tools and main JROT remain disabled. GLPK is excluded.
+Legacy-format compatibility, the copied comprehensive project and final
+integrated UI/workflow/platform acceptance remain in the established plan.
+Overall completion percentage and finish date remain unvalidated.
+''')
+p=root/'docs/STATUS.md';s=p.read_text().replace('## Latest checkpoint: F124',f'''## Latest checkpoint: F125
+
+The original JROT form now runs selected-tool CBC optimization, displays its
+read-only original result table and applies exact assignments through Use as
+Current without saving. Explicit Save retains optimization provenance. One owned
+worker keeps the GUI responsive; Cancel discards its result and Escape/window
+close waits for bounded solver completion. [Source mapping and limits](jrot-selected-optimization.md).
+
+{tests} native tests pass (ten new focused cases), {coverage:.2f}% coverage;
+Ruff/format ({formatted} files), strict mypy ({typed} source files), architecture/builds
+and independent wheel actual EN/ES CBC/transfer/Save/reopen pass. Twenty-two
+native captures inspected. English result dimensions/text match source at both
+sizes; both panels and bottom controls remain visible. All 500 reference hashes
+and approved dependency lock are unchanged. Evidence: f125-validation.json,
+artifacts/f125-check.log, artifacts/f125-wheel.log and artifacts/jrot-single-solve.
+
+Next: original HiGHS multi-tool and single-tool comparison windows/transfer,
+then main JROT integration. Compare/Optimize All Tools and main JROT remain
+disabled. Legacy compatibility, comprehensive copied-project integration and
+final UI/workflow/platform acceptance remain. Overall completion percentage
+and finish date remain unvalidated.
+
+## F124 historical checkpoint''',1);p.write_text(s)
+for file,body in [('architecture.md','RotationDialog accepts an optional RotationOptimizer port; RotationSolveController owns exactly one bounded QThread. Immutable application preparation requires exact scheduled profile evidence; the worker never touches widgets/repository. GUI completion owns result rendering, explicit transfer/provenance and deferred closure. No concrete solver imports in presentation. Main/HiGHS comparison integration is still pending; see jrot-selected-optimization.md.'),('development.md',f'Inject the approved PulpRotationOptimizer at composition to exercise selected-tool CBC in RotationDialog; manual-only callers remain valid. tests/test_rotation_solve.py covers actual CBC, preview/transfer/Save and owned cancellation/closure/failure. {tests} native tests pass. Capture/wheel/evidence scripts are archived in docs/reference/f125-*.py.txt. See jrot-selected-optimization.md for bounded cancellation behavior and pending main integration.')]:
+ p=root/'docs'/file;p.write_text(p.read_text()+f'\n\n## F125 selected-tool JROT optimization — 2026-10-09\n\n{body}\n')
+p=root/'docs/jrot-form.md';s=p.read_text();lines=s.splitlines();lines.insert(1,'\nF125 adds selected-tool optimization/transfer and owned cancellation; see\n[jrot-selected-optimization.md](jrot-selected-optimization.md). The F124 evidence\nand pending-action descriptions below record that earlier checkpoint.');p.write_text('\n'.join(lines)+'\n')
+print(f'F125 recorded: {tests} tests, {coverage:.2f}% coverage; 22 captures, 500 reference hashes and lock unchanged.')

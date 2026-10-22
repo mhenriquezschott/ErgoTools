@@ -1,0 +1,41 @@
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import zipfile
+from pathlib import Path
+
+root = Path.cwd()
+stage = Path('/tmp/ergotools-cleanup-m1')
+stage.mkdir(exist_ok=True)
+wheel_root = stage / 'wheel'
+wheel_root.mkdir(exist_ok=True)
+wheel = root / 'dist/ergotools-0.1.0.dev0-py3-none-any.whl'
+with zipfile.ZipFile(wheel) as archive:
+    assert not any(name.startswith('tools/') or 'legacy_' in name or 'archived_results' in name for name in archive.namelist())
+    archive.extractall(wheel_root)
+    sources = list((root/'src/ergotools').rglob('*.py'))
+    for path in sources:
+        assert archive.read('ergotools/' + str(path.relative_to(root/'src/ergotools'))) == path.read_bytes()
+previous = root / 'artifacts/m10-integration-final/run/M10-validated.ergprj'
+original_hash = hashlib.sha256(previous.read_bytes()).hexdigest()
+native = stage / 'native comprehensive.ergprj'
+subprocess.run([sys.executable, 'tools/project_migration/migrate_project.py', str(previous), '--output', str(native)],check=True)
+assert hashlib.sha256(previous.read_bytes()).hexdigest() == original_hash
+subprocess.run(['xvfb-run','-a','-s','-screen 0 1920x1200x24', sys.executable, '-I',
+                '/tmp/cleanup_m1_native.py', str(wheel_root), str(native),
+                str(root/'artifacts/cleanup-m1-native')], cwd=stage,check=True,timeout=90)
+reference = Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+manifest = json.loads((root/'docs/reference/source-manifest.json').read_text())
+assert all(hashlib.sha256((reference/path).read_bytes()).hexdigest()==digest for path,digest in manifest.items())
+lock = hashlib.sha256((root/'uv.lock').read_bytes()).hexdigest()
+assert lock == '9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae'
+(root/'artifacts/cleanup-m1-package.json').write_text(json.dumps({
+    'wheel_sha256':hashlib.sha256(wheel.read_bytes()).hexdigest(),
+    'source_python_files_equal':len(sources), 'wheel_excludes_converter':True,
+    'native_workflows_with_converter_imports_blocked':True,
+    'source_format12_hash_unchanged':original_hash,
+    'reference_files_unchanged':len(manifest), 'lock_sha256':lock,
+    'native_project_for_acceptance':str(native),
+},indent=2)+'\n')

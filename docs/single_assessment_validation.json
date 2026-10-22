@@ -1,0 +1,81 @@
+{
+  "percent_complete": 100,
+  "requested_areas": {
+    "ui_and_handlers_removed": true,
+    "domain_and_mutation_api_removed": true,
+    "database_version_storage_removed": true,
+    "upgrade_and_all_workflows_validated": true
+  },
+  "tests_passed": 1334,
+  "tests_failed": 0,
+  "tests_skipped": 0,
+  "combined_coverage_percent": 95.66,
+  "typed_sources_tools": 259,
+  "reviewed_maintained_files": 417,
+  "changed_maintained_files_reviewed": 55,
+  "native_captures_inspected": 13,
+  "independent_database_acceptance_tests": 10,
+  "previous_project_files_unchanged": true,
+  "reference_application_changed": false,
+  "dependencies_changed": false,
+  "current_projects": {
+    "comparative_risk_test": {
+      "format": 15,
+      "assessments": 194,
+      "results": 194,
+      "schemes": 7,
+      "sqlite_integrity": "ok",
+      "foreign_key_violations": 0,
+      "sha256": "b816160027fb374e4a12ceec79245c0ab455fa66caff43652c5e12eb159c7fec",
+      "tables": [
+        "assessment_ownership",
+        "draft_documents",
+        "draft_metadata",
+        "job_placements",
+        "jobs",
+        "plant_layout_images",
+        "plot_station_positions",
+        "plot_worker_markers",
+        "project_details",
+        "project_display_settings",
+        "project_metadata",
+        "risk_measurements",
+        "risk_metadata",
+        "risk_profiles",
+        "rotation_schemes",
+        "saved_assessment_results",
+        "work_catalog",
+        "worker_assignments"
+      ]
+    },
+    "integrated_test": {
+      "format": 15,
+      "assessments": 194,
+      "results": 194,
+      "schemes": 5,
+      "sqlite_integrity": "ok",
+      "foreign_key_violations": 0,
+      "sha256": "35d385c46d2a01e16b408448efec77c40de90df28bca529fa8ec94bd60f4ffc2",
+      "tables": [
+        "assessment_ownership",
+        "draft_documents",
+        "draft_metadata",
+        "job_placements",
+        "jobs",
+        "plant_layout_images",
+        "plot_station_positions",
+        "plot_worker_markers",
+        "project_details",
+        "project_metadata",
+        "risk_measurements",
+        "risk_metadata",
+        "risk_profiles",
+        "rotation_schemes",
+        "saved_assessment_results",
+        "work_catalog",
+        "worker_assignments"
+      ]
+    }
+  },
+  "approved_lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae"
+}

@@ -1,0 +1,61 @@
+import ast,json,tempfile
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import Mock
+from PIL import Image,ImageDraw
+from PyQt5.QtWidgets import QApplication,QMessageBox
+from PyQt5.QtCore import QPoint,Qt,QTimer
+from PyQt5.QtTest import QTest
+from ergotools.application.plot_layout import LoadedPlantLayout
+from ergotools.domain.language import Language
+from ergotools.domain.plot_scope import PlotScope
+from ergotools.infrastructure.plant_image_import import import_plant_image
+from tests.test_plot_results import project
+from tests.test_plot_window import host
+app=QApplication.instance() or QApplication([])
+out=Path('artifacts/plot-map-actions');out.mkdir(parents=True,exist_ok=True)
+reference=Path(json.loads(Path('docs/reference/provenance.json').read_text())['reference_root'])
+source=ast.parse((reference/'src/plant_layout.py').read_text());cls=next(n for n in source.body if isinstance(n,ast.ClassDef) and n.name=='PlantLayoutWindow')
+ns={};exec(compile(ast.Module([n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name in ('grtool4ButtonClicked','grtool7ButtonClicked')],type_ignores=[]),'reviewed-source-controls','exec'),ns)
+comparisons={}
+for lang in Language:
+ with tempfile.TemporaryDirectory() as directory:
+  path=Path(directory);fixture=project.__wrapped__(path);repo=next(fixture);window=host(repo,path,language=lang);panel=window.map_panel;canvas=panel.canvas
+  img=Image.new('RGB',(640,400),'#edf4f7');draw=ImageDraw.Draw(img)
+  for x in range(0,640,80):draw.line((x,0,x,399),fill='#9ab4c5')
+  for y in range(0,400,80):draw.line((0,y,639,y),fill='#9ab4c5')
+  draw.rectangle((1,1,638,398),outline='#073e68',width=3);draw.text((400,320),'Synthetic plant layout',fill='#073e68');img.save(path/'grid.png')
+  image=import_plant_image(path/'grid.png');repo.save_plant_image('P',image);canvas.set_layout(LoadedPlantLayout(panel.scope,image.data));window.filters.apply_filters();app.processEvents();QTest.qWait(750)
+  snapshot=repo.read('P'),repo.load_plot_positions()
+  def capture(name):
+   app.processEvents();QTest.qWait(30);window.grab().save(str(out/(lang.value+'-'+name+'.png')))
+   assert all(window.rect().contains(w.geometry()) for w in (window.filters,window.splitter,window.outcome))
+  window.resize(1300,1045);capture('minimum')
+  panel.buttons['zoom_in'].click();capture('armed-zoom')
+  QTest.mouseClick(canvas.viewport(),Qt.LeftButton,pos=QPoint(380,250));capture('zoomed')
+  panel.buttons['opacity'].click();capture('opacity-90')
+  panel.buttons['actual_size'].click();capture('reset')
+  window.resize(1800,1200);capture('enlarged')
+  panel.choose_capture=Mock(return_value=str(out/(lang.value+'-captured-map.png')));panel.buttons['capture'].click()
+  # Characterize actual reference algorithms against the same real scene/view.
+  dummy=SimpleNamespace(plantlayout_scene=canvas.scene(),pixmap_background_item=canvas.background,plantlayout_image=canvas)
+  opacity=[]
+  for _ in range(4):
+   ns['grtool7ButtonClicked'](dummy);original=[i.opacity() for i in canvas.scene().items()]
+   # The source capture had one earlier opacity click; reset new sequence first.
+   canvas._opacity_index=_;canvas.cycle_opacity();assert [i.opacity() for i in canvas.scene().items()]==original;opacity.append(original)
+  scales=[]
+  for scale in (0.7,1.0,1.1,1.5,2.0,4.0):
+   canvas.resetTransform();canvas.scale(scale,scale);ns['grtool4ButtonClicked'](dummy);expected=canvas.transform().m11()
+   canvas.resetTransform();canvas.scale(scale,scale);canvas.zoom_out();assert canvas.transform().m11()==expected;scales.append([scale,expected])
+  comparisons[lang.value]={'source_opacity_sequence':opacity,'source_zoom_out_scales':scales}
+  panel.buttons['actual_size'].click()
+  visited=[];timer=QTimer(window);timer.setSingleShot(True)
+  def error():
+   box=app.activeModalWidget();assert isinstance(box,QMessageBox);box.grab().save(str(out/(lang.value+'-capture-error.png')));visited.append(True);box.done(QMessageBox.Ok)
+  timer.timeout.connect(error);timer.start(0);panel.choose_capture.return_value=str(path/'missing'/'cannot.png');panel.capture_image();assert visited;timer.stop()
+  window.filters.workplace.set_scope(PlotScope((('Empty',),)));window.filters.apply_filters();capture('empty')
+  assert (repo.read('P'),repo.load_plot_positions())==snapshot
+  window.close();window.deleteLater();app.processEvents();fixture.close()
+(out/'source-comparisons.json').write_text(json.dumps(comparisons,indent=2)+'\n')
+print('18 native captures; original opacity and six zoom-out cases agree exactly; no implicit project writes')

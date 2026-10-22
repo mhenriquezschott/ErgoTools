@@ -1,0 +1,5 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path.cwd()))
+import pytest
+raise SystemExit(pytest.main(['-q','tests/test_plot_positions.py','tests/test_plot_layout.py','tests/test_plot_map_panel.py','tests/test_plot_loader_reference.py','tests/test_plot_markers.py','tests/test_plot_worker_overview.py','tests/test_plot_worker_controls.py','tests/test_plot_worker_picker.py','tests/test_plot_job_overview.py','tests/test_plot_context_actions.py','tests/test_plot_map_actions.py','tests/test_plot_tools_overview.py','tests/test_plot_integration.py']))

@@ -1,0 +1,6085 @@
+{
+  "reference_python": "3.10.18 (main, Jun  5 2025, 13:14:17) [GCC 11.2.0]",
+  "source": "src/risk_ranges.py",
+  "source_sha256": "91f446ebc779503abfce3f38efed85a7e474dec0b011668d4336d3e86454c856",
+  "records": [
+    {
+      "probability_percent": -100.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": -5e-324,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 0.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 5e-324,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 0.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 0.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 0.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 0.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 0.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 0.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 0.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 0.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 0.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 1.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 1.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 1.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 1.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 1.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 1.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 1.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 1.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 1.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 1.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 2.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 2.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 2.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 2.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 2.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 2.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 2.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 2.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 2.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 2.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 3.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 3.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 3.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 3.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 3.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 3.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 3.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 3.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 3.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 3.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 4.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 4.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 4.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 4.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 4.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 4.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 4.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 4.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 4.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 4.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 5.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 5.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 5.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 5.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 5.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 5.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 5.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 5.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 5.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 5.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 6.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 6.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 6.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 6.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 6.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 6.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 6.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 6.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 6.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 6.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 7.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 7.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 7.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 7.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 7.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 7.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 7.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 7.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 7.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 7.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 8.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 8.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 8.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 8.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 8.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 8.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 8.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 8.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 8.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 8.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 9.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 9.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 9.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 9.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 9.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 9.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 9.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 9.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 9.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 9.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 10.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 10.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 10.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 10.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 10.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 10.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 10.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 10.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 10.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 10.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 11.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 11.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 11.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 11.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 11.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 11.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 11.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 11.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 11.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 11.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 12.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 12.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 12.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 12.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 12.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 12.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 12.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 12.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 12.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 12.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 13.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 13.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 13.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 13.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 13.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 13.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 13.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 13.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 13.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 13.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 14.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 14.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 14.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 14.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 14.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 14.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 14.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 14.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 14.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 14.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 15.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 15.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 15.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 15.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 15.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 15.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 15.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 15.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 15.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 15.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 16.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 16.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 16.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 16.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 16.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 16.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 16.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 16.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 16.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 16.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 17.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 17.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 17.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 17.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 17.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 17.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 17.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 17.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 17.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 17.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 18.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 18.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 18.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 18.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 18.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 18.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 18.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 18.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 18.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 18.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 19.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 19.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 19.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 19.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 19.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 19.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 19.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 19.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 19.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 19.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 20.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 20.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 20.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 20.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 20.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 20.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 20.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 20.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 20.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 20.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 21.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 21.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 21.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 21.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 21.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 21.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 21.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 21.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 21.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 21.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 22.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 22.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 22.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 22.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 22.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 22.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 22.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 22.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 22.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 22.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 23.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 23.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 23.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 23.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 23.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 23.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 23.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 23.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 23.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 23.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 24.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 24.1,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 24.2,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 24.3,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 24.4,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 24.5,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 24.6,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 24.7,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 24.8,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 24.9,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 24.999999999999996,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 25.0,
+      "label": "Low Risk",
+      "color": "#19B83F",
+      "range": "0 - 25%"
+    },
+    {
+      "probability_percent": 25.000000000000004,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 25.1,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 25.2,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 25.3,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 25.4,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 25.5,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 25.6,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 25.7,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 25.8,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 25.9,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 26.0,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 26.1,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 26.2,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 26.3,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 26.4,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 26.5,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 26.6,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 26.7,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 26.8,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 26.9,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 27.0,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 27.1,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 27.2,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 27.3,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 27.4,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 27.5,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 27.6,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 27.7,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 27.8,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 27.9,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 28.0,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 28.1,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 28.2,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 28.3,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 28.4,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 28.5,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 28.6,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 28.7,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 28.8,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 28.9,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 29.0,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 29.1,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 29.2,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 29.3,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 29.4,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 29.5,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 29.6,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 29.7,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 29.8,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 29.9,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 30.0,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 30.1,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 30.2,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 30.3,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 30.4,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 30.5,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 30.6,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 30.7,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 30.8,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 30.9,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 31.0,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 31.1,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 31.2,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 31.3,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 31.4,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 31.5,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 31.6,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 31.7,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 31.8,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 31.9,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 32.0,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 32.1,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 32.2,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 32.3,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 32.4,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 32.5,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 32.6,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 32.7,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 32.8,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 32.9,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 33.0,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 33.1,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 33.2,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 33.3,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 33.4,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 33.5,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 33.6,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 33.7,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 33.8,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 33.9,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 34.0,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 34.1,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 34.2,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 34.3,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 34.4,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 34.5,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 34.6,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 34.7,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 34.8,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 34.9,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 35.0,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 35.1,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 35.2,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 35.3,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 35.4,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 35.5,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 35.6,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 35.7,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 35.8,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 35.9,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 36.0,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 36.1,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 36.2,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 36.3,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 36.4,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 36.5,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 36.6,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 36.7,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 36.8,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 36.9,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 37.0,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 37.1,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 37.2,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 37.3,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 37.4,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 37.49999999999999,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 37.5,
+      "label": "Moderate Risk",
+      "color": "#F5C400",
+      "range": "> 25% - 37.5%"
+    },
+    {
+      "probability_percent": 37.50000000000001,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 37.6,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 37.7,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 37.8,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 37.9,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 38.0,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 38.1,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 38.2,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 38.3,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 38.4,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 38.5,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 38.6,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 38.7,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 38.8,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 38.9,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 39.0,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 39.1,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 39.2,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 39.3,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 39.4,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 39.5,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 39.6,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 39.7,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 39.8,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 39.9,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 40.0,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 40.1,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 40.2,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 40.3,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 40.4,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 40.5,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 40.6,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 40.7,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 40.8,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 40.9,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 41.0,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 41.1,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 41.2,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 41.3,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 41.4,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 41.5,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 41.6,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 41.7,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 41.8,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 41.9,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 42.0,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 42.1,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 42.2,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 42.3,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 42.4,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 42.5,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 42.6,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 42.7,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 42.8,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 42.9,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 43.0,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 43.1,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 43.2,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 43.3,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 43.4,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 43.5,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 43.6,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 43.7,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 43.8,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 43.9,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 44.0,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 44.1,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 44.2,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 44.3,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 44.4,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 44.5,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 44.6,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 44.7,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 44.8,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 44.9,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 45.0,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 45.1,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 45.2,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 45.3,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 45.4,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 45.5,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 45.6,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 45.7,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 45.8,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 45.9,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 46.0,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 46.1,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 46.2,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 46.3,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 46.4,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 46.5,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 46.6,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 46.7,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 46.8,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 46.9,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 47.0,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 47.1,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 47.2,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 47.3,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 47.4,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 47.5,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 47.6,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 47.7,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 47.8,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 47.9,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 48.0,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 48.1,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 48.2,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 48.3,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 48.4,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 48.5,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 48.6,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 48.7,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 48.8,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 48.9,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 49.0,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 49.1,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 49.2,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 49.3,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 49.4,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 49.5,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 49.6,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 49.7,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 49.8,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 49.9,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 49.99999999999999,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 50.0,
+      "label": "Moderate High Risk",
+      "color": "#FF8A19",
+      "range": "> 37.5% - 50%"
+    },
+    {
+      "probability_percent": 50.00000000000001,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 50.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 50.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 50.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 50.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 50.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 50.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 50.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 50.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 50.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 51.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 51.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 51.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 51.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 51.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 51.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 51.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 51.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 51.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 51.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 52.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 52.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 52.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 52.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 52.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 52.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 52.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 52.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 52.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 52.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 53.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 53.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 53.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 53.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 53.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 53.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 53.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 53.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 53.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 53.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 54.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 54.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 54.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 54.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 54.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 54.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 54.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 54.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 54.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 54.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 55.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 55.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 55.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 55.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 55.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 55.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 55.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 55.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 55.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 55.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 56.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 56.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 56.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 56.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 56.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 56.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 56.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 56.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 56.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 56.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 57.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 57.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 57.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 57.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 57.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 57.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 57.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 57.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 57.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 57.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 58.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 58.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 58.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 58.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 58.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 58.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 58.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 58.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 58.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 58.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 59.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 59.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 59.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 59.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 59.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 59.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 59.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 59.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 59.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 59.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 60.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 60.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 60.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 60.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 60.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 60.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 60.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 60.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 60.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 60.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 61.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 61.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 61.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 61.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 61.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 61.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 61.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 61.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 61.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 61.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 62.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 62.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 62.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 62.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 62.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 62.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 62.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 62.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 62.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 62.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 63.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 63.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 63.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 63.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 63.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 63.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 63.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 63.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 63.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 63.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 64.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 64.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 64.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 64.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 64.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 64.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 64.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 64.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 64.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 64.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 65.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 65.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 65.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 65.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 65.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 65.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 65.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 65.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 65.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 65.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 66.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 66.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 66.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 66.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 66.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 66.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 66.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 66.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 66.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 66.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 67.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 67.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 67.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 67.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 67.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 67.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 67.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 67.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 67.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 67.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 68.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 68.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 68.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 68.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 68.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 68.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 68.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 68.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 68.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 68.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 69.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 69.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 69.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 69.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 69.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 69.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 69.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 69.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 69.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 69.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 70.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 70.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 70.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 70.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 70.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 70.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 70.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 70.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 70.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 70.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 71.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 71.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 71.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 71.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 71.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 71.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 71.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 71.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 71.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 71.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 72.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 72.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 72.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 72.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 72.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 72.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 72.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 72.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 72.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 72.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 73.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 73.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 73.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 73.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 73.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 73.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 73.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 73.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 73.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 73.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 74.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 74.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 74.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 74.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 74.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 74.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 74.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 74.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 74.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 74.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 75.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 75.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 75.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 75.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 75.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 75.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 75.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 75.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 75.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 75.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 76.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 76.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 76.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 76.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 76.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 76.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 76.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 76.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 76.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 76.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 77.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 77.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 77.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 77.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 77.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 77.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 77.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 77.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 77.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 77.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 78.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 78.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 78.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 78.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 78.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 78.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 78.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 78.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 78.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 78.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 79.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 79.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 79.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 79.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 79.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 79.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 79.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 79.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 79.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 79.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 80.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 80.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 80.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 80.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 80.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 80.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 80.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 80.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 80.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 80.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 81.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 81.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 81.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 81.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 81.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 81.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 81.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 81.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 81.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 81.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 82.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 82.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 82.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 82.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 82.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 82.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 82.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 82.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 82.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 82.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 83.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 83.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 83.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 83.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 83.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 83.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 83.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 83.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 83.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 83.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 84.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 84.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 84.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 84.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 84.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 84.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 84.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 84.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 84.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 84.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 85.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 85.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 85.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 85.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 85.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 85.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 85.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 85.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 85.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 85.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 86.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 86.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 86.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 86.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 86.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 86.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 86.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 86.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 86.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 86.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 87.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 87.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 87.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 87.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 87.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 87.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 87.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 87.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 87.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 87.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 88.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 88.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 88.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 88.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 88.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 88.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 88.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 88.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 88.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 88.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 89.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 89.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 89.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 89.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 89.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 89.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 89.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 89.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 89.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 89.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 90.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 90.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 90.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 90.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 90.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 90.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 90.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 90.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 90.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 90.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 91.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 91.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 91.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 91.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 91.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 91.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 91.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 91.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 91.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 91.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 92.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 92.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 92.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 92.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 92.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 92.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 92.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 92.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 92.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 92.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 93.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 93.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 93.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 93.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 93.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 93.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 93.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 93.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 93.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 93.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 94.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 94.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 94.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 94.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 94.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 94.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 94.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 94.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 94.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 94.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 95.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 95.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 95.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 95.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 95.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 95.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 95.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 95.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 95.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 95.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 96.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 96.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 96.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 96.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 96.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 96.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 96.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 96.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 96.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 96.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 97.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 97.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 97.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 97.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 97.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 97.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 97.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 97.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 97.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 97.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 98.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 98.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 98.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 98.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 98.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 98.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 98.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 98.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 98.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 98.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 99.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 99.1,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 99.2,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 99.3,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 99.4,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 99.5,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 99.6,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 99.7,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 99.8,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 99.9,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 99.99999999999999,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 100.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 100.00000000000001,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    },
+    {
+      "probability_percent": 1000.0,
+      "label": "High Risk",
+      "color": "#FF3B30",
+      "range": "> 50%"
+    }
+  ]
+}

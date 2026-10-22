@@ -1,0 +1,12 @@
+import sys, subprocess
+from pathlib import Path
+files=['organization_management','job_management_dialog','job_management_language','job_management_integration','job_management_save','job_deletion','job_profile_approval','hierarchy_persistence','job_workplace_dialog','job_workplaces']
+files=[str(Path('tests')/('test_'+name+'.py')) for name in files]
+assert all(Path(name).is_file() for name in files), files
+prefix="import sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);sys.path.append(str(Path.cwd()));"
+check="assert all(not getattr(m,'__file__',None) or Path(m.__file__).is_relative_to(sys.argv[1]) for n,m in tuple(sys.modules.items()) if n=='ergotools' or n.startswith('ergotools.'));"
+code=prefix+"import pytest;result=pytest.main(sys.argv[2:]);"+check+"raise SystemExit(result)"
+subprocess.run([sys.executable,'-I','-c',code,sys.argv[1],*files,'--no-cov','-q'],check=True,timeout=180)
+code=prefix+"exec(compile(open('/tmp/m03-view.py').read(),'/tmp/m03-view.py','exec'));"+check
+subprocess.run([sys.executable,'-I','-c',code,sys.argv[1]],check=True,timeout=90)
+print('M03 independent wheel: workflows and native visual states passed.')

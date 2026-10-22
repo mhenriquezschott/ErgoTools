@@ -1,0 +1,43 @@
+from pathlib import Path
+import tempfile
+from unittest.mock import patch
+from PyQt5.QtWidgets import QApplication,QMessageBox
+from PyQt5.QtTest import QTest
+from PyQt5.QtCore import QPoint
+from PyQt5.QtGui import QPainter,QPixmap
+from ergotools.bootstrap import create_window
+from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.application.settings import Language
+from ergotools.domain.assessments.duet_draft import DuetDraft,DuetTask
+from ergotools.domain.assessments.tst import TstTask,TstDirection
+from ergotools.domain.assessments.tst_draft import TstDraft
+from ergotools.domain.assessments.lifft_draft import LifftDraft,LifftTask
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.project import ProjectMetadata
+app=QApplication([]);out=Path.cwd()/'artifacts/tst-integration';out.mkdir(parents=True,exist_ok=True)
+def capture(window,name):
+ QTest.qWait(900);engine=window._body_renderer
+ from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
+ from vtkmodules.vtkIOImage import vtkPNGWriter
+ pixmap=window.grab();engine.render_window.Render()
+ filt=vtkWindowToImageFilter();filt.SetInput(engine.render_window);filt.ReadFrontBufferOff();filt.Update()
+ writer=vtkPNGWriter();buffer=out/(name+'-vtk.png');writer.SetFileName(str(buffer));writer.SetInputConnection(filt.GetOutputPort());writer.Write()
+ painter=QPainter(pixmap);painter.drawPixmap(engine.widget.mapTo(window,QPoint(0,0)),QPixmap(str(buffer)));painter.end();pixmap.save(str(out/(name+'.png')))
+with tempfile.TemporaryDirectory() as directory:
+ window=create_window(Path(directory)/'settings.json',original_navigation=True,enable_vtk=True);workspace=window.presenter.workspace
+ workspace.create(str(Path(directory)/'tools.ergprj'),ProjectMetadata('p','Integrated tools',MeasurementSystem.IMPERIAL),'lifft',LifftDraft(MeasurementSystem.IMPERIAL,(LifftTask('l',12,20,100),)))
+ workspace.create_assessment('duet',DuetDraft(tuple(DuetTask(str(i),6,100) for i in range(15))))
+ workspace.create_assessment('st',TstDraft(MeasurementSystem.IMPERIAL,tuple(TstTask(str(i),TstDirection.DOWNWARD,12,20,100) for i in range(15))))
+ window.refresh();window.show();capture(window,'st-populated')
+ window.tst_panel.calculate_button.click();capture(window,'st-review-required')
+ window.tst_panel.inputs[0][0].showPopup();QTest.qWait(100);window.tst_panel.inputs[0][0].view().grab().save(str(out/'dropdown.png'));window.tst_panel.inputs[0][0].hidePopup()
+ window.language=Language.SPANISH;window.translate();window.refresh();window.tst_panel.calculate_button.click();capture(window,'spanish')
+ window.units.setCurrentIndex(1);window.tst_panel.calculate_button.click();capture(window,'metric-view')
+ window.resize(1920,1200);capture(window,'wide')
+ window.tst_panel.inputs[1][2].setText('bad');window.tst_panel.inputs[1][2].textEdited.emit('bad');window.assessment_tabs.setCurrentIndex(0);capture(window,'invalid-switch-retained')
+ window.tst_panel.reset_button.click();window.resize(1550,1015);QTest.qWait(120);window.tst_panel.body_scroll.verticalScrollBar().setValue(window.tst_panel.body_scroll.verticalScrollBar().maximum());capture(window,'reset-bottom')
+ with patch.object(window,'dirty_choice',return_value=CloseChoice.DISCARD):window.assessment_tabs.setCurrentIndex(1)
+ window.duet_panel.calculate_button.click();capture(window,'return-duet')
+ window.assessment_tabs.setCurrentIndex(2);window.tst_panel.calculate_button.click();capture(window,'return-st')
+ workspace.close(choice=CloseChoice.DISCARD);window.close();QTest.qWait(100)
+ print('Native integrated DUET populated/calculated/dropdown/Spanish/invalid switch/reset/bottom/LiFFT return captures complete')

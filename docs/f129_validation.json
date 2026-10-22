@@ -1,0 +1,16 @@
+{
+  "checkpoint": "F129",
+  "date": "2026-10-09",
+  "tests_passed": 1024,
+  "coverage_percent": 96.70755024949867,
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "960a0856276727e4848acb837183ee6fec15d923856b421175e9bae346618e02",
+  "independent_wheel": "Extracted-wheel F129 copied comprehensive hierarchy/jobs/assignments/all risk versions passed.",
+  "ui_changes": false,
+  "visual_validation": "No UI changes; no new visual parity claim. F127 integrated UI evidence retained.",
+  "limits": [
+    "Legacy adapters read version 8 only; destination conversion and comprehensive integrated UI validation remain.",
+    "Overall completion percentage/finish date unvalidated."
+  ]
+}

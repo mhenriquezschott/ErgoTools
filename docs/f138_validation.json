@@ -1,0 +1,16 @@
+{
+  "checkpoint": "F138",
+  "date": "2026-10-09",
+  "tests_passed": 1078,
+  "coverage_percent": 96.53634807674985,
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "f14af87c4ab2f7e5f20ef0fb2a807842f12c36e8c2f23b5dc1b9cb0ee51470bf",
+  "independent_wheel": "Extracted-wheel F138 complete comprehensive copy conversion/reopen/backup: all 194 assessments, 3577 task rows, 56 ST sources, catalogs, four maps/geometry, seven schemes/179 cells and full original evidence passed. Source unchanged.",
+  "ui_changes": false,
+  "visual_validation": "No UI changes; no new visual parity claim. F127 integrated UI evidence retained.",
+  "limits": [
+    "Full conversion verified; desktop Open integration, cached-result/display parity, scientific gates and final comprehensive UI/platform acceptance remain.",
+    "Overall completion percentage/finish date unvalidated."
+  ]
+}

@@ -1,0 +1,68 @@
+import hashlib
+import importlib.metadata
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import tomllib
+import zipfile
+from pathlib import Path
+
+root = Path.cwd()
+def digest(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+reference = Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+expected = json.loads((root/'docs/reference/source-manifest.json').read_text())
+actual = {str(p.relative_to(reference)): digest(p) for p in reference.rglob('*') if p.is_file() and '.git' not in p.relative_to(reference).parts}
+assert actual == expected
+old = tomllib.loads(Path('/tmp/ergotools-pre-qt.lock').read_text())
+new = tomllib.loads((root/'uv.lock').read_text())
+before = {p['name']:p['version'] for p in old['package']}
+after = {p['name']:p['version'] for p in new['package']}
+assert all(after.get(name) == version for name,version in before.items())
+added = {name:version for name,version in after.items() if name not in before}
+assert added == {'pyqt5':'5.15.11','pyqt5-qt5':'5.15.17','pyqt5-sip':'12.17.0'}
+assert all(importlib.metadata.version(name) == version for name,version in added.items())
+wheel = root/'dist/ergotools-0.1.0.dev0-py3-none-any.whl'
+smoke = '''
+import sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+import ergotools
+assert Path(ergotools.__file__).is_relative_to(Path(sys.argv[1]))
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import Qt
+from PyQt5.QtTest import QTest
+from ergotools.bootstrap import create_window
+from ergotools.domain.assessments.lifft_draft import LifftDraft,LifftTask
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.project import ProjectMetadata
+from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+from ergotools.application.session import DocumentKey
+app=QApplication([])
+root=Path(sys.argv[1]);window=create_window(root/'settings.json');window.show();app.processEvents()
+workspace=window.presenter.workspace
+workspace.create(str(root/'project.sqlite'),ProjectMetadata('p','Wheel smoke',MeasurementSystem.IMPERIAL),'lifft',LifftDraft(MeasurementSystem.IMPERIAL,(LifftTask('a',12,10,100),)))
+window.refresh();window.field.setCurrentIndex(1);window.entry.setFocus();window.entry.selectAll();QTest.keyClicks(window.entry,'20');QTest.mouseClick(window.buttons['apply'],Qt.LeftButton)
+assert workspace.active.state.tasks[0].load==20
+window.calculate();assert window.damage_value.text()!='—'
+window.undo();assert workspace.active.state.tasks[0].load==10
+window.redo();window.save_project();assert not workspace.active.is_dirty
+assert not window.grab().isNull()
+workspace.close(choice=CloseChoice.DISCARD);window.close()
+with AssessmentProjectFile.open(root/'project.sqlite') as project:
+ assert project.load(DocumentKey('p','lifft')).tasks[0].load==20
+print('isolated wheel desktop: packaged assets, Qt edits, history, calculation and save/reopen passed')
+'''
+with tempfile.TemporaryDirectory() as directory:
+    with zipfile.ZipFile(wheel) as archive:
+        archive.extractall(directory)
+    result=subprocess.run([sys.executable,'-I','-c',smoke,directory],cwd=directory,env={**os.environ,'QT_QPA_PLATFORM':'offscreen'},check=True,capture_output=True,text=True)
+    print(result.stdout.strip())
+coverage=json.loads((root/'artifacts/coverage.json').read_text())
+evidence=dict(milestone='F28',verified_on='2026-09-29',python=sys.version.split()[0],tests_passed=288,new_desktop_tests=11,coverage_percent=coverage['totals']['percent_covered'],reference_files_unchanged=len(actual),existing_locked_versions_unchanged=True,approved_added_packages=added,prior_lock_sha256=digest(Path('/tmp/ergotools-pre-qt.lock')),lock_sha256=digest(root/'uv.lock'),wheel_sha256=digest(wheel),independent_wheel_smoke='passed',native_platform='xcb',offscreen_rendering='passed',font_substitution='Segoe UI -> Cantarell',visual_sizes=[[1200,780],[960,680]],screenshots={p.name:digest(p) for p in sorted((root/'artifacts/desktop').glob('*.png'))},overall_completion_estimate_percent=55)
+(root/'docs/f28-validation.json').write_text(json.dumps(evidence,indent=2)+'\n')
+(root/'docs/reference/f28-previous-versions.json').write_text(json.dumps(before,indent=2)+'\n')
+print(json.dumps({k:v for k,v in evidence.items() if k!='screenshots'},indent=2))

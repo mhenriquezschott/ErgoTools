@@ -1,0 +1,12 @@
+import sys,tempfile
+from pathlib import Path
+sys.path.append(str(Path.cwd()))
+from tests.test_plot_loader_reference import test_active_reference_loader_matches_image_space_and_resize_fit
+for dimensions in ((1600,600),(600,1600),(900,900)):
+ with tempfile.TemporaryDirectory() as folder:
+  test_active_reference_loader_matches_image_space_and_resize_fit(Path(folder),dimensions)
+for name,module in tuple(sys.modules.items()):
+ if name=='ergotools' or name.startswith('ergotools.'):
+  filename=getattr(module,'__file__',None)
+  if filename:assert Path(filename).is_relative_to(Path(sys.argv[1])),filename
+print('Extracted-wheel F142 active original PLOT loader exact scene/fit/alignment/resize compatibility passed for landscape/portrait/square images. No dormant Plant transforms introduced.')

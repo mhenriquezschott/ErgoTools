@@ -1,0 +1,8 @@
+import sys,subprocess
+from pathlib import Path
+sys.path.append(str(Path.cwd()))
+command=[sys.executable,'-I','-c',"import sys;sys.path.insert(0,sys.argv[1]);sys.path.append(str(__import__('pathlib').Path.cwd()));import pytest;code=pytest.main(['-q','-o','cache_dir=/tmp/ergotools-m09-caption-wheel-cache','tests/test_main_navigation.py','tests/test_project_details.py','tests/test_save_as_details.py']);assert code==0;assert all(not getattr(m,'__file__',None) or __import__('pathlib').Path(m.__file__).is_relative_to(sys.argv[1]) for n,m in tuple(sys.modules.items()) if n=='ergotools' or n.startswith('ergotools.'))",sys.argv[1]]
+subprocess.run(command,check=True,timeout=120)
+exec(compile(open('/tmp/m09-caption-native.py').read(),'/tmp/m09-caption-native.py','exec'))
+assert all(not getattr(m,'__file__',None) or Path(m.__file__).is_relative_to(sys.argv[1]) for n,m in tuple(sys.modules.items()) if n=='ergotools' or n.startswith('ergotools.'))
+print('Independent packaged caption regression/native checks passed; imports confined to extracted wheel.')

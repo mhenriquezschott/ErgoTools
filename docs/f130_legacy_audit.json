@@ -1,0 +1,29 @@
+{
+  "checkpoint": "F130",
+  "source_hashes": {
+    "tests/ErgoTools_ComparativeRiskTest.ergprj": "618fc1e804821af47e6e163577196a493bab96ccbe532e62454d9bab3a58eca6",
+    "tests/ErgoTools_ComparativeRiskTest_data/ErgoTools_ComparativeRiskTest_data.db": "cf039faf713224bf480814f6721c80af647ba8fc23dd5f94c8bd772db283d222"
+  },
+  "normalized_assessments": 191,
+  "assessments_by_tool": {
+    "duet": 35,
+    "lifft": 100,
+    "tst": 56
+  },
+  "tasks_by_tool": {
+    "duet": 735,
+    "lifft": 2010,
+    "tst": 787
+  },
+  "tasks_total": 3532,
+  "exact_cached_result_and_ownership_comparison": "Every normalized assessment and task compared against source values; all equal.",
+  "empty_string_input_fields_retained_in_raw_rows": 2802,
+  "old_unversioned_summary_rows": 194,
+  "old_unversioned_context_tool_rows_without_normalized_history": 3,
+  "old_unversioned_task_rows": 3577,
+  "limits": [
+    "ST selector indices retained raw; no TstDirection inference or scientific approval.",
+    "No cached results made fresh and no destination project published.",
+    "Old unversioned tables coexist with normalized history; their residual records must be explicitly reconciled before complete conversion."
+  ]
+}

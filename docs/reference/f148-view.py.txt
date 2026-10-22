@@ -1,0 +1,199 @@
+import sys
+import json,tempfile
+from pathlib import Path
+from unittest.mock import patch
+from PyQt5.QtCore import QTimer,QPoint
+from PyQt5.QtGui import QPainter,QPixmap
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtTest import QTest
+from ergotools.bootstrap import create_window
+from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.domain.language import Language
+from ergotools.presentation.desktop.rotation_dialog import RotationDialog
+from tests.test_rotation_persistence import seed
+from tests.test_rotation_comparison import all_risks
+from tests.test_rotation_solve import fill_rotation,wait_for
+app=QApplication.instance() or QApplication([])
+app.setQuitOnLastWindowClosed(False)
+out=Path('artifacts/batch-f145-f148');out.mkdir(parents=True,exist_ok=True)
+geometry={}
+def settle(win,width,height):
+ win.show();win.raise_();win.activateWindow();app.processEvents();QTest.qWait(100)
+ win.resize(width,height);app.processEvents();QTest.qWait(100)
+ assert win.size().width()==width and win.size().height()==height,(win.size(),width,height)
+def capture(win,name):
+ app.processEvents();QTest.qWait(800)
+ pixmap=win.grab()
+ renderer=getattr(win,'_body_renderer',None)
+ if renderer:
+  from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
+  from vtkmodules.vtkIOImage import vtkPNGWriter
+  renderer.render_window.Render()
+  image_filter=vtkWindowToImageFilter();image_filter.SetInput(renderer.render_window);image_filter.ReadFrontBufferOff();image_filter.Update()
+  buffer=out/(name+'-vtk.png');writer=vtkPNGWriter();writer.SetFileName(str(buffer));writer.SetInputConnection(image_filter.GetOutputPort());writer.Write()
+  painter=QPainter(pixmap);painter.drawPixmap(renderer.widget.mapTo(win,QPoint(0,0)),QPixmap(str(buffer)));painter.end()
+ assert pixmap.save(str(out/(name+'.png')))
+ geometry[name]={'size':[win.width(),win.height()]}
+ if isinstance(win,RotationDialog):
+  geometry[name]['controls']={key:[getattr(win,key).mapTo(win,QPoint(0,0)).x(),getattr(win,key).mapTo(win,QPoint(0,0)).y(),getattr(win,key).width(),getattr(win,key).height()] for key in ['save_button','optimize_button','optimize_all_button','close_button','transfer_button']}
+  assert all(win.rect().contains(getattr(win,key).mapTo(win,getattr(win,key).rect().bottomRight())) for key in geometry[name]['controls'])
+
+import sqlite3
+from contextlib import closing
+from ergotools.infrastructure.legacy_conversion import convert_legacy_project
+from ergotools.infrastructure.legacy_project import read_legacy_descriptor
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+from ergotools.presentation.desktop.worker_management_dialog import WorkerManagementDialog
+from ergotools.presentation.desktop.plot_window import PlotWindow
+from tests.test_legacy_catalogs import legacy_catalog
+from tests.test_legacy_plot import mapped
+from tests.test_legacy_reconciliation import old_source
+from tests.test_legacy_rotations import rotated
+
+def modal(main,opener,expected,name,width,height,configure):
+ failures=[];timer=QTimer(main);timer.setSingleShot(True)
+ def interact():
+  dialog=QApplication.activeModalWidget()
+  try:
+   assert isinstance(dialog,expected),type(dialog)
+   configure(dialog);settle(dialog,width,height);capture(dialog,name)
+  except BaseException as error:failures.append(error)
+  finally:
+   if dialog is not None:dialog.reject()
+ timer.timeout.connect(interact);timer.start(0);opener();timer.stop();assert not failures,failures
+
+
+import shutil,hashlib,time
+from ergotools.presentation.desktop.job_management_dialog import JobManagementDialog
+from ergotools.presentation.desktop.organization_dialog import OrganizationDialog
+from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.domain.assessments.tst_draft import TstDirectionConvention
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.rotation_scheme import RotationMode
+from ergotools.application.session import DocumentKey
+from ergotools.infrastructure.pulp_rotation_optimizer import PulpRotationOptimizer
+root=Path.cwd();reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+original_path=reference/'tests/ErgoTools_ComparativeRiskTest.ergprj';original=read_legacy_descriptor(original_path,'validation')
+run_folder=Path(tempfile.mkdtemp(prefix='f148-',dir=out));report={'destinations':[],'languages':[]}
+with tempfile.TemporaryDirectory() as directory:
+ folder=Path(directory);source=folder/original_path.name;shutil.copyfile(original_path,source)
+ descriptor=read_legacy_descriptor(source,'validation');descriptor.database_path.parent.mkdir(parents=True);shutil.copyfile(original.database_path,descriptor.database_path);shutil.copytree(original.images_path,descriptor.images_path)
+ before=source.read_bytes(),descriptor.database_path.read_bytes(),{p.name:p.read_bytes() for p in descriptor.images_path.iterdir()}
+ for language in (Language(sys.argv[2]),):
+  tag=language.value;destination=run_folder/(tag+'-converted.ergprj');main=create_window(folder/(tag+'-settings.json'),original_navigation=True,enable_vtk=True)
+  main.language=language;main.translate()
+  try:
+   with patch.object(main,'choose_file',return_value=str(destination)),patch.object(main,'choose_item',side_effect=lambda _,__,ids:(ids[0],True)):
+    main.open_project_location(str(source))
+   workspace=main.presenter.workspace;repository=workspace.rotation_repository();assert repository is workspace.plot_repository()
+   with AssessmentProjectFile.open(destination) as check:
+    assert check.format_version==12 and len(check.list_assessments())==194
+    for entry in check.list_assessments():
+     historical=check.load_historical_result(entry.document)
+     assert historical is not None and historical.source==check.load(entry.document)
+     assert len(historical.tasks)==entry.task_count
+    entries=check.list_assessments();evidence=check.load_legacy_evidence();assert evidence is not None
+    schemes_before=check.load_rotation_schemes();positions_before=check.load_plot_positions()
+   from ergotools.application.assessments.evaluation import AssessmentEvaluator,EvaluationStatus
+   from ergotools.application.session import DocumentSession
+   from ergotools.application.assessment_export import saved_summary_rows
+   from ergotools.infrastructure.summary_export import write_summary_csv
+   from ergotools.presentation.summary_csv import summary_csv_table
+   from collections import Counter
+   counts=Counter()
+   # Fresh evaluation of every source: captured identity and archive are immutable.
+   with AssessmentProjectFile.open(destination) as check:
+    for entry in entries:
+     state=check.load(entry.document);session=DocumentSession(entry.document,state,persisted=True);evaluator=AssessmentEvaluator()
+     method={AssessmentKind.LIFFT:evaluator.evaluate_lifft_grid,AssessmentKind.DUET:evaluator.evaluate_duet_grid,AssessmentKind.TST:evaluator.evaluate_tst_grid}[entry.kind]
+     result=method(session);counts[result.status.value]+=1
+     assert result.status in (EvaluationStatus.COMPLETE,EvaluationStatus.PARTIAL), (entry.document,result.status,result.issues)
+     assert session.state==state and not session.is_dirty and check.load_historical_result(entry.document).source==state
+   ids={kind:next(e.document.document_id for e in entries if e.kind is kind) for kind in AssessmentKind}
+   edits={}
+   for kind,identity in ids.items():
+    workspace.switch(str(destination),identity);main.refresh();state=workspace.active.state
+    panel=main.tst_panel if kind is AssessmentKind.TST else main.duet_panel if kind is AssessmentKind.DUET else main.task_panel
+    presenter=main.tst_presenter if kind is AssessmentKind.TST else main.duet_presenter if kind is AssessmentKind.DUET else main.presenter
+    for units in MeasurementSystem:
+     main.units.setCurrentIndex(list(MeasurementSystem).index(units));app.processEvents();panel.calculate_button.click()
+     result=presenter.evaluator.current(workspace.active)
+     assert result.status in (EvaluationStatus.COMPLETE,EvaluationStatus.PARTIAL) and result.summary is not None
+     assert workspace.active.state==state and not workspace.active.is_dirty
+    historical=workspace.historical_result();assert historical is not None
+    cards=main.results_sidebar
+    assert cards.assessment_status_label.text() not in ('Recorded','Registrado')
+    settle(main,1550,1015);capture(main,tag+'-'+kind.value+'-fresh-minimum')
+    field=panel.inputs[0][-1];text_before=field.text();field.setText('invalid');field.textEdited.emit('invalid')
+    assert not cards.risk_gauge.has_value and workspace.historical_result()==historical
+    capture(main,tag+'-'+kind.value+'-pending')
+    # Export via the real toolbar must neither commit nor replace invalid text.
+    csv_path=run_folder/(tag+'-'+kind.value+'-pending.csv')
+    with patch.object(main,'choose_file',return_value=str(csv_path)):
+     main.main_navigation.toolbar_actions['export'].trigger()
+    assert csv_path.exists() and field.text()=='invalid' and workspace.active.state==state
+    field.setText('321');field.textEdited.emit('321');panel.calculate_button.click();changed=workspace.active.state
+    assert changed.tasks[0].repetitions==321
+    workspace.active.undo();main.refresh();assert workspace.active.state==state
+    workspace.active.redo();main.refresh();assert workspace.active.state==changed
+    main.save_project();workspace.close(choice=CloseChoice.DISCARD);workspace.switch(str(destination),identity);main.refresh();assert workspace.active.state==changed
+    panel.calculate_button.click();result=presenter.evaluator.current(workspace.active)
+    assert result.summary is not None and workspace.historical_result() is None
+    with AssessmentProjectFile.open(destination) as check:
+     rows=saved_summary_rows(check,kind);row=next(row for row in rows if row.document==workspace.active.document)
+     assert row.status in (EvaluationStatus.COMPLETE,EvaluationStatus.PARTIAL)
+     assert row.total_damage==result.summary.total_damage and row.probability==result.summary.probability
+     assert any(row.status is EvaluationStatus.RECORDED for row in rows)
+     write_summary_csv(str(run_folder/(tag+'-'+kind.value+'-saved.csv')),summary_csv_table(rows,'fixed timestamp'))
+    edits[kind]=changed
+    settle(main,1800,1200);capture(main,tag+'-'+kind.value+'-fresh-enlarged')
+   changed=edits[AssessmentKind.TST]
+   repository=workspace.rotation_repository()
+   saved_workers=[]
+   def inspect_worker(view):
+    view.worker_table.selectRow(0);app.processEvents();worker_id=view.selected_worker_id
+    view.first_name_input.setText('Validation '+tag);view.save_button.click()
+    stored=next(worker for worker in workspace.read_hierarchy().hierarchy.work.workers if worker.worker_id==worker_id)
+    assert stored.first_name=='Validation '+tag
+    saved_workers.append(stored)
+    view.first_name_input.setText('discard this');view.cancel_button.click()
+    assert view.first_name_input.text()=='Validation '+tag
+   modal(main,main.open_worker_management,WorkerManagementDialog,tag+'-workers-save-cancel',1360,900,inspect_worker)
+   def inspect_plot(view):
+    assert view.repository is repository
+   modal(main,main.open_plot,PlotWindow,tag+'-plot-populated',1550,1080,inspect_plot)
+   # Saved large/small schemes, solver routing and explicit Apply/Save on the full copy.
+   failures=[];timer=QTimer(main);timer.setSingleShot(True);saved=[]
+   def inspect_rotation():
+    view=app.activeModalWidget()
+    try:
+     assert isinstance(view,RotationDialog) and view.repository is repository
+     index=view.scheme_combo.findText('TEST-All-2x3');view.scheme_combo.setCurrentIndex(index);view.scheme_combo.activated.emit(index)
+     settle(view,1800,1100);view.optimize_button.click();wait_for(lambda:not view.optimization.busy)
+     assert view.optimization.preview is not None;capture(view,tag+'-jrot-cbc')
+     view.optimize_all_button.click();wait_for(lambda:not view.optimization.busy);comparison=view.optimization.comparison
+     assert comparison is not None and comparison.tabs.count()==3
+     comparison.tabs.setCurrentIndex(2);capture(comparison,tag+'-jrot-highs')
+     comparison.apply_button.click();assert view.optimization.preview.mode is RotationMode.ALL_TOOLS
+     view._message=lambda *args,**kwargs:None;view.save_button.click();saved.append(view.loaded)
+     assert next(s for s in repository.load_rotation_schemes() if s.scheme_id=='TEST-All-2x3')==saved[0]
+    except BaseException as error:
+     import traceback;traceback.print_exc();failures.append(error)
+    finally:
+     if isinstance(view,RotationDialog):view.reject()
+   timer.timeout.connect(inspect_rotation);timer.start(0);main.open_rotation();timer.stop();assert not failures,failures
+   with AssessmentProjectFile.open(destination) as check:
+    assert check.format_version==12 and len(check.list_assessments())==194
+    assert check.load_legacy_evidence()==evidence and check.load_plot_positions()==positions_before
+    assert next(worker for worker in check.load_hierarchy().work.workers if worker.worker_id==saved_workers[0].worker_id)==saved_workers[0]
+    assert all(check.load(DocumentKey(check.metadata.project_id,ids[kind]))==state for kind,state in edits.items())
+    assert len(check.load_rotation_schemes())==7 and saved[0].mode is RotationMode.ALL_TOOLS
+    with check.snapshot(str(run_folder/(tag+'-backup.ergprj')),None,None) as backup:
+     assert backup.load_legacy_evidence()==evidence and backup.load_rotation_schemes()==check.load_rotation_schemes()
+   report['destinations'].append(str(destination));report['languages'].append(tag)
+  finally:
+   main.presenter.workspace.close(choice=CloseChoice.DISCARD);main.close();main.deleteLater();app.processEvents()
+ assert (source.read_bytes(),descriptor.database_path.read_bytes(),{p.name:p.read_bytes() for p in descriptor.images_path.iterdir()})==before
+report.update({'assessments':194,'task_rows':3577,'saved_schemes':7,'st_edit_undo_redo_save_reopen':True,'cbc_and_highs_apply_save':True,'units_projection_preserves_source':True,'archive_retained':True,'source_unchanged':True,'historical_results_all_sources':True,'fresh_source_status_counts':dict(counts),'fresh_save_export_reopen_all_tools':True,'worker_save_cancel_reopen':True,'pending_input_hides_recorded_result':True,'gauge_refresh_does_not_restart':True,'captures':len(geometry),'limits':['Expanded assessment popup still needs manual visual verification.','Dormant original Plant transforms remain archived; active loader compatibility tested in F142.','Final UI/platform acceptance and review-register items remain.']})
+(out/(language.value+'-geometry.json')).write_text(json.dumps(geometry,indent=2)+'\n');(root/('artifacts/f148-'+language.value+'-integration-audit.json')).write_text(json.dumps(report,indent=2)+'\n')
+print('F148 native comprehensive fresh evaluation of all 194 sources; all three tools Calculate/edit/undo/redo/Save/export/reopen, units, pending export, PLOT, CBC/HiGHS/Apply/Save/backup EN/ES passed. Archive and source unchanged.')

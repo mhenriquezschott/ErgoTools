@@ -1,0 +1,10 @@
+import sys,subprocess
+from pathlib import Path
+sys.path.append(str(Path.cwd()))
+command=[sys.executable,'-I','-c',"import sys;sys.path.insert(0,sys.argv[1]);sys.path.append(str(__import__('pathlib').Path.cwd()));import pytest;code=pytest.main(['-q','--cache-clear','-o','cache_dir=/tmp/ergotools-m07-m08-wheel-cache','tests/test_rotation_history.py','tests/test_rotation_dialog.py','tests/test_rotation_table.py','tests/test_rotation_scope.py','tests/test_rotation_solve.py','tests/test_rotation_comparison.py','tests/test_rotation_persistence.py','tests/test_rotation_optimization.py','tests/test_rotation_integration.py','tests/test_legacy_rotations.py']);assert code==0;assert all(not getattr(m,'__file__',None) or __import__('pathlib').Path(m.__file__).is_relative_to(sys.argv[1]) for n,m in tuple(sys.modules.items()) if n=='ergotools' or n.startswith('ergotools.'))",sys.argv[1]]
+subprocess.run(command,check=True,timeout=180)
+print('Independent extracted-wheel JROT tests passed; all ErgoTools imports confined to extraction.')
+# Repeat only changed native UI/application flows on the built artifact, not the full gate.
+exec(compile(open('/tmp/m07-m08-native.py').read(),'/tmp/m07-m08-native.py','exec'))
+assert all(not getattr(m,'__file__',None) or Path(m.__file__).is_relative_to(sys.argv[1]) for n,m in tuple(sys.modules.items()) if n=='ergotools' or n.startswith('ergotools.'))
+print('Packaged comprehensive-copy native EN/ES M07/M08 acceptance passed.')

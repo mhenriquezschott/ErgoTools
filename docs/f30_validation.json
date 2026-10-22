@@ -1,0 +1,21 @@
+{
+  "milestone": "F30",
+  "verified_on": "2026-09-30",
+  "python": "3.13.14",
+  "tests_passed": 304,
+  "new_tests": 11,
+  "reference_cases": 13,
+  "coverage_percent": 98.56416392461861,
+  "new_module_coverage": {
+    "src/ergotools/application/assessment_assignment.py": 100.0,
+    "src/ergotools/domain/assessments/context.py": 100.0
+  },
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "wheel_sha256": "d8a47d9bb21a16bc20e72daeee3d4e31de19954cef28293f1f8fcaca2e7a914f",
+  "independent_wheel_smoke": "passed",
+  "ui_changed": false,
+  "schema_changed": false,
+  "overall_completion_estimate_percent": 55
+}

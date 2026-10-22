@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-22",
+  "repository": "mhenriquezschott/ErgoTools",
+  "purpose": "Before the authorized main content replacement; all other refs must remain unchanged.",
+  "refs": {
+    "refs/heads/backup/pre-assessment-context-sync-20260914": "389a23cc8a989ba52f9773961bef8a4f4e98a7db",
+    "refs/heads/backup/pre-assessment-job-context-20260916": "7a161975b2daffb9ce71b595e91bfd5d3d500c99",
+    "refs/heads/backup/pre-assessment-workplace-dialog-fix-20260915": "78292a048ec3fc20da50a405454fac7e56e19534",
+    "refs/heads/backup/pre-integrated-risk-schema-20260912": "4a8b68c60475eac165868b453bc5393427f67955",
+    "refs/heads/backup/pre-job-placement-profile-cleanup-20260915": "2a50497563e1a1840243c06408c8a5161daa2f77",
+    "refs/heads/backup/pre-jrot-integration-20260909": "820ac8ccee315e4f34da227385495b39e93e5911",
+    "refs/heads/backup/pre-jrot-scope-integration-20260920": "04c91b3d83153c10834491075eb77c17d1060c75",
+    "refs/heads/backup/pre-jrot-ui-redesign-20260911": "b3f88ae323757fc0bc8d556e64483906cbddfd29",
+    "refs/heads/backup/pre-plot-job-placement-overview-20260920": "d833dcf4072f096fe4e0929e3f24a0e7cd3dd504",
+    "refs/heads/backup/pre-plot-risk-rendering-20260917": "e4048212630e68ef52764d6bb569e0ae9a3b9872",
+    "refs/heads/backup/pre-plot-spatial-schema-20260916": "751e500c47a4ccde127b58d56e54477651907859",
+    "refs/heads/backup/pre-worker-navigation-context-fix-20260915": "797cc3db85b8b846654727ce0283bfe89cb1c6fb",
+    "refs/heads/ergotools-plot-new-ui": "1aeb2d056ea4d9dd60dbe2ea127389c7d858e4a9",
+    "refs/heads/jrot": "dbf9c6df25b297b58c7916c86d968de5669982f7",
+    "refs/heads/main": "89414c52c32b585ef92630713d49f40bf1f5d883",
+    "refs/heads/plot": "7f75ae9c1a71da8829104e3ba1bbf6671f784270",
+    "refs/heads/prev": "d0460628e7df33128c43d0a56172db8cf8a6e052"
+  }
+}

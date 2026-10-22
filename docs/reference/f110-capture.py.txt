@@ -1,0 +1,99 @@
+import ast,json,os,tempfile
+from pathlib import Path
+from dataclasses import replace
+from PyQt5 import QtWidgets,QtCore
+from PyQt5.QtCore import QSize,Qt,QTimer,QPointF,QRectF
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+from ergotools.bootstrap import load_icons
+from ergotools.domain.language import Language
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.plot_filters import PlotFilterSelection,PlotRiskView
+from ergotools.domain.plot_positions import PlotPoint,PlotPositions,WorkerAssignmentMarker,WorkerPositionSource
+from ergotools.application.plot_results import saved_plot_results
+from ergotools.application.plot_layout import LoadedPlantLayout
+from ergotools.infrastructure.plant_image_import import import_plant_image
+from ergotools.presentation.desktop.plot_marker_layer import PlotMarkerLayer,plot_damage_color
+from ergotools.presentation.desktop.plot_layout_canvas import PlotLayoutCanvas
+from ergotools.presentation.desktop.plot_worker_overview import PlotWorkerOverview
+from ergotools.presentation.desktop.theme.plot import PLOT_STYLE
+root=Path.cwd();art=root/'artifacts/plot-worker-overview';art.mkdir(exist_ok=True)
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+app=QApplication([])
+def settle():app.processEvents();app.processEvents()
+def grab(widget,name):settle();assert widget.grab().save(str(art/(name+'.png')))
+def host(child,width=500,height=740):
+ dialog=QDialog();dialog.setObjectName('plotDialog');dialog.setStyleSheet(PLOT_STYLE);layout=QVBoxLayout(dialog);layout.setContentsMargins(0,0,0,0);layout.addWidget(child);dialog.resize(width,height);dialog.show();settle();return dialog
+source=ast.parse((reference/'src/plant_layout.py').read_text())
+preview=next(n for n in source.body if isinstance(n,ast.ClassDef) and n.name=='PlotWorkerMarkerPreview')
+exec(compile(ast.Module([preview],type_ignores=[]),'source-worker-preview','exec'),globals())
+cl=next(n for n in source.body if isinstance(n,ast.ClassDef) and any(isinstance(f,ast.FunctionDef) and f.name=='configureResponsiveLayout' for f in n.body))
+fn=next(n for n in cl.body if isinstance(n,ast.FunctionDef) and n.name=='configureResponsiveLayout')
+start=next(n.lineno for n in fn.body if ast.unparse(n)=='worker_layout = QVBoxLayout(self.workerinfo_group)')
+end=next(n.end_lineno for n in fn.body if ast.unparse(n).startswith('self.workerinfo_group.setSizePolicy('))
+statements=[n for n in fn.body if n.lineno>=start and n.end_lineno<=end]
+class Original(QWidget):
+ SHOW_POINTER_DEBUG_CONTROLS=False
+ def setPlotWorkerAlphabetFilter(self,*args):pass
+ def locateSelectedWorker(self):pass
+ def advanceLocatePulse(self):pass
+ def cancelLocatePulse(self):pass
+ def setWorkerOverviewEnabled(self,*args):pass
+old=Original();old.workerinfo_group=QGroupBox();old.gridLayoutWidget=QWidget()
+names=('workeridinfolbl_label ageinfolbl_label ageinfo_label sexinfolbl_label sexinfo_label weightinfolbl_label weightinfo_label heightinfolbl_label heightinfo_label xinfolbl_label_2 yinfolbl_label scaleinfolbl_label_2 scaleallinfolbl_label xview_label yview_label').split()
+for name in names:setattr(old,name,QLabel())
+for name,text in [('ageinfolbl_label','Age:'),('sexinfolbl_label','Sex:'),('weightinfolbl_label','Weight:'),('heightinfolbl_label','Height:'),('xinfolbl_label_2','X:'),('yinfolbl_label','Y:'),('scaleinfolbl_label_2','Scale:'),('scaleallinfolbl_label','Scale:')]:
+ label=getattr(old,name);label.setText(text)
+ if name!='scaleallinfolbl_label':label.setAlignment(Qt.AlignRight|Qt.AlignVCenter)
+for name in ('orderInfo_button searchInfo_button firstinfo_button previousinfo_button nextinfo_button lastinfo_button saveinfo_button saveallinfo_button').split():setattr(old,name,QPushButton())
+old.saveinfo_button.setText('Save');old.saveallinfo_button.setText('Save All')
+for name in ('xinfo_input yinfo_input scaleinfo_input scaleallinfo_input xview_input yview_input').split():setattr(old,name,QLineEdit())
+old.scaleallinfo_input.setText('1.0')
+for name,text in [('visibleinfo_check','Visible'),('enableinfo_check','Enable'),('lockinfo_check','Lock')]:setattr(old,name,QCheckBox(text))
+old.workerComboBox=QComboBox()
+namespace=dict(globals(),self=old,icon_root=str(root/'src/ergotools/resources/icons'))
+exec(compile(ast.Module(statements,type_ignores=[]),'source-worker-layout','exec'),namespace)
+scroll=QScrollArea();scroll.setWidgetResizable(True);scroll.setFrameShape(QFrame.NoFrame);scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff);scroll.setWidget(old.workerinfo_group)
+sourcehost=host(scroll)
+# Capture source construction empty and preview independently; manual fixture values never query legacy SQL.
+for field in ('ageinfo_label','sexinfo_label','weightinfo_label','heightinfo_label','worker_tool_value','worker_damage_value','worker_risk_value','worker_job_value','worker_job_risk_value','worker_risk_difference_value'):getattr(old,field).setText('–')
+old.worker_assignment_label.setText('No worker results match the current filters.');old.worker_marker_preview.clearWorker();grab(sourcehost,'source-layout-empty');grab(old.worker_marker_preview,'source-preview-empty')
+nodes=[]
+for node in ast.parse((root/'tests/test_plot_results.py').read_text()).body:
+ if isinstance(node,(ast.Import,ast.ImportFrom)):
+  if (getattr(node,'module','') or '').startswith(('tests','PyQt5','ergotools.presentation','ergotools.bootstrap')):continue
+  nodes.append(node)
+ elif isinstance(node,ast.Assign):nodes.append(node)
+ elif isinstance(node,ast.FunctionDef) and node.name=='project':node.decorator_list=[];nodes.append(node)
+fixture={};exec(compile(ast.Module(nodes,type_ignores=[]),'synthetic-fixture','exec'),fixture)
+with tempfile.TemporaryDirectory() as temporary:
+ folder=Path(temporary);generator=fixture['project'](folder);repository=next(generator)
+ try:
+  image=QImage(1000,600,QImage.Format_RGB32);image.fill(QColor('white'));assert image.save(str(folder/'map.png'))
+  initial=PlotPositions('p')
+  for identity,x in ((1,100),(3,200)):initial=initial.with_saved_marker(WorkerAssignmentMarker(identity,PlotPoint(x,100),visible=True,source=WorkerPositionSource.MANUAL),repository.load_jobs())
+  repository.save_plot_positions(initial)
+  result=saved_plot_results(repository,PlotFilterSelection(fixture['SCOPE']),current_year=2026);row=result.workers[0]
+  color=plot_damage_color(row.assessment.kind,row.assessment.total_damage);job_color=plot_damage_color(row.assessment.kind,row.job_evidence.measurement.cumulative_damage)
+  old.workerComboBox.addItem('w (Zed, Ana)');old.workerComboBox.addItem('x (Alpha, Ben)')
+  old.plot_worker_alphabet_buttons['A'].setEnabled(True);old.plot_worker_alphabet_buttons['Z'].setEnabled(True)
+  for letter,button in old.plot_worker_alphabet_buttons.items():button.setEnabled(letter in ('All','A','Z'))
+  old.worker_assignment_label.setText('P  ›  S  ›  L  ›  1   •   Shift All   •   LiFFT')
+  for name,value in [('ageinfo_label','26'),('sexinfo_label','Female'),('weightinfo_label','70'),('heightinfo_label','N/A'),('worker_tool_value','LiFFT'),('worker_damage_value',f'{row.assessment.total_damage:.4f}'),('worker_risk_value',f'{row.assessment.probability*100:.1f}%'),('worker_job_value','j - Job'),('worker_job_risk_value','0.0%'),('worker_risk_difference_value',f'{row.assessment.probability*100:+.1f} pp (above Job)')]:getattr(old,name).setText(value)
+  old.xinfo_input.setText('100');old.yinfo_input.setText('100');old.scaleinfo_input.setText('1.00');old.visibleinfo_check.setChecked(True);old.enableinfo_check.setChecked(True);old.worker_marker_preview.setWorker('Female',color,job_color,False);grab(sourcehost,'source-layout-populated');grab(old.worker_marker_preview,'source-preview-individual');old.worker_marker_preview.setWorker('Female',color,job_color,True);grab(old.worker_marker_preview,'source-preview-comparison');sourcehost.close()
+  for language in (Language.ENGLISH,Language.SPANISH):
+   prefix='en' if language is Language.ENGLISH else 'es'
+   canvas=PlotLayoutCanvas();canvas.set_layout(LoadedPlantLayout(fixture['SCOPE'],import_plant_image(folder/'map.png').data));layer=PlotMarkerLayer(canvas,repository.load_jobs(),repository.save_plot_positions,lambda text:None,current_year=2026)
+   panel=PlotWorkerOverview(layer,load_icons(),language=language,show_success=lambda text:None);window=host(panel);grab(window,prefix+'-empty');grab(panel.preview,prefix+'-preview-empty')
+   layer.set_results(result);grab(window,prefix+'-populated');grab(panel.preview,prefix+'-preview-individual')
+   panel.set_letter('A');grab(window,prefix+'-alphabet-A');panel.toggle_order();grab(window,prefix+'-name-order')
+   layer.select(layer.items['worker',1]);panel.system=MeasurementSystem.IMPERIAL;panel.refresh();grab(window,prefix+'-imperial');panel.system=MeasurementSystem.METRIC;panel.refresh()
+   comparison=replace(result,selection=replace(result.selection,risk_view=PlotRiskView.COMPARISON));layer.set_results(comparison);grab(window,prefix+'-comparison');grab(panel.preview,prefix+'-preview-comparison')
+   panel.controls.x_input.setText('-25.5');panel.controls.field_edited('-25.5');panel.navigate(0);grab(window,prefix+'-other-worker-draft');layer.select(layer.items['worker',1]);assert panel.controls.x_input.text()=='-25.5';grab(window,prefix+'-restored-draft');panel.controls.save()
+   panel.locate();panel.advance_locate();grab(window,prefix+'-locate');panel.stop_locate()
+   window.resize(390,740);grab(window,prefix+'-narrow');window.resize(510,900);grab(window,prefix+'-enlarged');window.close();panel.close();canvas.close()
+  repository.save_plot_positions(initial)
+  canvas=PlotLayoutCanvas();canvas.set_layout(LoadedPlantLayout(fixture['SCOPE'],import_plant_image(folder/'map.png').data));layer=PlotMarkerLayer(canvas,repository.load_jobs(),repository.save_plot_positions,lambda text:None,current_year=2026);panel=PlotWorkerOverview(layer,load_icons(),show_success=lambda text:None)
+  dialog=QDialog();dialog.setObjectName('plotDialog');dialog.setStyleSheet(PLOT_STYLE);layout=QHBoxLayout(dialog);layout.addWidget(canvas,1);layout.addWidget(panel);panel.setFixedWidth(500);dialog.resize(1600,900);dialog.show();settle();layer.set_results(result);grab(dialog,'map-composition');assert canvas.viewport().rect().contains(canvas.mapFromScene(canvas.sceneRect()).boundingRect());dialog.resize(1920,1200);settle();grab(dialog,'map-composition-enlarged');assert canvas.viewport().rect().contains(canvas.mapFromScene(canvas.sceneRect()).boundingRect());dialog.close();panel.close();canvas.close()
+ finally:generator.close()
+print('Original layout/preview fixtures and localized empty/populated/alphabet/order/units/comparison/draft/locate/narrow/enlarged states captured; map containment passed')

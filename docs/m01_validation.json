@@ -1,0 +1,32 @@
+{
+  "milestone": "M01",
+  "status": "complete",
+  "tests_passed": 1154,
+  "focused_tests_passed": 18,
+  "coverage_percent": 96.48192771084338,
+  "required_gate": "artifacts/m01-final-check.log",
+  "independent_wheel": "artifacts/m01-wheel.log",
+  "native_states": 18,
+  "visual_inspection": "All 18 individual full-window PNGs inspected: LiFFT/DUET/ST fresh, saved/reopened and invalid pending, imperial EN/metric ES, 1550x1015 and 1800x1200. VTK/cards/footer/controls contained. Existing shared UI review remains M09; no whole-app acceptance claimed. Final keyboard-corrected ST two-unit/two-size task-panel PNGs and three packaged integrated fresh/saved/pending PNGs individually inspected; unchanged layout and adjacent regions.",
+  "comparison": "artifacts/m01-comparison/comparison.json",
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "46f9a512087564c839c79f8ea32e7a5c17464b9cc4297f18bedd916e6a736a49",
+  "progress": {
+    "overall": 79,
+    "completed_milestones": 1,
+    "earned_remaining_points": 5,
+    "remaining_points_to_earn": 21
+  },
+  "pending": null,
+  "limits": [
+    "No scientific corrections; original ST mapping retained.",
+    "Recorded archives use recorded summaries; fresh Save colors use retained row precision, without recalculating inputs.",
+    "Saved probability formatting retains original Save precision/<5 and >90 handling.",
+    "Windows/macOS native acceptance deferred until working Linux parity and old-project compatibility."
+  ],
+  "keyboard_focused_tests_passed": 7,
+  "final_independent_wheel": "artifacts/m01-keyboard-wheel.log",
+  "final_keyboard_comparison": "artifacts/m01-keyboard-comparison/comparison.json",
+  "additional_final_native_states": 3
+}

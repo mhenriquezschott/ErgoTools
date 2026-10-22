@@ -1,0 +1,43 @@
+{
+  "milestone": "F70",
+  "verified_on": "2026-10-04",
+  "python": "3.13.14",
+  "tests_passed": 591,
+  "new_tests": 4,
+  "coverage_percent": 98.0511402902557,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "wheel_sha256": "9e4ecc81d43bcb2213e408821d29cdd2be6c4fff66bbd9b5d92ba914293e32c9",
+  "independent_wheel_smoke": "passed",
+  "ui_changed": true,
+  "schema_changed": false,
+  "overall_completion_estimate_percent": null,
+  "progress_note": "Prior 67 percent withdrawn as an unreliable whole-application estimate. Job Management form is localized in English/Spanish with a preference-aware preview. Import, final main-window integration and rotation-reference checks remain pending.",
+  "native_screenshots": {
+    "artifacts/job-management-spanish/after-delete-surviving-job.png": "0cf6780bbdc43826b68601f00eb7c0462edcc5d9adab16560a7a42f6c04240d9",
+    "artifacts/job-management-spanish/delete-confirmation.png": "3789a3c0caf5bef0202276b9b9f1ffa2260eb399566ab8dac0910c1630cc70fa",
+    "artifacts/job-management-spanish/delete-history-protected.png": "0dc056137f9082d3c75db6fc5b3c0415c6e6da6017325ebb4d6d8f32209f8e7f",
+    "artifacts/job-management-spanish/new-approved-minimum.png": "f68f547a0a0d0ea45ac990215a4d491ce75c15082bf6de6243d1569cf9e09c7f",
+    "artifacts/job-management-spanish/new-calendar-expanded.png": "10a6c8703245563aaa7db2172ac6b7139d5467e7b7fc55e89613edca752196cb",
+    "artifacts/job-management-spanish/new-draft-selected-minimum.png": "eedada6b20f0658a754278eb8abe6143fdb399fd1fcbe241218fd8f02d849e33",
+    "artifacts/job-management-spanish/new-empty.png": "0c7a0482fa4f86e342bb6db7d2016c309e7e7c381aabd0c8757a3b4de0cf20c7",
+    "artifacts/job-management-spanish/new-evidence-approved-minimum.png": "376731879e2f7be002729da34a492d3673cf7354f9123312929b5c89fee720d2",
+    "artifacts/job-management-spanish/new-evidence-draft-minimum.png": "3e2221c23b15efd39c17b059893a151c609bf1b4e594760e06276e4870f73a66",
+    "artifacts/job-management-spanish/new-invalid-form.png": "0b4ced102176a527bc72a4404ed39e186136106576c0495dce0fe182580bfd73",
+    "artifacts/job-management-spanish/new-minimum.png": "5fcc6898d739e5f06c701bbd784d7dffc41c0f3d8531cebd4d6e15508df7ff1f",
+    "artifacts/job-management-spanish/new-profile-expanded.png": "942d400d2c4ea11e9a21162ba79dc67f55783fe2bc2588393a35f0b405bee486",
+    "artifacts/job-management-spanish/new-search.png": "855d680df56db4f4b29500a5c413fb6e3a44fb91c4418358f6f895c7c5ab2580",
+    "artifacts/job-management-spanish/new-validation-error.png": "a15be240ea0adb4f9b13cc941074d79ca49deb4a363dba4a99ec2886dd5d5c33",
+    "artifacts/job-management-spanish/new-workplace-expanded.png": "19917382e104164e5715ff96de47bb49f9283f5822836559c8821297c0d98856",
+    "artifacts/job-management-spanish/original-empty.png": "2a1cbfc65c3cca39415d3cc995335ae587fa786e7d3e933c88b1315ce67c4a90",
+    "artifacts/job-management-spanish/original-minimum.png": "dca39c9310b0ce1caeb807c009e141083dfd14ea40b8ad0619339ed7c97222eb",
+    "artifacts/job-management-spanish/original-profile-expanded.png": "c0ec713bff27d9fdbe7b1735968202d512448c1c1a1a24e247b5c847b9804b42"
+  },
+  "english_visual_matches": {
+    "new-empty.png": true,
+    "new-minimum.png": true,
+    "new-approved-minimum.png": true,
+    "new-evidence-approved-minimum.png": true
+  }
+}

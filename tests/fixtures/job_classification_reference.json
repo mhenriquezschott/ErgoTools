@@ -1,0 +1,155 @@
+{
+  "source_sha256": "e69c08404b78f478a52091543525085c0c93de2ac5d1f7777bee2577abd131fd",
+  "cases": [
+    {
+      "name": "same",
+      "initial": [
+        1,
+        2,
+        "2020-01-01",
+        null,
+        "original"
+      ],
+      "target": 2,
+      "rows": [
+        [
+          1,
+          2,
+          "2020-01-01",
+          null,
+          1,
+          "original"
+        ]
+      ]
+    },
+    {
+      "name": "unclassified",
+      "initial": [
+        1,
+        null,
+        null,
+        null,
+        "original"
+      ],
+      "target": 2,
+      "rows": [
+        [
+          1,
+          2,
+          "2026-10-01",
+          null,
+          1,
+          "original"
+        ]
+      ]
+    },
+    {
+      "name": "classified",
+      "initial": [
+        1,
+        1,
+        "2020-01-01",
+        null,
+        "original"
+      ],
+      "target": 2,
+      "rows": [
+        [
+          1,
+          1,
+          "2020-01-01",
+          "2026-10-01",
+          0,
+          "original"
+        ],
+        [
+          2,
+          2,
+          "2026-10-01",
+          null,
+          1,
+          "Classification changed from Worker Management."
+        ]
+      ]
+    },
+    {
+      "name": "existing_bounds",
+      "initial": [
+        1,
+        1,
+        "2020-01-01",
+        "2026-09-01",
+        "original"
+      ],
+      "target": 2,
+      "rows": [
+        [
+          1,
+          1,
+          "2020-01-01",
+          "2026-09-01",
+          0,
+          "original"
+        ],
+        [
+          2,
+          2,
+          "2026-10-01",
+          null,
+          1,
+          "Classification changed from Worker Management."
+        ]
+      ]
+    },
+    {
+      "name": "remove",
+      "initial": [
+        1,
+        1,
+        "2020-01-01",
+        null,
+        "original"
+      ],
+      "target": null,
+      "rows": [
+        [
+          1,
+          1,
+          "2020-01-01",
+          "2026-10-01",
+          0,
+          "original"
+        ],
+        [
+          2,
+          null,
+          "2026-10-01",
+          null,
+          1,
+          "Classification changed from Worker Management."
+        ]
+      ]
+    },
+    {
+      "name": "empty",
+      "initial": [
+        1,
+        null,
+        null,
+        null,
+        "original"
+      ],
+      "target": null,
+      "rows": [
+        [
+          1,
+          null,
+          null,
+          null,
+          1,
+          "original"
+        ]
+      ]
+    }
+  ]
+}

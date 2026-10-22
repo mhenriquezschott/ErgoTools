@@ -1,0 +1,62 @@
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtTest import QTest
+from PyQt5.QtCore import QPoint
+from ergotools.bootstrap import load_icons
+from ergotools.domain.language import Language
+from ergotools.domain.rotation_scheme import RotationMode
+from ergotools.infrastructure.pulp_rotation_optimizer import PulpRotationOptimizer
+from ergotools.presentation.desktop.rotation_dialog import RotationDialog
+from time import monotonic
+app=QApplication.instance() or QApplication([])
+class Snapshot:
+ def load_hierarchy(self):return catalogs.hierarchy
+ def load_jobs(self):return catalogs.jobs
+ def load_job_risk(self):return catalogs.risks
+ def load_rotation_schemes(self):return rotations.schemes
+ def save_rotation_scheme(self,scheme):raise AssertionError('Read-only validation host cannot save.')
+ def delete_rotation_scheme(self,scheme_id):raise AssertionError('Read-only validation host cannot delete.')
+def wait(controller):
+ deadline=monotonic()+15
+ while controller.busy and monotonic()<deadline:QTest.qWait(5)
+ assert not controller.busy
+geometry={}
+def capture(view,name):
+ app.processEvents();QTest.qWait(70)
+ if capture_output:
+  assert view.grab().save(str(capture_output/(name+'.png')))
+ geometry[name]=[view.width(),view.height()]
+ if isinstance(view,RotationDialog):
+  for key in ['save_button','close_button','optimize_button','optimize_all_button','transfer_button']:
+   button=getattr(view,key)
+   assert view.rect().contains(button.mapTo(view,button.rect().bottomRight())),key
+for language in Language:
+ dialog=RotationDialog(Snapshot(),load_icons(),language=language,optimizer=PulpRotationOptimizer())
+ dialog.show();dialog.raise_();app.processEvents();QTest.qWait(100);dialog.resize(1480,740);app.processEvents();QTest.qWait(100)
+ assert dialog.size().width()==1480 and dialog.size().height()==740
+ for index,scheme in enumerate(rotations.schemes):
+  dialog.scheme_combo.setCurrentIndex(index);dialog.scheme_combo.activated.emit(index);app.processEvents()
+  assert dialog.loaded==scheme,(scheme.scheme_id,dialog.loaded)
+  assert dialog.grid.current_scheme(scheme.scheme_id).current==scheme.current
+  assert {t.target.profile_id for t in dialog.grid.pool.targets}=={t.profile_id for t in scheme.targets}
+  dialog.grid.selectRow(0)
+  capture(dialog,language.value+'-'+scheme.scheme_id+'-minimum')
+  if scheme.scheme_id in ['Large01_10x8','TEST-Workplace-2x3']:
+   dialog.resize(1800,1100);app.processEvents();QTest.qWait(100)
+   dialog.grid.scrollToBottom();capture(dialog,language.value+'-'+scheme.scheme_id+'-enlarged-bottom')
+   dialog.resize(1480,740);app.processEvents();QTest.qWait(70)
+ index=dialog.scheme_combo.findText('TEST-All-2x3');assert index>=0
+ dialog.scheme_combo.setCurrentIndex(index);dialog.scheme_combo.activated.emit(index);app.processEvents()
+ dialog.resize(1800,1100);app.processEvents();QTest.qWait(70)
+ dialog.optimize_button.click();wait(dialog.optimization)
+ assert dialog.optimization.preview is not None
+ capture(dialog,language.value+'-saved-scheme-cbc')
+ assert dialog.optimize_all_button.isEnabled()
+ dialog.optimize_all_button.click();wait(dialog.optimization)
+ comparison=dialog.optimization.comparison
+ assert comparison is not None and comparison.tabs.count()==3
+ comparison.tabs.setCurrentIndex(2);capture(comparison,language.value+'-saved-scheme-highs')
+ comparison.apply_button.click();assert dialog.optimization.preview.mode is RotationMode.ALL_TOOLS
+ assert dialog.grid.current_scheme('TEST-All-2x3').current==dialog.optimization.preview.current
+ dialog.close();dialog.deleteLater();app.processEvents()
+print('Native EN/ES original saved JROT controls: all seven schemes, exact scopes/profile links, actual CBC and HiGHS/Apply passed; read-only host cannot persist.')
+if capture_output:(capture_output/'geometry.json').write_text(json.dumps(geometry,indent=2)+'\n')

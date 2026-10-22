@@ -1,0 +1,113 @@
+import sys
+import json,tempfile
+from pathlib import Path
+from unittest.mock import patch
+from PyQt5.QtCore import QTimer,QPoint
+from PyQt5.QtGui import QPainter,QPixmap
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtTest import QTest
+from ergotools.bootstrap import create_window
+from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.domain.language import Language
+from ergotools.presentation.desktop.rotation_dialog import RotationDialog
+from tests.test_rotation_persistence import seed
+from tests.test_rotation_comparison import all_risks
+from tests.test_rotation_solve import fill_rotation,wait_for
+app=QApplication.instance() or QApplication([])
+app.setQuitOnLastWindowClosed(False)
+out=Path('artifacts/readable-assessment-open');out.mkdir(parents=True,exist_ok=True)
+geometry={}
+def settle(win,width,height):
+ win.show();win.raise_();win.activateWindow();app.processEvents();QTest.qWait(100)
+ win.resize(width,height);app.processEvents();QTest.qWait(100)
+ assert win.size().width()==width and win.size().height()==height,(win.size(),width,height)
+def capture(win,name):
+ app.processEvents();QTest.qWait(70)
+ pixmap=win.grab()
+ renderer=getattr(win,'_body_renderer',None)
+ if renderer:
+  from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
+  from vtkmodules.vtkIOImage import vtkPNGWriter
+  renderer.render_window.Render()
+  image_filter=vtkWindowToImageFilter();image_filter.SetInput(renderer.render_window);image_filter.ReadFrontBufferOff();image_filter.Update()
+  buffer=out/(name+'-vtk.png');writer=vtkPNGWriter();writer.SetFileName(str(buffer));writer.SetInputConnection(image_filter.GetOutputPort());writer.Write()
+  painter=QPainter(pixmap);painter.drawPixmap(renderer.widget.mapTo(win,QPoint(0,0)),QPixmap(str(buffer)));painter.end()
+ assert pixmap.save(str(out/(name+'.png')))
+ geometry[name]={'size':[win.width(),win.height()]}
+ if isinstance(win,RotationDialog):
+  geometry[name]['controls']={key:[getattr(win,key).mapTo(win,QPoint(0,0)).x(),getattr(win,key).mapTo(win,QPoint(0,0)).y(),getattr(win,key).width(),getattr(win,key).height()] for key in ['save_button','optimize_button','optimize_all_button','close_button','transfer_button']}
+  assert all(win.rect().contains(getattr(win,key).mapTo(win,getattr(win,key).rect().bottomRight())) for key in geometry[name]['controls'])
+
+from PyQt5.QtWidgets import QFileDialog,QInputDialog,QComboBox,QLineEdit
+from tests.test_legacy_catalogs import legacy_catalog
+from tests.test_legacy_plot import mapped
+from tests.test_legacy_reconciliation import old_source
+from tests.test_legacy_rotations import rotated
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+
+def drive(main,source,destination,tag,*,cancel=False):
+ failures=[];stage=[0];timer=QTimer(main)
+ def interact():
+  dialog=QApplication.activeModalWidget()
+  if dialog is None:return
+  timer.stop()
+  try:
+   if isinstance(dialog,QFileDialog):
+    if stage[0]==0:
+     dialog.setDirectory(str(source.parent));dialog.selectFile(str(source))
+     settle(dialog,900,600);dialog.findChild(QLineEdit,'fileNameEdit').setText(source.name);capture(dialog,tag+'-original-selected')
+    else:
+     assert dialog.windowTitle()==main.text('convert_project')
+     dialog.setDirectory(str(destination.parent));dialog.selectFile(str(destination))
+     settle(dialog,900,600);dialog.findChild(QLineEdit,'fileNameEdit').setText(destination.name);capture(dialog,tag+'-copy-destination')
+     if cancel:dialog.reject();stage[0]+=1;return
+    stage[0]+=1;dialog.accept()
+   elif isinstance(dialog,QInputDialog):
+    assert stage[0]==2
+    settle(dialog,700,dialog.height());capture(dialog,tag+'-assessment-picker')
+    combo=dialog.findChild(QComboBox);assert combo is not None
+    assert 'LiFFT' in combo.currentText() and '#31' in combo.currentText()
+    combo.showPopup();app.processEvents();QTest.qWait(350)
+    assert combo.view().viewport().grab().save(str(out/(tag+'-assessment-expanded.png')))
+    combo.hidePopup();stage[0]+=1;dialog.accept()
+   else:raise AssertionError(type(dialog))
+  except BaseException as error:
+   import traceback;traceback.print_exc();print("stage",stage,"title",dialog.windowTitle(),"files",getattr(dialog,"selectedFiles",lambda:[])(),flush=True)
+   failures.append(error);dialog.reject()
+  finally:
+   if not failures:timer.start(50)
+ timer.timeout.connect(interact);timer.start(50)
+ watchdog=QTimer(main);watchdog.setSingleShot(True)
+ def expire():
+  failures.append(AssertionError("Open automation exceeded 20 seconds"))
+  current=app.activeModalWidget()
+  if current is not None:current.reject()
+ watchdog.timeout.connect(expire);watchdog.start(20000)
+ try:main.run(main.open_project)
+ finally:timer.stop();watchdog.stop()
+ assert not failures,failures
+ assert stage[0]==(2 if cancel else 3),stage
+
+with tempfile.TemporaryDirectory() as directory:
+ folder=Path(directory);source=legacy_catalog.__wrapped__(folder)
+ mapped.__wrapped__(source);old_source.__wrapped__(source);rotated.__wrapped__(source)
+ before=source.read_bytes(),(folder/'data/source.db').read_bytes()
+ for language in (Language(sys.argv[2]),):
+  tag=language.value;main=create_window(folder/(tag+'-settings.json'),original_navigation=True,enable_vtk=True)
+  main.language=language;main.translate();main.refresh();settle(main,1550,1015);capture(main,tag+'-empty')
+  try:
+   destination=folder/(tag+'-converted.ergprj')
+   drive(main,source,folder/(tag+'-cancelled.ergprj'),tag+'-cancel',cancel=True)
+   assert main.presenter.workspace.active is None
+   drive(main,source,destination,tag)
+   assert main.presenter.workspace.location==str(destination)
+   capture(main,tag+'-opened-minimum');settle(main,1800,1200);capture(main,tag+'-opened-enlarged')
+   with AssessmentProjectFile.open(destination) as project:assert project.format_version==12 and project.load_legacy_evidence() is not None
+   with patch.object(main,'choose_file',return_value=str(destination)):
+    main.run(lambda:main.open_project_location(str(source)))
+   assert main.message.text()==main.text('error');settle(main,1550,1015);capture(main,tag+'-existing-destination-error')
+  finally:
+   main.presenter.workspace.close(choice=CloseChoice.DISCARD);main.close();main.deleteLater();app.processEvents()
+ assert (source.read_bytes(),(folder/'data/source.db').read_bytes())==before
+(out/(language.value+'-geometry.json')).write_text(json.dumps(geometry,indent=2)+'\n')
+print('Native EN/ES actual Open/converted-copy chooser, cancellation, expanded assessment picker, empty/populated/error main and VTK minimum/enlarged passed.')

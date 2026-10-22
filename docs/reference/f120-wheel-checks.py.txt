@@ -1,0 +1,19 @@
+import sys
+from pathlib import Path
+from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.domain.rotation import RotationProblem, RotationRisk, WorkerRotation, RotationBackend, RotationSolveStatus
+from ergotools.infrastructure.pulp_rotation_optimizer import PulpRotationOptimizer
+problem=RotationProblem((WorkerRotation('w1',('job-A','job-A')),WorkerRotation('w2',('job A','job A'))),tuple(RotationRisk(key,kind,risk) for kind,values in zip(AssessmentKind,((10,90),(80,20),(20,60)),strict=True) for key,risk in zip(('job-A','job A'),values,strict=True)),5)
+optimizer=PulpRotationOptimizer()
+single=optimizer.optimize_single_tool(problem,AssessmentKind.LIFFT)
+multi=optimizer.optimize_all_tools(problem)
+assert single.backend==RotationBackend.CBC and single.stages==(RotationSolveStatus.OPTIMAL,)
+assert multi.backend==RotationBackend.HIGHS and multi.stages==(RotationSolveStatus.OPTIMAL,)*2
+for result in (single,multi):
+ problem.validate_schedule(result.schedule)
+ for row in result.schedule:
+  assert set(row.target_keys)==set(problem.target_keys)
+for name,module in tuple(sys.modules.items()):
+ if name.startswith('ergotools') and getattr(module,'__file__',None):
+  assert Path(module.__file__).resolve().is_relative_to(Path(sys.argv[1]).resolve()),name
+print('Extracted-wheel actual CBC minimax and HiGHS two-stage solves passed; all ErgoTools modules came from the extraction.')

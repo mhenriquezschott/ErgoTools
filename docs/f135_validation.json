@@ -1,0 +1,16 @@
+{
+  "checkpoint": "F135",
+  "date": "2026-10-09",
+  "tests_passed": 1068,
+  "coverage_percent": 96.54797991222911,
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "4f974b81ec63e8ded4a93cf6d913d066c1361614e9630e56d4187b20e64d52ba",
+  "independent_wheel": "Extracted-wheel F135 format-12 creation/reopen/edit/backup with complete original XML/database snapshot/four named images and 138 LiFFT/DUET validation sources passed. Full ST conversion still gated.",
+  "ui_changes": false,
+  "visual_validation": "No UI changes; no new visual parity claim. F127 integrated UI evidence retained.",
+  "limits": [
+    "Legacy adapters read version 8 only; destination conversion and comprehensive integrated UI validation remain.",
+    "Overall completion percentage/finish date unvalidated."
+  ]
+}

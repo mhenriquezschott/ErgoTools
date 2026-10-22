@@ -1,0 +1,17 @@
+{
+  "checkpoint": "F141",
+  "date": "2026-10-10",
+  "tests_passed": 1088,
+  "coverage_percent": 96.48371262829095,
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "beeb5e4fd20d268999aa0769cd0acc314f5ceb326e83ea5b6be3db6cc9dc75c9",
+  "independent_wheel": "Warning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway.\nPackaged historical results: all 194 sources and row evidence bound; native localized LiFFT/DUET/ST recorded status, unit projection and VTK minimum/enlarged passed.\nWarning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway.\nPackaged historical results: all 194 sources and row evidence bound; native localized LiFFT/DUET/ST recorded status, unit projection and VTK minimum/enlarged passed.\nExtracted-wheel F141 historical-result compatibility passed.",
+  "ui_changes": true,
+  "visual_validation": "Reviewed 12 native EN/ES historical LiFFT/DUET/ST minimum/enlarged captures with real VTK. Gauge captures include transition frames; final target verification follows F144. Recorded provenance visible; no final parity claim.",
+  "limits": [
+    "Historical body/DUET/ST row colors and final original-vs-new UI/workflow parity remain.",
+    "Scientific gates and platform validation remain.",
+    "Overall percentage/finish date unvalidated."
+  ]
+}

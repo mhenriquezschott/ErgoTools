@@ -1,0 +1,9 @@
+import sys,subprocess,json
+from pathlib import Path
+reports=[]
+for language in ('en','es'):
+ command=[sys.executable,'-I','-c',"import sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);sys.path.append(str(Path.cwd()));exec(compile(open('/tmp/f144-view.py').read(),'/tmp/f144-view.py','exec'));assert all(not getattr(m,'__file__',None) or Path(m.__file__).is_relative_to(sys.argv[1]) for n,m in tuple(sys.modules.items()) if n=='ergotools' or n.startswith('ergotools.'))",sys.argv[1],language]
+ subprocess.run(command,check=True,timeout=240)
+ reports.append(json.loads(Path('artifacts/f144-'+language+'-integration-audit.json').read_text()))
+Path('artifacts/f144-integration-audit.json').write_text(json.dumps(reports,indent=2)+'\n')
+print('Extracted-wheel F144 comprehensive integrated EN/ES copy validation passed.')

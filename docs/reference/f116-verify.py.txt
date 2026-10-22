@@ -1,0 +1,30 @@
+import ast,hashlib,json,subprocess,sys,tempfile,zipfile
+import xml.etree.ElementTree as ET
+from pathlib import Path
+root=Path.cwd()
+def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+manifest=json.loads((root/'docs/reference/source-manifest.json').read_text())
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+assert all(digest(reference/name)==value for name,value in manifest.items())
+assert digest(root/'uv.lock')==json.loads((root/'docs/f79-validation.json').read_text())['lock_sha256']
+nodes=[]
+for node in ast.parse((root/'tests/test_plot_results.py').read_text()).body:
+ if isinstance(node,(ast.Import,ast.ImportFrom)):
+  if (getattr(node,'module','') or '').startswith(('tests','PyQt5','ergotools.presentation','ergotools.bootstrap')):continue
+  nodes.append(node)
+ elif isinstance(node,ast.Assign):nodes.append(node)
+ elif isinstance(node,ast.FunctionDef) and node.name=='project':node.decorator_list=[];nodes.append(node)
+fixture=ast.unparse(ast.Module(nodes,type_ignores=[]))
+checks=(root/'docs/reference/f116-wheel-checks.py.txt').read_text()
+code='import sys,tempfile\nfrom pathlib import Path\nsys.path.insert(0,sys.argv[1])\n'+fixture+'\n'+checks
+wheel=root/'dist/ergotools-0.1.0.dev0-py3-none-any.whl'
+with tempfile.TemporaryDirectory() as directory:
+ with zipfile.ZipFile(wheel) as archive:archive.extractall(directory)
+ result=subprocess.run([sys.executable,'-I','-c',code,directory],cwd=directory,capture_output=True,text=True,timeout=40)
+ if result.returncode:raise RuntimeError(result.stdout+result.stderr)
+ print(result.stdout.strip())
+art=root/'artifacts/plot-host'
+coverage=json.loads((root/'artifacts/coverage.json').read_text());tests=ET.parse(root/'artifacts/tests.xml')
+evidence=dict(milestone='F116',verified_on='2026-10-07',python=sys.version.split()[0],tests_passed=len(list(tests.iter('testcase'))),new_tests=5,coverage_percent=coverage['totals']['percent_covered'],reference_files_unchanged=len(manifest),dependency_lock_unchanged=True,lock_sha256=digest(root/'uv.lock'),wheel_sha256=digest(wheel),independent_wheel_smoke='passed',original_source_layout_mapping=dict(root_margins=[2,8,2,8],root_spacing=8,splitter_stretch=[4,1],default_size=[1460,1060],detail_tab_icon_size=[24,24],worker_icon_content_canvas=[82,96]),native_child_geometries=json.loads((art/'geometry.json').read_text()),native_screenshots={p.name:digest(p) for p in sorted(art.glob('*.png'))},composition_corrections=['Actual contents determine minimum width to keep outcome and worker controls visible.','Workplace caption widths accommodate actual font metrics.','Map rail title retains source white text style.'],full_plot_host_composed=True,parent_close_and_handoff_consent_integrated=True,plot_main_window_enabled=False,remaining_work=['Map zoom/actual size/opacity/capture/export actions','Saved data deletion workflow','Production navigation wiring and integration validation'],full_source_host_pixel_parity_claimed=False,scientific_gates_preserved=True,overall_completion_estimate_percent=None)
+(root/'docs/f116-validation.json').write_text(json.dumps(evidence,indent=2)+'\n')
+print(f'{len(manifest)} reference hashes and approved lock unchanged; F116 evidence saved')

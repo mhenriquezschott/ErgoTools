@@ -1,0 +1,56 @@
+"""Native expanded assessment-selection acceptance on a converted project copy."""
+import json,sys
+from pathlib import Path
+from PyQt5.QtWidgets import QApplication,QComboBox,QInputDialog
+from PyQt5.QtCore import QTimer,Qt
+from PyQt5.QtTest import QTest
+from ergotools.bootstrap import create_window
+from ergotools.domain.language import Language
+from ergotools.application.document_lifecycle import CloseChoice
+from tools.capture_desktop import render_widget
+import tempfile
+app=QApplication.instance() or QApplication([])
+root=Path.cwd();out=root/'artifacts/f152-selection';out.mkdir(parents=True,exist_ok=True)
+project=next((root/'artifacts/f150-main-window').glob('f150-*/en-converted.ergprj'))
+report={}
+with tempfile.TemporaryDirectory() as directory:
+ for language in (Language.ENGLISH,Language.SPANISH):
+  tag=language.value;main=create_window(Path(directory)/(tag+'-settings.json'),original_navigation=True)
+  main.language=language;main.translate();options=main.document_options(str(project),language);assert len(options)==194
+  main.presenter.workspace.switch(str(project),options[0][0]);main.refresh();main.show();app.processEvents();QTest.qWait(100)
+  before=main.presenter.workspace.active;failures=[];states={}
+  def inspect():
+   dialog=app.activeModalWidget()
+   try:
+    assert isinstance(dialog,QInputDialog) and dialog.isModal()
+    combo=dialog.findChild(QComboBox);assert combo is not None and combo.count()==194
+    assert [combo.itemText(i) for i in range(combo.count())]==[label for _,label in options]
+    combo.setCurrentIndex(12);app.processEvents();QTest.qWait(100)
+    assert render_widget(dialog).save(str(out/(tag+'-selected.png')))
+    combo.showPopup();app.processEvents();QTest.qWait(100)
+    popup=combo.view().window();image=render_widget(popup)
+    assert image.save(str(out/(tag+'-expanded.png')))
+    colors={image.pixelColor(x,y).rgb() for y in range(0,image.height(),5) for x in range(0,image.width(),5)}
+    assert len(colors)>5,('blank popup',len(colors))
+    view=combo.view();visible=[]
+    for row in range(combo.count()):
+     index=view.model().index(row,0);rect=view.visualRect(index)
+     if view.viewport().rect().intersects(rect):
+      assert rect.height()>0
+      visible.append(row)
+    assert len(visible)>=2
+    states.update({'items':combo.count(),'visible_rows':visible,'popup_size':[popup.width(),popup.height()],'selected_index':12,'modal':True,'ink_colors':len(colors)})
+    combo.hidePopup();dialog.accept()
+   except BaseException as error:
+    failures.append(error);dialog.reject()
+  timer=QTimer();timer.setSingleShot(True);timer.timeout.connect(inspect);timer.start(0)
+  selected,accepted=main.choose_item(main.text('open'),main.text('pick'),[label for _,label in options]);timer.stop();assert not failures,failures
+  assert accepted and selected==options[12][1] and main.presenter.workspace.active is before
+  main.presenter.workspace.switch(str(project),options[12][0]);main.refresh();assert main.presenter.workspace.active.document.document_id==options[12][0]
+  active=main.presenter.workspace.active
+  timer=QTimer();timer.setSingleShot(True);timer.timeout.connect(lambda:app.activeModalWidget().reject());timer.start(0)
+  _,accepted=main.choose_item(main.text('open'),main.text('pick'),[label for _,label in options]);assert not accepted and main.presenter.workspace.active is active
+  report[tag]=states
+  main.presenter.workspace.close(choice=CloseChoice.DISCARD);main.close();app.processEvents()
+(out/'verification.json').write_text(json.dumps(report,indent=2)+'\n')
+print('F152 expanded/selected EN/ES assessment picker, exact identity, modal and cancellation checks passed.')

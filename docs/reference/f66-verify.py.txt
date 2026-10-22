@@ -1,0 +1,48 @@
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import zipfile
+import xml.etree.ElementTree as ET
+
+root=Path.cwd()
+def digest(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+manifest=json.loads((root/'docs/reference/source-manifest.json').read_text())
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+assert all(digest(reference/name)==value for name,value in manifest.items())
+assert digest(root/'uv.lock')==json.loads((root/'docs/f65-validation.json').read_text())['lock_sha256']
+wheel=root/'dist/ergotools-0.1.0.dev0-py3-none-any.whl'
+code='''
+import sys
+from pathlib import Path
+sys.path.insert(0,sys.argv[1])
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+from ergotools.domain.project import ProjectMetadata
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.job_catalog import Job
+from ergotools.domain.job_risk import JobRiskProfile,JobRiskMeasurement,JobRiskStatus
+from ergotools.domain.assessments.document import AssessmentKind
+path=Path('job-save.sqlite')
+with AssessmentProjectFile.create_with_risk_profiles(path,ProjectMetadata('p','Smoke',MeasurementSystem.IMPERIAL)) as project:
+ jobs,risk=project.save_job_details(project.load_jobs(),project.load_job_risk(),Job('assembly','Assembly'),JobRiskProfile(1,'assembly','Estimate',1,measurements=(JobRiskMeasurement(AssessmentKind.LIFFT,0,0,'Imperial'),)))
+ assert risk.profile(1).status is JobRiskStatus.APPROVED
+with AssessmentProjectFile.open(path) as project:
+ assert project.load_jobs()==jobs
+ assert project.load_job_risk()==risk
+print('Isolated wheel: create job with approved profile and reopen passed')
+'''
+with tempfile.TemporaryDirectory() as directory:
+    with zipfile.ZipFile(wheel) as archive:
+        archive.extractall(directory)
+    result=subprocess.run([sys.executable,'-I','-c',code,directory],cwd=directory,capture_output=True,text=True)
+    if result.returncode:
+        raise RuntimeError(result.stderr)
+    print(result.stdout.strip())
+coverage=json.loads((root/'artifacts/coverage.json').read_text())
+test_count=sum(1 for _ in ET.parse(root/'artifacts/tests.xml').iter('testcase'))
+evidence=dict(milestone='F66',verified_on='2026-10-04',python=sys.version.split()[0],tests_passed=test_count,new_tests=7,coverage_percent=coverage['totals']['percent_covered'],reference_files_unchanged=len(manifest),dependency_lock_unchanged=True,lock_sha256=digest(root/'uv.lock'),wheel_sha256=digest(wheel),independent_wheel_smoke='passed',ui_changed=False,schema_changed=False,overall_completion_estimate_percent=None,progress_note='Prior 67 percent withdrawn as an unreliable whole-application estimate. Job Management Save is implemented through workspace; original screen integration remains pending.')
+(root/'docs/f66-validation.json').write_text(json.dumps(evidence,indent=2)+'\n')
+print(json.dumps(evidence,indent=2))

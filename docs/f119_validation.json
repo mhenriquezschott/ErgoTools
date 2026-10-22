@@ -1,0 +1,32 @@
+{
+  "milestone": "F119",
+  "verified_on": "2026-10-08",
+  "scope": "Source characterization and dependency proposal only",
+  "production_changes": false,
+  "ui_changes": false,
+  "solver_execution": false,
+  "dependencies_installed": false,
+  "reference_files_unchanged": 500,
+  "lock_sha256": "6fbd2494b344121d4de2c0efdac3f431150941f162b08495ea649fe001719592",
+  "dependency_lock_unchanged": true,
+  "latest_code_validation": "F118: 898 tests, 96.8839579573203% coverage; not repeated",
+  "reviewed_source_sha256": {
+    "rotation_layout.py": "f3385f55b6981facff072f3f783fbe9a9fe909222345c66d9d61c354c92b9d93",
+    "rotation_optimizer.py": "4ef1f91e7cd2dd9ba66ad6d66ca55817292317083210f347a264f3867b15e892",
+    "rotation_repository.py": "04f817a941bc2dfd1ead66924ed1fa88fdbbe8132deb8b40ba01791ea32d7fec",
+    "rotation_schema.py": "dbda479a9b1d69a84842a803437f13778b0e0ad4527bd4616e037e521c458f10",
+    "rotation_scope_dialog.py": "3b3776a5ec0e04c98610e8b896ea862e5a4efde6eb72bfd8d4994ec67270d123",
+    "comparerotation_window.py": "c217f398a2c2892cae708b721fba29077f02541e01c1c56952fd22d6b3d8c9c6",
+    "compareopallrotation_window.py": "2b279c8f667dbf9bf5b62bc33b945dcb9685b0af8409157f811fb3d39cf074fa",
+    "optimizedrotation_window.py": "114cb2a843261a17452bf380377c810b547334ffe09f7b9309d66c83051d53e4"
+  },
+  "approval_pending": [
+    "PuLP 3.2.2 with bundled Linux x86-64 CBC 2.10.3",
+    "highspy/HiGHS 1.11.0"
+  ],
+  "limits": [
+    "No solver execution or JROT implementation validated",
+    "No UI changes, so no new visual checks",
+    "No reliable whole-app percentage/date"
+  ]
+}

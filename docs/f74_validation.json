@@ -1,0 +1,86 @@
+{
+  "milestone": "F74",
+  "verified_on": "2026-10-04",
+  "python": "3.13.14",
+  "tests_passed": 614,
+  "new_tests": 7,
+  "coverage_percent": 96.78660565723794,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "wheel_sha256": "d0571cf830407e16be5016a75d660fd4494400473b2ca9bebc965957b7e8524f",
+  "independent_wheel_smoke": "passed",
+  "hierarchy_payload_version": 3,
+  "reads_hierarchy_payload_versions": [
+    1,
+    2,
+    3
+  ],
+  "project_sql_schema_changed": false,
+  "overall_completion_estimate_percent": null,
+  "desktop_new_project_format": 7,
+  "native_capture_dimensions": {
+    "original-empty-900": [
+      900,
+      480
+    ],
+    "new-empty-900": [
+      900,
+      480
+    ],
+    "original-populated-900": [
+      900,
+      480
+    ],
+    "new-populated-900": [
+      900,
+      480
+    ],
+    "new-calculated-900": [
+      900,
+      480
+    ],
+    "new-minimum-620": [
+      758,
+      380
+    ],
+    "spanish-minimum-620": [
+      758,
+      380
+    ],
+    "spanish-bottom-620": [
+      761,
+      380
+    ],
+    "preview-minimum": [
+      960,
+      680
+    ],
+    "preview-spanish-minimum": [
+      960,
+      680
+    ],
+    "preview-no-project": [
+      960,
+      680
+    ],
+    "new-no-project": [
+      900,
+      480
+    ]
+  },
+  "native_screenshots": {
+    "artifacts/lifft-task-panel/new-calculated-900.png": "2cc071480d6097fa09833301eded57e3dd07a9759da83a6890141c2bdd4c768a",
+    "artifacts/lifft-task-panel/new-empty-900.png": "faa45d7d34f0cd5ec2bb058c12baecf1ede685cf1480da005733025e582540ce",
+    "artifacts/lifft-task-panel/new-minimum-620.png": "3dfe918c788338686d84fcb4811720220b6726437fa0f4370ac575fb6353a9f4",
+    "artifacts/lifft-task-panel/new-no-project.png": "5510d877c35ef080dd1ad4ccc09300bbe85e0d39d2b3907c012581f49c18fe6b",
+    "artifacts/lifft-task-panel/new-populated-900.png": "d7acfb04676ee96802ae211ae2ac214d15d360e0d7cc49d3dadebb343c5cc6fd",
+    "artifacts/lifft-task-panel/original-empty-900.png": "b44d83615a2eb5193f479e1aa11cf128f77a297c94bba2c44fcf28a29d90be43",
+    "artifacts/lifft-task-panel/original-populated-900.png": "45910774768550f04a06686322ae6e0f1a10a6e0e1cf1321b1e9980b9748c9c6",
+    "artifacts/lifft-task-panel/preview-minimum.png": "08afc7364e6d38917409d24c4d7c940ae017112ffe1aed8fc32387f12ee394d9",
+    "artifacts/lifft-task-panel/preview-no-project.png": "ee51a8f39e3baefdbf614ecb57c2cdceed8a0a46ef83ccd5760d2ce06e1b3e40",
+    "artifacts/lifft-task-panel/preview-spanish-minimum.png": "02cd4059967f4acd185ac9200a52111459a74420d33a4702b8475a3ad4bfb65e",
+    "artifacts/lifft-task-panel/spanish-bottom-620.png": "442ce56a002da08ed4e36f4c84ae94c6ad10617b136f8ed356d63eda92a87a06",
+    "artifacts/lifft-task-panel/spanish-minimum-620.png": "99e1afab843ff3d4574e2aaea39ae8f27f16c4ed54a7f373dcd31e98c0645416"
+  }
+}

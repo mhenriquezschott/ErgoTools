@@ -1,0 +1,372 @@
+{
+  "source": "Current integrated ErgoTools working tree, 2026-09-27",
+  "assets": [
+    {
+      "path": "icons/view_3d_reset_light.png",
+      "reference_path": "assets/ui-icons/3dreset-light.png",
+      "sha256": "c3b4045deb1c2f1a88e1dfcec0e3ef43f41850126c672812882854b9dcdc41ae"
+    },
+    {
+      "path": "icons/view_3d_reset.png",
+      "reference_path": "assets/ui-icons/3dreset.png",
+      "sha256": "b0252cc9c87fa649b099f3f731a9fc45340f1674a6d1ec61e9b09bf7357159dd"
+    },
+    {
+      "path": "icons/view_3d_rotate_light.png",
+      "reference_path": "assets/ui-icons/3drotate-light.png",
+      "sha256": "8100b96746003178aa788e3f77124170b96b58d75c65a9c7bb4886a84f070bee"
+    },
+    {
+      "path": "icons/view_3d_rotate.png",
+      "reference_path": "assets/ui-icons/3drotate.png",
+      "sha256": "9b55705abb26be6154cd537f61babb95154506b8ad358bbee10b3e4c3f1615d6"
+    },
+    {
+      "path": "icons/view_3d_zoom_light.png",
+      "reference_path": "assets/ui-icons/3dzoom-light.png",
+      "sha256": "332ddba0689b568b2c55566d6862784e2ad02622c96e9f46a7b5deed5d7adbbf"
+    },
+    {
+      "path": "icons/view_3d_zoom.png",
+      "reference_path": "assets/ui-icons/3dzoom.png",
+      "sha256": "338e973fab689429796c7b869430dfdcea323a4571c3ce98dbbc90ebd53c7350"
+    },
+    {
+      "path": "icons/actual_size.png",
+      "reference_path": "assets/ui-icons/actualsize.png",
+      "sha256": "dc0029fd77bbbf372417aa28e3f26af5c3ecd7ab771aea3adf686f3475d07b2a"
+    },
+    {
+      "path": "icons/add_child.png",
+      "reference_path": "assets/ui-icons/addchild.png",
+      "sha256": "d30c304f57206e4a6f333714ea7367aa52d6080930f1627133e13232e2d71ea7"
+    },
+    {
+      "path": "icons/alphabet_order.png",
+      "reference_path": "assets/ui-icons/alphabetorder.png",
+      "sha256": "0b53497e5e8bb173d1a49ac7696c3a2939b4916e0ce00bcf5a13b935f4034401"
+    },
+    {
+      "path": "icons/alphabet_search.png",
+      "reference_path": "assets/ui-icons/alphabetsearch.png",
+      "sha256": "b7e945e79e0ed46a989e464501b52b59b32064167e5a456e3531958535dbbdd3"
+    },
+    {
+      "path": "icons/apply_rotation.png",
+      "reference_path": "assets/ui-icons/applyrotation.png",
+      "sha256": "655381474135513a4ed15885cbaa2342662b9b3dec098ce04fa801e9cb259f11"
+    },
+    {
+      "path": "icons/body_view.png",
+      "reference_path": "assets/ui-icons/bodyview.png",
+      "sha256": "5e642ddf51fe8737eee3a2ffbe100ea14407e28fac374cbba7036a5ed05c1033"
+    },
+    {
+      "path": "icons/calculate_light.png",
+      "reference_path": "assets/ui-icons/calculate-light.png",
+      "sha256": "f2eb2f6efa67291f9216715dfef1cd2a808748a491af9f2cacbd98c3dba7de69"
+    },
+    {
+      "path": "icons/calculate.png",
+      "reference_path": "assets/ui-icons/calculate.png",
+      "sha256": "09730a8ed96d0e6a22f2bd42adaf0baeaaa85ae4779eee592aee74ca446abca6"
+    },
+    {
+      "path": "icons/cancel.png",
+      "reference_path": "assets/ui-icons/cancel.png",
+      "sha256": "72bb56e377966b698c23a48e2a9db454b767df6b41b1039da94054068576563a"
+    },
+    {
+      "path": "icons/capture_image.png",
+      "reference_path": "assets/ui-icons/captureimage.png",
+      "sha256": "afab0bec53ca3c142b6a33780cb38db55db5d85436e6ed41a97daba6a4803d00"
+    },
+    {
+      "path": "icons/close.png",
+      "reference_path": "assets/ui-icons/close.png",
+      "sha256": "382abcb586691dcdc8f340773e1749af8e92369a4c90579c9d8c9041331d23bc"
+    },
+    {
+      "path": "icons/compare_rotation.png",
+      "reference_path": "assets/ui-icons/comparerotation.png",
+      "sha256": "0533c4bfc570dd3a64608d2401d68a1838c28815dea1c6611ca83e4c104118e5"
+    },
+    {
+      "path": "icons/delete.png",
+      "reference_path": "assets/ui-icons/delete.png",
+      "sha256": "272c336c73b04b065f1242f82fe5f105ee437d988b9d1c57eac3a8f6b77613d9"
+    },
+    {
+      "path": "icons/duet.png",
+      "reference_path": "assets/ui-icons/duet.png",
+      "sha256": "60525a93ebf3cd31c65b9c56d564a3f80f4ae89af18488c335575244480c0de5"
+    },
+    {
+      "path": "icons/ergotools_logo.png",
+      "reference_path": "assets/ui-icons/ergotools_logo.png",
+      "sha256": "d1363e78de5b27f839b47833f56de2a43b585ac8591b5e50d323a8176ee74aec"
+    },
+    {
+      "path": "icons/export.png",
+      "reference_path": "assets/ui-icons/export.png",
+      "sha256": "fb81ca9301224b6fdd5ade70c35f6cfc9776ca2d0679b52247e323d737f16d2d"
+    },
+    {
+      "path": "icons/filter_apply_light.png",
+      "reference_path": "assets/ui-icons/filterapply-light.png",
+      "sha256": "a57dc65d5cbc451b6262fb47d41a83184a209febb880f79f5962d6b927e6cd2c"
+    },
+    {
+      "path": "icons/filter_apply.png",
+      "reference_path": "assets/ui-icons/filterapply.png",
+      "sha256": "23f3e706f04a36108b496f35951c3192fb1de1d64aceb86c3fdabc522360619d"
+    },
+    {
+      "path": "icons/filter_reset.png",
+      "reference_path": "assets/ui-icons/filterreset.png",
+      "sha256": "3ae578d10f114312b83beae7d7c8f6dd30d792014a765acc06ce87cb9ad9c926"
+    },
+    {
+      "path": "icons/first.png",
+      "reference_path": "assets/ui-icons/first.png",
+      "sha256": "ff4b9655c3a36254883c530d61c4751d91bbfafe4e9254b70755f15ed21a9978"
+    },
+    {
+      "path": "icons/help.png",
+      "reference_path": "assets/ui-icons/help.png",
+      "sha256": "40c4ef459af4d6cd97350476cb252752741f7a716dcd7b13a9a7618737312100"
+    },
+    {
+      "path": "icons/job_management.png",
+      "reference_path": "assets/ui-icons/jobmanagement.png",
+      "sha256": "a7531d05faf11943fcb9cd545a2cdec51f73f98e7e27fff9edb89b55c5d6003d"
+    },
+    {
+      "path": "icons/jrot.png",
+      "reference_path": "assets/ui-icons/jrot.png",
+      "sha256": "2bed286b8e56e31a6c1f7165635ef536b7c72dcb19cd4e7a181b3d115df36481"
+    },
+    {
+      "path": "icons/last.png",
+      "reference_path": "assets/ui-icons/last.png",
+      "sha256": "f7564ef478c5afef858bf651d767ad7bb90aa57e92d5a23be2ad71084b7c2d92"
+    },
+    {
+      "path": "icons/lifft.png",
+      "reference_path": "assets/ui-icons/lifft.png",
+      "sha256": "99c3ccffadd798b0da6e4086bd1f582f8d9de65ad05eee20178517905544d44a"
+    },
+    {
+      "path": "icons/line.png",
+      "reference_path": "assets/ui-icons/line.png",
+      "sha256": "0474901d4282282952529c4f9f6c53d9db0e8114d2a2163cf543f75a6725c432"
+    },
+    {
+      "path": "icons/locate.png",
+      "reference_path": "assets/ui-icons/locate.png",
+      "sha256": "44b86136c7767b41cf095ea501fe49aad5f21f80040dfce0a1455f22db568730"
+    },
+    {
+      "path": "icons/new_worker.png",
+      "reference_path": "assets/ui-icons/new-worker.png",
+      "sha256": "3d305333b38fa6a9fe73bc0f15a40d091936e728ec39cbe70326aadcd74db136"
+    },
+    {
+      "path": "icons/new.png",
+      "reference_path": "assets/ui-icons/new.png",
+      "sha256": "7798554181e53376b1c8da57f630d6cbbe853dd4485868361fa847cf5871cad6"
+    },
+    {
+      "path": "icons/next.png",
+      "reference_path": "assets/ui-icons/next.png",
+      "sha256": "235b2633d735e16c27c265b141a8cb853aabfb16a2c5927c1527613b6d31f09e"
+    },
+    {
+      "path": "icons/number_order.png",
+      "reference_path": "assets/ui-icons/numberorder.png",
+      "sha256": "ca76cb0692dc3f1d42dcef1a7185d074bd5d3935cb7a9cb00306a62c083f38e4"
+    },
+    {
+      "path": "icons/opacity_transparency.png",
+      "reference_path": "assets/ui-icons/opacitytransparency.png",
+      "sha256": "52b1cd6a40a3ecbabb002843784d80cf1973b0363473702a7e4641ad8314d35d"
+    },
+    {
+      "path": "icons/open.png",
+      "reference_path": "assets/ui-icons/open.png",
+      "sha256": "d75565b63255b3c6b1b8dddafa0da28148d9dd83f70c408ef07d0aab35a436e1"
+    },
+    {
+      "path": "icons/optimize_all_tools_light.png",
+      "reference_path": "assets/ui-icons/optimizealltools-light.png",
+      "sha256": "c8f5c8a3de6e1d0023b3a6cb7dd0de42ebac6c418f87b4970db460d46bfa281b"
+    },
+    {
+      "path": "icons/optimize_all_tools.png",
+      "reference_path": "assets/ui-icons/optimizealltools.png",
+      "sha256": "114a2a96876c0174a1788561c55c7969c21c0f715e1769c1318645cc26b608dc"
+    },
+    {
+      "path": "icons/optimize_selected_tool.png",
+      "reference_path": "assets/ui-icons/optimizeselectedtool.png",
+      "sha256": "79dc6e0a72e6772702d23367a74da90252e3f6ab846c9fe619cfabc0f155caae"
+    },
+    {
+      "path": "icons/plant.png",
+      "reference_path": "assets/ui-icons/plant.png",
+      "sha256": "a942c5dc6e90eaf642d81bfdaf91ca3f462cadcbe1b0729634a49e032f22b311"
+    },
+    {
+      "path": "icons/plot.png",
+      "reference_path": "assets/ui-icons/plot.png",
+      "sha256": "e07f206ed917614656b898e6ef17216282529886b14f298a00efa688e6a67431"
+    },
+    {
+      "path": "icons/previous.png",
+      "reference_path": "assets/ui-icons/previous.png",
+      "sha256": "8fb6a8bd0dcea550344ebbed7616bbcd141baa76b54b905d66c62aa21f1e92d8"
+    },
+    {
+      "path": "icons/refresh.png",
+      "reference_path": "assets/ui-icons/refresh.png",
+      "sha256": "3dca477623a6298b9532e70a4909e87c71a4057ec237a7b29e88d5debbc15620"
+    },
+    {
+      "path": "icons/save.png",
+      "reference_path": "assets/ui-icons/save.png",
+      "sha256": "07420b92bb0c969fd382bfe327f142fde402bf71d878ffa66c0e22e16a0fefbb"
+    },
+    {
+      "path": "icons/search.png",
+      "reference_path": "assets/ui-icons/search.png",
+      "sha256": "926badf30b9d42fea0332b13eb5e08b70513da5ce2f5d6d9a7b42fd970c6d55c"
+    },
+    {
+      "path": "icons/section.png",
+      "reference_path": "assets/ui-icons/section.png",
+      "sha256": "88641928d8ba349cf3725e037c5eab4672efa66ad6e066f94e619d415adccd56"
+    },
+    {
+      "path": "icons/settings.png",
+      "reference_path": "assets/ui-icons/settings.png",
+      "sha256": "02c1e647b9f1eb24092f0c16e249b29126c4b9e5fe03d9b1c8094d1fe3a4f476"
+    },
+    {
+      "path": "icons/shift.png",
+      "reference_path": "assets/ui-icons/shift.png",
+      "sha256": "859e03bbbde9308aa625dcfbe3ade68828881073feccd40f9ec040493fa11f53"
+    },
+    {
+      "path": "icons/shoulder.png",
+      "reference_path": "assets/ui-icons/shoulder.png",
+      "sha256": "2dad1bc434fe4b61c8f5b11daf161d54591552e1867eb57f7b4bd14c2e80331b"
+    },
+    {
+      "path": "icons/station.png",
+      "reference_path": "assets/ui-icons/station.png",
+      "sha256": "3044981217f2e1c1cff67eb58220d7c0d1ce4fae542dbf792b484880ef62fcc2"
+    },
+    {
+      "path": "icons/transfer_worker_data_light.png",
+      "reference_path": "assets/ui-icons/transferworkerdata-light.png",
+      "sha256": "62403f7dc770549e9b77d4a57e87e2c547bfba12fbeab03716b6053857ac4c5b"
+    },
+    {
+      "path": "icons/transfer_worker_data.png",
+      "reference_path": "assets/ui-icons/transferworkerdata.png",
+      "sha256": "d6a135afa6cab1739a9b4a7077f61b3c6598bdc9bbcbe502a0b32aabedbb888e"
+    },
+    {
+      "path": "icons/undo.png",
+      "reference_path": "assets/ui-icons/undo.png",
+      "sha256": "1a0379d20cfa308cfe46df4641fd23c86626bd87ba198560b9f5d786d418485f",
+      "previous_sha256": "089c76c34e283cc577c5dfd384dbca9180d5ece216dbc88a9608525744db306c",
+      "local_revision": "Artwork present in owner workspace at assignment-actions validation; PNG bytes preserved."
+    },
+    {
+      "path": "icons/view.png",
+      "reference_path": "assets/ui-icons/view.png",
+      "sha256": "5b1d57c915187be5cbc79683e5fa87654dde696599e249ee6f3d080c37e3630c"
+    },
+    {
+      "path": "icons/worker.png",
+      "reference_path": "assets/ui-icons/worker.png",
+      "sha256": "b7009cb81066bd144036eb857530519fdbe7f1d0831eb7aed0102e77590c6ac9"
+    },
+    {
+      "path": "icons/worker_management.png",
+      "reference_path": "assets/ui-icons/workermanagement.png",
+      "sha256": "cb8a3dde08b3c6c9388226ccf32ee7acf40621cf1249e18bf3f5f33baf867800"
+    },
+    {
+      "path": "icons/zoom_out.png",
+      "reference_path": "assets/ui-icons/zoomminus.png",
+      "sha256": "b3cb96a22651c9e544f00eae64ef3c30797c1fae2af82d2aebab394b7ef67aa5"
+    },
+    {
+      "path": "icons/zoom_in.png",
+      "reference_path": "assets/ui-icons/zoomplus.png",
+      "sha256": "86cac1a4e526a2a592596aab1b16e7a20c1fbf693ac962318d2e9a4281adf1e4"
+    },
+    {
+      "path": "models/body_avatar.stl",
+      "reference_path": "models/JardeDummy.stl",
+      "sha256": "8645bad2a95b27e0c8440f12e74381144a75428f95e90d4c2aec3c026dd60535"
+    },
+    {
+      "path": "models/left_forearm.stl",
+      "reference_path": "models/leftforearm02.stl",
+      "sha256": "9ed29dec8d8bb6a7ef93a2a2ae77e65b66271c71273ec356b85816f32f08e075"
+    },
+    {
+      "path": "models/left_hand.stl",
+      "reference_path": "models/lefthand02.stl",
+      "sha256": "a2c68cc9dac399b025e57a497400b37ae5fd3b121dba08908cc1925fd78c2ce8"
+    },
+    {
+      "path": "models/left_shoulder.stl",
+      "reference_path": "models/leftshoulder03.stl",
+      "sha256": "e8f9d34f70c67ca8860c130b0f42eaea44bc694c75093184c61f8344d13e3742"
+    },
+    {
+      "path": "models/lower_back.stl",
+      "reference_path": "models/lowerback03.stl",
+      "sha256": "ca26fd2b738459ea4131f0df78b96c4b4367cc966fe7af45fe4427a4f24c2426"
+    },
+    {
+      "path": "models/right_forearm.stl",
+      "reference_path": "models/rightforearm02.stl",
+      "sha256": "22eef66de83bcd9db65e90a9f7632fd29219a525d231fc7a06ee3ff61820f31d"
+    },
+    {
+      "path": "models/right_hand.stl",
+      "reference_path": "models/righthand02.stl",
+      "sha256": "e702cd419700ea81aaa1c24f842c8ecad7fdb8a04872653535765785e99e3694"
+    },
+    {
+      "path": "models/right_shoulder.stl",
+      "reference_path": "models/rightshoulder03.stl",
+      "sha256": "a461bfd890f293ee17cb7ae9f858e9553d9420b5369dd8b1ee5dce47202cdceb"
+    },
+    {
+      "path": "documents/reference_manual.pdf",
+      "reference_path": "assets/ergohelp01.pdf",
+      "sha256": "27b732cda77bb0aff25b0e91f8285ad3314411d553eefd5cb6c8d43987335bf6"
+    },
+    {
+      "path": "images/ergotools_main_logo.png",
+      "reference_path": "images/ergologomain01.png",
+      "sha256": "f300edb2cba399ca4076e500bb5f6d79f53015d0df3c7c1456f15705bae6ee02"
+    }
+  ],
+  "derived_assets": [
+    {
+      "path": "icons/redo.png",
+      "derived_from": "icons/undo.png",
+      "operation": "static horizontal mirror; preserve canvas and alpha",
+      "sha256": "8059c6364ec00d1fdaea5691c24134b751b770f83314fb66a3429753bc0221ab",
+      "previous_sha256": "eb613816e219f4a5b23f003560cea6e45c885f553b0bb67bb924d2b88a395727",
+      "local_revision": "Artwork present in owner workspace at assignment-actions validation; PNG bytes preserved."
+    }
+  ]
+}

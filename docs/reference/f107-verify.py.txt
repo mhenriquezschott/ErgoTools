@@ -1,0 +1,87 @@
+import ast, hashlib, json, subprocess, sys, tempfile, zipfile
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from PIL import Image, ImageChops
+root = Path.cwd()
+def digest(path): return hashlib.sha256(path.read_bytes()).hexdigest()
+manifest = json.loads((root/'docs/reference/source-manifest.json').read_text())
+reference = Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+assert all(digest(reference/name) == value for name,value in manifest.items())
+assert digest(root/'uv.lock') == json.loads((root/'docs/f79-validation.json').read_text())['lock_sha256']
+nodes=[]
+for node in ast.parse((root/'tests/test_plot_results.py').read_text()).body:
+ if isinstance(node,(ast.Import,ast.ImportFrom)):
+  if (getattr(node,'module','') or '').startswith(('tests','PyQt5','ergotools.presentation','ergotools.bootstrap')): continue
+  nodes.append(node)
+ elif isinstance(node,ast.Assign): nodes.append(node)
+ elif isinstance(node,ast.FunctionDef) and node.name=='project':
+  node.decorator_list=[]; nodes.append(node)
+fixture=ast.unparse(ast.Module(nodes,type_ignores=[]))
+checks=r'''
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtGui import QImage,QColor
+from ergotools.application.plot_layout import LoadedPlantLayout
+from ergotools.application.plot_results import saved_plot_results
+from ergotools.domain.plot_filters import PlotFilterSelection,PlotRiskView
+from ergotools.domain.plot_positions import PlotPoint,PlotPositions,WorkerAssignmentMarker,WorkerPositionSource
+from ergotools.infrastructure.plant_image_import import import_plant_image
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+from ergotools.presentation.desktop.plot_layout_canvas import PlotLayoutCanvas
+from ergotools.presentation.desktop.plot_marker_layer import PlotMarkerLayer
+app=QApplication([])
+generator=project(Path.cwd());repository=next(generator)
+try:
+ positions=PlotPositions('p')
+ for identity,x in ((1,100),(3,200)):
+  positions=positions.with_saved_marker(WorkerAssignmentMarker(identity,PlotPoint(x,100),visible=True,source=WorkerPositionSource.MANUAL),repository.load_jobs())
+ repository.save_plot_positions(positions)
+ image=QImage(640,400,QImage.Format_RGB32);image.fill(QColor('white'));assert image.save('map.png')
+ canvas=PlotLayoutCanvas();canvas.resize(1100,700)
+ canvas.set_layout(LoadedPlantLayout(SCOPE,import_plant_image(Path('map.png')).data));canvas.show();app.processEvents()
+ errors=[]
+ layer=PlotMarkerLayer(canvas,repository.load_jobs(),repository.save_plot_positions,errors.append,current_year=2026)
+ results=saved_plot_results(repository,PlotFilterSelection(SCOPE),current_year=2026)
+ layer.set_results(results);assert len(layer.items)==2
+ worker=layer.items['worker',1];worker.setPos(150,125);layer.moved(worker)
+ def fail(value): raise OSError('controlled wheel save failure')
+ layer.save_positions=fail
+ assert not layer.save(('worker',1)) and layer.pending and errors
+ assert repository.load_plot_positions()==positions
+ layer.save_positions=repository.save_plot_positions
+ assert layer.save(('worker',1)) and not layer.pending
+ worker.setPos(250,250);layer.moved(worker);layer.cancel(('worker',1))
+ assert worker.anchor_point()==PlotPoint(150,125)
+ layer.set_results(replace(layer.results,selection=replace(results.selection,risk_view=PlotRiskView.COMPARISON)))
+ assert layer.items['worker',1].appearance.comparison
+ layer.set_results(replace(layer.results,selection=replace(results.selection,risk_view=PlotRiskView.JOB)))
+ job=layer.items['job',1];job.setPos(0,0);layer.moved(job)
+ assert layer.save(('job',1)) and not layer.pending
+ assert repository.load_plot_positions().marker(1).point==PlotPoint(150,125)
+ assert layer.items['job',1].anchor_point()==PlotPoint(0,0)
+ expected=repository.load_plot_positions()
+ canvas.set_layout(LoadedPlantLayout(SCOPE,None));assert not layer.items
+ canvas.close()
+finally: generator.close()
+with AssessmentProjectFile.open(Path('plot.ergprj')) as reopened:
+ assert reopened.load_plot_positions()==expected
+print('Extracted wheel: worker/comparison/job rendering, save-failure retry, cancellation, zero-anchor save, map replacement and saved reopen passed')
+'''
+code='import sys\nfrom pathlib import Path\nsys.path.insert(0,sys.argv[1])\n'+fixture+'\n'+checks
+wheel=root/'dist/ergotools-0.1.0.dev0-py3-none-any.whl'
+with tempfile.TemporaryDirectory() as directory:
+ with zipfile.ZipFile(wheel) as archive: archive.extractall(directory)
+ result=subprocess.run([sys.executable,'-I','-c',code,directory],cwd=directory,capture_output=True,text=True,timeout=30)
+ if result.returncode: raise RuntimeError(result.stdout+result.stderr)
+ print(result.stdout.strip())
+art=root/'artifacts/plot-markers'; comparisons={}
+for mode in ('individual','comparison','job'):
+ a=Image.open(art/f'source-{mode}.png').convert('RGB');b=Image.open(art/f'new-{mode}.png').convert('RGB')
+ assert a.size==b.size
+ diff=ImageChops.difference(a,b)
+ assert diff.getbbox() is None, mode
+ comparisons[mode]={'different_pixels':0,'size':list(a.size)}
+coverage=json.loads((root/'artifacts/coverage.json').read_text())
+tests=ET.parse(root/'artifacts/tests.xml')
+evidence=dict(milestone='F107',verified_on='2026-10-07',python=sys.version.split()[0],tests_passed=len(list(tests.iter('testcase'))),new_tests=5,coverage_percent=coverage['totals']['percent_covered'],reference_files_unchanged=len(manifest),dependency_lock_unchanged=True,lock_sha256=digest(root/'uv.lock'),wheel_sha256=digest(wheel),independent_wheel_smoke='passed',source_marker_native_comparisons=comparisons,native_screenshots={p.name:digest(p) for p in sorted(art.glob('*.png'))},native_composition_sizes=[[1460,1060],[1920,1200]],plot_marker_rendering_implemented=True,plot_marker_save_cancel_implemented=True,plot_main_window_enabled=False,plot_overviews_and_summaries_integrated=False,scientific_gates_preserved=True,ui_layout_changed=True,overall_completion_estimate_percent=None)
+(root/'docs/f107-validation.json').write_text(json.dumps(evidence,indent=2)+'\n')
+print('Three original/native marker captures match pixel-for-pixel; 500 reference hashes and approved lock unchanged; F107 evidence saved')

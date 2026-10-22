@@ -1,0 +1,59 @@
+"""Characterize original profile transitions in isolated in-memory SQLite."""
+import ast
+import hashlib
+import json
+import sqlite3
+from contextlib import closing
+from pathlib import Path
+
+root=Path.cwd()
+ref=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+path=ref/'src/job_risk_repository.py'
+tree=ast.parse(path.read_text())
+names={'approve_profile','make_profile_current','retire_profile'}
+nodes=[n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name in names]
+# The legacy derived-color/materialized-table synchronizer is outside this
+# lifecycle characterization; record its call without changing scientific code.
+calls=[]
+env={'sqlite3':sqlite3,'JobRiskProfileError':ValueError,
+     '_sync_legacy_job_measurements':lambda c,j,p:calls.append((j,p))}
+exec(compile(ast.Module(body=nodes,type_ignores=[]),str(path),'exec'),env)
+cases=[]
+for actions, complete in [
+    ([['approve_profile',2]],True),
+    ([['approve_profile',2],['make_profile_current',1]],True),
+    ([['approve_profile',2],['retire_profile',2]],True),
+    ([['retire_profile',2]],False),
+    ([['retire_profile',1]],True),
+    ([['approve_profile',2]],False),
+    ([['approve_profile',1]],True),
+    ([['make_profile_current',2]],True),
+    ([['retire_profile',2],['retire_profile',2]],True),
+    ([['make_profile_current',99]],True),
+]:
+    calls.clear()
+    with closing(sqlite3.connect(':memory:')) as c:
+        c.executescript("""
+            CREATE TABLE JobRiskProfile(
+              id INTEGER,job_id TEXT,status TEXT,is_current INTEGER,updated_at TEXT);
+            CREATE TABLE JobRiskMeasurement(
+              profile_id INTEGER,total_cumulative_damage REAL,probability_outcome REAL);
+            CREATE TABLE JobMeasurement(job_id TEXT);
+            INSERT INTO JobRiskProfile VALUES
+              (1,'j','approved',1,NULL),(2,'j','draft',0,NULL),(3,'k','approved',1,NULL);
+            INSERT INTO JobMeasurement VALUES ('j'),('k');
+        """)
+        c.execute('INSERT INTO JobRiskMeasurement VALUES (2,0,?)',(0 if complete else None,))
+        error=False
+        for action,identity in actions:
+            try:
+                env[action](c,identity)
+            except ValueError:
+                error=True
+                break
+        cases.append(dict(actions=actions,complete=complete,error=error,
+            profiles=c.execute('SELECT id,status,is_current FROM JobRiskProfile ORDER BY id').fetchall(),
+            sync_calls=list(calls)))
+(root/'tests/fixtures/job_risk_lifecycle_reference.json').write_text(json.dumps(
+    dict(source_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),cases=cases),indent=2)+'\n')
+print('Captured ten original profile lifecycle scenarios.')

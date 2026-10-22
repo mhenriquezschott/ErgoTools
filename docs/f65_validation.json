@@ -1,0 +1,23 @@
+{
+  "milestone": "F65",
+  "verified_on": "2026-10-04",
+  "python": "3.13.14",
+  "tests_passed": 559,
+  "new_tests": 9,
+  "coverage_percent": 99.00016126431221,
+  "new_module_coverage": {
+    "src/ergotools/application/job_risk_access.py": 100.0,
+    "src/ergotools/application/project_workspace.py": 99.70104633781764
+  },
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "wheel_sha256": "74b5100638d4dbefff29d9a0da8ce7065e48a15b5652f2042c93ecdc382dec00",
+  "independent_wheel_smoke": "passed",
+  "ui_changed": false,
+  "schema_changed": false,
+  "existing_formats_unchanged": true,
+  "reference_overlap_cases": 8,
+  "overall_completion_estimate_percent": 67,
+  "native_screenshots": {}
+}

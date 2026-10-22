@@ -1,0 +1,25 @@
+{
+  "milestone": "F101",
+  "verified_on": "2026-10-06",
+  "python": "3.13.14",
+  "tests_passed": 797,
+  "new_tests": 14,
+  "coverage_percent": 96.40983153824911,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "6fbd2494b344121d4de2c0efdac3f431150941f162b08495ea649fe001719592",
+  "wheel_sha256": "17990b4c2d964ae4d92b9dd3468d9d74e81fdc8754d9004bd8d7dd57a13b795f",
+  "independent_wheel_smoke": "passed",
+  "plot_main_window_enabled": false,
+  "plot_image_persistence_implemented": true,
+  "plot_image_ui_actions_integrated": false,
+  "project_format": 9,
+  "older_projects_migrate_on_explicit_image_save_only": true,
+  "scientific_gates_preserved": true,
+  "overall_completion_estimate_percent": null,
+  "native_screenshots": {
+    "artifacts/plant-image-save/preview.png": "3df0129ed3b20b83621fd0d3d19b084e2ef20bba24aeafc1cf9c3e7325ee1160",
+    "artifacts/plant-image-save/replacement-enlarged.png": "2cc58ee7d1788385d5abcfd0e8b888f4aaadcb45b3560ade1210050952047996",
+    "artifacts/plant-image-save/saved-reloaded.png": "3df0129ed3b20b83621fd0d3d19b084e2ef20bba24aeafc1cf9c3e7325ee1160"
+  }
+}

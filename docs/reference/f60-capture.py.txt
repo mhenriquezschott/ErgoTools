@@ -1,0 +1,123 @@
+"""Compare migrated and original dialog construction using synthetic inputs."""
+import ast
+import json
+import os
+import runpy
+import sqlite3
+import sys
+import tempfile
+from dataclasses import replace
+from pathlib import Path
+
+from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon, QPixmap
+from PyQt5.QtTest import QTest
+from PyQt5.QtWidgets import *
+
+sys.path.insert(0, str(Path.cwd()))
+from tests.test_job_workplaces import seed_workspace
+from ergotools.presentation.job_workplaces import JobWorkplaces
+from ergotools.presentation.desktop.job_workplace_dialog import JobWorkplaceDialog
+from ergotools.infrastructure.resources import read_asset
+
+root = Path.cwd()
+ref = Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+out = root/'artifacts/job-workplace-localization'
+out.mkdir(parents=True,exist_ok=True)
+app = QApplication.instance() or QApplication([])
+icons = {}
+for name in ('plant','section','line','station','filterreset','save','close'):
+    pixmap=QPixmap()
+    assert pixmap.loadFromData(read_asset('icons/'+name+'.png'))
+    icons[name]=QIcon(pixmap)
+with tempfile.TemporaryDirectory() as directory:
+    workspace=seed_workspace(Path(directory))
+    presenter=JobWorkplaces(workspace)
+    view=presenter.load('j')
+    dialog=JobWorkplaceDialog(presenter,view,icons)
+    def capture(window,name):
+        window.show()
+        QTest.qWait(100)
+        assert window.grab().save(str(out/(name+'.png')))
+    capture(dialog,'new-collapsed')
+    dialog.workplace_tree.expandAll()
+    dialog.workplace_tree.setCurrentItem(list(dialog.items())[-1])
+    capture(dialog,'new-expanded')
+    dialog.resize(720,500)
+    capture(dialog,'new-minimum')
+    dialog.filter_input.setText('2')
+    capture(dialog,'new-filtered')
+    dialog.filter_input.clear()
+    dialog.shift_combo.setCurrentText('Night')
+    capture(dialog,'new-empty-shift')
+    empty=JobWorkplaceDialog(presenter,replace(view,options=(),selected=frozenset()),icons)
+    capture(empty,'new-empty')
+    empty.close()
+
+    from ergotools.application.settings import Language
+    spanish=JobWorkplaceDialog(presenter,view,icons,language=Language.SPANISH)
+    spanish.resize(720,500)
+    capture(spanish,'spanish-collapsed')
+    spanish.workplace_tree.expandAll()
+    spanish.workplace_tree.setCurrentItem(list(spanish.items())[-1])
+    capture(spanish,'spanish-expanded')
+    spanish.filter_input.setText('2')
+    capture(spanish,'spanish-filtered')
+    spanish.filter_input.clear()
+    spanish.shift_combo.setCurrentText('Night')
+    capture(spanish,'spanish-empty-shift')
+    spanish_empty=JobWorkplaceDialog(presenter,replace(view,options=(),selected=frozenset()),icons,language=Language.SPANISH)
+    spanish_empty.resize(720,500)
+    capture(spanish_empty,'spanish-empty')
+    spanish_empty.close()
+    workspace.read_jobs()
+    def capture_spanish_warning():
+        warning=app.activeModalWidget()
+        capture(warning,'spanish-error')
+        warning.accept()
+    QtCore.QTimer.singleShot(100,capture_spanish_warning)
+    spanish.save_assignments()
+    spanish.close()
+
+    workspace.read_jobs()
+    def capture_warning():
+        warning=app.activeModalWidget()
+        capture(warning,'new-error')
+        warning.accept()
+    QtCore.QTimer.singleShot(100,capture_warning)
+    dialog.save_assignments()
+    # Execute only the original dialog class; no original application imports.
+    source=ref/'src/job_window.py'
+    tree=ast.parse(source.read_text())
+    node=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='JobWorkplaceDialog')
+    repo=runpy.run_path(str(ref/'src/job_placement_repository.py'))
+    key=repo['WorkplaceKey']
+    namespace=dict(globals())
+    namespace.update(
+        __file__=str(source),WorkplaceKey=key,
+        connect_database=lambda *a,**k:sqlite3.connect(':memory:'),
+        available_workplaces=lambda c:[key(p.plant_name,p.section_name,p.line_name,p.station_id,p.shift_id) for p in view.options],
+        active_job_placement_keys=lambda c,j:{key(p.plant_name,p.section_name,p.line_name,p.station_id,p.shift_id) for p in view.selected},
+    )
+    exec(compile(ast.Module(body=[node],type_ignores=[]),str(source),'exec'),namespace)
+    main=ast.parse((ref/'src/main.py').read_text())
+    method=next(n for n in ast.walk(main) if isinstance(n,ast.FunctionDef) and n.name=='mainWorkspaceStyleSheet')
+    style=ast.literal_eval(method.body[0].value)
+    job=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='JobWindow')
+    setup=next(n for n in job.body if isinstance(n,ast.FunctionDef) and n.name=='setupUI')
+    call=next(n for n in ast.walk(setup) if isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute) and n.func.attr=='setStyleSheet')
+    style+=ast.literal_eval(call.args[0].right)
+    parent=QWidget()
+    parent.setStyleSheet(style)
+    original=namespace['JobWorkplaceDialog']('j','synthetic',parent)
+    capture(original,'original-collapsed')
+    original.workplace_tree.expandAll()
+    original.workplace_tree.setCurrentItem(list(original.iterWorkplaceItems())[-1])
+    capture(original,'original-expanded')
+    original.resize(720,500)
+    capture(original,'original-minimum')
+    original.close()
+    dialog.close()
+    workspace.close()
+print('Captured original-source and migrated native dialog states.')

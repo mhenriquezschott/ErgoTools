@@ -1,0 +1,62 @@
+{
+  "milestone": "M1",
+  "status": "complete",
+  "follow_up_percent": 20,
+  "full_gate": {
+    "tests_passed": 1251,
+    "coverage_percent": 96.45211801549365,
+    "baseline_python": "3.13.14",
+    "mypy_modules": 248,
+    "architecture_violations": 0
+  },
+  "native": {
+    "failures": [],
+    "captures": [
+      "main-en",
+      "plot-en",
+      "jrot-en",
+      "main-es",
+      "plot-es",
+      "jrot-es"
+    ],
+    "checks": {
+      "native-save-as-backup-results-maps-rotations": true,
+      "plot-en": true,
+      "jrot-en": true,
+      "plot-es": true,
+      "jrot-es": true,
+      "native-bilingual-integrated-main": true,
+      "application-imports-confined-to-wheel": true
+    },
+    "recorded_results": 194,
+    "fresh_saved_results": 6,
+    "plant_images": 4,
+    "rotation_schemes": 7
+  },
+  "package": {
+    "wheel_sha256": "a1d7fd35f35bb9381138a01a83162f4db4d75a8b3a71f1cd4cd3be5a6249f902",
+    "source_python_files_equal": 229,
+    "wheel_excludes_converter": true,
+    "native_workflows_with_converter_imports_blocked": true,
+    "source_format12_hash_unchanged": "e7b0ecc96c972b542eda5c910d566fb9003aa3b9d81df32d536e1c6bfb5aa8bc",
+    "reference_files_unchanged": 500,
+    "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+    "native_project_for_acceptance": "/tmp/ergotools-cleanup-m1/native comprehensive.ergprj",
+    "native_tested_wheel_sha256": "358b965ba16033bcb6050e3060e674db7379cd407d84be5fc6f69aa17ed179fb",
+    "final_wheel_executable_ast_matches_native_tested_wheel": true
+  },
+  "documentation_inventory": {
+    "python_and_stub_files": 394,
+    "functions_including_private_and_nested": 2624,
+    "functions_missing_docstring": 373,
+    "functions_with_parameters_missing_args_section": 1495,
+    "functions_missing_return_or_yield_section": 2585,
+    "functions_reviewed_M1": 32,
+    "functions_pending_M4_review": 2592,
+    "constants_pending_review": 290
+  },
+  "user_testing": "held_until_M1_to_M5_complete",
+  "M2": "not_started",
+  "visual_inspection": "Six captures inspected; no UI/layout edits. VTK/results/labels/bottom controls retained. PLOT gauge capture interpolation is not a scientific comparison.",
+  "reference_and_lock_unchanged": true
+}

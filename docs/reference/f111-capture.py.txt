@@ -1,0 +1,55 @@
+import ast,json,os,tempfile
+from pathlib import Path
+from PyQt5 import QtWidgets
+from PyQt5.QtTest import QTest
+from PyQt5.QtCore import Qt,QSize
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QApplication,QDialog
+from ergotools.bootstrap import load_icons
+from ergotools.domain.language import Language
+from ergotools.domain.plot_scope import PlotScope
+from ergotools.domain.plot_filters import PlotFilterSelection
+from ergotools.application.plot_results import saved_plot_results
+from ergotools.presentation.desktop.plot_worker_picker import PlotWorkerPicker
+from ergotools.presentation.desktop.theme.plot import PLOT_STYLE
+root=Path.cwd(); art=root/'artifacts/plot-worker-picker';art.mkdir(exist_ok=True)
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+app=QApplication([])
+def grab(widget,name):
+ app.processEvents();QTest.qWait(250);app.processEvents();assert widget.grab().save(str(art/(name+'.png')))
+# Execute only the reviewed source dialog, without importing legacy application code.
+node=next(n for n in ast.parse((reference/'src/plant_layout.py').read_text()).body if isinstance(n,ast.ClassDef) and n.name=='PlotWorkerPickerDialog')
+namespace=dict(QtWidgets=QtWidgets,Qt=Qt,QSize=QSize,QIcon=QIcon,os=os,__file__=str(reference/'src/plant_layout.py'))
+for name in ('QDialog','QVBoxLayout','QLabel','QLineEdit','QDialogButtonBox'):namespace[name]=getattr(QtWidgets,name)
+exec(compile(ast.Module([node],type_ignores=[]),'reviewed-source-picker','exec'),namespace)
+# Use the same synthetic fixture as regression tests, not an operational project.
+nodes=[]
+for node in ast.parse((root/'tests/test_plot_results.py').read_text()).body:
+ if isinstance(node,(ast.Import,ast.ImportFrom)):
+  if (getattr(node,'module','') or '').startswith(('tests','PyQt5','ergotools.presentation','ergotools.bootstrap')):continue
+  nodes.append(node)
+ elif isinstance(node,ast.Assign):nodes.append(node)
+ elif isinstance(node,ast.FunctionDef) and node.name=='project':node.decorator_list=[];nodes.append(node)
+fixture={};exec(compile(ast.Module(nodes,type_ignores=[]),'fixture','exec'),fixture)
+parent=QDialog();parent.setObjectName('plotDialog');parent.setStyleSheet(PLOT_STYLE)
+with tempfile.TemporaryDirectory() as directory:
+ generator=fixture['project'](Path(directory));repository=next(generator)
+ try:
+  rows=saved_plot_results(repository,PlotFilterSelection(PlotScope((('P',),))),current_year=2026).workers
+  dictionaries=[]
+  for row in rows:
+   place=row.assessment.owner.workplace
+   dictionaries.append(dict(worker_id=row.worker.worker_id,first_name=row.worker.first_name,last_name=row.worker.last_name,plant_name=place.plant_name,section_name=place.section_name,line_name=place.line_name,station_id=place.station_id,shift_id=place.shift_id))
+  for label,dialog in [('source',namespace['PlotWorkerPickerDialog'](dictionaries,parent)),('en',PlotWorkerPicker(rows,load_icons(),parent=parent)),('es',PlotWorkerPicker(rows,load_icons(),language=Language.SPANISH,parent=parent))]:
+   dialog.show();grab(dialog,label+'-populated')
+   dialog.workplace_tree.expandAll();grab(dialog,label+'-expanded')
+   dialog.workplace_tree.setCurrentItem(dialog.workplace_tree.topLevelItem(0).child(1));grab(dialog,label+'-scope-selected')
+   dialog.search_input.setText('Day');grab(dialog,label+'-query')
+   dialog.search_input.setText('no results');grab(dialog,label+'-empty')
+   dialog.search_input.clear();dialog.workplace_tree.setCurrentItem(dialog.workplace_tree.topLevelItem(0))
+   dialog.resize(680,420);grab(dialog,label+'-minimum')
+   dialog.resize(1000,650);grab(dialog,label+'-enlarged');dialog.close()
+  for language,label in ((Language.ENGLISH,'en'),(Language.SPANISH,'es')):
+   dialog=PlotWorkerPicker((),load_icons(),language=language,parent=parent);dialog.show();grab(dialog,label+'-no-data');dialog.close()
+ finally:generator.close()
+parent.close();print('23 source/native picker captures: populated, expanded, selection, query, empty, minimum, enlarged and localized no-data')

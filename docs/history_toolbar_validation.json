@@ -1,0 +1,22 @@
+{
+  "status": "accepted",
+  "requested_items_completed": 4,
+  "requested_items_total": 4,
+  "completion_percent": 100,
+  "tests_passed": 1311,
+  "tests_failed": 0,
+  "tests_skipped": 0,
+  "combined_coverage_percent": 95.79279209153889,
+  "gate": "artifacts/history_toolbar_check.log",
+  "guide_tests_passed": 16,
+  "guide_subtests_passed": 78,
+  "native_captures_inspected": 23,
+  "native": "artifacts/history_toolbar_review/validation.json",
+  "reviewed_files": "artifacts/history_toolbar_reviewed_files.json",
+  "permanent_fixture_unchanged": true,
+  "all_194_saved_sources_and_results_unchanged": true,
+  "reference_application_edited": false,
+  "dependencies_changed": false,
+  "scope_milestones_added": 0,
+  "remaining_asset": "retire.png"
+}

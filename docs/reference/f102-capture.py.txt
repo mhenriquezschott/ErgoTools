@@ -1,0 +1,60 @@
+import ast,tempfile,sqlite3,json
+from pathlib import Path
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import QSize,Qt,QTimer
+from PyQt5.QtGui import QIcon,QPainter,QImage,QColor
+from PyQt5.QtWidgets import QApplication,QDialog,QVBoxLayout,QGroupBox,QPushButton,QGraphicsView,QGraphicsScene,QLabel,QWidget,QHBoxLayout,QFrame,QFileDialog,QMessageBox
+from ergotools.bootstrap import load_icons
+from ergotools.domain.work_hierarchy import WorkHierarchy
+from ergotools.domain.work_catalog import WorkCatalog
+from ergotools.domain.project import ProjectMetadata
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.assessments.lifft_draft import LifftDraft
+from ergotools.domain.plot_scope import PlotScope
+from ergotools.application.settings import Language
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+from ergotools.infrastructure.plant_image_import import import_plant_image
+from ergotools.presentation.desktop.plot_map_panel import PlotMapPanel
+from ergotools.presentation.desktop.theme.plot import PLOT_STYLE
+root=Path.cwd();artifacts=root/'artifacts/plot-map-controls';artifacts.mkdir(exist_ok=True)
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+tree=ast.parse((reference/'src/plant_layout.py').read_text());source=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='PlantLayoutWindow')
+method=next(n for n in source.body if isinstance(n,ast.FunctionDef) and n.name=='configureResponsiveLayout')
+start=next(i for i,n in enumerate(method.body) if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='tool_actions' for t in n.targets))
+end=next(i for i,n in enumerate(method.body) if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='summary_layout' for t in n.targets))
+region=compile(ast.Module(method.body[start:end],type_ignores=[]),'reference-map-region','exec')
+app=QApplication.instance() or QApplication([])
+def settle():app.processEvents();app.processEvents()
+def grab(widget,name):settle();assert widget.grab().save(str(artifacts/name))
+with tempfile.TemporaryDirectory() as temporary:
+ folder=Path(temporary);image=QImage(1000,600,QImage.Format_RGB32);image.fill(QColor('white'));paint=QPainter(image);paint.setPen(QColor('#0B4167'));paint.drawRect(3,3,992,592);paint.drawText(15,25,'Top left');paint.drawText(880,25,'Top right');paint.drawText(15,580,'Bottom left');paint.drawText(855,580,'Bottom right');paint.fillRect(150,150,700,300,QColor('#DDF2F5'));paint.end();path=folder/'map.png';assert image.save(str(path),'PNG')
+ original=QDialog();original.setObjectName('plotDialog');original.setStyleSheet(PLOT_STYLE);original.resize(1050,640)
+ for n in range(1,10):setattr(original,f'grtool{n}_button',QPushButton(original))
+ original.toolsgraphic_group=QGroupBox(original);original.plantlayout_image=QGraphicsView(original);original.plantlayout_scene=QGraphicsScene(original);original.plantlayout_image.setScene(original.plantlayout_scene)
+ import os
+ scope=dict(self=original,icon_root=str(reference/'assets/ui-icons'),os=os,QtWidgets=QtWidgets,QIcon=QIcon,QSize=QSize,Qt=Qt,QVBoxLayout=QVBoxLayout,QLabel=QLabel,QPainter=QPainter,QWidget=QWidget,QHBoxLayout=QHBoxLayout,QFrame=QFrame)
+ exec(region,scope);outer=QVBoxLayout(original);outer.addWidget(scope['canvas_panel']);original.show();settle();grab(original,'source-empty.png');original.close()
+ metadata=ProjectMetadata('p','PLOT fixture',MeasurementSystem.IMPERIAL)
+ with AssessmentProjectFile.create_with_document(folder/'project.ergprj',metadata,'a',LifftDraft(metadata.default_units),format_version=8) as project:
+  hierarchy=WorkHierarchy(WorkCatalog('p'),('P','Empty'));project.save_hierarchy(hierarchy)
+  for language in (Language.ENGLISH,Language.SPANISH):
+   host=QDialog();host.setObjectName('plotDialog');host.setStyleSheet(PLOT_STYLE);host.resize(1050,640)
+   panel=PlotMapPanel(hierarchy,project,project,lambda filename:import_plant_image(Path(filename)),load_icons(),language=language,parent=host);QVBoxLayout(host).addWidget(panel);host.show();grab(host,f'{language.value}-no-scope.png')
+   assert panel.set_scope(PlotScope((('Empty',),)));grab(host,f'{language.value}-empty.png')
+   assert panel.set_scope(PlotScope((('P',),)))
+   panel.choose_image=lambda:str(path);panel.buttons['open'].click();grab(host,f'{language.value}-preview.png')
+   def accept_success():
+    box=QApplication.activeModalWidget();assert isinstance(box,QMessageBox);grab(box,f'{language.value}-success.png');box.button(QMessageBox.Ok).click()
+   QTimer.singleShot(0,accept_success);panel.buttons['save'].click();grab(host,f'{language.value}-saved.png')
+   panel.buttons['open'].click()
+   def keep():
+    box=QApplication.activeModalWidget();assert isinstance(box,QMessageBox);grab(box,f'{language.value}-discard.png');box.button(QMessageBox.No).click()
+   QTimer.singleShot(0,keep);assert not panel.set_scope(PlotScope((('Empty',),)))
+   bad=folder/'bad.png';bad.write_bytes(b'bad');panel.choose_image=lambda:str(bad)
+   def error():
+    box=QApplication.activeModalWidget();assert isinstance(box,QMessageBox);grab(box,f'{language.value}-error.png');box.button(QMessageBox.Ok).click()
+   QTimer.singleShot(0,error);panel.buttons['open'].click()
+   host.resize(1600,1000);settle();assert panel.canvas.viewport().rect().contains(panel.canvas.mapFromScene(panel.canvas.scene().sceneRect()).boundingRect());grab(host,f'{language.value}-enlarged.png')
+   for button in panel.buttons.values():assert host.rect().contains(button.mapTo(host,button.rect().bottomRight()))
+   host.close();host.deleteLater();settle()
+print('Captured original-source map region and native English/Spanish empty/preview/saved/error/consent/enlarged states; all controls/full-map corners contained')

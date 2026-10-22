@@ -1,0 +1,59 @@
+{
+  "milestone": "M12",
+  "status": "complete_linux_delivery_native_targets_deferred_by_owner",
+  "date": "2026-10-11",
+  "overall_progress": 100,
+  "fixed_points_earned": 2.25,
+  "full_gate": {
+    "passed": 1226,
+    "coverage_percent": 96.41718409129048,
+    "log": "artifacts/m12-check.log",
+    "ruff": "pass",
+    "format": "pass",
+    "mypy_source_files": 240,
+    "architecture_violations": 0,
+    "wheel_and_sdist": "pass"
+  },
+  "packaged_checks": {
+    "wheel_sha256": "3ddbdfbfa15c3bbca940ea6eca503f364b4da3b60c864243a37f529005b71e92",
+    "source_python_files_equal": 237,
+    "current_guides_equal": 2,
+    "reference_files_unchanged": 500,
+    "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+    "exact_installed_runtime_packages": 17,
+    "final_wheel_tests": 21,
+    "all_application_imports_confined_to_wheel": true,
+    "final_guide_only_change_after_full_gate": true
+  },
+  "native_scenario": "artifacts/m12-delivery/native/verification.json",
+  "captures_inspected": [
+    "01-installed-empty.png",
+    "02-installed-populated.png",
+    "03-installed-spanish.png",
+    "04-installed-backup-reopened.png"
+  ],
+  "installed_runtime_versions": "artifacts/m12-delivery/installed-versions.json",
+  "delivery_folder": "dist/linux",
+  "installation_instructions": "docs/linux_delivery.md",
+  "platform_review": "docs/platform_review.md",
+  "platforms": {
+    "linux_xcb_ubuntu_25_04_x86_64": "verified",
+    "windows": "not_run; native acceptance explicitly deferred by owner",
+    "macos": "not_run; native acceptance explicitly deferred by owner"
+  },
+  "dependencies_changed": false,
+  "scientific_changes": false,
+  "reference_files_unchanged": 500,
+  "reused_evidence": "Accepted M01\u2013M11 component and comprehensive integration evidence; no unrelated retesting.",
+  "owner_platform_decision": {
+    "date": "2026-10-11",
+    "instruction": "The migration finishes with Linux. Windows/macOS native tests will be added later; first confirm the new application works as expected and reflects the previous codebase."
+  },
+  "completion_scope": "Linux migration and original-codebase parity; Windows/macOS native testing is later work, not a passed test.",
+  "post_acceptance_correction": {
+    "evidence": "docs/cli_project_validation.json",
+    "current_delivery_hashes": "artifacts/cli-project-package.json",
+    "note": "Original M12 build evidence above retained; corrected delivery restores owner-requested CLI parity."
+  },
+  "subsequent_delivery_evidence": "docs/analysis_history_validation.json; earlier counts/hashes retained as historical evidence"
+}

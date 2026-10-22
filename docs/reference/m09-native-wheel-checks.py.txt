@@ -1,0 +1,6 @@
+import sys,subprocess
+from pathlib import Path
+sys.path.append(str(Path.cwd()))
+exec(compile(open('/tmp/m09-native.py').read(),'/tmp/m09-native.py','exec'))
+assert all(not getattr(m,'__file__',None) or Path(m.__file__).is_relative_to(sys.argv[1]) for n,m in tuple(sys.modules.items()) if n=='ergotools' or n.startswith('ergotools.'))
+print('Packaged native EN/ES M09 acceptance passed.')

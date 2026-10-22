@@ -1,0 +1,93 @@
+import ast,json,os,tempfile
+from pathlib import Path
+from dataclasses import replace
+from PyQt5 import QtWidgets,QtCore
+from PyQt5.QtCore import Qt,QSize
+from PyQt5.QtGui import QColor,QFont,QIcon
+from PyQt5.QtWidgets import QApplication,QWidget,QTableWidget
+from PyQt5.QtTest import QTest
+from ergotools.bootstrap import load_icons
+from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.domain.language import Language
+from ergotools.domain.rotation_scheme import RotationMode
+from ergotools.infrastructure.pulp_rotation_optimizer import PulpRotationOptimizer
+from ergotools.presentation.desktop.rotation_comparison import RotationComparisonDialog
+from ergotools.presentation.desktop.rotation_dialog import RotationDialog
+from ergotools.presentation.desktop.rotation_display import measurement_color
+from ergotools.presentation.desktop.theme.jrot import JROT_STYLE
+from tests.test_rotation_persistence import seed
+from tests.test_rotation_solve import fill_rotation,wait_for
+from tests.test_rotation_comparison import all_risks,ControlledAllOptimizer
+app=QApplication.instance() or QApplication([]);root=Path.cwd();out=root/'artifacts/jrot-comparison';out.mkdir(parents=True,exist_ok=True)
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+classes={}
+for file,klass in [('comparerotation_window.py','CompareRotationWindow'),('compareopallrotation_window.py','CompareOpAllRotationWindow')]:
+ source=ast.parse((reference/'src'/file).read_text());node=next(n for n in source.body if isinstance(n,ast.ClassDef) and n.name==klass)
+ namespace=dict(globals());namespace['__file__']=str(reference/'src'/file)
+ exec(compile(ast.fix_missing_locations(ast.Module(body=[node],type_ignores=[])),'reviewed-source-'+file,'exec'),namespace);classes[klass]=namespace[klass]
+class Parent(QWidget):
+ def jrotStyleSheet(self):return JROT_STYLE
+parent=Parent();geometry={}
+def rect(widget,win):
+ point=widget.mapTo(win,widget.rect().topLeft());return [point.x(),point.y(),widget.width(),widget.height()]
+def capture(name,win,size=None):
+ win.show();win.raise_();win.activateWindow();app.processEvents();QTest.qWait(70)
+ if size:win.resize(*size)
+ app.processEvents();QTest.qWait(70);assert win.grab().save(str(out/(name+'.png')))
+def collect(win,all_tools,legacy=False):
+ tabs=getattr(win,'comparison_tabs' if legacy else 'tabs',None)
+ tables=win.findChildren(QTableWidget)
+ visible=[t for t in tables if t.isVisible()]
+ result={'tables':[{ 'rect':rect(t,win),'rows':[t.rowHeight(i) for i in range(t.rowCount())],'columns':[t.columnWidth(i) for i in range(t.columnCount())],'texts':[[t.item(r,c).text() for c in range(t.columnCount())] for r in range(t.rowCount())]} for t in visible]}
+ if all_tools:result['tabs']=rect(tabs,win);result['apply']=rect(getattr(win,'transfer_button' if legacy else 'apply_button'),win)
+ return result
+with tempfile.TemporaryDirectory() as directory:
+ for language in Language:
+  with seed(Path(directory)/(language.value+'.ergprj')) as project:
+   all_risks(project);win=RotationDialog(project,load_icons(),optimizer=PulpRotationOptimizer(),language=language);win._message=lambda *args,**kwargs:None
+   win.show();fill_rotation(win);controller=win.optimization
+   current=win.grid.current_scheme('_preview');pool=win.grid.pool
+   controller.start();wait_for(lambda:not controller.busy);single=controller.preview;controller.compare();comparison=controller.comparison
+   for size_label,size in [('minimum',(960,650)),('enlarged',(1500,1000))]:
+    capture(language.value+'-single-'+size_label,comparison,size);geometry[language.value+'-single-'+size_label]=collect(comparison,False)
+   comparison.tables[AssessmentKind.DUET][1].setCurrentCell(0,1);capture(language.value+'-single-selected',comparison)
+   controller.start_all();wait_for(lambda:not controller.busy);comparison=controller.comparison
+   for size_label,size in [('minimum',(1000,700)),('enlarged',(1600,1100))]:
+    for index,kind in enumerate(AssessmentKind):
+     comparison.tabs.setCurrentIndex(index);capture(language.value+'-all-'+kind.value+'-'+size_label,comparison,size)
+     if index==0:geometry[language.value+'-all-'+size_label]=collect(comparison,True)
+   comparison.tables[AssessmentKind.TST][1].setCurrentCell(0,1);capture(language.value+'-all-selected',comparison)
+   if language is Language.ENGLISH:
+    optimized=replace(current,current=tuple(type(row)(row.worker_id,tuple(comparison.tables[AssessmentKind.LIFFT][1].item(r,c).data(Qt.UserRole) for c in (1,2))) for r,row in enumerate(current.current)),mode=RotationMode.ALL_TOOLS)
+    def assignments(scheme):return {row.worker_id:[next(t.job_id for t in scheme.targets if t.key==key) for key in row.target_keys] for row in scheme.current}
+    def get_jobs(tool):
+     kind={'LiFFT':AssessmentKind.LIFFT,'DUET':AssessmentKind.DUET,'ST':AssessmentKind.TST}[tool]
+     result=[]
+     for choice in pool.targets:
+      measurement=next(m for m in choice.profile.measurements if m.kind is kind)
+      result.append({'id':choice.target.job_id,'name':choice.job_name,'probability_outcome':measurement.probability_percent,'color':measurement_color(kind,measurement.cumulative_damage),'tool_id':tool,'total_cumulative_damage':measurement.cumulative_damage,'profile_version':choice.profile.version,'profile_source_type':choice.profile.source_type.value})
+     return result
+    for all_tools,klass,opt in [(False,'CompareRotationWindow',single),(True,'CompareOpAllRotationWindow',optimized)]:
+     args=(assignments(current),assignments(opt),['w','x'],2,get_jobs)
+     original=classes[klass](*args,*([['LiFFT','DUET','ST']] if all_tools else ['LiFFT',['DUET','ST']]),parent=parent)
+     label='all' if all_tools else 'single'
+     for size_label,size in [('minimum',(1000,700) if all_tools else (960,650)),('enlarged',(1600,1100) if all_tools else (1500,1000))]:
+      capture('reference-'+label+'-'+size_label,original,size);geometry['reference-'+label+'-'+size_label]=collect(original,all_tools,True)
+     original.close();original.deleteLater();app.processEvents()
+   comparison.apply_button.click();capture(language.value+'-applied-main',win,(1480,740))
+   # Wide source column policy, with a complete six-block schedule.
+   wide=replace(current,current=tuple(replace(row,target_keys=row.target_keys*3) for row in current.current))
+   child=RotationComparisonDialog(wide,wide,pool,load_icons(),selected_kind=AssessmentKind.LIFFT,all_tools=True,language=language,parent=win)
+   capture(language.value+'-wide',child,(1000,700));child.close();child.deleteLater();app.processEvents()
+   solver=ControlledAllOptimizer();controller.optimizer=solver;controller.start_all()
+   try:
+    wait_for(solver.started.is_set);capture(language.value+'-all-busy',win)
+    controller.cancel();capture(language.value+'-all-cancelling',win)
+   finally:solver.release.set();wait_for(lambda:not controller.busy)
+   win.close();win.deleteLater();app.processEvents()
+geometry['comparison']={label+'-'+size:geometry['reference-'+label+'-'+size]==geometry['en-'+label+'-'+size] for label in ['single','all'] for size in ['minimum','enlarged']}
+(out/'geometry.json').write_text(json.dumps(geometry,indent=2)+'\n')
+print('Captures',len(list(out.glob('*.png'))),'source comparison',geometry['comparison'])
+if not all(geometry['comparison'].values()):
+ for key,value in geometry['comparison'].items():
+  if not value:print(key,geometry['reference-'+key],geometry['en-'+key])

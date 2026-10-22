@@ -1,0 +1,52 @@
+import ast,tempfile,json
+from pathlib import Path
+from unittest.mock import patch
+from PyQt5.QtWidgets import QApplication,QDialog,QMainWindow,QVBoxLayout,QHBoxLayout,QLabel,QSpinBox,QPushButton
+from PyQt5.QtGui import QFont
+from PyQt5.QtCore import QTimer
+from PyQt5.QtTest import QTest
+from PyQt5.QtWidgets import QMessageBox
+from ergotools.bootstrap import create_window
+from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.application.settings import Language
+from ergotools.domain.project import ProjectMetadata
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.assessments.lifft_draft import LifftDraft,LifftTask
+from ergotools.presentation.desktop.task_count_dialog import TaskCountDialog
+from ergotools.presentation.desktop.theme.main_workspace import MAIN_WORKSPACE_STYLE
+root=Path.cwd();out=root/'artifacts/main-panels';out.mkdir(parents=True,exist_ok=True)
+ref=Path('/mnt/088E1D428E1D29A8/Documents/Documentos Trabajos UACh/2026/research/Ergo/PLOT/plot_branch_currentwork/ErgoTools/src/main.py')
+cls=next(n for n in ast.parse(ref.read_text()).body if isinstance(n,ast.ClassDef) and n.name=='ErgoTools')
+method=next(n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=='openNumTasksDialog')
+node=ast.ClassDef(name='Reference',bases=[ast.Name(id='QMainWindow',ctx=ast.Load())],keywords=[],body=[method],decorator_list=[])
+context=globals().copy();exec(compile(ast.fix_missing_locations(ast.Module(body=[node],type_ignores=[])),str(ref),'exec'),context)
+app=QApplication([]);sizes={}
+def capture(widget,name):
+ QTest.qWait(800)
+ for _ in range(4):app.processEvents()
+ widget.grab().save(str(out/(name+'.png')));sizes[name]=[widget.width(),widget.height()]
+with tempfile.TemporaryDirectory() as directory:
+ window=create_window(Path(directory)/'settings.json',original_navigation=True)
+ window.presenter.workspace.create(str(Path(directory)/'preview.ergprj'),ProjectMetadata('p','Grid workflow',MeasurementSystem.IMPERIAL),'lifft',LifftDraft(MeasurementSystem.IMPERIAL,(LifftTask('a',12,20,100),LifftTask('b',24,10),LifftTask('c',12),*(LifftTask(str(i)) for i in range(12)))))
+ window.refresh();window.show();window.run(window.calculate);capture(window,'english-partial')
+ old=context['Reference']();old.setStyleSheet(MAIN_WORKSPACE_STYLE)
+ old.numTasksSetButtonClicked=lambda:None;old.numTasksCancelButtonClicked=lambda:None
+ with patch.object(QDialog,'exec_',lambda self:self.show() or QDialog.Rejected):old.openNumTasksDialog()
+ capture(old.num_tasks_dialog,'original-task-count');old.num_tasks_dialog.hide()
+ dialog=TaskCountDialog(Language.ENGLISH,parent=window);dialog.show();capture(dialog,'english-task-count');dialog.count.setValue(100);capture(dialog,'english-maximum-count');dialog.close()
+ window.language=Language.SPANISH;window.translate();window.refresh();window.run(window.calculate);capture(window,'spanish-partial')
+ dialog=TaskCountDialog(Language.SPANISH,parent=window);dialog.show();capture(dialog,'spanish-task-count');dialog.close()
+ window.presenter.set_task_count(5);window.refresh();capture(window,'spanish-reset-five')
+ def accept_count():
+  dialog=QApplication.activeModalWidget();assert isinstance(dialog,TaskCountDialog)
+  dialog.count.setValue(6)
+  QTimer.singleShot(0,confirm_count)
+  dialog.set_button.click()
+ def confirm_count():
+  dialog=QApplication.activeModalWidget();assert isinstance(dialog,QMessageBox)
+  capture(dialog,'spanish-confirmation');dialog.accept()
+ QTimer.singleShot(0,accept_count)
+ window.main_navigation.toolbar_actions['settings'].trigger()
+ window.presenter.workspace.close(choice=CloseChoice.DISCARD);window.close();old.close()
+(out/'dimensions.json').write_text(json.dumps(sizes,indent=2)+'\n')
+print(json.dumps(sizes))

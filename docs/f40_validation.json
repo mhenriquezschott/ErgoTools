@@ -1,0 +1,24 @@
+{
+  "milestone": "F40",
+  "verified_on": "2026-10-01",
+  "python": "3.13.14",
+  "tests_passed": 412,
+  "new_tests": 11,
+  "coverage_percent": 98.8741274487728,
+  "new_module_coverage": {
+    "src/ergotools/domain/job_catalog.py": 98.7012987012987,
+    "src/ergotools/infrastructure/job_catalog_store.py": 100.0,
+    "src/ergotools/presentation/assignment_options.py": 100.0
+  },
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "wheel_sha256": "87245339fe77909325330eaa999be333807461a8f0cf96ac419207257fafe334",
+  "independent_wheel_smoke": "passed",
+  "ui_changed": false,
+  "schema_changed": true,
+  "new_opt_in_format": 5,
+  "existing_formats_unchanged": true,
+  "reference_overlap_cases": 8,
+  "overall_completion_estimate_percent": 61
+}

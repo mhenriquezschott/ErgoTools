@@ -1,0 +1,68 @@
+{
+  "milestone": "F78",
+  "verified_on": "2026-10-04",
+  "python": "3.13.14",
+  "tests_passed": 638,
+  "new_tests": 6,
+  "coverage_percent": 96.90693178679922,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": false,
+  "existing_package_versions_unchanged": 22,
+  "approved_additions": {
+    "contourpy": "1.3.2",
+    "cycler": "0.12.1",
+    "fonttools": "4.59.0",
+    "kiwisolver": "1.4.8",
+    "matplotlib": "3.10.5",
+    "numpy": "2.2.6",
+    "pillow": "11.3.0",
+    "pyparsing": "3.2.3",
+    "python-dateutil": "2.9.0.post0",
+    "six": "1.17.0",
+    "vtk": "9.5.0"
+  },
+  "lock_sha256": "6fbd2494b344121d4de2c0efdac3f431150941f162b08495ea649fe001719592",
+  "wheel_sha256": "3e4a372c68ac7a7bd486425afbb9b843e70e8fbec8d3e47769f71ebddc385b1b",
+  "independent_wheel_smoke": "passed",
+  "hierarchy_payload_version": 3,
+  "reads_hierarchy_payload_versions": [
+    1,
+    2,
+    3
+  ],
+  "project_sql_schema_changed": false,
+  "overall_completion_estimate_percent": null,
+  "desktop_new_project_format": 7,
+  "native_capture_method": "Actual VTK back buffer composited at widget coordinates into Qt widget capture; direct Qt/OpenGL screenshots are unreliable under this Wayland/XCB compositor.",
+  "reference_characterization": "All 8 actor positions/bounds and 4 camera shots match original methods exactly; only file path redirected to temporary packaged models; approved new-project environment.",
+  "native_regressions_passed": 6,
+  "native_capture_dimensions": {
+    "window": [
+      1550,
+      1015
+    ],
+    "vtk_viewport": [
+      255,
+      344
+    ]
+  },
+  "native_screenshots": {
+    "artifacts/vtk-body/adapter-avatar.png": "5bea98c3bd5102585bd23a73e3a4ab579eb7c05570229de0635edbf7821c2799",
+    "artifacts/vtk-body/calculated-vtk.png": "096c14824c4ad5835a70b583f9b5b6ad530fb98ff6e407d4f8b035a54208b193",
+    "artifacts/vtk-body/calculated.png": "ee6631cebb5987ccc449b67907bda6bc21afe4bb55a07d5240a3afd0b1aa31e8",
+    "artifacts/vtk-body/initial-vtk.png": "ce237b972734b417ef58e3ae2dd058f14363f90cd2123aedb6f093258958b2de",
+    "artifacts/vtk-body/initial.png": "d9fda47f4080d0e62735c1feec05e7e4cd3e7429dca80db1d4f65777a272bcc4",
+    "artifacts/vtk-body/reference-avatar.png": "bc7ea77f7be2afb3a3becc658afa2b708a2e520b9ff8f1f29c86717d4f766ed5",
+    "artifacts/vtk-body/reset-full-body-vtk.png": "9db02266490bf34fd7cd98c51fa07b27eae6592ce63eb4e9475ca920cd9d57cc",
+    "artifacts/vtk-body/reset-full-body.png": "84d01bdeb0dddbcb5ac10f934e6743c79afbc6dd194c6845dac93b3d37b9fbc2",
+    "artifacts/vtk-body/reset-inputs-vtk.png": "15204dbfc3f5eabb2b74879599b2e5b47fcead7227f4927c396fd0f5f7052cdf",
+    "artifacts/vtk-body/reset-inputs.png": "e00c051ad1639e837b8ab560caee9afb00b708e472034eae695502569e86f329",
+    "artifacts/vtk-body/rotated-vtk.png": "1420ba6fb917a0e48e5e028216def4ffc3bc3f991e81498b2efb41cbc873c864",
+    "artifacts/vtk-body/rotated.png": "07c39cf399f96de9183a0ff6a01e31cee24eaec14b2eebc70aed8d6b9d92df44",
+    "artifacts/vtk-body/spanish-vtk.png": "edeca9a89bfe7c7b0e903df87c253a38ece5561a6ead62e32b4c04091599743d",
+    "artifacts/vtk-body/spanish.png": "7018b87c7c49b26bc20097e13633a08acf3684d0534efe13e0c84c5a40d1d1a5",
+    "artifacts/vtk-body/vtk-buffer.png": "316c226f5e49bb6596bfec02e799f8e05d580e1d0c0df85e4011f5c88f4205a0",
+    "artifacts/vtk-body/zoomed-vtk.png": "215746bbb2aaa6980f32309d2adb43e21ead0fc654411237131599c552600fdb",
+    "artifacts/vtk-body/zoomed.png": "194bee85703509cf46b1ece1a4c5a6459688a2a4e104ad34add17a410e0246b6"
+  }
+}

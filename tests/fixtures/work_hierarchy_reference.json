@@ -1,0 +1,171 @@
+{
+  "python": "3.10.18",
+  "source_sha256": "6e8a65a2ba7370b1dbda199110e3cfbe0b9f62d91ed9677ceea9f8483b3e2fc5",
+  "plants": [
+    "Z plant",
+    "A plant",
+    "Empty plant"
+  ],
+  "sections": [
+    [
+      "Z plant",
+      "Shared"
+    ],
+    [
+      "A plant",
+      "Shared"
+    ],
+    [
+      "Z plant",
+      "Empty section"
+    ]
+  ],
+  "lines": [
+    [
+      "Z plant",
+      "Shared",
+      "Shared line"
+    ],
+    [
+      "A plant",
+      "Shared",
+      "Shared line"
+    ],
+    [
+      "Z plant",
+      "Shared",
+      "Empty line"
+    ]
+  ],
+  "stations": [
+    [
+      "Z plant",
+      "Shared",
+      "Shared line",
+      "02"
+    ],
+    [
+      "Z plant",
+      "Shared",
+      "Shared line",
+      "01"
+    ],
+    [
+      "A plant",
+      "Shared",
+      "Shared line",
+      "01"
+    ]
+  ],
+  "shifts": [
+    "Night",
+    "Day"
+  ],
+  "queries": [
+    {
+      "method": "getPlants",
+      "args": [],
+      "expected": [
+        "Z plant",
+        "A plant",
+        "Empty plant"
+      ]
+    },
+    {
+      "method": "getSections",
+      "args": [
+        "Z plant"
+      ],
+      "expected": [
+        "Shared",
+        "Empty section"
+      ]
+    },
+    {
+      "method": "getSections",
+      "args": [
+        "A plant"
+      ],
+      "expected": [
+        "Shared"
+      ]
+    },
+    {
+      "method": "getSections",
+      "args": [
+        "Empty plant"
+      ],
+      "expected": []
+    },
+    {
+      "method": "getLines",
+      "args": [
+        "Z plant",
+        "Shared"
+      ],
+      "expected": [
+        "Shared line",
+        "Empty line"
+      ]
+    },
+    {
+      "method": "getLines",
+      "args": [
+        "A plant",
+        "Shared"
+      ],
+      "expected": [
+        "Shared line"
+      ]
+    },
+    {
+      "method": "getLines",
+      "args": [
+        "Z plant",
+        "Empty section"
+      ],
+      "expected": []
+    },
+    {
+      "method": "getStations",
+      "args": [
+        "Z plant",
+        "Shared",
+        "Shared line"
+      ],
+      "expected": [
+        "02",
+        "01"
+      ]
+    },
+    {
+      "method": "getStations",
+      "args": [
+        "A plant",
+        "Shared",
+        "Shared line"
+      ],
+      "expected": [
+        "01"
+      ]
+    },
+    {
+      "method": "getStations",
+      "args": [
+        "Z plant",
+        "Shared",
+        "Empty line"
+      ],
+      "expected": []
+    },
+    {
+      "method": "getShifts",
+      "args": [],
+      "expected": [
+        "Night",
+        "Day"
+      ]
+    }
+  ],
+  "notes": "Actual AST-extracted reference hierarchy methods on a temporary minimal SQLite database. No indexes or operational data. Captured order is not a universal SQLite guarantee."
+}

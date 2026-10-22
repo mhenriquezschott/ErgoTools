@@ -1,0 +1,268 @@
+{
+  "baseline": "F144 scope review v1",
+  "date": "2026-10-10",
+  "scope_points": 100,
+  "completed_points": 74.0,
+  "remaining_points": 26.0,
+  "estimate_kind": "Scope-weighted acceptance progress, not elapsed time or statistically measured effort",
+  "gate_credit": {
+    "G1": 25,
+    "G2": 25,
+    "G3": 25,
+    "G4": 25
+  },
+  "groups": {
+    "A": {
+      "name": "Foundation and feature audit",
+      "weight": 10
+    },
+    "B": {
+      "name": "Projects and original-data compatibility",
+      "weight": 10
+    },
+    "C": {
+      "name": "Three assessments and shared editing",
+      "weight": 20
+    },
+    "D": {
+      "name": "Workers, organization and Jobs",
+      "weight": 15
+    },
+    "E": {
+      "name": "PLOT",
+      "weight": 15
+    },
+    "F": {
+      "name": "JROT",
+      "weight": 15
+    },
+    "G": {
+      "name": "Shared UX and full integration",
+      "weight": 10
+    },
+    "H": {
+      "name": "Documentation and native delivery",
+      "weight": 5
+    }
+  },
+  "items": [
+    {
+      "id": "A1",
+      "group": "A",
+      "deliverable": "Architecture, standards and automated gates",
+      "weight": 4,
+      "gates_complete": 4,
+      "evidence": "docs/coding_standards.md; tools/check_architecture.py; docs/f144_validation.json",
+      "remaining_exit": "No new framework work; retain gates on actual changes."
+    },
+    {
+      "id": "A2",
+      "group": "A",
+      "deliverable": "Approved runtime, packaged assets and replaceable adapters",
+      "weight": 3,
+      "gates_complete": 4,
+      "evidence": "docs/development.md; src/ergotools/presentation/desktop/rendering/vtk_body_renderer.py; docs/f144_validation.json",
+      "remaining_exit": "Retain exact baseline and adapter boundaries; native delivery is H2."
+    },
+    {
+      "id": "A3",
+      "group": "A",
+      "deliverable": "Feature/behavior ledger and code documentation review",
+      "weight": 3,
+      "gates_complete": 2,
+      "evidence": "docs/reference/modernization-plan.md; docs/architecture.md; docs/review_register.md",
+      "remaining_exit": "Close source-to-feature inventory, hidden-data handling, remaining intentional differences and public-API documentation review; give each an explicit disposition."
+    },
+    {
+      "id": "B1",
+      "group": "B",
+      "deliverable": "Project lifecycle, transfer and assessment CSV compatibility",
+      "weight": 6,
+      "gates_complete": 3,
+      "evidence": "docs/STATUS.md#f87-historical-checkpoint; docs/assessment_export.md; tests/test_summary_export.py; docs/f150_compatibility.md",
+      "remaining_exit": "Explicit fresh Calculate/Save/export/reopen provenance passes in F150. Remaining: implicit dirty-transition Save result persistence, Save As failure acceptance and final project lifecycle/reference acceptance."
+    },
+    {
+      "id": "B2",
+      "group": "B",
+      "deliverable": "Original-project conversion, historical ownership and evidence",
+      "weight": 4,
+      "gates_complete": 3,
+      "evidence": "docs/f140_legacy_compatibility.md; docs/f144_legacy_compatibility.md; src/ergotools/infrastructure/legacy_conversion.py",
+      "remaining_exit": "Complete final reference-to-converted feature acceptance including archived fields and output identity; retain original files unchanged."
+    },
+    {
+      "id": "C1",
+      "group": "C",
+      "deliverable": "LiFFT calculation and integrated UI",
+      "weight": 6,
+      "gates_complete": 3,
+      "evidence": "src/ergotools/application/assessments/evaluation.py; tests/test_lifft_calculation.py; docs/f144_legacy_compatibility.md; docs/f145_compatibility.md",
+      "remaining_exit": "Fresh metric/imperial workflows pass. Remaining: final original-layout/control/workflow comparison; retain reviewed metric arithmetic pending separate scientific review."
+    },
+    {
+      "id": "C2",
+      "group": "C",
+      "deliverable": "DUET calculation and integrated UI",
+      "weight": 4,
+      "gates_complete": 3,
+      "evidence": "tests/test_duet_calculation.py; docs/STATUS.md#f80-historical-checkpoint; docs/f144_legacy_compatibility.md",
+      "remaining_exit": "Complete same-platform original-window/control/behavior acceptance; address actual observed differences only."
+    },
+    {
+      "id": "C3",
+      "group": "C",
+      "deliverable": "Shoulder Tool calculation and integrated UI",
+      "weight": 6,
+      "gates_complete": 3,
+      "evidence": "src/ergotools/application/assessments/evaluation.py; docs/f137_legacy_compatibility.md; tests/test_tst_calculation.py; docs/f146_compatibility.md",
+      "remaining_exit": "Fresh ST workflows and both explicit direction conventions pass. Remaining: final original-layout/control/workflow comparison; preserve original convention and review-register semantics."
+    },
+    {
+      "id": "C4",
+      "group": "C",
+      "deliverable": "Shared task editing, context selection, versions and history",
+      "weight": 4,
+      "gates_complete": 3,
+      "evidence": "docs/STATUS.md#f85-historical-checkpoint; tests/test_desktop_legacy_open.py; docs/f143_legacy_compatibility.md; docs/f152_compatibility.md",
+      "remaining_exit": "Expanded EN/ES assessment picker and exact modal selection/cancellation pass in F152. Remaining: final worker/context/version navigation, task-count/reset/delete and keyboard/modal behavior against original."
+    },
+    {
+      "id": "D1",
+      "group": "D",
+      "deliverable": "Worker directory, optional details and assignments",
+      "weight": 6,
+      "gates_complete": 3,
+      "evidence": "src/ergotools/presentation/desktop/worker_management_dialog.py; tests/test_worker_management.py; docs/STATUS.md#f72-historical-checkpoint",
+      "remaining_exit": "Final original-form comparison including optional/selected/empty states, height/weight units and assignment behavior. Hidden experimental data disposition is A3, not a new visible UI."
+    },
+    {
+      "id": "D2",
+      "group": "D",
+      "deliverable": "Organization hierarchy and shifts",
+      "weight": 4,
+      "gates_complete": 3,
+      "evidence": "src/ergotools/presentation/desktop/organization_dialog.py; docs/STATUS.md#f73-historical-checkpoint",
+      "remaining_exit": "Final original-form comparison and accepted create/edit/delete/shift workflows on copied data."
+    },
+    {
+      "id": "D3",
+      "group": "D",
+      "deliverable": "Jobs, placements and risk-profile lifecycle",
+      "weight": 5,
+      "gates_complete": 3,
+      "evidence": "src/ergotools/presentation/desktop/job_management_dialog.py; docs/job_risk_lifecycle.md; docs/f140_legacy_compatibility.md",
+      "remaining_exit": "Final original-form/workflow comparison for profile versions, approval/current/retirement and placement relationships."
+    },
+    {
+      "id": "E1",
+      "group": "E",
+      "deliverable": "PLOT scope, demographics and three risk views",
+      "weight": 5,
+      "gates_complete": 3,
+      "evidence": "docs/STATUS.md#f105-historical-checkpoint; docs/STATUS.md#f116-historical-checkpoint; tests/test_plot_results.py",
+      "remaining_exit": "Final original comparison of counts, missingness, filters and Individual/Job/Comparison results on matched copied inputs."
+    },
+    {
+      "id": "E2",
+      "group": "E",
+      "deliverable": "PLOT maps, markers and worker/job controls",
+      "weight": 5,
+      "gates_complete": 3,
+      "evidence": "docs/f142_legacy_compatibility.md; docs/STATUS.md#f110-historical-checkpoint; docs/STATUS.md#f117-historical-checkpoint",
+      "remaining_exit": "Final map/marker/save/load/selection comparison; dormant Plant transforms remain archived, not activated."
+    },
+    {
+      "id": "E3",
+      "group": "E",
+      "deliverable": "PLOT charts, details and exports",
+      "weight": 5,
+      "gates_complete": 3,
+      "evidence": "docs/STATUS.md#f114-historical-checkpoint; docs/STATUS.md#f118-historical-checkpoint; docs/f144_legacy_compatibility.md",
+      "remaining_exit": "Final original chart/settings/details/export comparison including units, language, selected and empty states."
+    },
+    {
+      "id": "F1",
+      "group": "F",
+      "deliverable": "JROT scope, schedule editing and persistence",
+      "weight": 6,
+      "gates_complete": 3,
+      "evidence": "docs/STATUS.md#f124-historical-checkpoint; docs/f133_legacy_compatibility.md; docs/f144_legacy_compatibility.md",
+      "remaining_exit": "Final original-form/scope/grid comparison, saved profiles/assignments and R006 Spanish scope-summary clipping."
+    },
+    {
+      "id": "F2",
+      "group": "F",
+      "deliverable": "JROT single-tool CBC and comparison/apply",
+      "weight": 4,
+      "gates_complete": 3,
+      "evidence": "docs/STATUS.md#f125-historical-checkpoint; src/ergotools/infrastructure/pulp_rotation_optimizer.py; docs/f144_legacy_compatibility.md",
+      "remaining_exit": "Final matched-input feasibility/objective and comparison/Apply/Save acceptance; do not require identical alternate optima."
+    },
+    {
+      "id": "F3",
+      "group": "F",
+      "deliverable": "JROT multi-tool HiGHS and comparison/apply",
+      "weight": 5,
+      "gates_complete": 3,
+      "evidence": "docs/STATUS.md#f126-historical-checkpoint; src/ergotools/infrastructure/pulp_rotation_optimizer.py; docs/f144_legacy_compatibility.md",
+      "remaining_exit": "Final two-stage objective/provenance and comparison/Apply/Save acceptance. CBC single / HiGHS multi; no GLPK."
+    },
+    {
+      "id": "G1",
+      "group": "G",
+      "deliverable": "Cross-app localization, unit projection and decimal input",
+      "weight": 4,
+      "gates_complete": 3,
+      "evidence": "docs/STATUS.md#f94-historical-checkpoint; docs/f144_legacy_compatibility.md; tests/test_model_units.py",
+      "remaining_exit": "Close full EN/ES text/tooltip/dialog review and mixed-unit save/reopen/export acceptance. Calculation gates count only in C1/C3."
+    },
+    {
+      "id": "G2",
+      "group": "G",
+      "deliverable": "Avatar, gauges, resizing and desktop interaction",
+      "weight": 3,
+      "gates_complete": 3,
+      "evidence": "docs/STATUS.md#f81-historical-checkpoint; docs/STATUS.md#f96-historical-checkpoint; docs/f144_legacy_compatibility.md",
+      "remaining_exit": "Final original size/DPI/font comparison, VTK/camera, tab/keyboard and no-clipping states. Platform-specific checks count in H2."
+    },
+    {
+      "id": "G3",
+      "group": "G",
+      "deliverable": "Complete comprehensive-project acceptance",
+      "weight": 3,
+      "gates_complete": 3,
+      "evidence": "docs/f140_legacy_compatibility.md; docs/f144_legacy_compatibility.md; docs/f148_compatibility.md",
+      "remaining_exit": "Fresh calculation/edit/save/export/reopen, Worker save/cancel, PLOT, CBC/HiGHS Apply/Save and backup pass on comprehensive copies. Remaining: final original-application comparison and closure of relevant review-register gaps."
+    },
+    {
+      "id": "H1",
+      "group": "H",
+      "deliverable": "Current user/developer/recovery documentation",
+      "weight": 2,
+      "gates_complete": 2,
+      "evidence": "docs/development.md; src/ergotools/presentation/desktop/manual_launcher.py; docs/final_targets.md",
+      "remaining_exit": "Update operational guide from final app; retire stale preview guidance, document import/restore and remaining behavior decisions; verify actual Help launch."
+    },
+    {
+      "id": "H2",
+      "group": "H",
+      "deliverable": "Clean native installation and supported-platform acceptance",
+      "weight": 3,
+      "gates_complete": 1,
+      "evidence": "pyproject.toml; docs/development.md; docs/reference/modernization-plan.md",
+      "remaining_exit": "Native distribution/launcher/resource/solver/offline/restore checks on Linux and supported Windows/macOS targets. Current approved desktop extra is Linux-only; versions on new targets still require approval. Missing hardware blocks acceptance, not implementation progress elsewhere."
+    }
+  ],
+  "verification": {
+    "reference_files_unchanged": 500,
+    "dependency_lock_unchanged": true,
+    "application_changed": false,
+    "verification_tool_changed": true,
+    "tests_rerun": true,
+    "last_code_gate": "F149: 1108 passed; 96.45% coverage"
+  },
+  "last_updated_checkpoint": "F155",
+  "superseded_for_execution_by": "finish_progress.json",
+  "historical_only": true
+}

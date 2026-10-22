@@ -1,0 +1,41 @@
+import ast,hashlib,json,subprocess,sys,tempfile,zipfile
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from PIL import Image,ImageChops
+root=Path.cwd()
+def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+manifest=json.loads((root/'docs/reference/source-manifest.json').read_text())
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+assert all(digest(reference/name)==value for name,value in manifest.items())
+assert digest(root/'uv.lock')==json.loads((root/'docs/f79-validation.json').read_text())['lock_sha256']
+nodes=[]
+for node in ast.parse((root/'tests/test_plot_results.py').read_text()).body:
+ if isinstance(node,(ast.Import,ast.ImportFrom)):
+  if (getattr(node,'module','') or '').startswith(('tests','PyQt5','ergotools.presentation','ergotools.bootstrap')):continue
+  nodes.append(node)
+ elif isinstance(node,ast.Assign):nodes.append(node)
+ elif isinstance(node,ast.FunctionDef) and node.name=='project':node.decorator_list=[];nodes.append(node)
+fixture=ast.unparse(ast.Module(nodes,type_ignores=[]))
+checks=(root/'docs/reference/f115-wheel-checks.py.txt').read_text()
+code='import sys\nfrom pathlib import Path\nsys.path.insert(0,sys.argv[1])\n'+fixture+'\n'+checks
+wheel=root/'dist/ergotools-0.1.0.dev0-py3-none-any.whl'
+with tempfile.TemporaryDirectory() as directory:
+ with zipfile.ZipFile(wheel) as archive:archive.extractall(directory)
+ result=subprocess.run([sys.executable,'-I','-c',code,directory],cwd=directory,capture_output=True,text=True,timeout=30)
+ if result.returncode:raise RuntimeError(result.stdout+result.stderr)
+ print(result.stdout.strip())
+art=root/'artifacts/plot-outcome';comparisons={}
+for p in sorted(art.glob('en-gauge-*.png')):
+ a=Image.open(art/p.name.replace('en-','source-',1)).convert('RGB');b=Image.open(p).convert('RGB')
+ assert a.size==b.size and ImageChops.difference(a,b).getbbox() is None
+ comparisons[p.stem]=dict(different_pixels=0,size=list(a.size))
+a=Image.open(art/'source-details.png').convert('RGB');b=Image.open(art/'en-details-source-fixture.png').convert('RGB')
+assert a.size==b.size
+count=sum(pixel!=(0,0,0) for pixel in ImageChops.difference(a,b).getdata())
+assert count==0
+comparisons['highlight-details-focus-normalized']=dict(different_pixels=count,size=list(a.size))
+geometry=json.loads((art/'outcome-geometry.json').read_text())
+coverage=json.loads((root/'artifacts/coverage.json').read_text());tests=ET.parse(root/'artifacts/tests.xml')
+evidence=dict(milestone='F115',verified_on='2026-10-07',python=sys.version.split()[0],tests_passed=len(list(tests.iter('testcase'))),new_tests=6,coverage_percent=coverage['totals']['percent_covered'],reference_files_unchanged=len(manifest),dependency_lock_unchanged=True,lock_sha256=digest(root/'uv.lock'),wheel_sha256=digest(wheel),independent_wheel_smoke='passed',source_native_comparisons=comparisons,outcome_child_geometries=geometry,outcome_layout_corrections='Original 700 x 210 floor cannot contain its fixed-format regions and wrapped headers/messages. Minimum width/height follows actual contents; headers and warnings wrap without changing fonts or gauge geometry.',station_identity_correction='Full plant/section/line/station grouping prevents merging duplicate station IDs; table disambiguates duplicate IDs with source paths.',native_screenshots={p.name:digest(p) for p in sorted(art.glob('*.png'))},plot_outcome_summary_composed=True,plot_highlight_details_composed=True,full_plot_parent_close_consent_integrated=False,plot_main_window_enabled=False,scientific_gates_preserved=True,overall_completion_estimate_percent=None)
+(root/'docs/f115-validation.json').write_text(json.dumps(evidence,indent=2)+'\n')
+print('21 source gauge fixtures and original warning dialog match pixel-for-pixel; actual resize corrections recorded; all 500 reference hashes and approved lock unchanged; F115 evidence saved')

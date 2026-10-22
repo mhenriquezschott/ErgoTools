@@ -1,0 +1,28 @@
+"""Regenerate all supplied reference test projects without changing originals."""
+import hashlib
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+root=Path.cwd()
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+out=root/'test_projects/native'
+out.mkdir(parents=True,exist_ok=True)
+names={
+'ErgoTools_ComparativeRiskTest.ergprj':'comparative_risk_test.ergprj',
+'ErgoTools_IntegratedTest.ergprj':'integrated_test.ergprj',
+'JROT_EpiSalmonTestStudy01.ergprj':'jrot_epi_salmon_study_01.ergprj',
+'test3.ergprj':'test_3.ergprj',
+}
+report=[]
+for original,name in names.items():
+ source=reference/'tests'/original
+ before=hashlib.sha256(source.read_bytes()).hexdigest()
+ result=subprocess.run([sys.executable,'tools/project_migration/migrate_project.py',str(source),'--output',str(out/name)],capture_output=True,text=True)
+ assert hashlib.sha256(source.read_bytes()).hexdigest()==before
+ report.append({'source':str(source),'source_sha256':before,'destination':str((out/name).relative_to(root)),
+                'exit_code':result.returncode,'result':result.stdout.strip(),'error':result.stderr.strip()})
+(root/'artifacts/cleanup-m1r-projects.json').write_text(json.dumps(report,indent=2)+'\n')
+print(json.dumps(report,indent=2))
+assert all(item['exit_code']==0 for item in report)

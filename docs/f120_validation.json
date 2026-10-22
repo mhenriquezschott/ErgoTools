@@ -1,0 +1,33 @@
+{
+  "milestone": "F120",
+  "verified_on": "2026-10-08",
+  "python": "3.13.14",
+  "tests_passed": 924,
+  "new_tests": 26,
+  "coverage_percent": 96.92041340957977,
+  "ruff_formatted_files": 441,
+  "mypy_source_files": 199,
+  "architecture_violations": 0,
+  "reference_files_unchanged": 500,
+  "prior_lock_versions_retained": 33,
+  "approved_lock_additions": {
+    "highspy": "1.11.0",
+    "pulp": "3.2.2"
+  },
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "cbc_version": "2.10.3",
+  "cbc_binary_sha256": "2e17077752aa52b06385ad248c9e90bb4f1ce34038c34c94e1012ca6adea5cc7",
+  "highs_version": "1.11.0",
+  "pulp_distribution_version": "3.2.2",
+  "pulp_internal_version_string": "3.0.2",
+  "wheel_sha256": "d122fc6b5703dbe2c1a29c87db460ce51b6334783b1dd29ed07955f75658e7c0",
+  "independent_wheel_smoke": "passed; actual CBC and two-stage HiGHS solves",
+  "native_regression_gate": "xcb full suite; no UI changes or new visual captures",
+  "limitations": [
+    "JROT form/persistence/main navigation integration pending",
+    "Timeout/no-incumbent regressions inject termination evidence deterministically; no timing-sensitive timeout benchmark claimed",
+    "Optimal records backend report under reference 1% gap, not exact global optimality",
+    "No Windows/macOS solver packaging acceptance",
+    "No reliable whole-app completion percentage or finish date"
+  ]
+}

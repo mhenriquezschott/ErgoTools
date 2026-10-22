@@ -1,6 +1,6 @@
 THIRD-PARTY NOTICES
 
-This project is licensed under Apache License 2.0 (see LICENSE).
+This project is licensed under Apache License 2.0 (see LICENSE.txt).
 
 Depending on how you install or distribute this software, it may use the
 following third-party components (not exhaustive):

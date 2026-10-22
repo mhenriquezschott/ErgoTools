@@ -1,0 +1,316 @@
+{
+  "source_sha256": "b35b790467a06ed659f2f9c9bbb26ef8bafed2b2e74b92b44469486efff8b8a6",
+  "cases": [
+    {
+      "actions": [
+        [
+          "approve_profile",
+          2
+        ]
+      ],
+      "complete": true,
+      "error": false,
+      "profiles": [
+        [
+          1,
+          "approved",
+          0
+        ],
+        [
+          2,
+          "approved",
+          1
+        ],
+        [
+          3,
+          "approved",
+          1
+        ]
+      ],
+      "sync_calls": [
+        [
+          "j",
+          2
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          "approve_profile",
+          2
+        ],
+        [
+          "make_profile_current",
+          1
+        ]
+      ],
+      "complete": true,
+      "error": false,
+      "profiles": [
+        [
+          1,
+          "approved",
+          1
+        ],
+        [
+          2,
+          "approved",
+          0
+        ],
+        [
+          3,
+          "approved",
+          1
+        ]
+      ],
+      "sync_calls": [
+        [
+          "j",
+          2
+        ],
+        [
+          "j",
+          1
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          "approve_profile",
+          2
+        ],
+        [
+          "retire_profile",
+          2
+        ]
+      ],
+      "complete": true,
+      "error": false,
+      "profiles": [
+        [
+          1,
+          "approved",
+          0
+        ],
+        [
+          2,
+          "retired",
+          0
+        ],
+        [
+          3,
+          "approved",
+          1
+        ]
+      ],
+      "sync_calls": [
+        [
+          "j",
+          2
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          "retire_profile",
+          2
+        ]
+      ],
+      "complete": false,
+      "error": false,
+      "profiles": [
+        [
+          1,
+          "approved",
+          1
+        ],
+        [
+          2,
+          "retired",
+          0
+        ],
+        [
+          3,
+          "approved",
+          1
+        ]
+      ],
+      "sync_calls": []
+    },
+    {
+      "actions": [
+        [
+          "retire_profile",
+          1
+        ]
+      ],
+      "complete": true,
+      "error": false,
+      "profiles": [
+        [
+          1,
+          "retired",
+          0
+        ],
+        [
+          2,
+          "draft",
+          0
+        ],
+        [
+          3,
+          "approved",
+          1
+        ]
+      ],
+      "sync_calls": []
+    },
+    {
+      "actions": [
+        [
+          "approve_profile",
+          2
+        ]
+      ],
+      "complete": false,
+      "error": true,
+      "profiles": [
+        [
+          1,
+          "approved",
+          1
+        ],
+        [
+          2,
+          "draft",
+          0
+        ],
+        [
+          3,
+          "approved",
+          1
+        ]
+      ],
+      "sync_calls": []
+    },
+    {
+      "actions": [
+        [
+          "approve_profile",
+          1
+        ]
+      ],
+      "complete": true,
+      "error": true,
+      "profiles": [
+        [
+          1,
+          "approved",
+          1
+        ],
+        [
+          2,
+          "draft",
+          0
+        ],
+        [
+          3,
+          "approved",
+          1
+        ]
+      ],
+      "sync_calls": []
+    },
+    {
+      "actions": [
+        [
+          "make_profile_current",
+          2
+        ]
+      ],
+      "complete": true,
+      "error": true,
+      "profiles": [
+        [
+          1,
+          "approved",
+          1
+        ],
+        [
+          2,
+          "draft",
+          0
+        ],
+        [
+          3,
+          "approved",
+          1
+        ]
+      ],
+      "sync_calls": []
+    },
+    {
+      "actions": [
+        [
+          "retire_profile",
+          2
+        ],
+        [
+          "retire_profile",
+          2
+        ]
+      ],
+      "complete": true,
+      "error": true,
+      "profiles": [
+        [
+          1,
+          "approved",
+          1
+        ],
+        [
+          2,
+          "retired",
+          0
+        ],
+        [
+          3,
+          "approved",
+          1
+        ]
+      ],
+      "sync_calls": []
+    },
+    {
+      "actions": [
+        [
+          "make_profile_current",
+          99
+        ]
+      ],
+      "complete": true,
+      "error": true,
+      "profiles": [
+        [
+          1,
+          "approved",
+          1
+        ],
+        [
+          2,
+          "draft",
+          0
+        ],
+        [
+          3,
+          "approved",
+          1
+        ]
+      ],
+      "sync_calls": []
+    }
+  ]
+}

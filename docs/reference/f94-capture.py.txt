@@ -1,0 +1,62 @@
+from pathlib import Path
+import tempfile
+from unittest.mock import patch
+from PyQt5.QtWidgets import QApplication,QMessageBox
+from PyQt5.QtTest import QTest
+from PyQt5.QtCore import QPoint,QTimer,Qt
+from PyQt5.QtGui import QPainter,QPixmap
+from ergotools.presentation.desktop.task_count_dialog import TaskCountDialog
+from ergotools.bootstrap import create_window
+from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.application.settings import Language
+from ergotools.domain.assessments.duet_draft import DuetDraft,DuetTask
+from ergotools.domain.assessments.tst import TstTask,TstDirection
+from ergotools.domain.assessments.tst_draft import TstDraft
+from ergotools.domain.assessments.lifft_draft import LifftDraft,LifftTask
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.project import ProjectMetadata
+app=QApplication([]);out=Path.cwd()/'artifacts/decimal-preferences';out.mkdir(parents=True,exist_ok=True)
+def capture(window,name):
+ QTest.qWait(900);window.grab();QTest.qWait(100);engine=window._body_renderer
+ from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
+ from vtkmodules.vtkIOImage import vtkPNGWriter
+ pixmap=window.grab();engine.render_window.Render()
+ filt=vtkWindowToImageFilter();filt.SetInput(engine.render_window);filt.ReadFrontBufferOff();filt.Update()
+ writer=vtkPNGWriter();buffer=out/(name+'-vtk.png');writer.SetFileName(str(buffer));writer.SetInputConnection(filt.GetOutputPort());writer.Write()
+ painter=QPainter(pixmap);painter.drawPixmap(engine.widget.mapTo(window,QPoint(0,0)),QPixmap(str(buffer)));painter.end();pixmap.save(str(out/(name+'.png')))
+from tests import test_saved_tool_data as fixture
+from ergotools.presentation.desktop.tool_data_dialog import ToolDataDialog
+from ergotools.presentation.saved_tool_options import saved_tool_options
+from PyQt5.QtWidgets import QTreeWidgetItemIterator
+from ergotools.presentation.desktop.assessment_context_dialog import AssessmentContextDialog
+from ergotools.presentation.desktop.preferences_dialog import PreferencesDialog
+
+
+
+
+
+from ergotools.domain.decimal_convention import DecimalConvention
+with tempfile.TemporaryDirectory() as directory:
+ original=fixture.create_window
+ with patch.object(fixture,'create_window',side_effect=lambda *args,**kwargs:original(*args,**kwargs,enable_vtk=True)):
+  generator=fixture.window.__wrapped__(Path(directory));window=next(generator)
+ for language in Language:
+  dialog=PreferencesDialog(language,window.presenter.system,window.icons,parent=window,convention=DecimalConvention.POINT)
+  dialog.show();QTest.qWait(100);dialog.grab().save(str(out/f'{language}-default.png'))
+  dialog.decimal.setCurrentIndex(1);dialog.grab().save(str(out/f'{language}-comma.png'))
+  dialog.decimal.showPopup();QTest.qWait(100);app.activePopupWidget().grab().save(str(out/f'{language}-expanded.png'));dialog.decimal.hidePopup();dialog.close()
+ window.dirty_choice=lambda:CloseChoice.SAVE
+ for index in range(3):
+  window.assessment_tabs.setCurrentIndex(index)
+  panel=window.task_panel if index==0 else window.secondary_panel()
+  field=panel.inputs[0][0 if index==0 else 1];field.setText('12.5' if index!=1 else '6.5');field.textEdited.emit(field.text())
+  def apply():
+   dialog=app.activeModalWidget();dialog.decimal.setCurrentIndex(1);dialog.apply_button.click()
+  QTimer.singleShot(0,apply);window._assessment_menu.preferences.trigger();capture(window,f'tool-{index}-comma')
+  assert window.presenter.convention is DecimalConvention.COMMA
+  # Restore point explicitly for the next tool's initial point input.
+  def point():
+   dialog=app.activeModalWidget();dialog.decimal.setCurrentIndex(0);dialog.apply_button.click()
+  QTimer.singleShot(0,point);window._assessment_menu.preferences.trigger()
+ next(generator,None)
+ print('English/Spanish default/comma/expanded Settings and native three-tool decimal projections captured')

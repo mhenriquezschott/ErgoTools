@@ -1,0 +1,117 @@
+"""Inspect the combined original/migrated Job Management layouts using synthetic data."""
+import ast
+import json
+import os
+from pathlib import Path
+import sys
+import tempfile
+from unittest.mock import patch
+from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtCore import QDate, Qt, QTimer
+from PyQt5.QtGui import QFont, QIcon, QColor
+from PyQt5.QtWidgets import *
+from PyQt5.QtTest import QTest
+sys.path.insert(0,str(Path.cwd()))
+from tests.test_workspace_job_risk import workspace_at
+from tests.test_job_management_dialog import enter_new
+from ergotools.bootstrap import load_icons
+from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.presentation.desktop.job_management_dialog import JobManagementDialog
+from ergotools.presentation.desktop.job_workplace_dialog import JobWorkplaceDialog
+from ergotools.presentation.desktop.theme.job_management import JOB_MANAGEMENT_STYLE
+
+root=Path.cwd()
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+source=ast.parse((reference/'src/job_window.py').read_text())
+original=next(n for n in source.body if isinstance(n,ast.ClassDef) and n.name=='JobWindow')
+main=ast.parse((reference/'src/main.py').read_text())
+style_method=next(n for n in ast.walk(main) if isinstance(n,ast.FunctionDef) and n.name=='mainWorkspaceStyleSheet')
+style=next(n.value.value for n in style_method.body if isinstance(n,ast.Return))
+namespace=globals().copy()
+namespace['__file__']=str(reference/'src/job_window.py')
+namespace['PROFILE_SOURCE_TYPES']=('expert','external','study','aggregate','imported')
+exec(compile(ast.fix_missing_locations(ast.Module(body=[original],type_ignores=[])),'<original-job-window>','exec'),namespace)
+namespace['JobWindow'].handleDamageEdit=lambda self,row,column:None
+class Parent(QWidget):
+    projectFileCreated=False
+    def mainWorkspaceStyleSheet(self):return style
+
+app=QApplication.instance() or QApplication([])
+out=root/'artifacts/job-management'
+out.mkdir(parents=True,exist_ok=True)
+def capture(window,name):
+    window.show()
+    QTest.qWait(100)
+    assert window.grab().save(str(out/(name+'.png')))
+
+parent=Parent()
+old=namespace['JobWindow'](parent)
+old.clearProfileControls()
+for button in (old.first_button,old.previous_button,old.next_button,old.last_button,old.delete_button,old.search_button):button.setEnabled(False)
+with tempfile.TemporaryDirectory() as directory:
+    workspace=workspace_at(Path(directory))
+    window=JobManagementDialog(workspace,load_icons(),MeasurementSystem.IMPERIAL)
+    try:
+        window.new_job()
+        capture(old,'original-empty')
+        capture(window,'new-empty')
+        old.resize(980,720)
+        window.resize(980,720)
+        capture(old,'original-minimum')
+        capture(window,'new-minimum')
+        old.profile_combo.blockSignals(True)
+        old.profile_combo.addItems(['v2 | Example draft | Draft','v1 | Current job estimate | Approved | Current'])
+        old.profile_combo.showPopup()
+        QTest.qWait(100)
+        capture(old.profile_combo.view().window(),'original-profile-expanded')
+        old.profile_combo.hidePopup()
+        with patch.object(QMessageBox,'information'):
+            enter_new(window)
+            window.save_button.click()
+        capture(window,'new-approved-minimum')
+        window.profile_tabs.setCurrentIndex(1)
+        capture(window,'new-evidence-approved-minimum')
+        window.new_profile_button.click()
+        window.profile_reference_input.setText('Synthetic assembly observations')
+        window.profile_methodology_input.setPlainText('Observed representative tasks during a work shift.')
+        window.profile_notes_input.setPlainText('Synthetic validation dataset; no operational records.')
+        window.profile_sample_size.setValue(12)
+        capture(window,'new-evidence-draft-minimum')
+        window.profile_combo.showPopup()
+        QTest.qWait(100)
+        capture(window.profile_combo.view().window(),'new-profile-expanded')
+        window.profile_combo.hidePopup()
+        window.profile_tabs.setCurrentIndex(0)
+        window.risk_table.setCurrentCell(0,1)
+        capture(window,'new-draft-selected-minimum')
+        def child_capture():
+            child=QApplication.activeModalWidget()
+            assert isinstance(child,JobWorkplaceDialog)
+            child.workplace_tree.expandAll()
+            capture(child,'new-workplace-expanded')
+            child.reject()
+        QTimer.singleShot(0,child_capture)
+        window.workplaces_button.click()
+        def search_capture():
+            child=QApplication.activeModalWidget()
+            assert isinstance(child,QDialog)
+            capture(child,'new-search')
+            child.reject()
+        QTimer.singleShot(0,search_capture)
+        window.search_button.click()
+        window.risk_table.item(0,1).setText('invalid')
+        capture(window,'new-invalid-form')
+        def error_capture():
+            child=QApplication.activeModalWidget()
+            assert isinstance(child,QMessageBox)
+            capture(child,'new-validation-error')
+            child.accept()
+        QTimer.singleShot(0,error_capture)
+        window.save_button.click()
+    finally:
+        window.close()
+        workspace.close(choice=CloseChoice.DISCARD)
+old.close()
+parent.close()
+print(out)

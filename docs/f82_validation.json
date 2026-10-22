@@ -1,0 +1,48 @@
+{
+  "milestone": "F82",
+  "verified_on": "2026-10-05",
+  "python": "3.13.14",
+  "tests_passed": 657,
+  "new_tests": 5,
+  "coverage_percent": 96.79022746419545,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "6fbd2494b344121d4de2c0efdac3f431150941f162b08495ea649fe001719592",
+  "wheel_sha256": "8c3d07d39b22d7009dd2786eb192b762ffab264f7e768e07073150f9afe238d1",
+  "independent_wheel_smoke": "passed",
+  "st_component_migrated": true,
+  "st_main_tab_enabled": false,
+  "scientific_gates_preserved": true,
+  "overall_completion_estimate_percent": null,
+  "component_geometry": {
+    "reference_and_new_body": [
+      9,
+      57,
+      962,
+      478
+    ],
+    "reference_and_new_calculate": [
+      427,
+      601,
+      544,
+      40
+    ],
+    "host_size": [
+      980,
+      650
+    ]
+  },
+  "native_screenshots": {
+    "artifacts/tst-task-panel/dropdown.png": "247607a11f9cd25d08c2e3c1e7290b7ee8d1cbf792b3301287f6a3e6a63643d3",
+    "artifacts/tst-task-panel/invalid-retained.png": "b554ab23cc4504491b3b03c2e7031eeed467e73a8cc53d53a27c7d58f076e209",
+    "artifacts/tst-task-panel/metric.png": "dffadb37ddc550d439e273df2cbb8f4f4af8a2174c0e69f97e3bf7c97dbeec2f",
+    "artifacts/tst-task-panel/new-empty.png": "df7e293825c66fd16d620fd7ee6df83994de0e6797562dfb1fef353ca566430f",
+    "artifacts/tst-task-panel/new-populated.png": "f5148cda2fe4800f326f4faba500a93bcb779bcfaf5cb545f2876566b5b99181",
+    "artifacts/tst-task-panel/no-project.png": "6bf15b1b8b5717744c01f9bf6ffae40334851f5f54eeebb5ae449d735ce3185d",
+    "artifacts/tst-task-panel/original-empty.png": "00e28e845fef856e3c93d18425e8e1d8c4b29630fa26cb4187c3e7fdeffef885",
+    "artifacts/tst-task-panel/review-required.png": "f5148cda2fe4800f326f4faba500a93bcb779bcfaf5cb545f2876566b5b99181",
+    "artifacts/tst-task-panel/spanish.png": "8bfc11402fe24a1eee38bfe152fe4e40a98dd6ff7d522e5e50968b5b9b2da440",
+    "artifacts/tst-task-panel/wide-bottom.png": "7db3816ea076c7eddad4619d119c91eb655f5070817da4e8e6bc61c4a2246429",
+    "artifacts/tst-task-panel/wide.png": "7db3816ea076c7eddad4619d119c91eb655f5070817da4e8e6bc61c4a2246429"
+  }
+}

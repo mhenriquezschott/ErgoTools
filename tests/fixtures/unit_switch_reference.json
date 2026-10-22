@@ -1,0 +1,855 @@
+{
+  "reference_python": "3.10.18",
+  "source_sha256": "6e8a65a2ba7370b1dbda199110e3cfbe0b9f62d91ed9677ceea9f8483b3e2fc5",
+  "methods": [
+    "setImperialSystem",
+    "setMetricSystem",
+    "setUnitSysText",
+    "setUnitText",
+    "updateUnits"
+  ],
+  "method_ast_sha256": "160d65ecb7356526b1b7569fefcb74e32c8a271bf30b23715acf82da5271eac0",
+  "note": "Actual extracted methods with inert labels; no GUI or calculation invoked.",
+  "records": [
+    {
+      "lifft_source": "Metric",
+      "tst_source": "Metric",
+      "tab": 0,
+      "target": "Metric",
+      "selected": "Metric",
+      "lifft_recorded": "Metric",
+      "tst_recorded": "Metric",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Metric"
+    },
+    {
+      "lifft_source": "Metric",
+      "tst_source": "Metric",
+      "tab": 0,
+      "target": "Imperial",
+      "selected": "Imperial",
+      "lifft_recorded": "Metric",
+      "tst_recorded": "Metric",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Imperial"
+    },
+    {
+      "lifft_source": "Metric",
+      "tst_source": "Metric",
+      "tab": 1,
+      "target": "Metric",
+      "selected": "Metric",
+      "lifft_recorded": "Metric",
+      "tst_recorded": "Metric",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Metric"
+    },
+    {
+      "lifft_source": "Metric",
+      "tst_source": "Metric",
+      "tab": 1,
+      "target": "Imperial",
+      "selected": "Imperial",
+      "lifft_recorded": "Metric",
+      "tst_recorded": "Metric",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Imperial"
+    },
+    {
+      "lifft_source": "Metric",
+      "tst_source": "Metric",
+      "tab": 2,
+      "target": "Metric",
+      "selected": "Metric",
+      "lifft_recorded": "Metric",
+      "tst_recorded": "Metric",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Metric"
+    },
+    {
+      "lifft_source": "Metric",
+      "tst_source": "Metric",
+      "tab": 2,
+      "target": "Imperial",
+      "selected": "Imperial",
+      "lifft_recorded": "Metric",
+      "tst_recorded": "Metric",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Imperial"
+    },
+    {
+      "lifft_source": "Metric",
+      "tst_source": "Imperial",
+      "tab": 0,
+      "target": "Metric",
+      "selected": "Metric",
+      "lifft_recorded": "Metric",
+      "tst_recorded": "Imperial",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Metric"
+    },
+    {
+      "lifft_source": "Metric",
+      "tst_source": "Imperial",
+      "tab": 0,
+      "target": "Imperial",
+      "selected": "Imperial",
+      "lifft_recorded": "Metric",
+      "tst_recorded": "Imperial",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Imperial"
+    },
+    {
+      "lifft_source": "Metric",
+      "tst_source": "Imperial",
+      "tab": 1,
+      "target": "Metric",
+      "selected": "Metric",
+      "lifft_recorded": "Metric",
+      "tst_recorded": "Imperial",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Metric"
+    },
+    {
+      "lifft_source": "Metric",
+      "tst_source": "Imperial",
+      "tab": 1,
+      "target": "Imperial",
+      "selected": "Imperial",
+      "lifft_recorded": "Metric",
+      "tst_recorded": "Imperial",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Imperial"
+    },
+    {
+      "lifft_source": "Metric",
+      "tst_source": "Imperial",
+      "tab": 2,
+      "target": "Metric",
+      "selected": "Metric",
+      "lifft_recorded": "Metric",
+      "tst_recorded": "Imperial",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Metric"
+    },
+    {
+      "lifft_source": "Metric",
+      "tst_source": "Imperial",
+      "tab": 2,
+      "target": "Imperial",
+      "selected": "Imperial",
+      "lifft_recorded": "Metric",
+      "tst_recorded": "Imperial",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Imperial"
+    },
+    {
+      "lifft_source": "Imperial",
+      "tst_source": "Metric",
+      "tab": 0,
+      "target": "Metric",
+      "selected": "Metric",
+      "lifft_recorded": "Imperial",
+      "tst_recorded": "Metric",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Metric"
+    },
+    {
+      "lifft_source": "Imperial",
+      "tst_source": "Metric",
+      "tab": 0,
+      "target": "Imperial",
+      "selected": "Imperial",
+      "lifft_recorded": "Imperial",
+      "tst_recorded": "Metric",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Imperial"
+    },
+    {
+      "lifft_source": "Imperial",
+      "tst_source": "Metric",
+      "tab": 1,
+      "target": "Metric",
+      "selected": "Metric",
+      "lifft_recorded": "Imperial",
+      "tst_recorded": "Metric",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Metric"
+    },
+    {
+      "lifft_source": "Imperial",
+      "tst_source": "Metric",
+      "tab": 1,
+      "target": "Imperial",
+      "selected": "Imperial",
+      "lifft_recorded": "Imperial",
+      "tst_recorded": "Metric",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Imperial"
+    },
+    {
+      "lifft_source": "Imperial",
+      "tst_source": "Metric",
+      "tab": 2,
+      "target": "Metric",
+      "selected": "Metric",
+      "lifft_recorded": "Imperial",
+      "tst_recorded": "Metric",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Metric"
+    },
+    {
+      "lifft_source": "Imperial",
+      "tst_source": "Metric",
+      "tab": 2,
+      "target": "Imperial",
+      "selected": "Imperial",
+      "lifft_recorded": "Imperial",
+      "tst_recorded": "Metric",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Imperial"
+    },
+    {
+      "lifft_source": "Imperial",
+      "tst_source": "Imperial",
+      "tab": 0,
+      "target": "Metric",
+      "selected": "Metric",
+      "lifft_recorded": "Imperial",
+      "tst_recorded": "Imperial",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Metric"
+    },
+    {
+      "lifft_source": "Imperial",
+      "tst_source": "Imperial",
+      "tab": 0,
+      "target": "Imperial",
+      "selected": "Imperial",
+      "lifft_recorded": "Imperial",
+      "tst_recorded": "Imperial",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Imperial"
+    },
+    {
+      "lifft_source": "Imperial",
+      "tst_source": "Imperial",
+      "tab": 1,
+      "target": "Metric",
+      "selected": "Metric",
+      "lifft_recorded": "Imperial",
+      "tst_recorded": "Imperial",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Metric"
+    },
+    {
+      "lifft_source": "Imperial",
+      "tst_source": "Imperial",
+      "tab": 1,
+      "target": "Imperial",
+      "selected": "Imperial",
+      "lifft_recorded": "Imperial",
+      "tst_recorded": "Imperial",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Imperial"
+    },
+    {
+      "lifft_source": "Imperial",
+      "tst_source": "Imperial",
+      "tab": 2,
+      "target": "Metric",
+      "selected": "Metric",
+      "lifft_recorded": "Imperial",
+      "tst_recorded": "Imperial",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (cm)",
+        "Load (N)",
+        "Moment (N.m)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Metric"
+    },
+    {
+      "lifft_source": "Imperial",
+      "tst_source": "Imperial",
+      "tab": 2,
+      "target": "Imperial",
+      "selected": "Imperial",
+      "lifft_recorded": "Imperial",
+      "tst_recorded": "Imperial",
+      "input_texts": [
+        "12.345",
+        "10",
+        "27",
+        "22.25"
+      ],
+      "lifft_headers": [
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "tst_headers": [
+        "",
+        "",
+        "Lever Arm (in)",
+        "Load (lb)",
+        "Moment (ft.lb)",
+        "",
+        "",
+        ""
+      ],
+      "unit_label": "Unit: Imperial"
+    }
+  ]
+}

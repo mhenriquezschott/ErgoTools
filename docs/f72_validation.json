@@ -1,0 +1,32 @@
+{
+  "milestone": "F72",
+  "verified_on": "2026-10-04",
+  "python": "3.13.14",
+  "tests_passed": 603,
+  "new_tests": 9,
+  "coverage_percent": 97.34073986526415,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "wheel_sha256": "45401a32685fb58910c4bbf4ecb1caa1ae8b79ed6a7fd6610c8a040d8164f7b5",
+  "independent_wheel_smoke": "passed",
+  "hierarchy_payload_version": 2,
+  "reads_hierarchy_payload_versions": [
+    1,
+    2
+  ],
+  "project_sql_schema_changed": false,
+  "overall_completion_estimate_percent": null,
+  "native_screenshots": {
+    "artifacts/worker-management/new-assignments.png": "e729631939bdeec28a507412e10ca53950acd2c12e43438dfc0d1098f7976456",
+    "artifacts/worker-management/new-empty.png": "ad1bcd69c9ef65c1c07421041db7733d3eeac41575d4c4c17d88d9897ee58946",
+    "artifacts/worker-management/new-expanded.png": "ad0fa51f0a52c26cd0232f86e99db718e6f6c14865e2b8844452f85117b6b113",
+    "artifacts/worker-management/new-placement-selected.png": "f855cc8d3a9a88ded5ba448654148eebf4cfea5572f7321f5faea5fd7aa2103f",
+    "artifacts/worker-management/new-populated.png": "8c03dda5f6e2b45dd2d78feab8cec5e6295f9792764c015d945ccdac0e5f410c",
+    "artifacts/worker-management/original-empty.png": "6328c9078c9346539bed9589b829eb86d06e6a9b392c44acf8c2efba4c32161d",
+    "artifacts/worker-management/original-expanded.png": "0890f3238325e771d1ad03439c17778e3e26decf8bb4064f74d53a4a8e545fd7",
+    "artifacts/worker-management/preview-minimum.png": "00a35e30905894eb6df4312ea784775331449804793608dc9db15cc91f229ab3",
+    "artifacts/worker-management/spanish-assignments.png": "8286378c90e1795cdc86fc1e34aec7a3d2e16348fa522735c64198b2ad49d13a",
+    "artifacts/worker-management/spanish-expanded.png": "a7eadb868c6daae8ff6ba4bcd3531b5110c3e0a00af6faad32482ec106790349"
+  }
+}

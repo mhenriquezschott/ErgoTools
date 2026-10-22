@@ -1,0 +1,60 @@
+import sys,tempfile
+from dataclasses import replace
+from pathlib import Path
+from PyQt5.QtWidgets import QApplication,QMessageBox
+from PyQt5.QtCore import Qt,QTimer
+from PyQt5.QtTest import QTest
+from ergotools.bootstrap import load_icons
+from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.domain.assessments.lifft_draft import LifftDraft
+from ergotools.domain.job_catalog import Job,JobCatalog,JobPlacement,WorkerJobAssignment
+from ergotools.domain.job_risk import JobRiskMeasurement
+from ergotools.domain.language import Language
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.project import ProjectMetadata
+from ergotools.domain.work_catalog import StationKey,WorkCatalog,WorkerEntry
+from ergotools.domain.work_hierarchy import WorkHierarchy,SectionKey,LineKey
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+from ergotools.presentation.desktop.rotation_dialog import RotationDialog
+app=QApplication.instance() or QApplication([])
+metadata=ProjectMetadata('p','Wheel JROT',MeasurementSystem.IMPERIAL)
+station=StationKey('P','S','L','1')
+hierarchy=WorkHierarchy(WorkCatalog('p',(WorkerEntry('w'),),(station,),('Day',)),('P',),(SectionKey('P','S'),),(LineKey('P','S','L'),))
+owner=hierarchy.work.worker_context('w',station.at_shift('Day'))
+jobs=JobCatalog('p',(Job('j','Job ñ'),),(JobPlacement(1,'j',owner.workplace),),(WorkerJobAssignment(1,owner,1),))
+with tempfile.TemporaryDirectory() as directory:
+ for language in Language:
+  path=Path(directory)/(language.value+'.ergprj')
+  with AssessmentProjectFile.create_with_document(path,metadata,'source',LifftDraft(MeasurementSystem.IMPERIAL),format_version=7) as project:
+   project.save_hierarchy(hierarchy);project.save_jobs(jobs)
+   risk=project.create_job_risk_draft(project.load_job_risk(),'j',1)
+   profile=replace(risk.profile(1),measurements=(JobRiskMeasurement(AssessmentKind.LIFFT,0,0,'Imperial'),))
+   project.approve_job_risk(risk,1,replacement=profile)
+   before=path.read_bytes()
+   win=RotationDialog(project,load_icons(),language=language);win._message=lambda *args,**kwargs:None
+   win.show();app.processEvents();assert path.read_bytes()==before
+   win.scheme_combo.setEditText('R ñ');win.grid.set_choice(0,0,'w');key=win.grid.pool.targets[0].target.key
+   for column in range(1,win.grid.blocks+1):win.grid.set_choice(0,column,key)
+   QTest.mouseClick(win.save_button,Qt.LeftButton)
+   saved,=project.load_rotation_schemes();assert saved.targets[0].profile_id==1
+   assert win.delete_button.isEnabled()
+   QTest.mouseClick(win.new_button,Qt.LeftButton);assert win.scheme_combo.currentText()==''
+   QTest.mouseClick(win.cancel_button,Qt.LeftButton);assert win.loaded==saved
+   assert win.grid.choice_key(0,1)==key
+   win.close();win.deleteLater();app.processEvents()
+  with AssessmentProjectFile.open(path) as project:
+   win=RotationDialog(project,load_icons(),language=language);win._message=lambda *args,**kwargs:None
+   win.show();app.processEvents();assert win.loaded==saved
+   assert project.load_job_risk().profile(1).measurements[0].unit=='Imperial'
+   def confirm():
+    box=app.activeModalWidget();assert isinstance(box,QMessageBox)
+    button=box.button(QMessageBox.Yes);assert not button.icon().isNull();button.click()
+   QTimer.singleShot(0,confirm);QTest.mouseClick(win.delete_button,Qt.LeftButton)
+   assert project.load_rotation_schemes()==() and win.grid.rowCount()==0
+   assert not win.delete_button.isEnabled()
+   win.close();win.deleteLater();app.processEvents()
+for name,module in tuple(sys.modules.items()):
+ if name=='ergotools' or name.startswith('ergotools.'):
+  path=getattr(module,'__file__',None)
+  if path:assert Path(path).resolve().is_relative_to(Path(sys.argv[1]).resolve()),path
+print('Independent wheel: EN/ES actual Save/New/Cancel/reopen/confirmed Delete, zero-risk profile identity and Imperial evidence passed; reads never migrate.')

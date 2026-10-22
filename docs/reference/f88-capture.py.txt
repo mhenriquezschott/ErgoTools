@@ -1,0 +1,60 @@
+from pathlib import Path
+import tempfile
+from unittest.mock import patch
+from PyQt5.QtWidgets import QApplication,QMessageBox
+from PyQt5.QtTest import QTest
+from PyQt5.QtCore import QPoint,QTimer,Qt
+from PyQt5.QtGui import QPainter,QPixmap
+from ergotools.presentation.desktop.task_count_dialog import TaskCountDialog
+from ergotools.bootstrap import create_window
+from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.application.settings import Language
+from ergotools.domain.assessments.duet_draft import DuetDraft,DuetTask
+from ergotools.domain.assessments.tst import TstTask,TstDirection
+from ergotools.domain.assessments.tst_draft import TstDraft
+from ergotools.domain.assessments.lifft_draft import LifftDraft,LifftTask
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.project import ProjectMetadata
+app=QApplication([]);out=Path.cwd()/'artifacts/preferences';out.mkdir(parents=True,exist_ok=True)
+def capture(window,name):
+ QTest.qWait(900);engine=window._body_renderer
+ from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
+ from vtkmodules.vtkIOImage import vtkPNGWriter
+ pixmap=window.grab();engine.render_window.Render()
+ filt=vtkWindowToImageFilter();filt.SetInput(engine.render_window);filt.ReadFrontBufferOff();filt.Update()
+ writer=vtkPNGWriter();buffer=out/(name+'-vtk.png');writer.SetFileName(str(buffer));writer.SetInputConnection(filt.GetOutputPort());writer.Write()
+ painter=QPainter(pixmap);painter.drawPixmap(engine.widget.mapTo(window,QPoint(0,0)),QPixmap(str(buffer)));painter.end();pixmap.save(str(out/(name+'.png')))
+from tests import test_saved_tool_data as fixture
+from ergotools.presentation.desktop.tool_data_dialog import ToolDataDialog
+from ergotools.presentation.saved_tool_options import saved_tool_options
+from PyQt5.QtWidgets import QTreeWidgetItemIterator
+from ergotools.presentation.desktop.assessment_context_dialog import AssessmentContextDialog
+from ergotools.presentation.desktop.preferences_dialog import PreferencesDialog
+with tempfile.TemporaryDirectory() as directory:
+ original=fixture.create_window
+ with patch.object(fixture,'create_window',side_effect=lambda *args,**kwargs:original(*args,**kwargs,enable_vtk=True)):
+  generator=fixture.window.__wrapped__(Path(directory));window=next(generator)
+ field=window.task_panel.inputs[0][2];field.setText('bad');field.textEdited.emit('bad')
+ def cancel_pending():
+  dialog=QApplication.activeModalWidget();dialog.units.setCurrentIndex(1);dialog.cancel_button.click()
+ QTimer.singleShot(0,cancel_pending);window._assessment_menu.preferences.trigger();capture(window,'cancel-pending-main')
+ def invalid_apply():
+  dialog=QApplication.activeModalWidget();dialog.units.setCurrentIndex(1);dialog.apply_button.click()
+ QTimer.singleShot(0,invalid_apply);window._assessment_menu.preferences.trigger();capture(window,'invalid-apply-main')
+ field.setText('100');field.textEdited.emit('100')
+ for index,kind in enumerate(('lifft','duet','st')):
+  window.assessment_tabs.setCurrentIndex(index)
+  def accept():
+   dialog=QApplication.activeModalWidget();assert isinstance(dialog,PreferencesDialog)
+   QTest.qWait(100);dialog.grab().save(str(out/(kind+'-default.png')))
+   dialog.language.setCurrentIndex(1);dialog.units.setCurrentIndex(1);dialog.units.showPopup();QTest.qWait(100)
+   dialog.units.view().window().grab().save(str(out/(kind+'-units-expanded.png')));dialog.units.hidePopup()
+   dialog.grab().save(str(out/(kind+'-selected.png')));dialog.apply_button.click()
+  QTimer.singleShot(0,accept);window._assessment_menu.preferences.trigger();capture(window,kind+'-metric-spanish-main')
+ def cancel():
+  dialog=QApplication.activeModalWidget();dialog.language.showPopup();QTest.qWait(100)
+  dialog.language.view().window().grab().save(str(out/'spanish-language-expanded.png'));dialog.language.hidePopup();dialog.cancel_button.click()
+ QTimer.singleShot(0,cancel);window._assessment_menu.preferences.trigger()
+ window.resize(1920,1200);capture(window,'st-enlarged')
+ next(generator,None)
+ print('Native Settings default/selected/expanded, three-tool metric/Spanish and enlarged main states captured')

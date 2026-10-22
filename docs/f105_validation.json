@@ -1,0 +1,20 @@
+{
+  "milestone": "F105",
+  "verified_on": "2026-10-07",
+  "python": "3.13.14",
+  "tests_passed": 828,
+  "new_tests": 8,
+  "coverage_percent": 96.54044862991302,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "6fbd2494b344121d4de2c0efdac3f431150941f162b08495ea649fe001719592",
+  "wheel_sha256": "0bae9adf171a8fd188c67d052578198a6a1f01c8ed84153ee76add1ac2dbf966",
+  "independent_wheel_smoke": "passed",
+  "source_sql_selection_comparisons": 24,
+  "plot_saved_dataset_loader_implemented": true,
+  "plot_main_window_enabled": false,
+  "plot_markers_and_summaries_integrated": false,
+  "scientific_gates_preserved": true,
+  "ui_layout_changed": false,
+  "overall_completion_estimate_percent": null
+}

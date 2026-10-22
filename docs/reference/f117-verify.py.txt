@@ -1,0 +1,30 @@
+import ast,hashlib,json,subprocess,sys,tempfile,zipfile
+import xml.etree.ElementTree as ET
+from pathlib import Path
+root=Path.cwd()
+def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+manifest=json.loads((root/'docs/reference/source-manifest.json').read_text())
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+assert all(digest(reference/name)==value for name,value in manifest.items())
+assert digest(root/'uv.lock')==json.loads((root/'docs/f79-validation.json').read_text())['lock_sha256']
+nodes=[]
+for node in ast.parse((root/'tests/test_plot_results.py').read_text()).body:
+ if isinstance(node,(ast.Import,ast.ImportFrom)):
+  if (getattr(node,'module','') or '').startswith(('tests','PyQt5','ergotools.presentation','ergotools.bootstrap')):continue
+  nodes.append(node)
+ elif isinstance(node,ast.Assign):nodes.append(node)
+ elif isinstance(node,ast.FunctionDef) and node.name=='project':node.decorator_list=[];nodes.append(node)
+fixture=ast.unparse(ast.Module(nodes,type_ignores=[]))
+checks=(root/'docs/reference/f117-wheel-checks.py.txt').read_text()
+code='import sys,tempfile\nfrom pathlib import Path\nsys.path.insert(0,sys.argv[1])\n'+fixture+'\n'+checks
+wheel=root/'dist/ergotools-0.1.0.dev0-py3-none-any.whl'
+with tempfile.TemporaryDirectory() as directory:
+ with zipfile.ZipFile(wheel) as archive:archive.extractall(directory)
+ result=subprocess.run([sys.executable,'-I','-c',code,directory],cwd=directory,capture_output=True,text=True,timeout=40)
+ if result.returncode:raise RuntimeError(result.stdout+result.stderr)
+ print(result.stdout.strip())
+art=root/'artifacts/plot-map-actions'
+coverage=json.loads((root/'artifacts/coverage.json').read_text());tests=ET.parse(root/'artifacts/tests.xml')
+evidence=dict(milestone='F117',verified_on='2026-10-08',python=sys.version.split()[0],tests_passed=len(list(tests.iter('testcase'))),new_tests=4,coverage_percent=coverage['totals']['percent_covered'],reference_files_unchanged=len(manifest),dependency_lock_unchanged=True,lock_sha256=digest(root/'uv.lock'),wheel_sha256=digest(wheel),independent_wheel_smoke='passed',source_algorithm_comparisons=json.loads((art/'source-comparisons.json').read_text()),native_screenshots={p.name:digest(p) for p in sorted(art.glob('*.png'))},map_controls_completed=['one-click zoom-in','zoom-out with original 1:1 floor','fitted reset preserving pending marker edits','90/80/70/100% marker opacity','current-view PNG capture'],source_corrections=['Reset fits directly without reapplying filters or replacing pending edits.','Armed zoom consumes left click and preserves normal right-click menus.','Failed Qt PNG encoding is reported instead of ignored.','Capture chooser default filename sanitizes platform-invalid characters.'],deletion_audit='No separate PLOT deletion handler/control exists in the original source; existing assessment deletion remains in the integrated assessment UI.',plot_main_window_enabled=False,csv_export_remaining=True,overall_completion_estimate_percent=None)
+(root/'docs/f117-validation.json').write_text(json.dumps(evidence,indent=2)+'\n')
+print(f'{len(manifest)} reference hashes and approved lock unchanged; F117 evidence saved')

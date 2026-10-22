@@ -1,0 +1,97 @@
+"""M01 one-pass original-code task-panel comparison on the approved Qt baseline."""
+import ast,json,types,tempfile,sys,os
+sys.path.append(str(__import__('pathlib').Path.cwd()))
+from pathlib import Path
+from PyQt5 import QtWidgets,QtGui,QtCore
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtTest import QTest
+from ergotools.bootstrap import create_window,load_icons
+from ergotools.domain.assessments.lifft_draft import LifftDraft,LifftTask
+from ergotools.domain.assessments.duet_draft import DuetDraft,DuetTask
+from ergotools.domain.assessments.tst import TstTask,TstDirection
+from ergotools.domain.assessments.tst_draft import TstDraft,TstDirectionConvention
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.project import ProjectMetadata
+from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.presentation.desktop.lifft_task_panel import LifftTaskPanel
+from ergotools.presentation.desktop.duet_task_panel import DuetTaskPanel
+from ergotools.presentation.desktop.tst_task_panel import TstTaskPanel
+from ergotools.presentation.desktop.duet_presenter import DuetPresenter
+from ergotools.presentation.desktop.tst_presenter import TstPresenter
+from tools.capture_desktop import render_widget
+app=QApplication.instance() or QApplication([]);app.setQuitOnLastWindowClosed(False)
+root=Path.cwd();ref=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root']);path=ref/'src/main.py';tree=ast.parse(path.read_text());klass=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='ErgoTools')
+ns=dict(globals(),__file__=str(path));nodes=[n for n in tree.body if isinstance(n,ast.ClassDef) and n.name in ('SyncedHeaderLayout','ErgoComboItemDelegate')];exec(compile(ast.Module(body=nodes,type_ignores=[]),str(path),'exec'),ns)
+methods=('alignToolSummary','styleToolResultSummary','setupLiFFTTab','setupDUETTab','setupTSTTab','createStickyHeader','bindStickyHeader','syncStickyHeaders','styleAssessmentControls','mainWorkspaceStyleSheet');functions={}
+for node in klass.body:
+ if isinstance(node,ast.FunctionDef) and node.name in methods:
+  exec(compile(ast.Module(body=[node],type_ignores=[]),str(path),'exec'),ns);functions[node.name]=ns[node.name]
+out=root/'artifacts/m01-keyboard-comparison';out.mkdir(exist_ok=True);oracle=json.loads((root/'artifacts/f154-f155-original-oracle/populated.json').read_text());report={};differences=[]
+def settle():app.processEvents();QTest.qWait(80);app.processEvents()
+def rect(w,p):r=QRect(w.mapTo(p,QPoint()),w.size());return [r.x(),r.y(),r.width(),r.height()]
+with tempfile.TemporaryDirectory() as directory:
+ folder=Path(directory)
+ for system in MeasurementSystem:
+  old=QMainWindow();old.num_task=20;old.tabWidget=QTabWidget();old.setCentralWidget(old.tabWidget)
+  for name,fn in functions.items():setattr(old,name,types.MethodType(fn,old))
+  for name in ('lifftInputChanged','lifftResetForm','lifftCalculateResultsClicked','lifftDeleteAction','toolGridAction','duetDropdownChanged','duetInputChanged','duetResetForm','duetCalculateResultsClicked','duetDeleteAction','tstDropdownChanged','tstInputChanged','tstResetForm','tstCalculateResultsClicked','tstDeleteAction'):setattr(old,name,lambda *args:None)
+  for prefix in ('lifft','tst'):
+   for field,value in zip(('lever_arm','load','moment'),('cm','N','N.m') if system is MeasurementSystem.METRIC else ('in','lb','ft.lb')):setattr(old,prefix+'_header_'+field+'_unit',value)
+  old.setStyleSheet(old.mainWorkspaceStyleSheet())
+  for name in ('setupLiFFTTab','setupDUETTab','setupTSTTab'):getattr(old,name)()
+  old.styleAssessmentControls()
+  for prefix,index in [('tst',2)]:
+   key=prefix+'-'+system.value;view=create_window(folder/(key+'-settings.json'));workspace=view.presenter.workspace
+   rows=tuple(LifftTask(str(i),12 if i==0 else None,20 if i==0 else None,100 if i==0 else None) for i in range(20)) if index==0 else tuple(DuetTask(str(i),6 if i==0 else 0,100 if i==0 else None) for i in range(20)) if index==1 else tuple(TstTask(str(i),TstDirection.HANDLING_LOADS,12 if i==0 else None,20 if i==0 else None,100 if i==0 else None) for i in range(20))
+   source=LifftDraft(system,rows) if index==0 else DuetDraft(rows) if index==1 else TstDraft(system,rows,TstDirectionConvention.REFERENCE_UI)
+   workspace.create(str(folder/(key+'.ergprj')),ProjectMetadata(key,'Comparison',system),'d',source)
+   presenter=view.presenter if index==0 else DuetPresenter(workspace) if index==1 else TstPresenter(workspace);presenter.system=system
+   panel=LifftTaskPanel(presenter,load_icons(),calculate=lambda:None,reset=lambda:None,select_context=lambda:None,invalidate=lambda:None) if index==0 else (DuetTaskPanel if index==1 else TstTaskPanel)(presenter,load_icons(),report_issue=lambda issue:None,changed=lambda:None)
+   if index==0:panel.load_source(presenter.bind(),__import__('ergotools.application.settings',fromlist=['Language']).Language.ENGLISH)
+   else:panel.load_source(presenter.bind())
+   presenter.evaluator.evaluate_lifft_grid(workspace.active) if index==0 else presenter.calculate();panel.show_result()
+   original=getattr(old,prefix+'_tab');grid=getattr(old,prefix+'_tab_layout');expected=oracle['vectors'][key]
+   for col in range(grid.columnCount()):
+    w=grid.itemAtPosition(1,col).widget()
+    if isinstance(w,QLineEdit):w.setText('100' if col==(4 if index==0 else 2 if index==1 else 5) else '12' if col==(1 if index==0 else 2) else '20')
+    if isinstance(w,QComboBox):w.setCurrentIndex(6 if index==1 else 0)
+   for row in range(3):
+    for col,label in enumerate(getattr(old,prefix+'_output_labels_matrix')[row]):
+     if label is not None:label.setText(expected['rows'][row][col])
+   getattr(old,prefix+'_total_damage_value_label').setText(expected['damage']);getattr(old,prefix+'_probability_value_label').setText(expected['probability'])
+   color=QColor(expected['summary_style'].split(';')[0].split(':')[1].strip())
+   old.tabWidget.addTab(panel,'Migrated comparison');old.show()
+   report[key]={}
+   for width,height in ((1004,687),(1254,872)):
+    old.resize(width,height);old.tabWidget.setCurrentWidget(original);settle();old.syncStickyHeaders();old.styleAssessmentControls();old.styleToolResultSummary({'name':('LiFFT','DUET','Shoulder')[index]},color);settle()
+    a_headers=getattr(old,prefix+'_headers_labels_fixed');a=[rect(grid.itemAtPosition(1,c).widget(),original) for c in range(len(a_headers))]
+    original_summary=[rect(getattr(old,prefix+'_'+name),original) for name in ('total_damage_label','total_damage_value_label','probability_label','probability_value_label')]
+    original_buttons=[rect(getattr(old,prefix+'_'+name+'_button'),original) for name in ('reset','delete','calculate')]
+    assert render_widget(original).save(str(out/(key+'-'+str(width)+'-original.png')))
+    old.tabWidget.setCurrentWidget(panel);settle();panel._sync_header();settle()
+    b=[rect(panel.grid.itemAtPosition(1,c).widget(),panel) for c in range(len(panel.headers))]
+    summary=panel.summary;new_summary=[rect(w,panel) for w in (summary.total_title,summary.total_value,summary.probability_title,summary.probability_value)];new_buttons=[rect(getattr(panel,name+'_button'),panel) for name in ('reset','delete','calculate')]
+    item={'original_size':[original.width(),original.height()],'new_size':[panel.width(),panel.height()],'original_columns':a,'new_columns':b,'original_summary':original_summary,'new_summary':new_summary,'original_buttons':original_buttons,'new_buttons':new_buttons,'headers_equal':[x.text() for x in a_headers]==[x.text() for x in panel.headers]}
+    report[key][str(width)]=item
+    for name,orig,new in [('columns',a,b),('summary',original_summary,new_summary),('buttons',original_buttons,new_buttons)]:
+     if orig!=new:differences.append({'case':key,'width':width,'area':name,'original':orig,'new':new})
+    if not item['headers_equal']:differences.append({'case':key,'width':width,'area':'headers','original':[x.text() for x in a_headers],'new':[x.text() for x in panel.headers]})
+    # Compare actual forward/backward focus order inside a task row.
+    def focus_types(parent,first):
+     app.setActiveWindow(old);first.setFocus();settle();chain=[]
+     for _ in range(23):
+      current=app.focusWidget();chain.append([type(current).__name__,rect(current,parent)])
+      QTest.keyClick(current,Qt.Key_Tab);settle()
+     QTest.keyClick(app.focusWidget(),Qt.Key_Backtab);settle()
+     return chain
+    item['new_focus']=focus_types(panel,panel.grid.itemAtPosition(1,1).widget())
+    old.tabWidget.setCurrentWidget(original);settle();item['original_focus']=focus_types(original,grid.itemAtPosition(1,1).widget());old.tabWidget.setCurrentWidget(panel);settle()
+    if [x[0] for x in item['new_focus']]!=[x[0] for x in item['original_focus']]:differences.append({'case':key,'width':width,'area':'focus','original':item['original_focus'],'new':item['new_focus']})
+    assert render_widget(panel).save(str(out/(key+'-'+str(width)+'-new.png')))
+   panel.close();panel.setParent(view);workspace.close(choice=CloseChoice.DISCARD);view.close();old.tabWidget.removeTab(old.tabWidget.indexOf(panel));settle()
+  old.close();settle()
+(out/'comparison.json').write_text(json.dumps({'scope':'Original AST form construction/live-summary alignment; approved Qt baseline, same parent/font/size. Numeric values reuse F154/F155 oracle.','cases':report,'differences':differences},indent=2)+'\n')
+assert not differences, differences
+print('M01 original ST keyboard comparison:',len(report),'tool/unit cases;',len(differences),'geometry/text differences recorded; focus results recorded.')

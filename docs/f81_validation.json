@@ -1,0 +1,55 @@
+{
+  "milestone": "F81",
+  "verified_on": "2026-10-05",
+  "python": "3.13.14",
+  "tests_passed": 652,
+  "new_tests": 2,
+  "coverage_percent": 96.76799440950384,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "6fbd2494b344121d4de2c0efdac3f431150941f162b08495ea649fe001719592",
+  "wheel_sha256": "67c6fa43d68d32d2236942530fe538285b53ae15f4622cc1ae3c7b1ca97f642d",
+  "independent_wheel_smoke": "passed",
+  "duet_main_tab_enabled": true,
+  "overall_completion_estimate_percent": null,
+  "minimum_logical_size": [
+    1550,
+    1015
+  ],
+  "tested_logical_sizes": [
+    [
+      1550,
+      1015
+    ],
+    [
+      1920,
+      1200
+    ],
+    [
+      1550,
+      1300
+    ],
+    [
+      2100,
+      1300
+    ]
+  ],
+  "native_screenshots": {
+    "artifacts/main-window-resize/duet-base-vtk.png": "2217135b7d018757d37336d47fb1e82f8fe71e44a63b2fff2fa361d8ec76de90",
+    "artifacts/main-window-resize/duet-base.png": "a32711c2295618e7f6f88da0c34b0f2674a4238a5d10f2ee4fe29abfba2aaaf4",
+    "artifacts/main-window-resize/duet-empty-bottom-vtk.png": "44632063b6ce31580d670526bd734ac3f63fe71fca55710465228c832a3f9665",
+    "artifacts/main-window-resize/duet-empty-bottom.png": "63c696f68a47ade3b8119460ce186edbff1b6d6c664a96781c00ff4b32a40a36",
+    "artifacts/main-window-resize/duet-pending-resized-vtk.png": "b53a40ae31842957ad5d18d5dfa7ea9d67180aebeb992664b9ee5dffedc304d9",
+    "artifacts/main-window-resize/duet-pending-resized.png": "01b28f63f623b7313cc5e8ec1168d9213033522c83eb16efe41cb1077931a53c",
+    "artifacts/main-window-resize/duet-spanish-wide-vtk.png": "4516c0bf06b752f2048e1f9afe3f31cfc9b3b2e472c414ee4d42c5e253032054",
+    "artifacts/main-window-resize/duet-spanish-wide.png": "ab26eb486a7ed8670d8eb385ea9a29342bed1a839f21d5980e8c7a7c2f33707d",
+    "artifacts/main-window-resize/duet-tall-full-body-vtk.png": "216cbdf5f8fe3154959ec12de49b7bf648233ae94d63a3230277277a73aa0f97",
+    "artifacts/main-window-resize/duet-tall-full-body.png": "d64e5630cb96f5a14e1058c5be051fa496c717b5ee08497c6d1cb29c3f9d3023",
+    "artifacts/main-window-resize/duet-wide-vtk.png": "dfe3333fdc03c735879bd4097b55f4b92aa0eb07b7f083066f23090421cfa5dd",
+    "artifacts/main-window-resize/duet-wide.png": "2f99b14484085fc03026ca7c6ba131e13e8d27d791620a2961b5e3fb74dc3094",
+    "artifacts/main-window-resize/lifft-return-base-vtk.png": "49cb4c4475deac328ce695091822a89dcb639da4b15978e5d7f998d5f7f010ef",
+    "artifacts/main-window-resize/lifft-return-base.png": "84fddde2f8c937ab8187c764855aee0d22e67447cccd3dcbefae1766a6b6b780",
+    "artifacts/main-window-resize/lifft-wide-vtk.png": "65c41b5fedb7dd33315af7b3a4d591dd3a1a8e117f0183ced808109f67800350",
+    "artifacts/main-window-resize/lifft-wide.png": "c07faf7e9014ccf4aa6a4ba1ab798f271ced9888319b43ffd04583127285adde"
+  }
+}

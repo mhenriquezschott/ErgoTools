@@ -1,0 +1,60 @@
+{
+  "milestone": "F108",
+  "verified_on": "2026-10-07",
+  "python": "3.13.14",
+  "tests_passed": 851,
+  "new_tests": 3,
+  "coverage_percent": 96.29948364888124,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "6fbd2494b344121d4de2c0efdac3f431150941f162b08495ea649fe001719592",
+  "wheel_sha256": "09dcdedd9f561e2b6ccc2ecb775ce56a9339de3fa73a51112a0d4916e7407620",
+  "independent_wheel_smoke": "passed",
+  "source_job_overview_native_comparisons": {
+    "empty": {
+      "different_pixels": 0,
+      "size": [
+        390,
+        640
+      ]
+    },
+    "populated": {
+      "different_pixels": 0,
+      "size": [
+        390,
+        640
+      ]
+    }
+  },
+  "native_screenshots": {
+    "en-cancelled.png": "c8b8a2a09f908f1d8831e2d28b16e5851a93cbf5f209bd2f43aafe54f2dbf3e6",
+    "en-empty.png": "7ce4f78cfbed87e66e7992711dc30799ecb20eaff22a0dda2dd2dbb5ba606d6c",
+    "en-enlarged.png": "bda2e4d724f16deb39c8f4a5ca4844c1f3e782a0b94dd97a7198475791b4f677",
+    "en-failed-save.png": "d73029202e8a1500034df7d92bed150713b0941fb8d2628fddaae3aefd6f5ae4",
+    "en-locate-pulse.png": "507544d5d2455c6443e175f62684a3e0fe23fbe6797d36edefdd2dbc86e9f528",
+    "en-populated.png": "c8b8a2a09f908f1d8831e2d28b16e5851a93cbf5f209bd2f43aafe54f2dbf3e6",
+    "en-saved.png": "507544d5d2455c6443e175f62684a3e0fe23fbe6797d36edefdd2dbc86e9f528",
+    "en-typed-pending.png": "d73029202e8a1500034df7d92bed150713b0941fb8d2628fddaae3aefd6f5ae4",
+    "en-unpositioned.png": "f7bf3d27d31b3da8a624ff077dfa34cf2c33a0c50cbd069b5a9e32ce0f5cd66e",
+    "es-cancelled.png": "851c3dad93d356ace70dc83e574b6a4e2c2173455e0f63a6564400797804c7bc",
+    "es-empty.png": "ec7c284e4223eaf1d2b6e2e81e8ea149f430b2242ddab056af28c54cfc052f3b",
+    "es-enlarged.png": "67cdd67ef87261e1377c389ab408700d15786003e958d2b5e19e180d6d1c6f3d",
+    "es-failed-save.png": "e9fea446236c5a8f45b35039056b4fc4682200708db0c3cef605018bca3692c4",
+    "es-locate-pulse.png": "c96586ea3c06b40d45ff686f4db0a7087cfce043ed5c23524919cda2b2bb3270",
+    "es-populated.png": "851c3dad93d356ace70dc83e574b6a4e2c2173455e0f63a6564400797804c7bc",
+    "es-saved.png": "c96586ea3c06b40d45ff686f4db0a7087cfce043ed5c23524919cda2b2bb3270",
+    "es-typed-pending.png": "e9fea446236c5a8f45b35039056b4fc4682200708db0c3cef605018bca3692c4",
+    "es-unpositioned.png": "90d4f99c7c72f63ea7474d73bd83c441100881c3be50ea5b7c0801d2dde403b3",
+    "map-composition-enlarged.png": "5f4850a71377f930ef41d88e3f591710c8dbd118abbb8233dd3633dc1cd7a9b7",
+    "map-composition.png": "5ae081ce1d02fd502b8b46c0176c4638b69041c23b68aa17dc0d2a42378beb59",
+    "source-empty.png": "7ce4f78cfbed87e66e7992711dc30799ecb20eaff22a0dda2dd2dbb5ba606d6c",
+    "source-populated.png": "c8b8a2a09f908f1d8831e2d28b16e5851a93cbf5f209bd2f43aafe54f2dbf3e6"
+  },
+  "job_overview_integrated_with_markers": true,
+  "worker_overview_implemented": false,
+  "plot_main_window_enabled": false,
+  "plot_summaries_integrated": false,
+  "scientific_gates_preserved": true,
+  "ui_layout_changed": true,
+  "overall_completion_estimate_percent": null
+}

@@ -1,0 +1,32 @@
+{
+  "milestone": "F103",
+  "verified_on": "2026-10-06",
+  "python": "3.13.14",
+  "tests_passed": 811,
+  "new_tests": 8,
+  "coverage_percent": 96.48129423660262,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "6fbd2494b344121d4de2c0efdac3f431150941f162b08495ea649fe001719592",
+  "wheel_sha256": "ed573b00967589602e2d4c1e12877877126255e10402a073dcaaa17c92aa3f94",
+  "independent_wheel_smoke": "passed",
+  "plot_main_window_enabled": false,
+  "plot_scope_tool_controls_implemented": true,
+  "plot_result_filtering_implemented": false,
+  "scientific_gates_preserved": true,
+  "overall_completion_estimate_percent": null,
+  "native_screenshots": {
+    "artifacts/plot-filters/en-empty.png": "b505d1712e20c9dfbea0cc696309cc2c33a83a0e713c77bb66f9ba74c1eb018b",
+    "artifacts/plot-filters/en-enlarged.png": "cdd211accb348111f9065c4b7d418f7d0f39510a1adc35b6fd515f1f5367dcd8",
+    "artifacts/plot-filters/en-picker-expanded.png": "c82b23a24ad267d9e5a06f0f59f5df17fbdec601fbb9d19a75ad8578d690b68c",
+    "artifacts/plot-filters/en-selected.png": "1da2e281acc90436b1699a6d45148ec9795e45e0f400b5fbac71a3b74beb368b",
+    "artifacts/plot-filters/es-empty.png": "3d5a693f186e52db7efcce9d7025c328393a3a370bd2981ffb325758ed25f125",
+    "artifacts/plot-filters/es-enlarged.png": "edaff37045698ff1fa5195e96474c7af7e1993248f6b47d26e9d1a3ddd2a73bb",
+    "artifacts/plot-filters/es-picker-expanded.png": "245c1235f6dc5cc5e7ccdd705dbf5a68f9b26adfb11a9138cc9898cb42a63302",
+    "artifacts/plot-filters/es-selected.png": "214e592b9923c79c82180d94ab50992e550105679fdb73624c13a164cdfa2e21",
+    "artifacts/plot-filters/literal-long.png": "f2b6dbab514f2fe092ae385cac53c1d0ef6f2d9b9dba26e6d2b9d7616e906471",
+    "artifacts/plot-filters/literal-tooltip.png": "417e619e9bf5342101f10542d74593375db6509de27dfa13c64358ddcbe2f3ed",
+    "artifacts/plot-filters/source-tools.png": "34e2e38cdceba67e4cfd3ce72021a231e8b8dd929c642f05a005ca591fb86ab1",
+    "artifacts/plot-filters/source-workplace.png": "66e3b36288938f5eee091ffbf854afc9889ab718caa9796a9d5f4864cfd11ff3"
+  }
+}

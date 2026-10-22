@@ -1,0 +1,66 @@
+{
+  "milestone": "M2",
+  "status": "accepted",
+  "completed": 3,
+  "total": 6,
+  "percent": 50,
+  "tests_passed": 1264,
+  "coverage_percent": 96.38588972224511,
+  "strict_mypy_modules": 247,
+  "architecture_violations": 0,
+  "functional_gate": "../artifacts/cleanup-m2-check.log",
+  "native_verification": "../artifacts/cleanup-m2-native/verification.json",
+  "visually_inspected_captures": [
+    "upgrade-en",
+    "upgrade-en-expanded",
+    "upgrade-failure-en",
+    "upgrade-consent-en",
+    "upgrade-consent-en-expanded",
+    "temporary-main-en",
+    "first-save-details-en",
+    "saved-main-en",
+    "upgrade-es",
+    "upgrade-es-expanded",
+    "upgrade-failure-es",
+    "upgrade-consent-es",
+    "upgrade-consent-es-expanded",
+    "temporary-main-es",
+    "first-save-details-es",
+    "saved-main-es"
+  ],
+  "fixture_verification": "../artifacts/cleanup-m2-fixtures.json",
+  "original_copy_files": 27,
+  "native_projects": [
+    {
+      "path": "test_projects/native/comparative_risk_test.ergprj",
+      "sha256": "a0afd046807a2dfeeeae4e0b3e47ceb70f5aa26c51747aa5e519053456679f93",
+      "assessment_versions": 194,
+      "results": 194,
+      "plants": 4,
+      "embedded_images": 4,
+      "rotation_schemes": 7,
+      "relocated_catalogs_sources_results_images_schemes_equal": true
+    },
+    {
+      "path": "test_projects/native/integrated_test.ergprj",
+      "sha256": "8403b4bedf501656e403f06fd333f6556daeab60fd59faea8146c7eb84b3a545",
+      "assessment_versions": 194,
+      "results": 194,
+      "plants": 4,
+      "embedded_images": 4,
+      "rotation_schemes": 5,
+      "relocated_catalogs_sources_results_images_schemes_equal": true
+    }
+  ],
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "package_verification": "../artifacts/cleanup-m2-package.json",
+  "post_gate_changes": "Docstrings, current documentation and bilingual guide text only; executable AST equals functional/native-tested wheel.",
+  "limitations": [
+    "Two supplied original samples remain unsupported (earlier JROT schema; blank-title test3). No repair added.",
+    "Temporary projects reuse New pre-save caption/control restrictions. Save enables management/PLOT/JROT/export.",
+    "Application/system crash before first Save can lose the temporary converted copy; originals remain unchanged.",
+    "Complete M4 documentation and M5 acceptance remain prerequisites for user testing.",
+    "Windows/macOS native tests remain deferred."
+  ]
+}

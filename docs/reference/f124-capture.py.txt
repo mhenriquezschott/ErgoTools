@@ -1,0 +1,82 @@
+import ast,json,os,tempfile
+from pathlib import Path
+from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import Qt,QSize,QTimer
+from PyQt5.QtGui import QIcon,QPixmap,QIntValidator
+from PyQt5.QtTest import QTest
+from ergotools.bootstrap import load_icons
+from ergotools.presentation.desktop.rotation_dialog import RotationDialog
+from ergotools.presentation.desktop.rotation_scope_dialog import RotationScopeDialog
+from ergotools.presentation.desktop.theme.main_workspace import MAIN_WORKSPACE_STYLE
+from ergotools.domain.language import Language
+from tests.test_rotation_persistence import seed,scheme
+from tests.test_history_persistence import OWNER
+app=QApplication.instance() or QApplication([]);root=Path.cwd();out=root/'artifacts/jrot-form';out.mkdir(parents=True,exist_ok=True)
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+source=ast.parse((reference/'src/rotation_layout.py').read_text())
+klass=next(n for n in source.body if isinstance(n,ast.ClassDef) and n.name=='RotationLayoutWindow')
+functions=[n for n in klass.body if isinstance(n,ast.FunctionDef) and n.name in {'initResponsiveUI','jrotStyleSheet','renderEmptyRotationTable'}]
+delegate=next(n for n in source.body if isinstance(n,ast.ClassDef) and n.name=='ComboBoxDelegate')
+module=ast.Module(body=[delegate,ast.ClassDef(name='ReferenceForm',bases=[ast.Name(id='QDialog',ctx=ast.Load())],keywords=[],body=functions,decorator_list=[])],type_ignores=[])
+ns=dict(globals());ns['__file__']=str(reference/'src/rotation_layout.py');exec(compile(ast.fix_missing_locations(module),'reviewed-original-jrot-form','exec'),ns)
+ReferenceForm=ns['ReferenceForm']
+for node in klass.body:
+ if isinstance(node,ast.FunctionDef) and node.name not in {'__init__',*(f.name for f in functions)}:setattr(ReferenceForm,node.name,lambda *args:None)
+class Parent(QWidget):
+ projectFileCreated=False
+ def mainWorkspaceStyleSheet(self):return MAIN_WORKSPACE_STYLE
+parent=Parent();ref=ReferenceForm(parent);ref.initResponsiveUI();ref.renderEmptyRotationTable(1,4,['w','x'],{},['j'],{});ref.tool_buttons['LiFFT'].setChecked(True)
+geometry={}
+def rect(widget,win):
+ point=widget.mapTo(win,widget.rect().topLeft());return [point.x(),point.y(),widget.width(),widget.height()]
+def capture(name,win,size=None):
+ if size:win.resize(*size)
+ win.show();win.raise_();win.activateWindow();app.processEvents();QTest.qWait(100);win.grab().save(str(out/(name+'.png')))
+
+def collect(win,legacy=False):
+ mapping={'setup':'filters_group' if legacy else 'setup_group','scheme':'rotationfilter_group' if legacy else 'scheme_group','grid':'rotation_table' if legacy else 'grid','optimized':'optimized_table','transfer':'transfer_button','compare':'compare_btn' if legacy else 'compare_button','optimize':'optimize_btn' if legacy else 'optimize_button','optimize_all':'optimizeall_btn' if legacy else 'optimize_all_button','close':'close_button'}
+ return {key:rect(getattr(win,attr),win) for key,attr in mapping.items()}
+for label,size in [('minimum',(1480,740)),('enlarged',(1720,1000))]:
+ capture('reference-'+label,ref,size);geometry['reference-'+label]=collect(ref,True)
+ref.close()
+with tempfile.TemporaryDirectory() as directory:
+ for language in Language:
+  path=Path(directory)/(language.value+'.ergprj')
+  with seed(path) as project:
+   win=RotationDialog(project,load_icons(),language=language)
+   for label,size in [('minimum',(1480,740)),('enlarged',(1720,1000))]:
+    capture(language.value+'-empty-'+label,win,size);geometry[language.value+'-'+label]=collect(win)
+   win.resize(1480,740)
+   project.save_rotation_scheme(scheme());win.schemes=project.load_rotation_schemes();win._show_scheme(win.schemes[0])
+   capture(language.value+'-saved',win)
+   win.scheme_combo.showPopup();app.processEvents();QTest.qWait(100);win.scheme_combo.view().grab().save(str(out/(language.value+'-scheme-dropdown.png')));win.scheme_combo.hidePopup()
+   win.new_scheme();win.scheme_combo.setEditText('New ñ');win.grid.set_choice(0,0,'w');win.grid.set_choice(0,1,win.grid.pool.targets[0].target.key)
+   capture(language.value+'-draft',win)
+   win.cancel_scheme()
+   def scope_state():
+    child=app.activeModalWidget();assert isinstance(child,RotationScopeDialog)
+    capture(language.value+'-scope-modal',child);child.reject()
+   QTimer.singleShot(0,scope_state);win.choose_scope()
+   win.pending_scope=();win._scope_controls();capture(language.value+'-pending-all',win)
+   win.apply_scope();capture(language.value+'-applied-all',win)
+   win.cancel_scheme()
+   def search_state():
+    child=app.activeModalWidget();assert isinstance(child,QDialog)
+    child.findChild(QLineEdit).setText('R-ñ');capture(language.value+'-search',child);child.reject()
+   QTimer.singleShot(0,search_state);win.search_scheme()
+   def confirmation():
+    child=app.activeModalWidget();assert isinstance(child,QMessageBox)
+    capture(language.value+'-delete-confirm',child);child.done(QMessageBox.No)
+   QTimer.singleShot(0,confirmation);win.delete_scheme()
+   def message_state():
+    child=app.activeModalWidget();assert isinstance(child,QMessageBox)
+    capture(language.value+'-incomplete',child);child.accept()
+   win.new_scheme();QTimer.singleShot(0,message_state);win.save_scheme()
+   win.close();win.deleteLater();app.processEvents()
+geometry['comparison']={name:geometry['reference-'+name]==geometry['en-'+name] for name in ['minimum','enlarged']}
+(out/'geometry.json').write_text(json.dumps(geometry,indent=2)+'\n')
+print('Native captures',len(list(out.glob('*.png'))),'geometry comparison',geometry['comparison'])
+if not all(geometry['comparison'].values()):
+ for name in ['minimum','enlarged']:
+  print(name,{key:(value,geometry['en-'+name][key]) for key,value in geometry['reference-'+name].items() if value!=geometry['en-'+name][key]})

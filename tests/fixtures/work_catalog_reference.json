@@ -1,0 +1,517 @@
+{
+  "python": "3.10.18",
+  "source_sha256": {
+    "src/main.py": "6e8a65a2ba7370b1dbda199110e3cfbe0b9f62d91ed9677ceea9f8483b3e2fc5",
+    "src/job_placement_repository.py": "e69c08404b78f478a52091543525085c0c93de2ac5d1f7777bee2577abd131fd"
+  },
+  "cases": [
+    {
+      "name": "populated",
+      "workers": [
+        [
+          "w 2",
+          "Ana",
+          "Zulu"
+        ],
+        [
+          "001",
+          null,
+          null
+        ],
+        [
+          "W1",
+          "Bea",
+          "alpha"
+        ],
+        [
+          "w3",
+          "C",
+          "Zulu"
+        ],
+        [
+          "empty",
+          "",
+          ""
+        ],
+        [
+          "partial",
+          "Only",
+          null
+        ],
+        [
+          "accent",
+          "\u00c1na",
+          "\u00d1ez"
+        ],
+        [
+          "spaces",
+          " ",
+          " "
+        ]
+      ],
+      "stations": [
+        [
+          "P",
+          "S",
+          "L",
+          "2"
+        ],
+        [
+          "P",
+          "S",
+          "L",
+          "10"
+        ],
+        [
+          "P",
+          "S2",
+          "L",
+          "2"
+        ],
+        [
+          "p",
+          "S",
+          "L",
+          "2"
+        ],
+        [
+          "P'",
+          "S",
+          "L",
+          "2"
+        ]
+      ],
+      "shifts": [
+        "Night",
+        "Day"
+      ],
+      "expected_workplaces": [
+        [
+          "P",
+          "S",
+          "L",
+          "10",
+          "Day"
+        ],
+        [
+          "P",
+          "S",
+          "L",
+          "10",
+          "Night"
+        ],
+        [
+          "P",
+          "S",
+          "L",
+          "2",
+          "Day"
+        ],
+        [
+          "P",
+          "S",
+          "L",
+          "2",
+          "Night"
+        ],
+        [
+          "P",
+          "S2",
+          "L",
+          "2",
+          "Day"
+        ],
+        [
+          "P",
+          "S2",
+          "L",
+          "2",
+          "Night"
+        ],
+        [
+          "P'",
+          "S",
+          "L",
+          "2",
+          "Day"
+        ],
+        [
+          "P'",
+          "S",
+          "L",
+          "2",
+          "Night"
+        ],
+        [
+          "p",
+          "S",
+          "L",
+          "2",
+          "Day"
+        ],
+        [
+          "p",
+          "S",
+          "L",
+          "2",
+          "Night"
+        ]
+      ],
+      "expected_worker_labels": [
+        [
+          "001",
+          "W1 (alpha, Bea)",
+          "accent (\u00d1ez, \u00c1na)",
+          "empty",
+          "partial",
+          "spaces ( ,  )",
+          "w 2 (Zulu, Ana)",
+          "w3 (Zulu, C)"
+        ],
+        [
+          "001",
+          "partial",
+          "empty",
+          "spaces ( ,  )",
+          "w 2 (Zulu, Ana)",
+          "w3 (Zulu, C)",
+          "W1 (alpha, Bea)",
+          "accent (\u00d1ez, \u00c1na)"
+        ]
+      ],
+      "expected_worker_ids": [
+        [
+          "001",
+          "W1",
+          "accent",
+          "empty",
+          "partial",
+          "spaces",
+          "w 2",
+          "w3"
+        ],
+        [
+          "001",
+          "partial",
+          "empty",
+          "spaces",
+          "w 2",
+          "w3",
+          "W1",
+          "accent"
+        ]
+      ]
+    },
+    {
+      "name": "no_shifts",
+      "workers": [
+        [
+          "w 2",
+          "Ana",
+          "Zulu"
+        ],
+        [
+          "001",
+          null,
+          null
+        ],
+        [
+          "W1",
+          "Bea",
+          "alpha"
+        ],
+        [
+          "w3",
+          "C",
+          "Zulu"
+        ],
+        [
+          "empty",
+          "",
+          ""
+        ],
+        [
+          "partial",
+          "Only",
+          null
+        ],
+        [
+          "accent",
+          "\u00c1na",
+          "\u00d1ez"
+        ],
+        [
+          "spaces",
+          " ",
+          " "
+        ]
+      ],
+      "stations": [
+        [
+          "P",
+          "S",
+          "L",
+          "2"
+        ],
+        [
+          "P",
+          "S",
+          "L",
+          "10"
+        ],
+        [
+          "P",
+          "S2",
+          "L",
+          "2"
+        ],
+        [
+          "p",
+          "S",
+          "L",
+          "2"
+        ],
+        [
+          "P'",
+          "S",
+          "L",
+          "2"
+        ]
+      ],
+      "shifts": [],
+      "expected_workplaces": [],
+      "expected_worker_labels": [
+        [
+          "001",
+          "W1 (alpha, Bea)",
+          "accent (\u00d1ez, \u00c1na)",
+          "empty",
+          "partial",
+          "spaces ( ,  )",
+          "w 2 (Zulu, Ana)",
+          "w3 (Zulu, C)"
+        ],
+        [
+          "001",
+          "partial",
+          "empty",
+          "spaces ( ,  )",
+          "w 2 (Zulu, Ana)",
+          "w3 (Zulu, C)",
+          "W1 (alpha, Bea)",
+          "accent (\u00d1ez, \u00c1na)"
+        ]
+      ],
+      "expected_worker_ids": [
+        [
+          "001",
+          "W1",
+          "accent",
+          "empty",
+          "partial",
+          "spaces",
+          "w 2",
+          "w3"
+        ],
+        [
+          "001",
+          "partial",
+          "empty",
+          "spaces",
+          "w 2",
+          "w3",
+          "W1",
+          "accent"
+        ]
+      ]
+    },
+    {
+      "name": "no_stations",
+      "workers": [
+        [
+          "w 2",
+          "Ana",
+          "Zulu"
+        ],
+        [
+          "001",
+          null,
+          null
+        ],
+        [
+          "W1",
+          "Bea",
+          "alpha"
+        ],
+        [
+          "w3",
+          "C",
+          "Zulu"
+        ],
+        [
+          "empty",
+          "",
+          ""
+        ],
+        [
+          "partial",
+          "Only",
+          null
+        ],
+        [
+          "accent",
+          "\u00c1na",
+          "\u00d1ez"
+        ],
+        [
+          "spaces",
+          " ",
+          " "
+        ]
+      ],
+      "stations": [],
+      "shifts": [
+        "Night",
+        "Day"
+      ],
+      "expected_workplaces": [],
+      "expected_worker_labels": [
+        [
+          "001",
+          "W1 (alpha, Bea)",
+          "accent (\u00d1ez, \u00c1na)",
+          "empty",
+          "partial",
+          "spaces ( ,  )",
+          "w 2 (Zulu, Ana)",
+          "w3 (Zulu, C)"
+        ],
+        [
+          "001",
+          "partial",
+          "empty",
+          "spaces ( ,  )",
+          "w 2 (Zulu, Ana)",
+          "w3 (Zulu, C)",
+          "W1 (alpha, Bea)",
+          "accent (\u00d1ez, \u00c1na)"
+        ]
+      ],
+      "expected_worker_ids": [
+        [
+          "001",
+          "W1",
+          "accent",
+          "empty",
+          "partial",
+          "spaces",
+          "w 2",
+          "w3"
+        ],
+        [
+          "001",
+          "partial",
+          "empty",
+          "spaces",
+          "w 2",
+          "w3",
+          "W1",
+          "accent"
+        ]
+      ]
+    },
+    {
+      "name": "empty",
+      "workers": [
+        [
+          "w 2",
+          "Ana",
+          "Zulu"
+        ],
+        [
+          "001",
+          null,
+          null
+        ],
+        [
+          "W1",
+          "Bea",
+          "alpha"
+        ],
+        [
+          "w3",
+          "C",
+          "Zulu"
+        ],
+        [
+          "empty",
+          "",
+          ""
+        ],
+        [
+          "partial",
+          "Only",
+          null
+        ],
+        [
+          "accent",
+          "\u00c1na",
+          "\u00d1ez"
+        ],
+        [
+          "spaces",
+          " ",
+          " "
+        ]
+      ],
+      "stations": [],
+      "shifts": [],
+      "expected_workplaces": [],
+      "expected_worker_labels": [
+        [
+          "001",
+          "W1 (alpha, Bea)",
+          "accent (\u00d1ez, \u00c1na)",
+          "empty",
+          "partial",
+          "spaces ( ,  )",
+          "w 2 (Zulu, Ana)",
+          "w3 (Zulu, C)"
+        ],
+        [
+          "001",
+          "partial",
+          "empty",
+          "spaces ( ,  )",
+          "w 2 (Zulu, Ana)",
+          "w3 (Zulu, C)",
+          "W1 (alpha, Bea)",
+          "accent (\u00d1ez, \u00c1na)"
+        ]
+      ],
+      "expected_worker_ids": [
+        [
+          "001",
+          "W1",
+          "accent",
+          "empty",
+          "partial",
+          "spaces",
+          "w 2",
+          "w3"
+        ],
+        [
+          "001",
+          "partial",
+          "empty",
+          "spaces",
+          "w 2",
+          "w3",
+          "W1",
+          "accent"
+        ]
+      ]
+    }
+  ],
+  "notes": "Actual AST-extracted getWorkers and available_workplaces over temporary synthetic SQLite; label IDs captured separately without parsing. Equal-name order reflects this fixture, not a guaranteed SQL tie policy."
+}

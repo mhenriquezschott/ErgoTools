@@ -1,0 +1,53 @@
+{
+  "checkpoint": "F125",
+  "verified_on": "2026-10-09",
+  "python": "3.13.14",
+  "tests_passed": 982,
+  "new_tests": 10,
+  "focused_tests_passed": 17,
+  "coverage_percent": 96.70695726658418,
+  "ruff_formatted_files": 466,
+  "mypy_source_files": 214,
+  "architecture_violations": 0,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "ecb82f7a578d0dd298fb6e0f10f4abfcc44efb7846784e4bad7430f359a08e5f",
+  "independent_wheel_smoke": "Native EN/ES actual CBC preview, known 40% minimax sample, Use as Current, explicit Save/reopen; unchanged bytes until Save and exact links/mixed-unit evidence retained.",
+  "native_screenshots": {
+    "en-busy-enlarged.png": "3cf90b4666e08ccc0e0a8c8093b078e73f5dbb14f282cded69f713ac77abaa1f",
+    "en-busy-minimum.png": "196e210a4538b23a6e21f966c36142b356fc98bcf16fdaeca70599f01a05bd9b",
+    "en-cancelling.png": "c1dd9c0106df455a6c411e7aece21f1309204ca3b61cdcd2cb30a13ac8438dc3",
+    "en-empty.png": "77bf2900f6e12e76515be3c4a659b301eccfda7b08ddd8c3db103a844f370d80",
+    "en-invalid-limit.png": "7659dd5e62a82ade3d787e0abb64ccf54107e6fcf550f1ea39f9475750819e43",
+    "en-manual.png": "67780d85f25a649c076a7ca9fb865d7d197e7aec96992f69be8a0034c7e22b3a",
+    "en-result-enlarged.png": "32f4810a05e7e1cdaa4923df0bb2edfd713fb77f9be0621501a7899c2e2c86e3",
+    "en-result-minimum.png": "1f3e6abe16a318fafb2faaa020625a5bf4fc5279a12d3dfca771f0241e0df642",
+    "en-selected.png": "d26e07c5e62abe7ca888547d5e0029659b0115fc466e93d38f8220296f6b1ef8",
+    "en-transferred.png": "fa49f6ab6f1e8620601bd4c755789c3a9c5007d54421602cb1f1d8192bc6d257",
+    "es-busy-enlarged.png": "4f0775753f2a32969bd13d8ba4dd1b6412cc9c7312da6d7ba9f43537e3cfa4aa",
+    "es-busy-minimum.png": "e8f5bc8ad6abe117aa79bad9ddce9c7b914da50763a8da75e4ac82e4a697ad94",
+    "es-cancelling.png": "c19472811640b7a2aa2d48b6a6a5e65ac4a9a50c81b43035d6f472a54bf9f414",
+    "es-empty.png": "d21a50be7509f65a4b14bc586011c33c7ea781fc79a7e92645327b81c318c8cd",
+    "es-invalid-limit.png": "1310cc9461bc4fec2e1df84dea8702c5e201b75df437fa1de9b70e7c57d0a6be",
+    "es-manual.png": "f8b7a9b15afe1398d3d606b8478afc0f83b4a708f20e96e22907b62114fe45da",
+    "es-result-enlarged.png": "8b3fc0feeb86d7e4a14b359e2babf0cdbf39d7186e43811fba9211d833e9850e",
+    "es-result-minimum.png": "f09ad9cb3153cf86a6cd1b69a420971021e7ce78312f580d18bdba081f038b21",
+    "es-selected.png": "3160879cef34f57e2ec2368545d4087b7f0dbdf9becf75c0924971f7a64bf2e6",
+    "es-transferred.png": "cccadb54025e1dbb55fc84f7fd1124f65cc05fe6b8be1b7396349d48c1d3ec38",
+    "reference-result-enlarged.png": "60d874219a06e22c54e7d5b3bbfb7d8c5258a6466662d6e98cc2c79add937c72",
+    "reference-result-minimum.png": "f81f902dc679f2894dc28cc6d245b64686923f952d6fb51ef9855e02ee481345"
+  },
+  "source_result_geometry_and_text": {
+    "minimum": true,
+    "enlarged": true
+  },
+  "visual_review": "22 captures inspected: source result at minimum/enlarged; EN/ES empty/manual, busy minimum/enlarged, cancelling, actual result minimum/enlarged, selected, transferred and invalid-limit message. Both panels, labels and bottom controls remain visible. Source wide-table horizontal scrolling retained. Full pixel parity not claimed.",
+  "worker_contract": "One owned bounded CBC worker; GUI responsive; cancellation suppresses publication; Escape/window closure deferred until worker exits. No force termination or GUI/repository access from worker.",
+  "limits": [
+    "HiGHS multi-tool/comparison windows and main JROT wiring remain pending.",
+    "Cancel waits for bounded solver completion; does not forcibly interrupt CBC.",
+    "Legacy compatibility, comprehensive copied-project integration and final UI/workflow/platform acceptance remain.",
+    "Whole-application completion percentage and finish date remain unvalidated."
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "checkpoint": "F133",
+  "schemes": 7,
+  "targets": 45,
+  "assignment_cells": 179,
+  "modes": {
+    "manual": 4,
+    "single_tool": 1,
+    "all_tools": 2
+  },
+  "source_schemes": [
+    {
+      "id": "Large01_10x8",
+      "workers": 10,
+      "blocks": 8,
+      "scope_count": 0,
+      "mode": "manual",
+      "primary_kind": null
+    },
+    {
+      "id": "Medium01_10x5",
+      "workers": 10,
+      "blocks": 5,
+      "scope_count": 0,
+      "mode": "manual",
+      "primary_kind": null
+    },
+    {
+      "id": "Medium02_8x3",
+      "workers": 3,
+      "blocks": 3,
+      "scope_count": 5,
+      "mode": "all_tools",
+      "primary_kind": null
+    },
+    {
+      "id": "Simple01_4x4",
+      "workers": 4,
+      "blocks": 4,
+      "scope_count": 0,
+      "mode": "manual",
+      "primary_kind": null
+    },
+    {
+      "id": "Simple02_6x2",
+      "workers": 6,
+      "blocks": 2,
+      "scope_count": 0,
+      "mode": "manual",
+      "primary_kind": null
+    },
+    {
+      "id": "TEST-All-2x3",
+      "workers": 2,
+      "blocks": 3,
+      "scope_count": 0,
+      "mode": "single_tool",
+      "primary_kind": "lifft"
+    },
+    {
+      "id": "TEST-Workplace-2x3",
+      "workers": 2,
+      "blocks": 3,
+      "scope_count": 3,
+      "mode": "all_tools",
+      "primary_kind": null
+    }
+  ],
+  "policy": "Exact historical profile/placement/assignment links; raw source timestamps/IDs retained; no current-profile substitution or inferred provenance."
+}

@@ -1,0 +1,101 @@
+import ast,hashlib,json,subprocess,sys,tempfile,zipfile,xml.etree.ElementTree as ET
+from pathlib import Path
+root=Path.cwd()
+def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+manifest=json.loads((root/'docs/reference/source-manifest.json').read_text())
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+assert all(digest(reference/name)==value for name,value in manifest.items())
+assert digest(root/'uv.lock')==json.loads((root/'docs/f79-validation.json').read_text())['lock_sha256']
+tree=ast.parse((root/'tests/test_plot_results.py').read_text())
+nodes=[]
+for node in tree.body:
+ if isinstance(node,(ast.Import,ast.ImportFrom)):
+  module=getattr(node,'module','') or ''
+  if module.startswith(('tests','PyQt5','ergotools.presentation','ergotools.bootstrap')):continue
+  nodes.append(node)
+ elif isinstance(node,ast.Assign):nodes.append(node)
+ elif isinstance(node,ast.FunctionDef) and node.name=='project':
+  node.decorator_list=[];nodes.append(node)
+fixture=ast.unparse(ast.Module(nodes,type_ignores=[]))
+tree=ast.parse((reference/'src/plot_position_repository.py').read_text())
+legacy=ast.unparse(ast.Module([node for node in tree.body if isinstance(node,ast.FunctionDef) and node.name in ('plot_worker_records','plot_job_records')],type_ignores=[]))
+checks=r"""
+import sqlite3
+from typing import Iterable,Sequence
+PlotPositionError=ValueError
+exec(LEGACY)
+from ergotools.application.plot_results import saved_plot_results,PlotWorkerOrder
+from ergotools.domain.plot_filters import PlotFilterSelection,PlotDemographics
+generator=project(Path.cwd());repository=next(generator)
+try:
+ connection=sqlite3.connect(':memory:')
+ for name,columns in (
+  ('IndividualAssessment','worker_assignment_id,tool_id,total_cumulative_damage,probability_outcome,unit,is_current'),
+  ('WorkerAssignment','id,worker_id,workplace_context_id,job_placement_id,active'),
+  ('WorkplaceContext','id,plant_name,section_name,line_name,station_id,shift_id'),
+  ('Worker','id,first_name,last_name,year_of_birth,month_of_birth,day_of_birth,gender,height,weight'),
+  ('PlotWorkerAssignmentMarker','worker_assignment_id,x,y,size,line_thickness,scale,locked,visible,enabled'),
+  ('PlotStationPosition','plant_name,section_name,line_name,station_id,x,y,position_source'),
+  ('JobPlacement','id,job_id,workplace_context_id,active'),
+  ('Job','id,name,active'),
+  ('CurrentJobRiskMeasurement','job_id,tool_id,profile_id,profile_name,profile_version,source_type,total_cumulative_damage,probability_outcome,unit'),
+ ):
+  connection.execute(f'CREATE TABLE {name} ({columns})')
+ hierarchy=repository.load_hierarchy();jobs=repository.load_jobs();history=repository.load_history()
+ places={item.workplace:i for i,item in enumerate(jobs.placements,1)}
+ tool_names={AssessmentKind.LIFFT:'LiFFT',AssessmentKind.DUET:'DUET',AssessmentKind.TST:'ST'}
+ def insert(table,values):connection.execute(f"INSERT INTO {table} VALUES ({','.join('?' for _ in values)})",values)
+ for place,identity in places.items():
+  insert('WorkplaceContext',(identity,place.plant_name,place.section_name,place.line_name,place.station_id,place.shift_id))
+ for worker in hierarchy.work.workers:
+  d=worker.details or WorkerDetails()
+  birth=tuple(int(v) for v in d.birth_date.split('-')) if d.birth_date else (None,None,None)
+  insert('Worker',(worker.worker_id,worker.first_name,worker.last_name,*birth,d.sex,d.height_cm,d.weight_kg))
+ for job in jobs.jobs:insert('Job',(job.job_id,job.name,job.active))
+ for item in jobs.placements:insert('JobPlacement',(item.placement_id,item.job_id,places[item.workplace],item.active))
+ for item in jobs.assignments:insert('WorkerAssignment',(item.assignment_id,item.worker.worker_id,places[item.worker.workplace],item.placement_id,item.active))
+ for entry in history.entries:
+  # Arbitrary saved numeric results characterize selection, not scientific formulas.
+  insert('IndividualAssessment',(entry.assignment_id,tool_names[entry.kind],0.25,30,'Imperial',entry.is_current))
+ for profile in repository.load_job_risk().profiles:
+  if profile.is_current and profile.status.value=='approved':
+   for m in profile.measurements:
+    insert('CurrentJobRiskMeasurement',(profile.job_id,tool_names[m.kind],profile.profile_id,profile.name,profile.version,profile.source_type.value,m.cumulative_damage,m.probability_percent,m.unit))
+ comparisons=0
+ for scope in (SCOPE,PlotScope((('P',),)),PlotScope((('P','T','L','1'),),'Day'),PlotScope((('Empty',),))):
+  for kind in AssessmentKind:
+   for demographics in (PlotDemographics(),PlotDemographics(True,'Female',(26,26),(70,70))):
+    selection=PlotFilterSelection(scope,kind,demographics=demographics)
+    migrated=saved_plot_results(repository,selection,current_year=2026)
+    expected=plot_worker_records(connection,tool_id=tool_names[kind],scope_paths=scope.paths,shift_id=scope.shift,
+     gender=demographics.sex if demographics.enabled else None,
+     birth_year_range=(2000,2000) if demographics.age else None,
+     weight_range=demographics.weight_kg if demographics.enabled else None)
+    assert sorted((r.worker.worker_id,r.assessment.assignment_id) for r in migrated.workers)==sorted((r['worker_id'],r['worker_assignment_id']) for r in expected)
+    expected_all=plot_worker_records(connection,tool_id=None,scope_paths=scope.paths,shift_id=scope.shift,
+     gender=demographics.sex if demographics.enabled else None,
+     birth_year_range=(2000,2000) if demographics.age else None,
+     weight_range=demographics.weight_kg if demographics.enabled else None)
+    assert sorted((r.worker.worker_id,r.assessment.assignment_id,tool_names[r.assessment.kind]) for r in migrated.all_tools)==sorted((r['worker_id'],r['worker_assignment_id'],r['tool_id']) for r in expected_all)
+    expected_jobs=plot_job_records(connection,tool_id=tool_names[kind],scope_paths=scope.paths,shift_id=scope.shift)
+    assert [(r.placement.placement_id,r.assigned_worker_count,r.evidence.profile.profile_id if r.evidence else None) for r in migrated.jobs]==[(r['job_placement_id'],r['assigned_worker_count'],r['job_risk_profile_id']) for r in expected_jobs]
+    comparisons+=1
+ connection.close()
+ result=saved_plot_results(repository,PlotFilterSelection(SCOPE),current_year=2026)
+ assert result.workers[0].assessment.status is EvaluationStatus.PARTIAL
+ assert result.workers[0].job_evidence.measurement.probability_percent==0
+ assert repository.format_version==7
+ print(f'Extracted wheel: {comparisons} source-SQL scope/tool/demographic worker/all-tool/job comparisons, saved evaluation gates and zero evidence passed')
+finally:generator.close()
+"""
+code="import sys\nfrom pathlib import Path\nsys.path.insert(0,sys.argv[1])\n"+fixture+"\nLEGACY="+repr(legacy)+"\n"+checks
+wheel=root/'dist/ergotools-0.1.0.dev0-py3-none-any.whl'
+with tempfile.TemporaryDirectory() as directory:
+ with zipfile.ZipFile(wheel) as archive:archive.extractall(directory)
+ result=subprocess.run([sys.executable,'-I','-c',code,directory],cwd=directory,capture_output=True,text=True,timeout=30)
+ if result.returncode:raise RuntimeError(result.stdout+result.stderr)
+ print(result.stdout.strip())
+coverage=json.loads((root/'artifacts/coverage.json').read_text());tests=ET.parse(root/'artifacts/tests.xml')
+evidence=dict(milestone='F105',verified_on='2026-10-07',python=sys.version.split()[0],tests_passed=len(list(tests.iter('testcase'))),new_tests=8,coverage_percent=coverage['totals']['percent_covered'],reference_files_unchanged=len(manifest),dependency_lock_unchanged=True,lock_sha256=digest(root/'uv.lock'),wheel_sha256=digest(wheel),independent_wheel_smoke='passed',source_sql_selection_comparisons=24,plot_saved_dataset_loader_implemented=True,plot_main_window_enabled=False,plot_markers_and_summaries_integrated=False,scientific_gates_preserved=True,ui_layout_changed=False,overall_completion_estimate_percent=None)
+(root/'docs/f105-validation.json').write_text(json.dumps(evidence,indent=2)+'\n')
+print('Verified reference and lock unchanged; F105 evidence saved')

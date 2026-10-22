@@ -1,0 +1,32 @@
+{
+  "milestone": "F49",
+  "verified_on": "2026-10-02",
+  "python": "3.13.14",
+  "tests_passed": 458,
+  "new_tests": 3,
+  "coverage_percent": 98.97435897435898,
+  "new_module_coverage": {
+    "src/ergotools/presentation/desktop/assessment_context_dialog.py": 100.0
+  },
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "wheel_sha256": "a8919dd43bfd9b9564a9b024b2032973f5e239e2eb378c4ed11b1e9dc63b316b",
+  "independent_wheel_smoke": "passed",
+  "ui_changed": true,
+  "schema_changed": false,
+  "existing_formats_unchanged": true,
+  "reference_overlap_cases": 8,
+  "overall_completion_estimate_percent": 64,
+  "native_screenshots": {
+    "collapsed.png": "8c1f1e675e4892e1aad2d3ce25d6fc3b986ae3adb8ff5f8f352e3408e36efe4f",
+    "empty.png": "f967bf6d4e143a8193530ec332d6acb68d686ad8163d30aac429cfc369707e09",
+    "selected.png": "17d20c224d2d6a310254c8a6c9be474af08b825a76548ee3b7fa0cd2e8fa6332",
+    "shift-popup.png": "55bffd403c54101dd0e8d3d35de867af0495048a0952eb1b063b849ea57cae2d",
+    "stale.png": "15a8964f7f43d3f4d7d7fc242d2801582903d10dd6e55ee8a7ef5476a314cf24"
+  },
+  "native_visual_size": [
+    700,
+    540
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "checkpoint": "F150",
+  "date": "2026-10-10",
+  "tests_passed": 1123,
+  "coverage_percent": 96.42605943379638,
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "f5b7f9be4f775b3a00454c5d37fc8feb5f7d8aba4fbb532c1d702d12c07c6dfb",
+  "independent_wheel": "Warning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway.\nF150 native EN/ES all three tools minimum/enlarged/pending and empty/full-body captures; caption ink, adjacent pixels, geometry and source preservation passed.\nWarning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway.\nF150 native EN/ES all three tools minimum/enlarged/pending and empty/full-body captures; caption ink, adjacent pixels, geometry and source preservation passed.\nExtracted-wheel F150 main-window capture and resize verification passed.",
+  "ui_changes": "Fresh exact-source saved outputs and Saved/Guardado status; layout unchanged.",
+  "limits": [
+    "Reference compatibility is not scientific certification.",
+    "Final original-window and supported-platform acceptance remain."
+  ],
+  "progress_ledger": "progress_baseline.json",
+  "completed_scope_points": 74,
+  "remaining_scope_points": 26,
+  "final_gate_credit_awarded": false
+}

@@ -1,0 +1,227 @@
+{
+  "python": "3.10.18",
+  "source_sha256": {
+    "src/main.py": "6e8a65a2ba7370b1dbda199110e3cfbe0b9f62d91ed9677ceea9f8483b3e2fc5",
+    "src/job_placement_repository.py": "e69c08404b78f478a52091543525085c0c93de2ac5d1f7777bee2577abd131fd"
+  },
+  "query_worker_id": "w1",
+  "query_workplace": [
+    "Plant",
+    "Section",
+    "Line",
+    "Station",
+    "Day"
+  ],
+  "assignment_id": 7,
+  "cases": [
+    {
+      "name": "eligible",
+      "worker_id": "w1",
+      "workplace": [
+        "Plant",
+        "Section",
+        "Line",
+        "Station",
+        "Day"
+      ],
+      "active": true,
+      "job_placement_id": 10,
+      "placement_active": true,
+      "job_active": true,
+      "expected_assignment_id": 7
+    },
+    {
+      "name": "inactive_assignment",
+      "worker_id": "w1",
+      "workplace": [
+        "Plant",
+        "Section",
+        "Line",
+        "Station",
+        "Day"
+      ],
+      "active": false,
+      "job_placement_id": 10,
+      "placement_active": true,
+      "job_active": true,
+      "expected_assignment_id": null
+    },
+    {
+      "name": "no_placement",
+      "worker_id": "w1",
+      "workplace": [
+        "Plant",
+        "Section",
+        "Line",
+        "Station",
+        "Day"
+      ],
+      "active": true,
+      "job_placement_id": null,
+      "placement_active": false,
+      "job_active": true,
+      "expected_assignment_id": null
+    },
+    {
+      "name": "inactive_placement",
+      "worker_id": "w1",
+      "workplace": [
+        "Plant",
+        "Section",
+        "Line",
+        "Station",
+        "Day"
+      ],
+      "active": true,
+      "job_placement_id": 10,
+      "placement_active": false,
+      "job_active": true,
+      "expected_assignment_id": null
+    },
+    {
+      "name": "inactive_job_still_matches",
+      "worker_id": "w1",
+      "workplace": [
+        "Plant",
+        "Section",
+        "Line",
+        "Station",
+        "Day"
+      ],
+      "active": true,
+      "job_placement_id": 10,
+      "placement_active": true,
+      "job_active": false,
+      "expected_assignment_id": 7
+    },
+    {
+      "name": "different_worker",
+      "worker_id": "w2",
+      "workplace": [
+        "Plant",
+        "Section",
+        "Line",
+        "Station",
+        "Day"
+      ],
+      "active": true,
+      "job_placement_id": 10,
+      "placement_active": true,
+      "job_active": true,
+      "expected_assignment_id": null
+    },
+    {
+      "name": "different_context_0",
+      "worker_id": "w1",
+      "workplace": [
+        "Other",
+        "Section",
+        "Line",
+        "Station",
+        "Day"
+      ],
+      "active": true,
+      "job_placement_id": 10,
+      "placement_active": true,
+      "job_active": true,
+      "expected_assignment_id": null
+    },
+    {
+      "name": "different_context_1",
+      "worker_id": "w1",
+      "workplace": [
+        "Plant",
+        "Other",
+        "Line",
+        "Station",
+        "Day"
+      ],
+      "active": true,
+      "job_placement_id": 10,
+      "placement_active": true,
+      "job_active": true,
+      "expected_assignment_id": null
+    },
+    {
+      "name": "different_context_2",
+      "worker_id": "w1",
+      "workplace": [
+        "Plant",
+        "Section",
+        "Other",
+        "Station",
+        "Day"
+      ],
+      "active": true,
+      "job_placement_id": 10,
+      "placement_active": true,
+      "job_active": true,
+      "expected_assignment_id": null
+    },
+    {
+      "name": "different_context_3",
+      "worker_id": "w1",
+      "workplace": [
+        "Plant",
+        "Section",
+        "Line",
+        "Other",
+        "Day"
+      ],
+      "active": true,
+      "job_placement_id": 10,
+      "placement_active": true,
+      "job_active": true,
+      "expected_assignment_id": null
+    },
+    {
+      "name": "different_context_4",
+      "worker_id": "w1",
+      "workplace": [
+        "Plant",
+        "Section",
+        "Line",
+        "Station",
+        "Other"
+      ],
+      "active": true,
+      "job_placement_id": 10,
+      "placement_active": true,
+      "job_active": true,
+      "expected_assignment_id": null
+    },
+    {
+      "name": "case_sensitive",
+      "worker_id": "w1",
+      "workplace": [
+        "plant",
+        "Section",
+        "Line",
+        "Station",
+        "Day"
+      ],
+      "active": true,
+      "job_placement_id": 10,
+      "placement_active": true,
+      "job_active": true,
+      "expected_assignment_id": null
+    },
+    {
+      "name": "whitespace_significant",
+      "worker_id": "w1",
+      "workplace": [
+        "Plant ",
+        "Section",
+        "Line",
+        "Station",
+        "Day"
+      ],
+      "active": true,
+      "job_placement_id": 10,
+      "placement_active": true,
+      "job_active": true,
+      "expected_assignment_id": null
+    }
+  ],
+  "notes": "Actual AST-extracted reference query and method; isolated in-memory SQLite. Fixed past placement and future assignment dates prove lookup does not filter date ranges. No Qt imports or operational files."
+}

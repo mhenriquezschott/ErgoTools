@@ -1,0 +1,33 @@
+{
+  "milestone": "F68",
+  "verified_on": "2026-10-04",
+  "python": "3.13.14",
+  "tests_passed": 580,
+  "new_tests": 6,
+  "coverage_percent": 98.40011326631743,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "wheel_sha256": "2429a2155d63485f5866911216a36418c334caac2b275507c051e5e18398cf08",
+  "independent_wheel_smoke": "passed",
+  "ui_changed": true,
+  "schema_changed": false,
+  "overall_completion_estimate_percent": null,
+  "progress_note": "Prior 67 percent withdrawn as an unreliable whole-application estimate. Runnable original-layout Job Management preview integrated. Delete, complete translation, original-project import and final main-window integration remain pending.",
+  "native_screenshots": {
+    "artifacts/job-management/new-approved-minimum.png": "2977c15c74c83810c22eab09a1ea9c2c23b7e239f72e8915c4bb1829c738ac76",
+    "artifacts/job-management/new-draft-selected-minimum.png": "7ccca14cbf0394cff3b7477d74da35a91385b2201f84d411ffa736703582c6bc",
+    "artifacts/job-management/new-empty.png": "2a1cbfc65c3cca39415d3cc995335ae587fa786e7d3e933c88b1315ce67c4a90",
+    "artifacts/job-management/new-evidence-approved-minimum.png": "dc65bedf8cd59d854b8b7e9aef0e700d7d09395d1c72b50c6fb6ef5c0da9b8c5",
+    "artifacts/job-management/new-evidence-draft-minimum.png": "4b6b40388a1357f36a8af1fab33c3ee555591982249e7ac2731b11ae24e34d60",
+    "artifacts/job-management/new-invalid-form.png": "202a6bd5ea316fc212da5c1564fc2b435259c79f842105d1e57ebeab112b3d32",
+    "artifacts/job-management/new-minimum.png": "356e02559ab2ac88ee7166b6550d04c34fd8e58abce33bd6ff5e56ba2ca01fb7",
+    "artifacts/job-management/new-profile-expanded.png": "1f5810139f53f569a69223755fcad33743de20b89679c22c1eb260a3bdfbb763",
+    "artifacts/job-management/new-search.png": "bfa985cbc7003b58088b6d9892d129104fc09c3d230274886daa6eaa62ef7edc",
+    "artifacts/job-management/new-validation-error.png": "6e611ddbd049d83e587811e104517986e7b9469278cb8a67baad9bcfbe94f2d5",
+    "artifacts/job-management/new-workplace-expanded.png": "518bc1dcc29b85a0a60558a679da438c7abc901638cd93a321c2c69d33b24a4c",
+    "artifacts/job-management/original-empty.png": "2a1cbfc65c3cca39415d3cc995335ae587fa786e7d3e933c88b1315ce67c4a90",
+    "artifacts/job-management/original-minimum.png": "dca39c9310b0ce1caeb807c009e141083dfd14ea40b8ad0619339ed7c97222eb",
+    "artifacts/job-management/original-profile-expanded.png": "c0ec713bff27d9fdbe7b1735968202d512448c1c1a1a24e247b5c847b9804b42"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "checkpoint": "F146",
+  "date": "2026-10-10",
+  "tests_passed": 1098,
+  "coverage_percent": 96.43428063943162,
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "afe9acfdfc7e8c4b25cc83bfd3533a5eb4b3f2f901b66c9cba747f813abc3376",
+  "independent_wheel": "Warning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway.\nF146 packaged ST Calculate/edit/undo/redo/Save/reopen, both unit projections, native EN/ES shoulder colors and source convention passed.\nWarning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway.\nF146 packaged ST Calculate/edit/undo/redo/Save/reopen, both unit projections, native EN/ES shoulder colors and source convention passed.\nExtracted-wheel F146 ST live calculation workflow passed.",
+  "ui_changes": "Results become available; layout unchanged. See native evidence and limits.",
+  "limits": [
+    "Reference compatibility is not scientific certification.",
+    "Final original-window and supported-platform acceptance remain."
+  ],
+  "progress_ledger": "progress_baseline.json"
+}

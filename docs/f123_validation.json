@@ -1,0 +1,52 @@
+{
+  "milestone": "F123",
+  "verified_on": "2026-10-09",
+  "python": "3.13.14",
+  "tests_passed": 965,
+  "new_tests": 12,
+  "coverage_percent": 96.78823352844064,
+  "ruff_formatted_files": 456,
+  "mypy_source_files": 208,
+  "architecture_violations": 0,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "05689a66c9860544ba1daadaa3ec040e9ea4e9330bfaac1d4b8bc7cac27c88a6",
+  "independent_wheel_smoke": "passed: native EN/ES delegate editing, zero/missing evidence, exact multiline identities, saved-grid reload and Delete",
+  "native_screenshots": {
+    "en-cleared.png": "1f057a027d93f59f9e1587566f52b525418feb7f75f6a2bae3e9b35b108a3686",
+    "en-dropdown.png": "7f991c5e6cbc47e2ec581e745fc1efb91ad73194ca1efa18c08ce33f3ba485f9",
+    "en-empty.png": "e9bf60e2655935a40e27b2e9fd10a4d0324f5321089e85fb57f9509609e4231a",
+    "en-enlarged.png": "e38c5f65c7d32da191a8db0d397b324fea018c8d245b25d530d177a233a493d3",
+    "en-missing.png": "6fa1a3dcc72d54c1fcff84f9a72e200709a3555d0f7f6f9c8c2ddf3a769468b8",
+    "en-populated.png": "98935c7f521cdd17cfe57756aa62d1d765b3ab0633712acb80e89680d46ed18e",
+    "en-selected.png": "123604a62dfe32f85f583f0c82eef1e05f0cfe03cfdd12f317b06eddfbdd9e80",
+    "es-cleared.png": "f82b9ab115f536a96bc4f25f5bfaf6127ebe3a85c70dd06a005a8c045b705cc5",
+    "es-dropdown.png": "7f991c5e6cbc47e2ec581e745fc1efb91ad73194ca1efa18c08ce33f3ba485f9",
+    "es-empty.png": "a196282162cb9ea85a1075026afcb16602223056c351be44993d353613de3245",
+    "es-enlarged.png": "9d09a429ed432041c1eeb93ea958b48afd5696a415a27f0d143791a4fec973f9",
+    "es-missing.png": "677833b51dcdca4809f152e4b064e02c225d58c9652e718ad3aa3326cfa2e88c",
+    "es-populated.png": "8251ed8ccf28a42406303b10918791c73c0d6cfa100c901226f59f97d823c54a",
+    "es-selected.png": "cd9c0da3be91e7cb803a0562c6334e41455b254e784bed030428595e33a0f8ea",
+    "reference-enlarged.png": "85ef7d7db25cd150e2ea3d92feeac8359ef35fe52c4ee5da4058650731057b44",
+    "reference-minimum.png": "b08788d10a011c54812e3a41c8dbf461360bb180adc5e2dc3cbdee07fe14cd57"
+  },
+  "source_grid_geometry": {
+    "minimum": true,
+    "enlarged": true
+  },
+  "visual_inspection": "16 captures: 2 original source grid comparisons plus 14 new EN/ES empty, populated, enlarged, missing-measurement, dropdown, selected and cleared states. Original horizontal scrolling retained; full-window parity is pending.",
+  "intentional_differences": [
+    "Exact item-data identities instead of caption parsing",
+    "One blocked row update and one edit signal; no reconnect loops or catalog reads per cell",
+    "Derived columns read-only, with full recommendation tooltips",
+    "Styled combo popup delegate fixes native white-on-white selected options",
+    "Spanish abbreviated worker heading retains original 80px width with full tooltip"
+  ],
+  "limits": [
+    "Only JROT worker/time-block grid completed; containing form save/load/delete controls, main integration and optimization/comparison are pending",
+    "Save/reopen/edit/delete verified through grid plus project adapter, not yet through complete form buttons",
+    "No VTK/results/bottom rail in this isolated grid; inspect these with containing form and integrated app",
+    "No reliable whole-app percentage or finish date"
+  ]
+}

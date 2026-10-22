@@ -1,0 +1,6 @@
+import sys,subprocess,json
+from pathlib import Path
+for language in ('en','es'):
+ command=[sys.executable,'-I','-c',"import sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);sys.path.append(str(Path.cwd()));exec(compile(open('/tmp/f145-view.py').read(),'/tmp/f145-view.py','exec'));assert all(not getattr(m,'__file__',None) or Path(m.__file__).is_relative_to(sys.argv[1]) for n,m in tuple(sys.modules.items()) if n=='ergotools' or n.startswith('ergotools.'))",sys.argv[1],language]
+ subprocess.run(command,check=True,timeout=180)
+print('Extracted-wheel F145 historical-result compatibility passed.')

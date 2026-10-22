@@ -1,0 +1,17 @@
+{
+  "checkpoint": "F142",
+  "date": "2026-10-10",
+  "tests_passed": 1091,
+  "coverage_percent": 96.48371262829095,
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "beeb5e4fd20d268999aa0769cd0acc314f5ceb326e83ea5b6be3db6cc9dc75c9",
+  "independent_wheel": "Warning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway.\nExtracted-wheel F142 active original PLOT loader exact scene/fit/alignment/resize compatibility passed for landscape/portrait/square images. No dormant Plant transforms introduced.",
+  "ui_changes": false,
+  "visual_validation": "No UI changes; no new visual parity claim. F127 integrated UI evidence retained.",
+  "limits": [
+    "No dormant Plant transform activation: audited active original behavior matches. Remaining PLOT features/final acceptance remain.",
+    "Historical visual refinements, picker/numeric presentation, scientific gates and platform validation remain.",
+    "Overall percentage/finish date unvalidated."
+  ]
+}

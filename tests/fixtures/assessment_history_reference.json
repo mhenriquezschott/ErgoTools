@@ -1,0 +1,86 @@
+{
+  "source_sha256": "38b4ef55d0ce0d3f7acaab998f90292f25f0bf40723eb50d27357027b8c18972",
+  "cases": [
+    {
+      "name": "duplicate_version",
+      "assignment": 1,
+      "tool": "LiFFT",
+      "version": 1,
+      "status": "draft",
+      "current": false,
+      "accepted": false
+    },
+    {
+      "name": "duplicate_current",
+      "assignment": 1,
+      "tool": "LiFFT",
+      "version": 2,
+      "status": "draft",
+      "current": true,
+      "accepted": false
+    },
+    {
+      "name": "older_noncurrent",
+      "assignment": 1,
+      "tool": "LiFFT",
+      "version": 2,
+      "status": "superseded",
+      "current": false,
+      "accepted": true
+    },
+    {
+      "name": "other_assignment",
+      "assignment": 2,
+      "tool": "LiFFT",
+      "version": 1,
+      "status": "complete",
+      "current": true,
+      "accepted": true
+    },
+    {
+      "name": "other_tool",
+      "assignment": 1,
+      "tool": "DUET",
+      "version": 1,
+      "status": "complete",
+      "current": true,
+      "accepted": true
+    },
+    {
+      "name": "zero_version",
+      "assignment": 1,
+      "tool": "LiFFT",
+      "version": 0,
+      "status": "draft",
+      "current": false,
+      "accepted": false
+    },
+    {
+      "name": "invalid_status",
+      "assignment": 1,
+      "tool": "LiFFT",
+      "version": 2,
+      "status": "invalid",
+      "current": false,
+      "accepted": false
+    },
+    {
+      "name": "superseded_current",
+      "assignment": 2,
+      "tool": "LiFFT",
+      "version": 1,
+      "status": "superseded",
+      "current": true,
+      "accepted": true
+    },
+    {
+      "name": "complete_noncurrent",
+      "assignment": 1,
+      "tool": "LiFFT",
+      "version": 2,
+      "status": "complete",
+      "current": false,
+      "accepted": true
+    }
+  ]
+}

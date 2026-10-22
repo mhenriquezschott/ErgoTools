@@ -1,0 +1,5 @@
+import sys,subprocess
+from pathlib import Path
+command=[sys.executable,'-I','-c',"import sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);sys.path.append(str(Path.cwd()));exec(compile(open('/tmp/f151-compare.py').read(),'/tmp/f151-compare.py','exec'));assert all(not getattr(m,'__file__',None) or Path(m.__file__).is_relative_to(sys.argv[1]) for n,m in tuple(sys.modules.items()) if n=='ergotools' or n.startswith('ergotools.'))",sys.argv[1]]
+subprocess.run(command,check=True,timeout=120)
+print('Extracted-wheel F151 original LiFFT/DUET form comparison passed.')

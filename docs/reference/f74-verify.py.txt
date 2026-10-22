@@ -1,0 +1,22 @@
+import hashlib,json,subprocess,sys,tempfile,zipfile,xml.etree.ElementTree as ET
+from pathlib import Path
+root=Path.cwd()
+def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+manifest=json.loads((root/'docs/reference/source-manifest.json').read_text())
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+assert all(digest(reference/name)==value for name,value in manifest.items())
+assert digest(root/'uv.lock')==json.loads((root/'docs/f71-validation.json').read_text())['lock_sha256']
+wheel=root/'dist/ergotools-0.1.0.dev0-py3-none-any.whl'
+code="\nimport sys\nfrom pathlib import Path\nsys.path.insert(0,sys.argv[1])\nfrom PyQt5.QtWidgets import QApplication\nfrom ergotools.bootstrap import create_window\nfrom ergotools.application.document_lifecycle import CloseChoice\nfrom ergotools.domain.project import ProjectMetadata\nfrom ergotools.domain.model_units import MeasurementSystem\nfrom ergotools.domain.assessments.lifft_draft import LifftDraft,LifftTask\nfrom ergotools.infrastructure.assessment_project_file import AssessmentProjectFile\napp=QApplication([])\npath=Path('grid.ergprj')\nwindow=create_window(Path('settings.json'),original_controls=True)\nworkspace=window.presenter.workspace\nworkspace.create(str(path),ProjectMetadata('wheel','Wheel',MeasurementSystem.IMPERIAL),'lifft',LifftDraft(MeasurementSystem.IMPERIAL,(LifftTask('one',12,20,100),)))\nwindow.refresh()\npanel=window.task_panel\nassert panel is not None\npanel.inputs[0][1].setText('25')\npanel.inputs[0][1].textEdited.emit('25')\npanel.calculate_button.click()\nassert panel.outputs[0][1].text()!='0.0'\nassert window.presenter.source().tasks[0].load==25\nwindow.buttons['save'].click()\nworkspace.close(choice=CloseChoice.DISCARD)\nwindow.close()\nwith AssessmentProjectFile.open(path) as project:\n source=project.load(project.list_assessments()[0].document)\n assert source.tasks[0].load==25\nprint('Isolated wheel original LiFFT grid/edit/calculate/save/reopen passed')\n"
+with tempfile.TemporaryDirectory() as directory:
+ with zipfile.ZipFile(wheel) as archive:archive.extractall(directory)
+ result=subprocess.run([sys.executable,'-I','-c',code,directory],cwd=directory,capture_output=True,text=True)
+ if result.returncode:raise RuntimeError(result.stderr)
+ print(result.stdout.strip())
+coverage=json.loads((root/'artifacts/coverage.json').read_text())
+evidence=dict(milestone='F74',verified_on='2026-10-04',python=sys.version.split()[0],tests_passed=sum(1 for _ in ET.parse(root/'artifacts/tests.xml').iter('testcase')),new_tests=7,coverage_percent=coverage['totals']['percent_covered'],reference_files_unchanged=len(manifest),dependency_lock_unchanged=True,lock_sha256=digest(root/'uv.lock'),wheel_sha256=digest(wheel),independent_wheel_smoke='passed',hierarchy_payload_version=3,reads_hierarchy_payload_versions=[1,2,3],project_sql_schema_changed=False,overall_completion_estimate_percent=None)
+evidence['desktop_new_project_format']=7
+evidence['native_capture_dimensions']=json.loads((root/'artifacts/lifft-task-panel/dimensions.json').read_text())
+evidence['native_screenshots']={str(p.relative_to(root)):digest(p) for p in sorted((root/'artifacts/lifft-task-panel').glob('*.png'))}
+(root/'docs/f74-validation.json').write_text(json.dumps(evidence,indent=2)+'\n')
+print(json.dumps(evidence,indent=2))

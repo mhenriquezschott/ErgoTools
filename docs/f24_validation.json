@@ -1,0 +1,15 @@
+{
+  "milestone": "F24",
+  "verified_on": "2026-09-29",
+  "reference_files_unchanged": 500,
+  "tests_passed": 259,
+  "new_workflow_tests": 8,
+  "coverage_percent": 99.59250203748981,
+  "new_modules_coverage_percent": 100,
+  "python": "3.13.14",
+  "wheel_sha256": "a6b3acc7891013fea851a7eb9f96762201702ea33fb80d785791403f4a13f4f8",
+  "lock_sha256": "d8f1a8c9131748308c6973aefa6ddaa4e9df344f2f997fa3bc2f244f6403c841",
+  "dependency_lock_unchanged": true,
+  "independent_wheel_smoke": "passed",
+  "overall_completion_estimate_percent": 49
+}

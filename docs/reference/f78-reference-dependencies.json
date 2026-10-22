@@ -1,0 +1,155 @@
+{
+  "vtk": {
+    "version": "9.5.0",
+    "requires": [
+      "matplotlib>=2.0.0",
+      "numpy>=1.9; extra == \"numpy\"",
+      "wslink>=1.0.4; extra == \"web\""
+    ]
+  },
+  "matplotlib": {
+    "version": "3.10.5",
+    "requires": [
+      "contourpy>=1.0.1",
+      "cycler>=0.10",
+      "fonttools>=4.22.0",
+      "kiwisolver>=1.3.1",
+      "numpy>=1.23",
+      "packaging>=20.0",
+      "pillow>=8",
+      "pyparsing>=2.3.1",
+      "python-dateutil>=2.7",
+      "meson-python<0.17.0,>=0.13.1; extra == \"dev\"",
+      "pybind11!=2.13.3,>=2.13.2; extra == \"dev\"",
+      "setuptools_scm>=7; extra == \"dev\"",
+      "setuptools>=64; extra == \"dev\""
+    ]
+  },
+  "numpy": {
+    "version": "2.2.6",
+    "requires": []
+  },
+  "contourpy": {
+    "version": "1.3.2",
+    "requires": [
+      "numpy>=1.23",
+      "furo; extra == \"docs\"",
+      "sphinx>=7.2; extra == \"docs\"",
+      "sphinx-copybutton; extra == \"docs\"",
+      "bokeh; extra == \"bokeh\"",
+      "selenium; extra == \"bokeh\"",
+      "contourpy[bokeh,docs]; extra == \"mypy\"",
+      "bokeh; extra == \"mypy\"",
+      "docutils-stubs; extra == \"mypy\"",
+      "mypy==1.15.0; extra == \"mypy\"",
+      "types-Pillow; extra == \"mypy\"",
+      "contourpy[test-no-images]; extra == \"test\"",
+      "matplotlib; extra == \"test\"",
+      "Pillow; extra == \"test\"",
+      "pytest; extra == \"test-no-images\"",
+      "pytest-cov; extra == \"test-no-images\"",
+      "pytest-rerunfailures; extra == \"test-no-images\"",
+      "pytest-xdist; extra == \"test-no-images\"",
+      "wurlitzer; extra == \"test-no-images\""
+    ]
+  },
+  "cycler": {
+    "version": "0.12.1",
+    "requires": [
+      "ipython ; extra == 'docs'",
+      "matplotlib ; extra == 'docs'",
+      "numpydoc ; extra == 'docs'",
+      "sphinx ; extra == 'docs'",
+      "pytest ; extra == 'tests'",
+      "pytest-cov ; extra == 'tests'",
+      "pytest-xdist ; extra == 'tests'"
+    ]
+  },
+  "fonttools": {
+    "version": "4.59.0",
+    "requires": [
+      "lxml>=4.0; extra == \"lxml\"",
+      "brotli>=1.0.1; platform_python_implementation == \"CPython\" and extra == \"woff\"",
+      "brotlicffi>=0.8.0; platform_python_implementation != \"CPython\" and extra == \"woff\"",
+      "zopfli>=0.1.4; extra == \"woff\"",
+      "unicodedata2>=15.1.0; python_version <= \"3.12\" and extra == \"unicode\"",
+      "lz4>=1.7.4.2; extra == \"graphite\"",
+      "scipy; platform_python_implementation != \"PyPy\" and extra == \"interpolatable\"",
+      "munkres; platform_python_implementation == \"PyPy\" and extra == \"interpolatable\"",
+      "pycairo; extra == \"interpolatable\"",
+      "matplotlib; extra == \"plot\"",
+      "sympy; extra == \"symfont\"",
+      "xattr; sys_platform == \"darwin\" and extra == \"type1\"",
+      "skia-pathops>=0.5.0; extra == \"pathops\"",
+      "uharfbuzz>=0.23.0; extra == \"repacker\"",
+      "lxml>=4.0; extra == \"all\"",
+      "brotli>=1.0.1; platform_python_implementation == \"CPython\" and extra == \"all\"",
+      "brotlicffi>=0.8.0; platform_python_implementation != \"CPython\" and extra == \"all\"",
+      "zopfli>=0.1.4; extra == \"all\"",
+      "unicodedata2>=15.1.0; python_version <= \"3.12\" and extra == \"all\"",
+      "lz4>=1.7.4.2; extra == \"all\"",
+      "scipy; platform_python_implementation != \"PyPy\" and extra == \"all\"",
+      "munkres; platform_python_implementation == \"PyPy\" and extra == \"all\"",
+      "pycairo; extra == \"all\"",
+      "matplotlib; extra == \"all\"",
+      "sympy; extra == \"all\"",
+      "xattr; sys_platform == \"darwin\" and extra == \"all\"",
+      "skia-pathops>=0.5.0; extra == \"all\"",
+      "uharfbuzz>=0.23.0; extra == \"all\""
+    ]
+  },
+  "kiwisolver": {
+    "version": "1.4.8",
+    "requires": []
+  },
+  "pillow": {
+    "version": "11.3.0",
+    "requires": [
+      "furo; extra == \"docs\"",
+      "olefile; extra == \"docs\"",
+      "sphinx>=8.2; extra == \"docs\"",
+      "sphinx-autobuild; extra == \"docs\"",
+      "sphinx-copybutton; extra == \"docs\"",
+      "sphinx-inline-tabs; extra == \"docs\"",
+      "sphinxext-opengraph; extra == \"docs\"",
+      "olefile; extra == \"fpx\"",
+      "olefile; extra == \"mic\"",
+      "pyarrow; extra == \"test-arrow\"",
+      "check-manifest; extra == \"tests\"",
+      "coverage>=7.4.2; extra == \"tests\"",
+      "defusedxml; extra == \"tests\"",
+      "markdown2; extra == \"tests\"",
+      "olefile; extra == \"tests\"",
+      "packaging; extra == \"tests\"",
+      "pyroma; extra == \"tests\"",
+      "pytest; extra == \"tests\"",
+      "pytest-cov; extra == \"tests\"",
+      "pytest-timeout; extra == \"tests\"",
+      "pytest-xdist; extra == \"tests\"",
+      "trove-classifiers>=2024.10.12; extra == \"tests\"",
+      "typing-extensions; python_version < \"3.10\" and extra == \"typing\"",
+      "defusedxml; extra == \"xmp\""
+    ]
+  },
+  "pyparsing": {
+    "version": "3.2.3",
+    "requires": [
+      "railroad-diagrams ; extra == \"diagrams\"",
+      "jinja2 ; extra == \"diagrams\""
+    ]
+  },
+  "python-dateutil": {
+    "version": "2.9.0.post0",
+    "requires": [
+      "six >=1.5"
+    ]
+  },
+  "six": {
+    "version": "1.17.0",
+    "requires": []
+  },
+  "packaging": {
+    "version": "26.3",
+    "existing_approved": true
+  }
+}

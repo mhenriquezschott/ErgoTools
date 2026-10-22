@@ -1,0 +1,2 @@
+Original plant_layout.py SHA256: 86dd14c647ffdf88393160efae49bb1b1158c6191950016460a9642a26e9cbdf
+Active showPlantImage calls loadImageNew with ImagesPath/image_name at lines 7822-7848. loadImageNew, lines 4916-4966, uses original pixmap pixels, scene image bounds, fitInView KeepAspectRatio, Top|Left alignment and hidden scrollbars. It does not consume Plant rotation, crop, mirror, brightness, opacity or stored scale fields. Introducing those transformations would change existing behavior rather than preserve it.

@@ -1,0 +1,111 @@
+import hashlib,json,subprocess,sys,tempfile,zipfile,shutil
+from pathlib import Path
+import xml.etree.ElementTree as ET
+root=Path.cwd()
+def digest(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+manifest=json.loads((root/'docs/reference/source-manifest.json').read_text())
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+assert all(digest(reference/name)==sha for name,sha in manifest.items())
+previous=json.loads((root/'docs/f120-validation.json').read_text())
+assert digest(root/'uv.lock')==previous['lock_sha256']
+shutil.copyfile('/tmp/f121-wheel-checks.py',root/'docs/reference/f121-wheel-checks.py.txt')
+shutil.copyfile('/tmp/f121-record.py',root/'docs/reference/f121-record.py.txt')
+wheel=root/'dist/ergotools-0.1.0.dev0-py3-none-any.whl'
+code='import sys\nsys.path.insert(0,sys.argv[1])\n'+Path('/tmp/f121-wheel-checks.py').read_text()
+with tempfile.TemporaryDirectory() as directory:
+ with zipfile.ZipFile(wheel) as archive:archive.extractall(directory)
+ result=subprocess.run([sys.executable,'-I','-c',code,directory],cwd=directory,capture_output=True,text=True,timeout=30)
+ assert result.returncode==0,result.stdout+result.stderr
+ print(result.stdout.strip())
+coverage=json.loads((root/'artifacts/coverage.json').read_text())['totals']['percent_covered']
+tests=len(list(ET.parse(root/'artifacts/tests.xml').iter('testcase')))
+assert tests==948
+record={'milestone':'F121','verified_on':'2026-10-08','python':sys.version.split()[0],'tests_passed':tests,'new_tests':24,'coverage_percent':coverage,'ruff_formatted_files':446,'mypy_source_files':202,'architecture_violations':0,'reference_files_unchanged':len(manifest),'dependency_lock_unchanged':True,'lock_sha256':digest(root/'uv.lock'),'wheel_sha256':digest(wheel),'independent_wheel_smoke':'passed: actual scheme persistence/upgrade/reopen/copy/delete and referenced job protection','ui_changed':False,'visual_checks':'No changed window; native full suite xcb, no new visual captures.','project_format':11,'limits':['JROT original form, scope selection, comparison, optimization thread ownership and navigation still pending','New-format scheme payloads only; not legacy project import','No whole-app percentage or finish date established']}
+(root/'docs/f121-validation.json').write_text(json.dumps(record,indent=2)+'\n')
+(root/'docs/jrot-persistence.md').write_text(f'''# JROT saved scheme workflow — F121, 2026-10-08
+
+Frozen RotationScheme/RotationWorkerLink/RotationTarget records retain exact
+project/scheme identity, editable name/description, ordered worker blocks,
+original optional assignment IDs, exact job/placement/profile IDs, explicit
+station/shift scope, manual/single-tool/all-tools provenance and primary tool.
+Solver keys derive unambiguously from target identities rather than cell text.
+Manual schemes require complete cells but may contain block collisions: Save
+is not an optimization-feasibility or scientific approval operation.
+
+The source mapping is rotation_repository.py list/load/save/delete and the active
+rotation_layout.py save/load handlers. Source normalized records are represented
+in this new format as version-one, strictly shaped JSON scheme payloads in an
+owned SQLite table. Counts derive from complete rows instead of independent
+potentially inconsistent metadata. Creation/update timestamps remain stored
+alongside payloads. This is not a legacy .ergprj importer or schema copy.
+
+The application RotationSchemeRepository port exposes ordered read, explicit
+save and consent-owned delete. AssessmentProjectFile uses its existing connection;
+no second handle, implicit editor save or optimization publication is introduced.
+Read returns empty for full formats seven–ten without migration. Explicit Save
+atomically adds missing details/map/geometry tables and scheme records, promoting
+the project to format eleven only after commit. Existing sources, profile units,
+maps and geometry survive. Failure rolls back schema, previous scheme and version;
+unknown deletion raises KeyError. Older partial formats remain unsupported.
+Opening/Save As validates and retains exact ownership. PLOT geometry saves now
+preserve the higher project format instead of resetting it to ten.
+
+Scope must contain one shift and exact existing workplaces. Links must belong
+to their worker/job and scope. Saved inactive assignments and retired profiles
+remain readable. New profile links require approved status; retired links can
+only be retained from that same existing scheme. Newer current profiles do not
+relink an old scheme. Approved/retired measurement immutability remains governed
+by the existing risk store. No metric/imperial coefficient conversion is added;
+source unit evidence stays with the referenced profile.
+
+Referenced workers/scope cannot be deleted. Referenced assignment and placement
+ownership cannot be rewritten or removed; ending an assignment or changing
+activity/notes is permitted, so normal reassignment can retain its predecessor.
+The actual Job Management deletion path also rejects rotation-referenced jobs
+before removing profiles/placements. Deleting the scheme releases its links.
+These guards cover concrete saved records, not speculative concurrent editors.
+Hierarchy validation checks only its own links, avoiding recursive cross-catalog
+reads during project open. Full reference validation is owned by the project.
+
+Validation: {tests} native tests pass (24 focused new cases), {coverage:.2f}% coverage;
+Ruff/format (446 files), strict mypy (202 source files), architecture and builds
+pass. Focused cases cover formats seven–eleven, no-write reads, upsert/ordering,
+reopen/copy/delete, initial and replacement rollback, old profile/assignment
+retention, references/deletion protection, map/geometry/unit preservation, foreign
+or malformed records and closed/transaction ownership. Independent extracted-wheel
+actual persistence workflow passes. All 500 reference hashes and approved lock
+are unchanged. Evidence: f121-validation.json, artifacts/f121-check.log and
+artifacts/f121-wheel.log. No UI changed; no new visual captures were required.
+
+Next: compose the original JROT layout and one-shift scope chooser into usable
+edit/save/load/delete controls, then optimizer/comparison transfer and owned worker
+cancel/close lifecycle. JROT main navigation remains disabled. Final legacy-format
+compatibility, comprehensive copied-project integration and full visual/workflow
+acceptance remain outstanding. No reliable overall percentage/date is established.
+''')
+p=root/'docs/STATUS.md';s=p.read_text().replace('## Latest checkpoint: F120',f'''## Latest checkpoint: F121
+
+JROT schemes now save/load/delete through the project-owned repository, retaining
+original worker assignments and exact risk-profile/job-placement links. Explicit
+Save atomically upgrades full projects to format eleven; reads never migrate.
+Rollback, copy/reopen, retired evidence and closed assignments are covered.
+Referenced records are protected, including the actual Job Management delete
+path. Existing maps, geometry and assessment units survive; PLOT position saves
+preserve the higher format. [Source mapping and limits](jrot-persistence.md).
+
+{tests} native tests pass (24 new cases), {coverage:.2f}% coverage; Ruff/format (446
+files), strict mypy (202 source files), architecture/builds and independent
+extracted-wheel persistence checks pass. All 500 reference hashes and the approved
+lock are unchanged. No UI changed or new visual capture. Evidence:
+f121-validation.json, artifacts/f121-check.log and artifacts/f121-wheel.log.
+
+Next: original JROT scheme form and scope selector with usable edit/save/load/delete,
+then optimizer/comparison transfer, owned worker cancellation/closure and main
+integration. JROT remains disabled. Legacy compatibility, comprehensive copied
+project validation and final integrated UI/workflow/platform acceptance remain.
+Overall completion percentage and finish date remain unvalidated.
+
+## F120 historical checkpoint''',1);p.write_text(s)
+for file,body in [('architecture.md','RotationScheme values own exact links and pure reference checks; the application repository port has no SQL/solver types. RotationSchemeStore borrows the project connection, which owns format-eleven upgrade, validation and commits. Hierarchy checks avoid recursive job/profile loads. See jrot-persistence.md.'),('development.md',f'JROT scheme persistence is available on full new-format projects; explicit first Save adds format eleven, while read is non-migrating. The form remains pending. Run focused tests/test_rotation_persistence.py with the approved interpreter; {tests} native regressions and independent wheel persistence pass. See jrot-persistence.md and f121-validation.json.')]:
+ p=root/'docs'/file;p.write_text(p.read_text()+f'\n\n## F121 JROT saved schemes — 2026-10-08\n\n{body}\n')
+print(f'F121 recorded: {tests} tests, {coverage:.2f}% coverage; 500 reference hashes and lock unchanged.')

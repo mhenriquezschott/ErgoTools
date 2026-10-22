@@ -1,0 +1,66 @@
+{
+  "milestone": "F76",
+  "verified_on": "2026-10-04",
+  "python": "3.13.14",
+  "tests_passed": 627,
+  "new_tests": 6,
+  "coverage_percent": 96.79374389051809,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "wheel_sha256": "44dbb3693fda694b833fc1b9b815eb2a6a0ef195f2a7e298a93b6ed9101e73da",
+  "independent_wheel_smoke": "passed",
+  "hierarchy_payload_version": 3,
+  "reads_hierarchy_payload_versions": [
+    1,
+    2,
+    3
+  ],
+  "project_sql_schema_changed": false,
+  "overall_completion_estimate_percent": null,
+  "desktop_new_project_format": 7,
+  "native_capture_dimensions": {
+    "english-partial": [
+      1550,
+      1015
+    ],
+    "original-task-count": [
+      183,
+      112
+    ],
+    "english-task-count": [
+      183,
+      112
+    ],
+    "english-maximum-count": [
+      183,
+      112
+    ],
+    "spanish-partial": [
+      1550,
+      1015
+    ],
+    "spanish-task-count": [
+      249,
+      112
+    ],
+    "spanish-reset-five": [
+      1550,
+      1015
+    ],
+    "spanish-confirmation": [
+      286,
+      94
+    ]
+  },
+  "native_screenshots": {
+    "artifacts/lifft-grid-workflow/english-maximum-count.png": "85e58e4b9ac9bd06aa290ce859c26c163195f6bfa25809cd81d557148e310d01",
+    "artifacts/lifft-grid-workflow/english-partial.png": "b4f2271dce49c4910e383b5f347638591dc41a648247001d1af7219d78747abc",
+    "artifacts/lifft-grid-workflow/english-task-count.png": "7bf57bc970fce4b91c4ec3c1f0cfd67ffd88891155bb0a8b68e5be7d4226857b",
+    "artifacts/lifft-grid-workflow/original-task-count.png": "37ce535a3b2768a57ff7c5e913c6561b79973c72ad771b462ef1f95a8cdf1d98",
+    "artifacts/lifft-grid-workflow/spanish-confirmation.png": "8ed710da8feab0fe3d127b68c6bf7190223bac52901d46ec2c0dfdae615194df",
+    "artifacts/lifft-grid-workflow/spanish-partial.png": "61b125825a41159ebbf0f03ddcf33814402a4be3b6ec32b61a19f92cf1330579",
+    "artifacts/lifft-grid-workflow/spanish-reset-five.png": "1629b591af5a5e9bf290b28607e5a135d34fc14754df4bbdbffcb7253e6120c3",
+    "artifacts/lifft-grid-workflow/spanish-task-count.png": "74c6b959a6eb2f3d7b313a34aa5fa97bb1523a00b7ca5edb45a5020b6ca26a2f"
+  }
+}

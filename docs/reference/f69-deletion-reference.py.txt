@@ -1,0 +1,59 @@
+"""Run extracted original deletion constraints on in-memory synthetic records."""
+import ast
+import hashlib
+import json
+from pathlib import Path
+import sqlite3
+import sys
+from contextlib import closing
+
+root=Path.cwd()
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+schema=reference/'src/schema_migrations.py'
+rotation=reference/'src/rotation_schema.py'
+def ddl(path,table):
+    for node in ast.walk(ast.parse(path.read_text())):
+        if isinstance(node,ast.Constant) and isinstance(node.value,str):
+            text=node.value.strip()
+            if text.startswith('CREATE TABLE '+table+' (') or text.startswith('CREATE TABLE IF NOT EXISTS '+table+' ('):
+                return text.replace(table,table.replace('_schema_v3','').replace('_schema_v6',''),1)
+    raise AssertionError(table)
+
+def run(assessed=False,rotating=False):
+    with closing(sqlite3.connect(':memory:')) as connection:
+        connection.execute('PRAGMA foreign_keys=ON')
+        for table in ('Worker','WorkplaceContext','ErgoTool','RotationScheme'):
+            connection.execute('CREATE TABLE '+table+' (id TEXT PRIMARY KEY)')
+        for table in ('Job_schema_v3','JobRiskProfile_schema_v6','JobRiskMeasurement','JobPlacement_schema_v6','WorkerAssignment','IndividualAssessment'):
+            connection.execute(ddl(schema,table))
+        connection.execute(ddl(rotation,'RotationTarget'))
+        connection.execute("INSERT INTO Worker VALUES ('w')")
+        connection.execute("INSERT INTO WorkplaceContext VALUES ('1')")
+        connection.execute("INSERT INTO ErgoTool VALUES ('LiFFT')")
+        connection.execute("INSERT INTO Job(id,name) VALUES ('j','Job')")
+        connection.execute("INSERT INTO JobRiskProfile(id,job_id,name,version,status,is_current,source_type) VALUES (1,'j','Estimate',1,'approved',1,'expert')")
+        connection.execute("INSERT INTO JobRiskMeasurement(profile_id,tool_id,total_cumulative_damage,probability_outcome) VALUES (1,'LiFFT',0,0)")
+        connection.execute("INSERT INTO JobPlacement(id,job_id,workplace_context_id) VALUES (1,'j',1)")
+        connection.execute("INSERT INTO WorkerAssignment(id,worker_id,workplace_context_id,job_placement_id) VALUES (1,'w',1,1)")
+        if assessed:
+            connection.execute("INSERT INTO IndividualAssessment(id,worker_assignment_id,tool_id,version,status) VALUES (1,1,'LiFFT',1,'draft')")
+        if rotating:
+            connection.execute("INSERT INTO RotationScheme VALUES ('r')")
+            connection.execute("INSERT INTO RotationTarget(id,scheme_id,job_id,job_placement_id,job_risk_profile_id) VALUES (1,'r','j',1,1)")
+        connection.commit()
+        blocked=False
+        try:
+            with connection:
+                connection.execute("DELETE FROM Job WHERE id='j'")
+        except sqlite3.IntegrityError:
+            blocked=True
+        return dict(assessed=assessed,rotating=rotating,blocked=blocked,
+            counts={table:connection.execute('SELECT COUNT(*) FROM '+table).fetchone()[0] for table in ('Job','JobRiskProfile','JobRiskMeasurement','JobPlacement','WorkerAssignment','IndividualAssessment')},
+            assignment_placement=connection.execute('SELECT job_placement_id FROM WorkerAssignment WHERE id=1').fetchone()[0])
+records=[run(),run(assessed=True),run(rotating=True)]
+assert not records[0]['blocked'] and records[0]['assignment_placement'] is None
+assert records[1]['counts']['IndividualAssessment']==1 and records[1]['assignment_placement'] is None
+assert records[2]['blocked'] and records[2]['counts']['Job']==1
+result=dict(python=sys.version.split()[0],source_sha256={str(f.relative_to(reference)):hashlib.sha256(f.read_bytes()).hexdigest() for f in (schema,rotation)},cases=records)
+(root/'tests/fixtures/job_deletion_reference.json').write_text(json.dumps(result,indent=2)+'\n')
+print(json.dumps(result,indent=2))

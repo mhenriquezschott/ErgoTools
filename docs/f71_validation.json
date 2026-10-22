@@ -1,0 +1,24 @@
+{
+  "milestone": "F71",
+  "verified_on": "2026-10-04",
+  "python": "3.13.14",
+  "tests_passed": 594,
+  "new_tests": 3,
+  "coverage_percent": 98.0597220310995,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "wheel_sha256": "6a6474d033d8dfad2743f9e40b7c6428d3a385ae9228cda6cc004e6850e29eb8",
+  "independent_wheel_smoke": "passed",
+  "ui_changed": true,
+  "schema_changed": false,
+  "overall_completion_estimate_percent": null,
+  "progress_note": "Prior 67 percent withdrawn as an unreliable whole-application estimate. Job Management opens modally from the assessment preview and retains job selection; Save renders the selected profile once. Import, final main-window integration and rotation-reference checks remain pending.",
+  "native_screenshots": {
+    "artifacts/job-management-integration/assessment-en.png": "107f2f5503a7033b02b155d2ee79dd331c4b18058b413a01c7071d23940a899e",
+    "artifacts/job-management-integration/assessment-es.png": "a90c6c824c83f7435825a41e481579373d455949fabcb60af4b22bc0f3fff6eb",
+    "artifacts/job-management-integration/empty-en.png": "63336c7bacfa6a61b05b6cc39df5b83a4953f08f6b8a403104b7f3003e4dca2b",
+    "artifacts/job-management-integration/management-draft-es.png": "9897b490daf468053dd83f04af5d4be84602a41475e604c05ac2b3011f4f1f20",
+    "artifacts/job-management-integration/management-selected-es.png": "476f8d9e82f1ac5a1943f55796845c94d7fd4a755884ef57d3c16534276b588c"
+  }
+}

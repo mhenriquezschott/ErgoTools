@@ -1,0 +1,25 @@
+import hashlib,json,shutil,sys,tarfile
+from pathlib import Path
+root=Path.cwd()
+exec(compile((root/'docs/reference/f131-record.py.txt').read_text(),'/tmp/record-legacy-checkpoint.py','exec'))
+record_path=root/'docs/f133-validation.json';record=json.loads(record_path.read_text())
+def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+originals=json.loads((root/'docs/f130-legacy-audit.json').read_text())['source_hashes']
+assert all(digest(reference/name)==expected for name,expected in originals.items())
+images=json.loads((root/'docs/f132-legacy-audit.json').read_text())['images']
+for info in images.values():
+ path=reference/'tests/ErgoTools_ComparativeRiskTest_images'/info['name']
+ assert digest(path)==info['sha256']
+ originals[str(path.relative_to(reference))]=info['sha256']
+art=root/'artifacts/legacy-jrot';captures=sorted(art.glob('*.png'));assert len(captures)==22
+geometry=json.loads((art/'geometry.json').read_text());assert len(geometry)==22
+record['native_screenshots']={p.name:digest(p) for p in captures}
+record['visual_validation']='22 captures inspected: seven copied saved schemes minimum EN/ES; large/scoped enlarged/scrolled forms; actual CBC and HiGHS comparison. Panels/bottom controls visible. Wide/tall grids retain original scrolling. No UI code change; no full integrated legacy import claim.'
+record['original_project_and_companions_unchanged']=originals
+record['comprehensive_audit']='f133-legacy-audit.json'
+record['limits'].extend(['ST source conversion waits for the owner direction-label/formula choice; raw evidence remains intact.','Complete destination conversion and main integrated copied-project validation remain.'])
+record_path.write_text(json.dumps(record,indent=2)+'\n')
+shutil.copyfile('/tmp/f133-view.py',root/'docs/reference/f133-view.py.txt')
+shutil.copyfile('/tmp/f133-record-final.py',root/'docs/reference/f133-record.py.txt')
+print('F133: 22 captures inspected; original descriptor/database/four image hashes unchanged; ST choice pending before source conversion.')

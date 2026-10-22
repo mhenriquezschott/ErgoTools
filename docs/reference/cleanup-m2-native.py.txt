@@ -1,0 +1,152 @@
+"""Exercise the M2 packaged guided conversion and inspect native bilingual states."""
+import builtins
+import hashlib
+import json
+import sys
+import traceback
+from pathlib import Path
+from unittest.mock import patch
+
+root, wheel_root, output = map(Path, sys.argv[1:4])
+sys.path.insert(0,str(wheel_root))
+original_import=builtins.__import__
+def isolated_import(name,*args,**kwargs):
+    if name=='tools' or name.startswith(('tools.','ergotools_migration')):
+        raise AssertionError('Converter imported in desktop: '+name)
+    return original_import(name,*args,**kwargs)
+builtins.__import__=isolated_import
+from PyQt5.QtCore import QPoint, Qt, QTimer
+from PyQt5.QtGui import QImage,QPainter
+from PyQt5.QtTest import QTest
+from PyQt5.QtWidgets import QApplication,QDialog,QMessageBox
+from vtkmodules.vtkIOImage import vtkPNGWriter
+from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
+from ergotools.bootstrap import create_window
+from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.infrastructure.project_migration import ExternalProjectMigration
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+from ergotools.presentation.desktop.project_migration_dialog import ProjectMigrationDialog
+from ergotools.presentation.desktop.project_details_dialog import ProjectDetailsDialog
+
+output.mkdir(exist_ok=True)
+app=QApplication([])
+window=create_window(output/'settings.json',original_controls=True,original_navigation=True,enable_vtk=True)
+window._project_conversion=ExternalProjectMigration((sys.executable,str(root/'tools/project_migration/migrate_project.py')))
+source=root/'test_projects/originals/ErgoTools_ComparativeRiskTest.ergprj'
+before=hashlib.sha256(source.read_bytes()).hexdigest()
+report={'failures':[],'captures':[],'checks':{}}
+
+def capture(widget,name,vtk=False):
+    app.processEvents()
+    QTest.qWait(80)
+    if vtk:
+        for component in (window.results_sidebar.risk_gauge,window.results_sidebar.damage_progress):
+            if component.has_value:
+                component.animation.setCurrentTime(component.animation.duration())
+            component.animation.stop()
+        window._body_renderer._stop_animation()
+        image=QImage(widget.size(),QImage.Format_ARGB32_Premultiplied)
+        image.fill(Qt.transparent)
+        widget.render(image,QPoint())
+        renderer=window._body_renderer
+        renderer.render_window.Render()
+        filt=vtkWindowToImageFilter(); filt.SetInput(renderer.render_window)
+        filt.ReadFrontBufferOff(); filt.Update()
+        writer=vtkPNGWriter(); writer.SetInputConnection(filt.GetOutputPort())
+        writer.SetFileName(str(output/'vtk-frame.png')); writer.Write()
+        viewport=window.body_panel.viewport
+        rect=viewport.geometry(); rect.moveTopLeft(viewport.mapTo(window,QPoint()))
+        painter=QPainter(image); painter.drawImage(rect,QImage(str(output/'vtk-frame.png'))); painter.end()
+    else:
+        image=widget.grab()
+    assert image.save(str(output/(name+'.png')))
+    report['captures'].append(name)
+
+def modal_capture(name,action):
+    dialog=app.activeModalWidget()
+    try:
+        assert isinstance(dialog,ProjectMigrationDialog)
+        capture(dialog,name)
+        dialog.resize(900,560)
+        capture(dialog,name+'-expanded')
+        if action=='migrate':
+            dialog.migrate_button.click()
+        else:
+            dialog.cancel_button.click()
+    except Exception:
+        report['failures'].append(traceback.format_exc())
+        if dialog is not None: dialog.reject()
+
+def save_details(language):
+    dialog=app.activeModalWidget()
+    try:
+        assert isinstance(dialog,ProjectDetailsDialog)
+        assert dialog.name_input.text()=='ErgoTools Comparative Individual and Job Risk Test'
+        capture(dialog,'first-save-details-'+language)
+        dialog.accept()
+    except Exception:
+        report['failures'].append(traceback.format_exc())
+        if dialog is not None: dialog.reject()
+
+def fail():
+    raise FileNotFoundError('ergotools-migrate: optional tool is not installed')
+
+def exercise():
+    try:
+        for index,language in enumerate(('en','es')):
+            window.languages.setCurrentIndex(index)
+            QTimer.singleShot(100,lambda language=language:modal_capture('upgrade-'+language,'cancel'))
+            window.open_project_location(str(source))
+            assert window.presenter.workspace.location is None
+            dialog=ProjectMigrationDialog(window.language,window._project_conversion.command_line(str(source),str(output/'terminal-copy.ergprj')),fail,parent=window)
+            dialog.show(); app.processEvents(); dialog.migrate_button.click()
+            capture(dialog,'upgrade-failure-'+language)
+            assert dialog.error.isVisible() and not dialog.migrate_button.isEnabled()
+            dialog.reject(); dialog.deleteLater()
+            QTimer.singleShot(100,lambda language=language:modal_capture('upgrade-consent-'+language,'migrate'))
+            with patch.object(window,'choose_item',side_effect=lambda _,__,ids:(next(label for label in ids if 'LiFFT' in label),True)):
+                window.open_project_location(str(source))
+            assert window._is_unsaved_project()
+            temporary=Path(window.presenter.workspace.location)
+            with AssessmentProjectFile.open(temporary) as project:
+                metadata=project.metadata
+                assert len(project.list_assessments())==194
+                assert sum(project.load_plant_image(p) is not None for p in project.load_hierarchy().plants)==4
+                assert len(project.load_rotation_schemes())==7
+            capture(window,'temporary-main-'+language,vtk=True)
+            permanent=output/('saved-'+language+'.ergprj')
+            QTimer.singleShot(100,lambda language=language:save_details(language))
+            with patch.object(window,'choose_file',return_value=str(permanent)):
+                window.save_project()
+            assert not window._is_unsaved_project() and not temporary.exists()
+            with AssessmentProjectFile.open(permanent) as project:
+                assert project.metadata.default_units==metadata.default_units
+                assert project.metadata.created_at==metadata.created_at
+                assert project.metadata.language==metadata.language
+                assert len(project.list_assessments())==194
+                assert len(project.load_rotation_schemes())==7
+            capture(window,'saved-main-'+language,vtk=True)
+            window.close_project()
+            with patch.object(window._project_conversion,'convert',side_effect=AssertionError('Native file called converter')):
+                with patch.object(window,'choose_item',side_effect=lambda _,__,ids:(ids[0],True)):
+                    window.open_project_location(str(permanent))
+            window.close_project()
+            report['checks']['guided-conversion-first-save-native-reopen-'+language]=True
+        assert hashlib.sha256(source.read_bytes()).hexdigest()==before
+        assert all(not getattr(module,'__file__',None) or Path(module.__file__).is_relative_to(wheel_root) for name,module in tuple(sys.modules.items()) if name=='ergotools' or name.startswith('ergotools.'))
+        report['checks']['wheel-import-isolation']=True
+        report['checks']['original-copy-unchanged']=True
+    except Exception:
+        report['failures'].append(traceback.format_exc())
+    finally:
+        (output/'verification.json').write_text(json.dumps(report,indent=2))
+        window.presenter.workspace.close(choice=CloseChoice.DISCARD)
+        window.close()
+        app.quit()
+
+window.show()
+QTimer.singleShot(500,exercise)
+QTimer.singleShot(55000,app.quit)
+app.exec()
+assert not report['failures'] and len(report['checks'])==4,report
+print(json.dumps(report))

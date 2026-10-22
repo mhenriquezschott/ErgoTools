@@ -1,0 +1,33 @@
+{
+  "milestone": "F97",
+  "verified_on": "2026-10-06",
+  "python": "3.13.14",
+  "tests_passed": 748,
+  "new_tests": 5,
+  "coverage_percent": 96.35420419338568,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "6fbd2494b344121d4de2c0efdac3f431150941f162b08495ea649fe001719592",
+  "wheel_sha256": "6dda7bef484c8d23dff67608c1d88e989f66b6894e7e85d2c374eb6cf6dffb9e",
+  "independent_wheel_smoke": "passed",
+  "duet_main_tab_enabled": true,
+  "st_main_tab_enabled": true,
+  "scientific_gates_preserved": true,
+  "overall_completion_estimate_percent": null,
+  "native_screenshots": {
+    "artifacts/project-properties/integrated-en-vtk.png": "6cfdeb03e432cf2431f23dfc746a54933581a71329001023df6f33291347e1be",
+    "artifacts/project-properties/integrated-en.png": "5f6ab5150bea6f762609fe17a6e00abc5e32ec046d6cb414696a68c51d3bd6d1",
+    "artifacts/project-properties/integrated-enlarged-vtk.png": "3765894f0528a70751db74ffe7208d14883128d62b70e44c3783b83d5cc59d9d",
+    "artifacts/project-properties/integrated-enlarged.png": "5aaeeba481ab460733dce53a5dd79851fef462b4533a7c73559d5d91ec253ef6",
+    "artifacts/project-properties/integrated-es-vtk.png": "c19b26ee12cf0e0954cb34e34282bba24632a2e081a45c38923b5eaa53d4f786",
+    "artifacts/project-properties/integrated-es.png": "97dbec85789d21829de3caf45abd4d14fca5948c8e0044e84e0fa55fa1ab9b3c",
+    "artifacts/project-properties/long-en.png": "5afc17cdb59e3b6ef43a8026806e77445f6981dcc6300c698423b6c77f223c9f",
+    "artifacts/project-properties/long-es.png": "94300af562c929aabf9682aa0278c25cbacef4dae5d58db9496cf721bb6dd6eb",
+    "artifacts/project-properties/menu-en.png": "d83cbe41561fd1ff3101ca91349b3a553d0a13978c902c231c2095e6e1054749",
+    "artifacts/project-properties/menu-es.png": "6514e22108556b6a8494ad6e76fd1032d47888278823a2586bd43e9ee48533b5",
+    "artifacts/project-properties/no-project-menu.png": "dfea1bd4b982d80327b8eeeff0677a6d41b89d362eb10fceee718d1d7fe37c17",
+    "artifacts/project-properties/properties-en.png": "e5f04de953401020df7bd5331018afcff475f334e7bd11bb92877a7cdfc0873d",
+    "artifacts/project-properties/properties-es.png": "7c138c9c1318a7ffeb0de1c3841c36ee1ddde90ea9154d407f7a407cf98f7565",
+    "artifacts/project-properties/source-derived-reference.png": "38d539c24f8ef16793987d26ddf94a43e25d5546d5a5254267f1c67fa4c568e1"
+  }
+}

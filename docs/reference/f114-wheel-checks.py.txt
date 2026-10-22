@@ -1,0 +1,77 @@
+from unittest.mock import Mock,patch
+from io import BytesIO
+from ergotools.application.plot_layout import LoadedPlantLayout
+from PyQt5.QtWidgets import QApplication,QFileDialog,QMessageBox
+from PyQt5.QtCore import QTimer,Qt
+from PyQt5.QtTest import QTest
+from PIL import Image
+from ergotools.bootstrap import load_icons
+from ergotools.application.plot_results import saved_plot_results
+from ergotools.domain.plot_filters import PlotFilterSelection,PlotRiskView
+from ergotools.domain.plot_scope import PlotScope
+from ergotools.domain.language import Language
+from ergotools.presentation.desktop.plot_layout_canvas import PlotLayoutCanvas
+from ergotools.presentation.desktop.plot_marker_layer import PlotMarkerLayer
+from ergotools.presentation.desktop.plot_tools_overview import PlotToolsOverview
+from ergotools.presentation.desktop.plot_graph_dialog import PlotGraphDialog
+from ergotools.presentation.desktop.plot_figure_viewer import PlotFigureViewer
+app=QApplication.instance() or QApplication([])
+iterator=project(Path.cwd());repo=next(iterator)
+try:
+ before=repo.load_plot_positions();history=repo.load_history()
+ results=saved_plot_results(repo,PlotFilterSelection(PlotScope((('P',),))),current_year=2026)
+ for language in Language:
+  canvas=PlotLayoutCanvas();image_bytes=BytesIO();Image.new('RGB',(640,400),'white').save(image_bytes,format='PNG');canvas.set_layout(LoadedPlantLayout(results.selection.scope,image_bytes.getvalue()));layer=PlotMarkerLayer(canvas,repo.load_jobs(),repo.save_plot_positions,lambda msg:None,current_year=2026)
+  panel=PlotToolsOverview(layer,load_icons(),language=language)
+  panel.resize(330,600);panel.show();layer.set_results(results);app.processEvents()
+  panel.chart_combo.setCurrentIndex(2)
+  assert panel.summary.workers.total==3 and panel.canvas.figure.axes
+  previous=panel.canvas.figure;settings=panel.settings;errors=[];visited=[]
+  def cancel():
+   dialog=QApplication.activeModalWidget()
+   try:
+    assert isinstance(dialog,PlotGraphDialog);dialog.text_scale.setValue(140);dialog.axis_mode.setCurrentIndex(2);dialog.axis_maximum.setValue(80)
+    assert dialog.axis_maximum.isEnabled();dialog.close_button.click()
+   except BaseException as e:errors.append(e);dialog.reject()
+  QTimer.singleShot(0,cancel);panel.open_settings()
+  assert not errors and panel.settings is settings and panel.canvas.figure is previous
+  def apply():
+   dialog=QApplication.activeModalWidget()
+   try:
+    assert isinstance(dialog,PlotGraphDialog);dialog.text_scale.setValue(140);dialog.axis_mode.setCurrentIndex(2);dialog.axis_maximum.setValue(80);dialog.show_bar_values.setChecked(True);dialog.apply_button.click()
+   except BaseException as e:errors.append(e);dialog.reject()
+  QTimer.singleShot(0,apply);panel.open_settings();app.processEvents();panel.canvas.draw()
+  assert not errors and panel.canvas.figure is not previous
+  figure=panel.canvas.figure;axis=figure.axes[0]
+  assert axis.get_ylim()==(0,80) and axis.texts
+  bounds=axis.title.get_window_extent(panel.canvas.get_renderer())
+  assert bounds.x0>=0 and bounds.x1<=panel.canvas.width()
+  size=tuple(figure.get_size_inches())
+  def view():
+   dialog=QApplication.activeModalWidget()
+   try:
+    assert isinstance(dialog,PlotFigureViewer);visited.append(True)
+    assert dialog.figure is not figure and figure.canvas is panel.canvas
+    dialog.toolbar.pan();assert dialog.toolbar.mode;dialog.toolbar.pan()
+    dialog.toolbar.zoom();assert dialog.toolbar.mode;dialog.toolbar.zoom();dialog.toolbar.home()
+   except BaseException as e:errors.append(e)
+   finally:
+    if dialog is not None:dialog.close()
+  timer=QTimer();timer.setSingleShot(True);timer.timeout.connect(view);timer.start(0)
+  QTest.mouseClick(panel.canvas,Qt.LeftButton,pos=panel.canvas.rect().center());timer.stop()
+  assert not errors and visited==[True]
+  assert figure.canvas is panel.canvas and tuple(figure.get_size_inches())==size and figure.axes
+  layer.set_results(replace(results,selection=replace(results.selection,risk_view=PlotRiskView.JOB)))
+  assert panel.chart_combo.isHidden() and panel.chart_combo.currentIndex()==2
+  assert panel.canvas.figure.axes[0].get_xlim()==(0,80)
+  output=Path('wheel-'+language.value+'.png')
+  with patch.object(QFileDialog,'getSaveFileName',return_value=(str(output),'PNG')),patch.object(QMessageBox,'information'):
+   panel.save_plot()
+  with Image.open(output) as image:assert abs(image.info['dpi'][0]-300)<.01
+  layer.clear();assert panel.summary is None and not panel.settings_button.isEnabled()
+  panel.close();canvas.close()
+ assert repo.load_plot_positions()==before and repo.load_history()==history
+finally:iterator.close()
+with AssessmentProjectFile.open(Path('plot.ergprj')) as reopened:
+ assert reopened.load_plot_positions()==before and reopened.load_history()==history
+print('Extracted wheel: localized overview, actual modal Close/Apply, 140-percent narrow title fit, chart click, independent viewer/navigation, job scale and chart retention, 300-DPI export, empty clear and no-write reopen passed')

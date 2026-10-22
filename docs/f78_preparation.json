@@ -1,0 +1,40 @@
+{
+  "milestone": "F78 preparation",
+  "implementation_checkpoint": "F77",
+  "approval_status": "pending",
+  "python": "3.13.14",
+  "proposal_versions": {
+    "vtk": "9.5.0",
+    "matplotlib": "3.10.5",
+    "numpy": "2.2.6",
+    "contourpy": "1.3.2",
+    "cycler": "0.12.1",
+    "fonttools": "4.59.0",
+    "kiwisolver": "1.4.8",
+    "pillow": "11.3.0",
+    "pyparsing": "3.2.3",
+    "python-dateutil": "2.9.0.post0",
+    "six": "1.17.0",
+    "packaging": "26.3"
+  },
+  "new_packages_not_installed": [
+    "vtk",
+    "matplotlib",
+    "numpy",
+    "contourpy",
+    "cycler",
+    "fonttools",
+    "kiwisolver",
+    "pillow",
+    "pyparsing",
+    "python-dateutil",
+    "six"
+  ],
+  "reference_files_unchanged": 500,
+  "existing_lock_sha256": "c59ae76fe7a2acec3e8a62c39a51d0b253de4a50e48d9f0b69b6d8e0d2310ee5",
+  "proposal_requirements_sha256": "01162b0261f7877ce7d8520060262a18e1705e0460e4d1d418897947645e253c",
+  "metadata_resolution": "12 exact packages, binary-only, existing CPython 3.13.14, no installation",
+  "native_rendering_verified": false,
+  "baseline_tests_not_repeated": true,
+  "overall_completion_estimate_percent": null
+}

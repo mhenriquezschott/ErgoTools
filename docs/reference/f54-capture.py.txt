@@ -1,0 +1,31 @@
+import runpy
+from pathlib import Path
+from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QComboBox
+from ergotools.domain.assessment_history import AssignmentAssessment
+from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.domain.assessments.lifft_draft import LifftDraft
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+scope=runpy.run_path('tests/test_desktop.py');test=scope['DesktopTests']();test.setUp()
+app=scope['_APP'];out=Path('artifacts/window-versions');out.mkdir(parents=True,exist_ok=True)
+try:
+ w=test.window;app.processEvents();w.grab().save(str(out/'empty.png'))
+ test.seed_historical()
+ with AssessmentProjectFile.open(test.path) as project:
+  project.create_historical_assessment(AssignmentAssessment('later',1,AssessmentKind.LIFFT,2),LifftDraft(MeasurementSystem.IMPERIAL))
+ w.resize(960,680);w.refresh();app.processEvents();w.grab().save(str(out/'current-minimum.png'))
+ w.languages.setCurrentIndex(1);app.processEvents();w.grab().save(str(out/'spanish-minimum.png'))
+ w.languages.setCurrentIndex(0);test.type_value('15');app.processEvents();w.grab().save(str(out/'pending.png'))
+ w.apply_edit()
+ def choose():
+  dialog=app.activeModalWidget();dialog.grab().save(str(out/'version-picker.png'))
+  combo=dialog.findChild(QComboBox);combo.showPopup();app.processEvents()
+  app.activePopupWidget().grab().save(str(out/'version-popup.png'));combo.hidePopup()
+  combo.setCurrentText('2');dialog.accept()
+ QTimer.singleShot(100,choose)
+ w.choose_current_version();app.processEvents();w.grab().save(str(out/'noncurrent-dirty.png'))
+ assert test.workspace.active.document.document_id=='1' and test.workspace.active.is_dirty
+ print('Native current-version action captured')
+finally:
+ test.doCleanups()

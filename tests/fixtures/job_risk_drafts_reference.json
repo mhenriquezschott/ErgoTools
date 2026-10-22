@@ -1,0 +1,82 @@
+{
+  "source_sha256": "b35b790467a06ed659f2f9c9bbb26ef8bafed2b2e74b92b44469486efff8b8a6",
+  "cases": [
+    {
+      "mode": "blank",
+      "profile": [
+        5,
+        "j",
+        "New estimate - revision",
+        5,
+        "draft",
+        0,
+        "expert",
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "measurements": []
+    },
+    {
+      "mode": "copy",
+      "profile": [
+        5,
+        "j",
+        "Study - revision",
+        5,
+        "draft",
+        0,
+        "expert",
+        "source",
+        "method",
+        0,
+        "2026-10-03",
+        "note"
+      ],
+      "measurements": [
+        [
+          "LiFFT",
+          0.0,
+          0.0,
+          "Imperial",
+          "evidence"
+        ]
+      ]
+    },
+    {
+      "mode": "edit",
+      "profile": [
+        5,
+        "j",
+        "Revised",
+        5,
+        "draft",
+        0,
+        "external",
+        null,
+        "  ",
+        0,
+        null,
+        null
+      ],
+      "measurements": [
+        [
+          "DUET",
+          null,
+          30.0,
+          null,
+          null
+        ],
+        [
+          "LiFFT",
+          0.0,
+          0.0,
+          "Metric",
+          null
+        ]
+      ]
+    }
+  ]
+}

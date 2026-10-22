@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.png binary
+*.stl binary
+*.pdf binary
+*.ergprj binary
+*.db binary
+*.bak binary

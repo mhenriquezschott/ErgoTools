@@ -1,0 +1,75 @@
+import json,tempfile
+from pathlib import Path
+from unittest.mock import patch
+from PyQt5.QtCore import QTimer,QPoint
+from PyQt5.QtGui import QPainter,QPixmap
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtTest import QTest
+from ergotools.bootstrap import create_window
+from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.domain.language import Language
+from ergotools.presentation.desktop.rotation_dialog import RotationDialog
+from tests.test_rotation_persistence import seed
+from tests.test_rotation_comparison import all_risks
+from tests.test_rotation_solve import fill_rotation,wait_for
+app=QApplication.instance() or QApplication([])
+out=Path('artifacts/jrot-main');out.mkdir(parents=True,exist_ok=True)
+geometry={}
+def settle(win,width,height):
+ win.show();win.raise_();win.activateWindow();app.processEvents();QTest.qWait(100)
+ win.resize(width,height);app.processEvents();QTest.qWait(100)
+ assert win.size().width()==width and win.size().height()==height,(win.size(),width,height)
+def capture(win,name):
+ app.processEvents();QTest.qWait(70)
+ pixmap=win.grab()
+ renderer=getattr(win,'_body_renderer',None)
+ if renderer:
+  from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
+  from vtkmodules.vtkIOImage import vtkPNGWriter
+  renderer.render_window.Render()
+  image_filter=vtkWindowToImageFilter();image_filter.SetInput(renderer.render_window);image_filter.ReadFrontBufferOff();image_filter.Update()
+  buffer=out/(name+'-vtk.png');writer=vtkPNGWriter();writer.SetFileName(str(buffer));writer.SetInputConnection(image_filter.GetOutputPort());writer.Write()
+  painter=QPainter(pixmap);painter.drawPixmap(renderer.widget.mapTo(win,QPoint(0,0)),QPixmap(str(buffer)));painter.end()
+ assert pixmap.save(str(out/(name+'.png')))
+ geometry[name]={'size':[win.width(),win.height()]}
+ if isinstance(win,RotationDialog):
+  geometry[name]['controls']={key:[getattr(win,key).mapTo(win,QPoint(0,0)).x(),getattr(win,key).mapTo(win,QPoint(0,0)).y(),getattr(win,key).width(),getattr(win,key).height()] for key in ['save_button','optimize_button','optimize_all_button','close_button','transfer_button']}
+  assert all(win.rect().contains(getattr(win,key).mapTo(win,getattr(win,key).rect().bottomRight())) for key in geometry[name]['controls'])
+with tempfile.TemporaryDirectory() as directory:
+ for language in Language:
+  tag=language.value;path=Path(directory)/(tag+'.ergprj')
+  with seed(path) as project:all_risks(project)
+  main=create_window(Path(directory)/(tag+'-settings.json'),original_navigation=True,enable_vtk=True)
+  main.language=language;main.translate();main.refresh();settle(main,1550,1015)
+  assert not main.main_navigation.toolbar_actions['jrot'].isEnabled()
+  capture(main,tag+'-main-no-project')
+  main.presenter.workspace.switch(str(path),'source');main.refresh();QTest.qWait(350)
+  assert main.main_navigation.toolbar_actions['jrot'].isEnabled()
+  capture(main,tag+'-main-project-minimum')
+  settle(main,1800,1200);capture(main,tag+'-main-project-enlarged')
+  failures=[];timer=QTimer(main);timer.setSingleShot(True)
+  def interact():
+   view=QApplication.activeModalWidget()
+   try:
+    assert isinstance(view,RotationDialog)
+    assert view.repository is main.presenter.workspace.rotation_repository()
+    settle(view,1480,740);capture(view,tag+'-jrot-empty-minimum')
+    fill_rotation(view);view.scheme_combo.setEditText('Integration ñ')
+    capture(view,tag+'-jrot-populated-minimum')
+    settle(view,1800,1100);view.grid.selectRow(1);capture(view,tag+'-jrot-selected-enlarged')
+    view.optimize_button.click();wait_for(lambda:not view.optimization.busy)
+    capture(view,tag+'-jrot-cbc-enlarged')
+    view.optimize_all_button.click();wait_for(lambda:not view.optimization.busy)
+    comparison=view.optimization.comparison
+    comparison.tabs.setCurrentIndex(2);capture(comparison,tag+'-all-tool-selected-tab')
+    comparison.apply_button.click();view.save_button.click();capture(view,tag+'-jrot-applied-saved')
+   except BaseException as error:failures.append(error)
+   finally:
+    if isinstance(view,RotationDialog):view.reject()
+  timer.timeout.connect(interact);timer.start(0)
+  with patch.object(RotationDialog,'_message'):main.main_navigation.toolbar_actions['jrot'].trigger()
+  timer.stop();assert not failures,failures
+  capture(main,tag+'-main-return')
+  main.presenter.workspace.close(choice=CloseChoice.DISCARD);main.close();main.deleteLater();app.processEvents()
+(out/'geometry.json').write_text(json.dumps(geometry,indent=2)+'\n')
+print('Native main -> modal JROT -> actual CBC and HiGHS -> Apply/Save -> main EN/ES capture complete:',len(geometry),'windows plus actual VTK backbuffers.')

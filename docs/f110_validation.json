@@ -1,0 +1,80 @@
+{
+  "milestone": "F110",
+  "verified_on": "2026-10-07",
+  "python": "3.13.14",
+  "tests_passed": 857,
+  "new_tests": 3,
+  "coverage_percent": 96.16903400719043,
+  "reference_files_unchanged": 500,
+  "dependency_lock_unchanged": true,
+  "lock_sha256": "6fbd2494b344121d4de2c0efdac3f431150941f162b08495ea649fe001719592",
+  "wheel_sha256": "2bb794b37963b0b6d3c008b9288b7f030962d72af1bfc75206e0451468357b06",
+  "independent_wheel_smoke": "passed",
+  "source_worker_preview_native_comparisons": {
+    "empty": {
+      "different_pixels": 0,
+      "size": [
+        72,
+        72
+      ]
+    },
+    "individual": {
+      "different_pixels": 0,
+      "size": [
+        72,
+        72
+      ]
+    },
+    "comparison": {
+      "different_pixels": 0,
+      "size": [
+        72,
+        72
+      ]
+    }
+  },
+  "native_screenshots": {
+    "en-alphabet-A.png": "896a96cee61928be49459badd924ce23beb3c77fad15b7296f32840df911f7c7",
+    "en-comparison.png": "41187d3882af98e9cb575ad72bf0f165f4e6264201560489c4eb4fa7b9322399",
+    "en-empty.png": "4e0d4e34233ce825723e262fefe0387d8f28c921626939a9212d84aee75c391f",
+    "en-enlarged.png": "2d783699a5aa14d88f274683a04259b66d261d25b9f6c6f2a7310731360cbda4",
+    "en-imperial.png": "d2b25a0e936eea9c39d396192cbffc1910d3d53953425d8c194d7a360c98b56e",
+    "en-locate.png": "3720e16aca9ad69171f77254b759e7f70261b7ad9d33e8b3ac4685c83506ca48",
+    "en-name-order.png": "60e578e0e8f995f13e562db8de9d2ed301008c80979181322209e3fedaabbc60",
+    "en-narrow.png": "1b08331ddf0468a3f92507ff3790d4cc8951e4416362a145b5e4a071f2fa8357",
+    "en-other-worker-draft.png": "eb2a1c42bbc722ea47540f415722e286bbc7e74f14e9a7ca7ecc0a3d3621a911",
+    "en-populated.png": "d8c187effd96569706d04ec04b7d4a1ff5ccf0fb7de5838fdea520166eb69ba4",
+    "en-preview-comparison.png": "3b5a1e7cfa4fc2e626d204405332b123066adf16769c43943715365c412ac2bf",
+    "en-preview-empty.png": "60d12ebc7f06a7c5ff1dbc87e9adcb95d8eab6bd3ae2b15c362c80ee3093cdba",
+    "en-preview-individual.png": "c5c71e9e59bb1d424695f609c4c4c2c1daeb078053873acb90e85b726d511fd7",
+    "en-restored-draft.png": "3720e16aca9ad69171f77254b759e7f70261b7ad9d33e8b3ac4685c83506ca48",
+    "es-alphabet-A.png": "7d5118320affe48031f0c8cc65612faf9f8a4bc77b73d9a2e0cc2100435d5072",
+    "es-comparison.png": "e8836d175ce40f4e8fbc87192b04829b13a03c6a2e98e664834a884f2ea94b5c",
+    "es-empty.png": "aca9b931c015375abb4f084eb742a1b03c24d598f85e600026c5f9e6a2431eb9",
+    "es-enlarged.png": "f67043a4f7851f22175833f7bc08df419d3d43a26fe07d988d58f2e72d1aaf71",
+    "es-imperial.png": "5a49d9b53b45f3adfbffcd4ac45d3c9d1fe34dd27639040cefdeea13986de347",
+    "es-locate.png": "75c679157a4f018c3f1af86b7826782ee8ca17253b4cb60df461bc1ad87038db",
+    "es-name-order.png": "54837e8d0857cea328ece3737502504602eb874e38d89a2e0937a6dff0a8887c",
+    "es-narrow.png": "ef2c64a74992c5b7a7598b55311b53eb18f3cc637f9512811735874a95314aa6",
+    "es-other-worker-draft.png": "c7ab0b6b168b23fd047c5b29c0add9f2b104a12df58a756bff4231ceb8be179e",
+    "es-populated.png": "aa460183dc142c9862bbce13282981fc55c57d8074b3b414597849c2151e5cb4",
+    "es-preview-comparison.png": "3b5a1e7cfa4fc2e626d204405332b123066adf16769c43943715365c412ac2bf",
+    "es-preview-empty.png": "8481ca9aa50d42efe86258d041aff9abaaea862b2e38d26e2550fcf28a326426",
+    "es-preview-individual.png": "c5c71e9e59bb1d424695f609c4c4c2c1daeb078053873acb90e85b726d511fd7",
+    "es-restored-draft.png": "75c679157a4f018c3f1af86b7826782ee8ca17253b4cb60df461bc1ad87038db",
+    "map-composition-enlarged.png": "40d90e58d9eb50ebc271ea4659c5c5186ca63961f16e8a5ee6245e159bd78c8a",
+    "map-composition.png": "be30c20957dc2339d3fc08f08310716e4a630b9ede8b14ecb76cb19786c35972",
+    "source-layout-empty.png": "47abd9b0f9c7491d8ef64150ae9e9931a2c709b61d7a2327112334380f71cdf6",
+    "source-layout-populated.png": "5aba7f93434f0e51f248c397f78517bff6fa0ae801e8a924b33f60d6d1d06bf1",
+    "source-preview-comparison.png": "3b5a1e7cfa4fc2e626d204405332b123066adf16769c43943715365c412ac2bf",
+    "source-preview-empty.png": "60d12ebc7f06a7c5ff1dbc87e9adcb95d8eab6bd3ae2b15c362c80ee3093cdba",
+    "source-preview-individual.png": "c5c71e9e59bb1d424695f609c4c4c2c1daeb078053873acb90e85b726d511fd7"
+  },
+  "worker_overview_selector_details_results_integrated": true,
+  "worker_search_picker_integrated": false,
+  "plot_main_window_enabled": false,
+  "plot_summaries_integrated": false,
+  "scientific_gates_preserved": true,
+  "ui_layout_changed": true,
+  "overall_completion_estimate_percent": null
+}

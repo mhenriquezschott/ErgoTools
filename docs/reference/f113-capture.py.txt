@@ -1,0 +1,74 @@
+import ast,json,tempfile
+from pathlib import Path
+from dataclasses import replace
+from types import SimpleNamespace
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+from PyQt5.QtWidgets import QApplication,QDialog,QVBoxLayout
+from PyQt5.QtTest import QTest
+from ergotools.application.plot_results import saved_plot_results
+from ergotools.application.plot_summaries import summarize_plot
+from ergotools.domain.plot_filters import PlotFilterSelection
+from ergotools.domain.plot_scope import PlotScope
+from ergotools.domain.worker_details import WorkerDetails
+from ergotools.domain.language import Language
+from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.presentation.desktop.plot_summary_figure import summary_figure,PlotChart
+from tests.test_plot_results import project
+root=Path.cwd();art=root/'artifacts/plot-summary-charts';art.mkdir(exist_ok=True)
+app=QApplication.instance() or QApplication([])
+reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+source=ast.parse((reference/'src/plant_layout.py').read_text())
+functions=[]
+for node in source.body:
+ if isinstance(node,ast.ClassDef):
+  functions.extend(n for n in node.body if isinstance(n,ast.FunctionDef) and n.name in ('generateTotalWorkerRiskDistributionPlot','generateWorkerRiskDistributionPlot','generateWorkerRiskByAgePlot','loadJobRiskSummary'))
+risknode=next(n for n in ast.parse((reference/'src/risk_ranges.py').read_text()).body if isinstance(n,ast.FunctionDef) and n.name=='risk_band')
+constants=next(n for n in ast.parse((reference/'src/risk_ranges.py').read_text()).body if isinstance(n,ast.Assign))
+ns=dict(plt=plt,np=np,cm=cm,QDate=SimpleNamespace(currentDate=lambda:SimpleNamespace(year=lambda:2026)))
+exec(compile(ast.Module([constants,risknode,*functions],type_ignores=[]),'reviewed-source-charts','exec'),ns)
+class Dummy:
+ def __getattr__(self,name):return lambda *args:None
+class Collector:
+ def setSummaryFigure(self,figure):
+  figure.axes[0].grid(False);figure.tight_layout(pad=0.6);self.figure=figure
+old=Collector()
+for name in ('summaryplot_combo','plot_description_label','plot_compare_label'):
+ setattr(old,name,Dummy())
+old.tool_combo=SimpleNamespace(currentText=lambda:'LiFFT')
+for i in range(1,11):setattr(old,'summaryresult'+str(i)+'_label',Dummy())
+def capture(figure,name,size=(310,230)):
+ dialog=QDialog();layout=QVBoxLayout(dialog);layout.setContentsMargins(0,0,0,0)
+ canvas=FigureCanvasQTAgg(figure);layout.addWidget(canvas);dialog.resize(*size);dialog.show();app.processEvents();QTest.qWait(150)
+ assert canvas.grab().save(str(art/(name+'.png')))
+ dialog.close();canvas.close();figure.clear()
+with tempfile.TemporaryDirectory() as directory:
+ generator=project.__wrapped__(Path(directory));repository=next(generator)
+ try:
+  results=saved_plot_results(repository,PlotFilterSelection(PlotScope((('P',),))),current_year=2026)
+  rows=[];records=[]
+  for kind in AssessmentKind:
+   for sex in ('Male','Female'):
+    for year,risk in ((2000,20),(1980,40)):
+     row=replace(results.workers[0],worker=replace(results.workers[0].worker,details=WorkerDetails(sex=sex,birth_date=f'{year}-01-01')),assessment=replace(results.workers[0].assessment,kind=kind,probability=risk/100,total_damage=0.1))
+     rows.append(row);records.append(dict(tool_id={AssessmentKind.LIFFT:'LiFFT',AssessmentKind.DUET:'DUET',AssessmentKind.TST:'ST'}[kind],gender=sex,year_of_birth=year,probability_outcome=risk))
+  synthetic=replace(results,all_tools=tuple(rows));summary=summarize_plot(synthetic,current_year=2026)
+  for chart,fn in ((PlotChart.TOOL,'generateTotalWorkerRiskDistributionPlot'),(PlotChart.SEX,'generateWorkerRiskDistributionPlot'),(PlotChart.AGE,'generateWorkerRiskByAgePlot')):
+   ns[fn](old,records);capture(old.figure,'source-'+chart.value)
+   capture(summary_figure(summary,chart),'en-source-fixture-'+chart.value)
+  old.job_risk_marker_dataset=[dict(job_id='j',probability_outcome=0,total_cumulative_damage=0,plant_name='P',section_name='S',line_name='L',station_id='1',x=None,y=None,job_risk_profile_id='pr',color='#00FF00')]
+  ns['loadJobRiskSummary'](old);capture(old.figure,'source-job')
+  capture(summary_figure(summary,PlotChart.JOB),'en-source-fixture-job')
+  empty=summarize_plot(replace(results,workers=(),all_tools=(),jobs=()),current_year=2026)
+  actual=summarize_plot(results,current_year=2026)
+  no_age=summarize_plot(replace(synthetic,all_tools=tuple(replace(row,worker=replace(row.worker,details=None)) for row in rows)),current_year=2026)
+  for language,label in ((Language.ENGLISH,'en'),(Language.SPANISH,'es')):
+   for chart in PlotChart:
+    capture(summary_figure(actual,chart,language=language),label+'-'+chart.value+'-populated')
+    capture(summary_figure(empty,chart,language=language),label+'-'+chart.value+'-empty')
+    capture(summary_figure(summary,chart,language=language),label+'-'+chart.value+'-enlarged',(650,420))
+   capture(summary_figure(no_age,PlotChart.AGE,language=language),label+'-age-unavailable')
+ finally:generator.close()
+plt.close('all');print('Native original/new worker and job chart fixtures plus localized missing/empty/enlarged states captured')

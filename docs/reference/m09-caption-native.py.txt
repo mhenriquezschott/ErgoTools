@@ -1,0 +1,83 @@
+"""Bounded shared UI/unit/avatar audit with synthetic projects only."""
+import csv,json,tempfile,hashlib
+from pathlib import Path
+from unittest.mock import patch
+from PyQt5.QtCore import Qt,QPoint,QRect,QTimer
+from PyQt5.QtGui import QImage
+from PyQt5.QtWidgets import QApplication,QLabel,QComboBox
+from PyQt5.QtTest import QTest
+from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
+from vtkmodules.vtkIOImage import vtkPNGWriter
+from ergotools.bootstrap import create_window,load_icons
+from ergotools.domain.language import Language
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.presentation.desktop.worker_transfer_dialog import WorkerTransferDialog
+from ergotools.presentation.desktop.preferences_dialog import PreferencesDialog
+from ergotools.presentation.desktop.project_properties_dialog import ProjectPropertiesDialog
+from ergotools.application.document_lifecycle import CloseChoice
+from tools.capture_desktop import render_widget,composite_native_viewport
+from tests import test_saved_tool_data as fixture
+from tests.test_assessment_transfer import add_destination
+root=Path.cwd();out=root/'artifacts/m09-caption-native';out.mkdir(parents=True,exist_ok=True)
+app=QApplication.instance() or QApplication([]);app.setQuitOnLastWindowClosed(False);assert app.platformName()=='xcb'
+report={'platform':'xcb','cases':{},'captures':{},'transfer':{},'menus':{},'issues':[]}
+def settle(w,size=None):
+ w.show();w.raise_();w.activateWindow();QTest.qWait(100)
+ if size:w.resize(*size)
+ app.processEvents();QTest.qWait(100)
+def snap(w,name):
+ app.processEvents();QTest.qWait(80);im=render_widget(w);geometry={};labels={}
+ if hasattr(w,'_body_renderer') and w._body_renderer is not None:
+  e=w._body_renderer;e._stop_animation();e.render_window.Render();f=vtkWindowToImageFilter();f.SetInput(e.render_window);f.ReadFrontBufferOff();f.Update();p=out/(name+'-vtk.png');writer=vtkPNGWriter();writer.SetFileName(str(p));writer.SetInputConnection(f.GetOutputPort());writer.Write();rect=QRect(e.widget.mapTo(w,QPoint()),e.widget.size());im=composite_native_viewport(im,rect,QImage(str(p)))
+  for key,widget in [('avatar',w.body_panel),('viewport',e.widget),('cards',w.results_sidebar),('context',w.main_navigation.context_frame),('footer',w.main_navigation.footer),('reset',w.secondary_panel().reset_button if w.secondary_panel() else w.task_panel.reset_button)]:
+   bounds=QRect(widget.mapTo(w,QPoint()),widget.size());assert w.rect().contains(bounds),(name,key,bounds.getRect());geometry[key]=list(bounds.getRect())
+  for label in w.results_sidebar.findChildren(QLabel):
+   if label.text() in ('Repetitions','Repeticiones','Métricas clave','Key metrics','Momento máximo','Max moment'):
+    label.ensurePolished();bound=label.fontMetrics().boundingRect(label.text());width=label.contentsRect().width();record={'available_width':width,'font_ink_bounds':[bound.x(),bound.y(),bound.width(),bound.height()],'text_advance':label.fontMetrics().horizontalAdvance(label.text())};labels[label.text()]=record
+    if bound.width()>width:report['issues'].append({'capture':name,'label':label.text(),**record})
+  gauge=w.results_sidebar.risk_gauge;
+  if gauge.has_value:gauge.animation.setCurrentTime(gauge.animation.duration())
+  gauge.animation.stop();damage=w.results_sidebar.damage_progress
+  if damage.has_value:damage.animation.setCurrentTime(damage.animation.duration())
+  damage.animation.stop();assert not gauge.has_value or gauge.display_value==gauge.target_value
+  # Repaint settled gauge after compositing, preserving the native viewport frame.
+  qt=render_widget(w);im=composite_native_viewport(qt,rect,QImage(str(p)))
+ assert im.save(str(out/(name+'.png')));report['captures'][name]={'size':[w.width(),w.height()],'geometry':geometry,'metric_captions':labels}
+ return im
+
+from dataclasses import replace
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+with tempfile.TemporaryDirectory(prefix='ergotools-m09-captions-') as folder:
+ folder=Path(folder)
+ for lang in Language:
+  parent=folder/lang.value;parent.mkdir()
+  title='ErgoTools Comparative Individual and Job Risk Test'
+  w=create_window(parent/'empty-settings.json',original_navigation=True,enable_vtk=True)
+  w.languages.setCurrentIndex(list(Language).index(lang));settle(w,(1550,1015));snap(w,lang.value+'-empty')
+  prefix='Proyecto actual' if lang is Language.SPANISH else 'Current Project';empty='Sin proyecto abierto' if lang is Language.SPANISH else 'No project loaded';loaded='Cargado' if lang is Language.SPANISH else 'Loaded'
+  assert w.main_navigation.project_label.text()==w.main_navigation.file_label.text()==prefix+': '+empty
+  w.new_project();settle(w,(1550,1015));snap(w,lang.value+'-unsaved');assert w._is_unsaved_project();assert w.main_navigation.project_label.text()==prefix+': '+empty
+  destination=parent/'first-save.ergprj'
+  with patch.object(w,'choose_file',return_value=str(destination)),patch.object(w,'choose_project_details',return_value=(title,'')):w.save_project()
+  assert destination.is_file() and not w._is_unsaved_project();settle(w,(1550,1015));snap(w,lang.value+'-first-saved')
+  assert w.main_navigation.project_label.text()==prefix+': '+title+'  •  '+loaded
+  w.close_project();settle(w,(1550,1015));snap(w,lang.value+'-closed');assert w.main_navigation.project_label.text()==w.main_navigation.file_label.text()==prefix+': '+empty
+  w.close();w.deleteLater();app.processEvents()
+  original_factory=fixture.create_window
+  with patch.object(fixture,'META',replace(fixture.META,title=title)),patch.object(fixture,'create_window',side_effect=lambda *a,**kw:original_factory(*a,**kw,enable_vtk=True)):
+   generator=fixture.window.__wrapped__(parent);w=next(generator)
+  try:
+   w.languages.setCurrentIndex(list(Language).index(lang));w.task_panel.calculate_button.click();w.save_project();workspace=w.presenter.workspace;active=workspace.active;source=active.state
+   for size,label in [((1550,1015),'minimum'),((1800,1200),'enlarged')]:
+    settle(w,size);snap(w,lang.value+'-populated-'+label)
+    nav=w.main_navigation
+    assert nav.project_label.text()==prefix+': '+title+'  •  '+loaded and nav.file_label.text()==prefix+': '+title
+    bounds=nav.project_label.fontMetrics().boundingRect(nav.project_label.text());assert bounds.x()+bounds.width()<=nav.project_label.contentsRect().width(),(lang,bounds.width(),nav.project_label.width())
+    assert w.size().width()==size[0] and w.size().height()==size[1]
+    report['captures'][lang.value+'-populated-'+label]['project_caption']={'text':nav.project_label.text(),'available_width':nav.project_label.contentsRect().width(),'ink_right':bounds.x()+bounds.width(),'footer':nav.file_label.text()}
+   field=w.task_panel.inputs[0][0];original=field.text();field.setText('bad');field.textEdited.emit('bad');w.refresh_navigation();settle(w,(1550,1015));snap(w,lang.value+'-pending-minimum');assert field.text()=='bad' and workspace.active is active and active.state==source
+   field.setText(original);field.textEdited.emit(original);field.editingFinished.emit();location=workspace.location
+   with AssessmentProjectFile.open(Path(location)) as reopened:assert reopened.load(active.document)==source
+  finally:next(generator,None)
+assert not report['issues'],report['issues']
+(out/'verification.json').write_text(json.dumps(report,indent=2,ensure_ascii=False,default=str)+'\n');print('Caption approval native acceptance passed:',len(report['captures']),'captures, EN/ES empty/unsaved/first-Save/closed/populated/pending, both sizes.')

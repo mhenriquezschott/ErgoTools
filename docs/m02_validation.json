@@ -1,0 +1,31 @@
+{
+  "milestone": "M02",
+  "status": "complete",
+  "tests_passed": 1157,
+  "focused_tests_passed": 12,
+  "coverage_percent": 96.48630887185104,
+  "required_gate": "artifacts/m02-check.log",
+  "focused_gate": "artifacts/m02-focused.log",
+  "comparison": "artifacts/m02-comparison/comparison.json",
+  "comparison_cases": 16,
+  "remaining_compared_control_differences": 0,
+  "independent_wheel": "artifacts/m02-wheel.log",
+  "packaged_visual_evidence": "artifacts/m02-packaged/verification.json",
+  "visual_inspection": "Original/migrated representative collapsed/new, expanded/populated/selected, assignments and minimum/enlarged cases plus EN/ES and placement selection inspected; all nine packaged full-window states and both expanded assignment-option PNGs inspected. Buttons/notification containment uses coordinates mapped to the whole dialog. No VTK region changed: Worker Management remains a modal above the integrated application.",
+  "reference_files_unchanged": 500,
+  "lock_sha256": "9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae",
+  "wheel_sha256": "f9b04ca6ce24d1acb6c15c57c5ea2bfe6d40ef5cf0a98203e34d3e59b9f85788",
+  "production_change": "Restore original Note: prefix, localized as Nota:; no form layout, storage, calculator, dependency, signal or threading change.",
+  "limits": [
+    "Original AST visible constructors/layout/style only; DB callbacks and dormant experimental tabs stubbed. Equal displayed fixture values compare geometry, not legacy unit inference.",
+    "Worker body measurements retain existing canonical cm/kg policy with unchanged-value Save preservation. Raw legacy height/weight ambiguity remains assigned to existing M04 compatibility acceptance.",
+    "Existing assignment-protected deletion remains conservative as previously documented; hidden experimental feature disposition remains M11. No cascade deletion or dormant UI enabled.",
+    "Whole-application localization/VTK acceptance remains M09; native Windows/macOS VM tests follow ready Linux."
+  ],
+  "progress": {
+    "overall": 80.5,
+    "milestones_complete": 2,
+    "earned_remaining_points": 6.5,
+    "points_still_to_earn": 19.5
+  }
+}

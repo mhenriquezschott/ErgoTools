@@ -1,0 +1,164 @@
+import hashlib,json,re,shutil,sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from importlib.metadata import version
+r=Path.cwd()
+def digest(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+manifest=json.loads((r/'docs/reference/source-manifest.json').read_text());ref=Path(json.loads((r/'docs/reference/provenance.json').read_text())['reference_root']);assert all(digest(ref/name)==sha for name,sha in manifest.items());lock=digest(r/'uv.lock');assert lock=='9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae'
+log=(r/'artifacts/m07-m08-check.log').read_text();assert '1178 passed' in log and 'Architecture: 0 violation(s)' in log
+wheel_log=(r/'artifacts/m07-m08-wheel.log').read_text();assert 'Packaged comprehensive-copy native EN/ES M07/M08 acceptance passed.' in wheel_log
+native=json.loads((r/'artifacts/m07-m08-native/verification.json').read_text());assert len(native['captures'])==22 and len(native['comparisons'])==4 and len(native['workflows'])==2 and native['source_hashes_unchanged']
+coverage=json.loads((r/'artifacts/coverage.json').read_text())['totals']['percent_covered'];tests=len(list(ET.parse(r/'artifacts/tests.xml').iter('testcase')));assert tests==1178
+wheel=r/'dist/ergotools-0.1.0.dev0-py3-none-any.whl';wheel_hash=digest(wheel)
+for source in ['/tmp/m07-m08-native.py','/tmp/m07-m08-wheel-checks.py','/tmp/m07-m08-close.py']:
+ shutil.copyfile(source,r/'docs/reference'/(Path(source).name+'.txt'))
+versions={name:version(name) for name in ('PyQt5','PyQt5-Qt5','PyQt5-sip','pulp','highspy','ruff','mypy','pytest')}
+shared={'date':'2026-10-10','python':sys.version.split()[0],'baseline_versions':versions,'tests_passed':tests,'new_regressions':10,'coverage_percent':coverage,'standards':'Ruff, format, strict mypy, architecture and wheel/sdist pass','reference_files_unchanged':len(manifest),'lock_sha256':lock,'wheel_sha256':wheel_hash,'native_captures_inspected':list(native['captures']),'native_verification':'artifacts/m07-m08-native/verification.json','full_gate':'artifacts/m07-m08-check.log','wheel_gate':'artifacts/m07-m08-wheel.log','independent_wheel':'focused JROT tests and native EN/ES comprehensive-copy workflows; imports confined to extracted wheel','known_limits':['Linux XCB acceptance only; Windows/macOS VM testing deferred per M12','Timeout behavior uses deterministic termination evidence, not a flaky timing benchmark','Solver optimal statuses retain the original 1% gap policy; no claim of exact global optimality','M09 shared UI and M10 final cross-feature acceptance remain separate fixed milestones']}
+for milestone,progress in [('M07',90.5),('M08',92.75)]:
+ data=dict(shared,milestone=milestone,overall_progress=progress)
+ if milestone=='M07':data['acceptance']=['M07.1: scope/targets/grid and frozen evidence, partial edits/batch/scope Undo/Redo, Save/failure/reopen verified','M07.2: R006 compact counts fit at minimum in EN/ES; 16 exact selected contexts survive chooser/Apply/Undo/Cancel']
+ else:data['acceptance']=['M08.1: matched original-source objectives/constraints for 3 CBC tools and HiGHS all-tools; comparison/Apply/Undo/Save/reopen retain exact profile provenance','M08.2: existing deterministic timeout/incumbent, no-incumbent, infeasible, cancel/close/backend failure paths pass'];data['matched_original_comparisons']=native['comparisons']
+ (r/f'docs/{milestone.lower()}-validation.json').write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n')
+(r/'docs/m07-acceptance.md').write_text(f'''# M07 accepted — JROT schedule and scope
+
+M07 earns its fixed **1.50 points**: **90.50/100**, 7/12 milestones complete.
+M08 was authorized in the same batch and is reported separately.
+
+M07.1 closes the existing original worker/job scope chooser and grid with the
+required application-owned history. Partial cell edits, Delete batches, applied
+and cleared scope are reversible without SQL or catalog rereads. Save is atomic,
+not an edit; failures retain drafts/history. Cancel, navigation, search, New and
+confirmed deletion retain original workflows and reset the scheme-local history.
+Frozen worker assignment/profile/placement identities survive restoration and
+independent reopen. F121/F123 persistence/pool tests continue to verify closed
+assignments, retired profiles, per-column target uniqueness and duplicate captions.
+
+M07.2 closes R006 at **1480x740**, retaining original sizes/positions. Complete
+4/6/8/16 count summaries fit in English and Spanish; tooltips list full names.
+The expanded scope chooser retains all **16 exact selected workplace contexts**.
+Pending selection performs no write, Apply is one command, and Undo/Redo/Cancel
+restore the correct pool and links. No formula or unit conversion changed.
+
+Full batch gate: **{tests:,} tests, {coverage:.2f}% coverage**; Ruff/format, strict
+mypy, architecture and both builds pass. Ten focused new history regressions
+cover partial edits, one-batch Delete, no-op/branching, save failure/clean markers,
+scope restoration, native typing ownership, provenance and owned-solve boundaries.
+Extracted-wheel focused JROT and native comprehensive-copy EN/ES acceptance pass.
+All **22 batch captures** were inspected; main minimum/enlarged panels, scoped
+summary, original chooser and fixed bottom controls remain usable. F122/F124
+original-source geometry evidence is reused for unchanged controls. The localized
+Edit menu is the approved Undo/Redo addition, not a visual redesign.
+
+See [history contracts](jrot-history.md), [bounded review](m07-m08-review.md),
+[validation](m07-validation.json), and `artifacts/m07-m08-native/verification.json`.
+Noncritical decisions are R012. Reference hashes and approved lock are unchanged.
+''')
+(r/'docs/m08-acceptance.md').write_text(f'''# M08 accepted — JROT optimization and Apply
+
+M08 earns its fixed **2.25 points**: **92.75/100**, 8/12 complete, **18.75/26**
+remaining-baseline points earned and **7.25 overall points left**. M09 next.
+
+M08.1 closes actual **CBC single-tool** and **HiGHS two-stage all-tool** flows.
+The original read-only optimizer receives the same immutable comprehensive-copy
+inputs as the migrated adapter. Its backend factory follows the approved routing;
+its objectives and constraints are unchanged. All three single-tool minimax
+objectives and the all-tool ceiling/spread objective match. Returned schedules
+are independently checked for worker/block coverage, target totals and per-block
+uniqueness; equivalent alternative assignments need not be byte-identical.
+Existing exhaustive tiny-fixture oracles provide a separate numerical check.
+
+CBC preview/other-tool comparison and HiGHS three-tab comparison perform no writes.
+Use as Current/Apply creates one source edit; Undo/Redo restores both the exact
+schedule and SINGLE_TOOL/ALL_TOOLS provenance. Explicit Save and independent
+reopen retain original IDs and frozen profile IDs **12, 5, 19** in the comprehensive
+copy; synthetic regressions retain newer profiles **3, 4** and mixed recorded units.
+Manual editing clears optimization provenance; Undo after Save can restore it,
+even with no injected optimizer. Source history intentionally clears transient
+preview/comparison windows. The archive, assessments and job catalog remain equal.
+
+M08.2 closes the existing bounded timeout/incumbent, no-incumbent, infeasible,
+backend-error and cancel/close paths through focused regression checks. Deterministic
+termination evidence checks feasible stopped runs and rejection without a usable
+incumbent. Cancel suppresses publication and retains the owned worker until the
+bounded backend exits; source replay/actions are disabled during that ownership.
+No forced termination, fallback backend, GLPK or new optimizer feature was added.
+The original 1% relative gap and per-stage budget remain unchanged.
+
+Final batch gate: **{tests:,} passing tests, {coverage:.2f}% coverage**, all required
+standards and both builds pass. Independent wheel JROT tests and EN/ES native
+comprehensive-copy solver/Apply/Undo/Save/reopen acceptance pass. All 22 batch
+captures are inspected; F125/F126 geometry, busy/cancelling and wide-scroll evidence
+remain valid for unchanged controls. No dependency or reference modification.
+
+See [validation and objective values](m08-validation.json),
+[bounded review](m07-m08-review.md), [history contracts](jrot-history.md), and R012.
+Shared UI/units/avatar closure, final cross-feature validation and delivery remain
+M09–M12; they are not claimed complete by this JROT acceptance.
+''')
+p=r/'docs/finish-progress.json';ledger=json.loads(p.read_text());ledger.update(implementation_status='M07_complete; M08_complete; M09_next_not_started',completed_remaining_points=18.75,overall_progress=92.75,remaining_milestones_completed=8)
+for m in ledger['milestones']:
+ if m['id'] in ('M07','M08'):
+  m['status']='complete';m['completion_evidence']=[f"docs/{m['id'].lower()}-acceptance.md",f"docs/{m['id'].lower()}-validation.json",'docs/m07-m08-review.md'];m['passes']={'comparison':'complete; original source and retained valid F121–F126 evidence','correction':'complete; bounded history/Apply integration and R006 fix'}
+  for item in m['acceptance']:
+   item['status']='verified';item['evidence']=m['completion_evidence']+['tests/test_rotation_history.py','artifacts/m07-m08-native/verification.json','artifacts/m07-m08-check.log','artifacts/m07-m08-wheel.log']
+p.write_text(json.dumps(ledger,indent=2,ensure_ascii=False)+'\n')
+p=r/'docs/finish-plan.md';s=p.read_text().replace('# Finite finish plan v1 — approved; one milestone at a time','# Finite finish plan v1 — approved; M07/M08 batch complete');s=s.replace('The owner approved continuation with M01, one milestone at a time. This is the','The owner approved M01 onward and explicitly authorized M07/M08 together. This is the');s=s.replace('Current position: **6/12 remaining milestones closed; 15/26 remaining points\nearned; 89.00/100 overall; 11 remaining.** M06 complete; M07 next, not started.','Current position: **8/12 remaining milestones closed; 18.75/26 remaining points\nearned; 92.75/100 overall; 7.25 remaining.** M07/M08 complete; M09 next, not started.')
+for criterion in ('M07.1','M07.2','M08.1','M08.2'):s=s.replace(f'- [ ] **{criterion}**',f'- [x] **{criterion}**')
+s+='\n\n## M07/M08 accepted batch — 2026-10-10\n\nOwner authorized both together; all four fixed criteria close. M07 earns 1.50\nand M08 earns 2.25 points, with no changed weight or added scope. See their\nacceptance/validation records and m07-m08-review. Current total is 92.75/100,\n8/12 complete; M09 next, not started. R006 is closed; R012 records noncritical\nchoices for later review. No additional milestone was introduced.\n';p.write_text(s)
+p=r/'docs/STATUS.md';s=p.read_text();s=s.replace('# Active batch — M07 and M08\n\nOwner authorizes both fixed milestones together, with noncritical choices recorded\nfor later review. M07 in progress; M08 authorized next in this batch.\nProgress remains **89.00/100** until evidenced milestones close.\n\n','');p.write_text(f'''# Current control state — M07 and M08 complete; M09 next
+
+**92.75/100 overall; 8/12 complete; 18.75/26 earned, 7.25 points left.**
+The owner explicitly authorized both fixed milestones together. M07 earns 1.50
+and M08 2.25 points; scope, criteria and weights are unchanged. M09 not started.
+
+JROT now has application-owned Undo/Redo for partial cell edits, Delete batches,
+applied/cleared scope and optimized Apply. Exact profile/assignment links and
+optimization provenance are restored; Save is explicit and atomic, and failed
+writes retain intent. Native text typing keeps its own Undo, including editable
+scheme-name combos. New/load/Cancel/deletion reset scheme-local history. R006
+scope counts fit at the original 1480x740 minimum in English and Spanish.
+
+Actual original-source/migrated matched-input comparisons agree on objectives
+and constraints for all three CBC single-tool runs and HiGHS all-tool optimization.
+Both native comprehensive-copy EN/ES flows pass preview/comparison/Apply/Undo/Redo/
+Save/reopen, with archive/assessments/jobs unchanged. Ten new focused history
+regressions complement existing solver timeout/incumbent/infeasible/cancel tests.
+
+Final gate: **{tests:,} tests, {coverage:.2f}% coverage**, lint/format/strict types,
+architecture and wheel/sdist pass. Independent extracted-wheel focused JROT and
+native EN/ES comprehensive-copy acceptance pass. **22 captures inspected**;
+unchanged original layout/busy/comparison evidence reused. All {len(manifest)} reference
+hashes and approved lock remain unchanged. Native XCB is the validated gate;
+the failed offscreen VTK attempt is retained, not presented as a pass.
+
+[Schedule acceptance](m07-acceptance.md), [optimization acceptance](m08-acceptance.md),
+[history contracts](jrot-history.md), [bounded review](m07-m08-review.md), and
+[fixed ledger](finish-progress.json). R012 records compact-count wording and modal
+history boundaries for later review; no critical unanswered question. Next is
+M09 shared UI/localization/units/avatar, followed by M10 final comprehensive
+cross-feature acceptance, M11 inventory/docs and M12 Linux delivery/platform notes.
+Stop at this authorized batch; no M09 work has been started.
+
+---
+
+## Historical M06 control state
+
+'''+s.replace('# Current control state — M06 complete; M07 next','# M06 completed checkpoint',1))
+p=r/'AGENTS.md';s=p.read_text();s+='''
+
+## Current authoritative finish checkpoint — M07/M08 accepted
+
+M07 and M08 complete at 92.75/100, 8/12 closed, 18.75/26 earned, 7.25 points left.
+Read STATUS, finish-progress, m07-acceptance, m08-acceptance, their validation
+records, m07-m08-review and jrot-history. Final native XCB gate: 1,178 tests,
+96.40% coverage, required standards/builds pass. Packaged focused JROT tests and
+native comprehensive-copy EN/ES workflows pass; 22 captures inspected. All 500
+reference hashes and approved lock unchanged. CBC single-tool/HiGHS multi-tool
+routing and original objectives/constraints remain intact; no GLPK. R006 closed;
+R012 records noncritical history/count choices for later review. M09 next, not
+started. The latest two-milestone authorization covered M07/M08 only; do not
+silently extend the batch into M09. Fixed scope/weight and owner-approval rules
+remain unchanged. Reuse valid evidence; do not repeat gates without a reason.
+''';p.write_text(s)
+p=r/'docs/architecture.md';p.write_text(p.read_text()+'''\n\n## M07/M08 JROT edit/apply history\n\nImmutable `application.rotation_history` snapshots reuse `DocumentSession`. The\nQt adapter handles native typing focus and window-scoped actions; the dialog owns\nsource projection and the existing atomic rotation repository port. Solver threads\ncarry immutable inputs/results only. Apply is one reversible source command;\nSave is a separate commit and clean marker. Frozen pool/provenance survives replay\nwithout catalog reads. See jrot-history.md and m07/m08 acceptance records.\n''')
+print(json.dumps({'progress':92.75,'closed':8,'tests':tests,'coverage':coverage,'reference_unchanged':len(manifest),'wheel_sha256':wheel_hash},indent=2))

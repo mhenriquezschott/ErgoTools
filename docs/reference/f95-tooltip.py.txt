@@ -1,0 +1,17 @@
+from pathlib import Path
+s=Path('/tmp/f95_capture.py').read_text();s=s[:s.index('with tempfile.TemporaryDirectory() as directory:')]
+s+='''
+from PyQt5.QtWidgets import QToolTip
+with tempfile.TemporaryDirectory() as directory:
+ generator=fixture.window.__wrapped__(Path(directory));window=next(generator)
+ dialog=WorkerTransferDialog(window.presenter.workspace,1,window.icons,lambda _:None,language=Language.SPANISH,parent=window)
+ dialog.show();dialog.activateWindow();QTest.qWait(200)
+ QToolTip.showText(dialog.mapToGlobal(QPoint(50,350)),dialog.tool_table.toolTip(),dialog)
+ QTest.qWait(200)
+ for widget in QApplication.topLevelWidgets():
+  print(widget.metaObject().className(),widget.isVisible(),int(widget.windowType()))
+  if widget.isVisible() and widget is not dialog and widget is not window:
+   widget.grab().save(str(out/'spanish-tools-tooltip.png'))
+ QToolTip.hideText();dialog.close();next(generator,None)
+'''
+exec(compile(s,'/tmp/f95_tooltip.py','exec'))

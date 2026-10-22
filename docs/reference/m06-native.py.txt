@@ -1,0 +1,158 @@
+import ast,json,tempfile,shutil,hashlib
+from pathlib import Path
+from dataclasses import asdict
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QTimer,QRect,QPoint
+from PyQt5.QtTest import QTest
+from ergotools.bootstrap import load_icons
+from ergotools.infrastructure.legacy_project import read_legacy_descriptor
+from ergotools.infrastructure.legacy_conversion import convert_legacy_project
+from ergotools.infrastructure.plant_image_import import import_plant_image
+from ergotools.presentation.desktop.plot_window import PlotWindow
+from ergotools.presentation.desktop.plot_workplace_dialog import PlotWorkplaceDialog
+from ergotools.domain.plot_filters import PlotRiskView
+from ergotools.domain.language import Language
+from ergotools.domain.model_units import MeasurementSystem
+from tools.capture_desktop import render_widget
+root=Path.cwd();ref=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root']);original=ref/'tests/ErgoTools_ComparativeRiskTest.ergprj';desc=read_legacy_descriptor(original,'native');out=root/'artifacts/m06-native';out.mkdir(parents=True,exist_ok=True)
+app=QApplication.instance() or QApplication([]);app.setQuitOnLastWindowClosed(False);report={}
+def capture(w,name):
+ app.processEvents();QTest.qWait(760)
+ for gauge in (w.outcome.gauge,w.outcome.individual_gauge,w.outcome.job_gauge):
+  gauge.animation.setCurrentTime(700);gauge.animation.stop()
+ controls={}
+ for key,widget in [('filters',w.filters),('map',w.map_panel),('tabs',w.tabs),('outcome',w.outcome),('apply',w.filters.apply_button),('clear',w.filters.clear_button)]:
+  rect=QRect(widget.mapTo(w,QPoint()),widget.size());assert w.rect().contains(rect),(name,key,rect,w.rect())
+  controls[key]=list(rect.getRect())
+ assert render_widget(w).save(str(out/(name+'.png')))
+ report[name]={'size':[w.width(),w.height()],'controls':controls,'worker_summary':asdict(w.outcome.summary.workers),'job_summary':asdict(w.outcome.summary.jobs),'metrics':[label.text() for label in w.outcome.metrics]}
+
+from unittest.mock import patch
+from dataclasses import replace
+from PyQt5.QtWidgets import QFileDialog,QMessageBox
+from PyQt5.QtGui import QImage
+from ergotools.presentation.desktop.plot_graph_dialog import PlotGraphDialog
+from ergotools.presentation.desktop.plot_figure_viewer import PlotFigureViewer
+from ergotools.presentation.desktop.plot_highlight_dialog import PlotHighlightDialog
+from ergotools.presentation.desktop.plot_figure_export import export_plot
+from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+from ergotools.infrastructure.plot_csv_file import write_plot_csv
+from ergotools.presentation.plot_csv import plot_csv_table,PLOT_HEADERS
+from ergotools.domain.plot_positions import PlotPoint
+from ergotools.domain.plot_scope import PlotScope
+from ergotools.domain.assessments.document import AssessmentKind
+from PIL import Image
+import csv,sqlite3,math
+flows=[];exports=[]
+def modal(callback,action):
+ errors=[];visited=[]
+ def interact():
+  dialog=app.activeModalWidget();visited.append(type(dialog).__name__)
+  try:callback(dialog)
+  except BaseException as error:
+   errors.append(error)
+   if dialog is not None:dialog.reject()
+ QTimer.singleShot(0,interact);action()
+ assert visited and not errors,errors
+ return visited
+
+def snap(dialog,name):
+ app.processEvents();assert render_widget(dialog).save(str(out/(name+'.png')))
+with tempfile.TemporaryDirectory() as directory:
+ folder=Path(directory);source=folder/original.name;shutil.copyfile(original,source);d=read_legacy_descriptor(source,'native');d.database_path.parent.mkdir(parents=True);shutil.copyfile(desc.database_path,d.database_path);shutil.copytree(desc.images_path,d.images_path)
+ target=folder/'converted.ergprj'
+ with convert_legacy_project(source,target,'native') as project:
+  archive=project.load_legacy_evidence();history=project.load_history();jobs=project.load_jobs()
+  w=PlotWindow(project,project,project,lambda p:import_plant_image(Path(p)),load_icons(),current_year=2026,language=Language.ENGLISH,system=MeasurementSystem.METRIC,csv_writer=write_plot_csv);w.show();w.resize(1460,1060);app.processEvents()
+  # Converted map bytes and full original-image scene coordinates stay intact.
+  image=project.read('Default');assert image is not None
+  assert w.map_panel.canvas.loaded_layout.image==image
+  before=project.load_plot_positions();key=next(k for k in w.layer.items if k[0]=='worker');identity=key[1]
+  w.layer.select(w.layer.items[key]);assert w.workers.selected_id==identity
+  controls=w.workers.controls;controls.show_success=lambda message:None
+  w.workers.verticalScrollBar().setValue(w.workers.verticalScrollBar().maximum());capture(w,'worker-selected-controls')
+  saved=before.marker(identity);assert saved.point is not None
+  controls.x_input.setText(str(saved.point.x+3));controls.y_input.setText(str(saved.point.y+4));controls.field_edited('')
+  assert w.layer.pending and project.load_plot_positions()==before
+  w.layer.cancel(key);assert not w.layer.pending and project.load_plot_positions()==before
+  controls.x_input.setText(str(saved.point.x+3));controls.y_input.setText(str(saved.point.y+4));controls.field_edited('');controls.save_button.click()
+  worker_point=PlotPoint(saved.point.x+3,saved.point.y+4)
+  assert project.load_plot_positions().marker(identity).point==worker_point and not w.layer.pending
+  flows.append('worker selected/edit/Cancel/edit/Save')
+  # Original job controls save a shared station anchor, retaining saved worker points.
+  w.filters.risk_buttons[PlotRiskView.JOB].click();jobkey=next(k for k in w.layer.items if k[0]=='job');w.layer.select(w.layer.items[jobkey]);app.processEvents()
+  w.jobs.x_input.setText('123');w.jobs.y_input.setText('234');w.jobs.coordinate_edited('');w.jobs.cancel_button.click();assert not w.layer.pending
+  w.jobs.x_input.setText('123');w.jobs.y_input.setText('234');w.jobs.coordinate_edited('');w.jobs.save_button.click();assert not w.layer.pending
+  assert project.load_plot_positions().marker(identity).point==worker_point
+  capture(w,'job-selected-saved');flows.append('job selected/edit/Cancel/edit/Save keeps worker point')
+  w.tabs.setCurrentIndex(0);w.filters.risk_buttons[PlotRiskView.INDIVIDUAL].click();w.tools.chart_combo.setCurrentIndex(1)
+  old_figure=w.tools.canvas.figure
+  def settings_cancel(dialog):
+   assert isinstance(dialog,PlotGraphDialog);snap(dialog,'graph-settings-default');dialog.text_scale.setValue(140);dialog.axis_mode.setCurrentIndex(2);dialog.axis_maximum.setValue(80);dialog.close_button.click()
+  modal(settings_cancel,w.tools.open_settings);assert w.tools.canvas.figure is old_figure
+  def settings_apply(dialog):
+   assert isinstance(dialog,PlotGraphDialog);dialog.text_scale.setValue(120);dialog.show_grid.setChecked(True);dialog.show_bar_values.setChecked(True);dialog.axis_mode.setCurrentIndex(2);dialog.axis_maximum.setValue(80);snap(dialog,'graph-settings-custom');dialog.apply_button.click()
+  modal(settings_apply,w.tools.open_settings);assert w.tools.canvas.figure.axes[0].get_ylim()==(0,80)
+  w.resize(1800,1200);capture(w,'chart-sex-custom-enlarged')
+  embedded=w.tools.canvas.figure;size=tuple(embedded.get_size_inches())
+  def viewer(dialog):
+   assert isinstance(dialog,PlotFigureViewer);assert dialog.figure is not embedded
+   snap(dialog,'chart-viewer');dialog.toolbar.zoom();dialog.toolbar.zoom();dialog.toolbar.home();dialog.close()
+  modal(viewer,w.tools.open_viewer);assert embedded.canvas is w.tools.canvas and tuple(embedded.get_size_inches())==size
+  def details(dialog):
+   assert isinstance(dialog,PlotHighlightDialog);assert dialog.table.topLevelItemCount()>0
+   dialog.table.setCurrentItem(dialog.table.topLevelItem(0));snap(dialog,'highlights-selected');dialog.close()
+  modal(details,w.outcome.open_details)
+  for ext,filter_name in (('png','PNG'),('jpg','JPEG'),('svg','SVG'),('pdf','PDF')):
+   output=out/('chart-export.'+ext)
+   with patch.object(QFileDialog,'getSaveFileName',return_value=(str(output),filter_name)),patch.object(QMessageBox,'information'):
+    assert export_plot(embedded,w,Language.ENGLISH,'M06 chart')
+   assert output.stat().st_size>1000
+   if ext=='png':
+    with Image.open(output) as pic:assert abs(pic.info['dpi'][0]-300)<.01
+   exports.append(output.name)
+  map_output=out/'map-capture.png';w.map_panel.choose_capture=lambda:str(map_output);w.map_panel.buttons['capture'].click();assert QImage(str(map_output)).convertToFormat(QImage.Format_RGBA8888)==w.map_panel.canvas.grab().toImage().convertToFormat(QImage.Format_RGBA8888)
+  # Compare CSV saved-result content with the exact archived original normalized query.
+  from typing import Iterable,Sequence
+  PlotPositionError=ValueError
+  tree=ast.parse((ref/'src/plot_position_repository.py').read_text());exec(compile(ast.Module([n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='plot_worker_records'],type_ignores=[]),'original-csv-query','exec'))
+  original_db=sqlite3.connect(':memory:');original_db.deserialize(archive.database)
+  csv_comparisons=0
+  for kind in AssessmentKind:
+   w.filters.tools.select_tool(kind);w.filters.apply_button.click()
+   result=w.layer.results;tool={'lifft':'LiFFT','duet':'DUET','tst':'ST'}[kind.value]
+   oldrows=plot_worker_records(original_db,tool_id=tool,scope_paths=result.selection.scope.paths,shift_id=result.selection.scope.shift)
+   byid={r['worker_assignment_id']:r for r in oldrows}
+   for system in MeasurementSystem:
+    output=out/(kind.value+'-'+system.value+'.csv');write_plot_csv(str(output),plot_csv_table(result,system))
+    with output.open(encoding='utf-8',newline='') as stream:records=list(csv.DictReader(stream))
+    for row in records:
+     old=byid.get(int(row['worker_assignment_id']))
+     if old is None:
+      assert int(row['worker_assignment_id']) in (101,102,104) and kind is AssessmentKind.LIFFT;continue
+     for field in ('worker_id','plant_name','section_name','line_name','station_id','shift_id','tool_id','job_id','job_name'):
+      assert row[field]==('' if old[field] is None else str(old[field]))
+     for field in ('total_cumulative_damage','probability_outcome','job_total_cumulative_damage','job_probability_outcome'):
+      assert (row[field]=='' and old[field] is None) or math.isclose(float(row[field]),old[field],rel_tol=1e-12,abs_tol=1e-12)
+     factor_height=1 if system is MeasurementSystem.METRIC else 1/2.54
+     factor_weight=1 if system is MeasurementSystem.METRIC else 1/0.45359237
+     for field,factor in (('worker_height',factor_height),('worker_weight',factor_weight)):
+      value=old[field];assert (row[field]=='' and value is None) or math.isclose(float(row[field]),value*factor,rel_tol=1e-12,abs_tol=1e-12)
+     csv_comparisons+=1
+    exports.append(output.name)
+  original_db.close()
+  # Empty results have an empty details table and retain the explicit neutral chart.
+  w.filters.demographics.setChecked(True)
+  for f,v in zip(w.filters.ranges['height'],(999,1000)):f.setValue(v)
+  w.filters.apply_button.click();assert not w.layer.results.workers
+  dialog=PlotHighlightDialog((),AssessmentKind.TST,load_icons(),parent=w);dialog.show();snap(dialog,'highlights-empty');dialog.close()
+  capture(w,'empty-chart-enlarged')
+  expected_positions=project.load_plot_positions();w.close();w.deleteLater();app.processEvents()
+  assert project.load_history()==history and project.load_jobs()==jobs and project.load_legacy_evidence()==archive
+ with AssessmentProjectFile.open(target) as restored:
+  assert restored.load_plot_positions()==expected_positions and restored.load_legacy_evidence()==archive and restored.read('Default')==image
+  reopened=PlotWindow(restored,restored,restored,lambda p:import_plant_image(Path(p)),load_icons(),current_year=2026,language=Language.SPANISH);reopened.show();reopened.resize(1460,1060);app.processEvents();capture(reopened,'reopened-spanish')
+  assert restored.load_plot_positions().marker(identity).point==worker_point
+  reopened.close();reopened.deleteLater();app.processEvents()
+(out/'verification.json').write_text(json.dumps({'states':report,'flows':flows,'exports':exports,'csv_original_row_comparisons':csv_comparisons,'reopened_positions_images_archive_equal':True,'history_jobs_unchanged':True},indent=2)+'\n')
+print('M06 native worker/job Cancel/Save/reopen, image identity, chart settings/viewer/highlights and real map/figure/CSV exports passed;',csv_comparisons,'original CSV row comparisons.')

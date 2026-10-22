@@ -1,0 +1,64 @@
+from pathlib import Path
+import ast,tempfile,sqlite3,os
+from types import SimpleNamespace
+from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import QApplication,QDialog,QVBoxLayout,QHBoxLayout,QLabel,QComboBox,QDialogButtonBox,QGraphicsView,QGraphicsScene
+from PyQt5.QtCore import Qt,QSize,QTimer,QRectF
+from PyQt5.QtGui import QIcon,QPixmap,QImage,QColor,QPainter,QPen
+from PyQt5.QtTest import QTest
+from ergotools.application.settings import Language
+from ergotools.application.plot_layout import load_plant_layout
+from ergotools.domain.plot_scope import PlotScope
+from ergotools.infrastructure.plot_layout_files import FilePlantLayouts
+from ergotools.presentation.desktop.plot_workplace_dialog import PlotWorkplaceDialog
+from ergotools.presentation.desktop.plot_layout_canvas import PlotLayoutCanvas
+from ergotools.presentation.desktop.theme.plot import PLOT_STYLE
+from ergotools.bootstrap import load_icons
+from tests.test_plot_layout import HIERARCHY_FULL
+from ergotools.domain.work_hierarchy import WorkHierarchy
+from dataclasses import replace
+app=QApplication.instance() or QApplication([]);out=Path('artifacts/plot-layout');out.mkdir(parents=True,exist_ok=True)
+reference=Path('../PLOT/plot_branch_currentwork/ErgoTools/src/plant_layout.py').resolve();tree=ast.parse(reference.read_text())
+node=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='PlotWorkplaceFilterDialog')
+namespace=dict(globals(),__file__=str(reference));exec(compile(ast.Module(body=[node],type_ignores=[]),str(reference),'exec'),namespace)
+parent=QDialog();parent.setStyleSheet(PLOT_STYLE)
+with tempfile.TemporaryDirectory() as directory:
+ directory=Path(directory);database=directory/'synthetic.sqlite'
+ connection=sqlite3.connect(database)
+ with connection:
+  connection.execute('CREATE TABLE Station(plant_name TEXT,section_name TEXT,line_name TEXT,id TEXT)')
+  connection.executemany('INSERT INTO Station VALUES(?,?,?,?)',[(s.plant_name,s.section_name,s.line_name,s.station_id) for s in HIERARCHY_FULL.work.stations])
+  connection.execute('CREATE TABLE Shift(id TEXT)');connection.executemany('INSERT INTO Shift VALUES(?)',[(s,) for s in HIERARCHY_FULL.work.shifts])
+ connection.close();parent.projectdatabasePath=str(database)
+ source_parent=QDialog(parent);source_parent.setStyleSheet(PLOT_STYLE)
+ for name,value in (('plant_combo','P'),('section_combo','All'),('line_combo','All'),('station_combo','All'),('shift_combo','Day')):
+  combo=QComboBox();combo.addItem(value);setattr(source_parent,name,combo)
+ source_parent.workplace_scope_paths=[('P','S'),('P','T')]
+ original=namespace['PlotWorkplaceFilterDialog'](source_parent);original.show();QTest.qWait(100);original.tree.expandAll();QTest.qWait(100);original.grab().save(str(out/'source-picker.png'));original.close();original.deleteLater()
+ for language in (Language.ENGLISH,Language.SPANISH):
+  for state in ('collapsed','expanded','other-plant'):
+   dialog=PlotWorkplaceDialog(HIERARCHY_FULL,load_icons(),language=language,initial=PlotScope((('P','S'),('P','T')),'Day'),parent=parent)
+   dialog.show();QTest.qWait(100)
+   if state!='collapsed':dialog.tree.expandAll()
+   if state=='other-plant':dialog.items[('Q','S','L','1')].setCheckState(0,Qt.Checked)
+   QTest.qWait(100);dialog.grab().save(str(out/f'picker-{language.value}-{state}.png'))
+   assert dialog.rect().contains(dialog.path_label.geometry()) and dialog.rect().contains(dialog.use_button.parentWidget().geometry())
+   if state=='expanded':dialog.resize(820,740);QTest.qWait(100);dialog.grab().save(str(out/f'picker-{language.value}-enlarged.png'))
+   dialog.close();dialog.deleteLater()
+  empty=PlotWorkplaceDialog(WorkHierarchy(replace(HIERARCHY_FULL.work,stations=(),shifts=())),load_icons(),language=language,parent=parent)
+  empty.show();QTest.qWait(100);empty.grab().save(str(out/f'picker-{language.value}-empty.png'));empty.close();empty.deleteLater()
+ image=QImage(1000,600,QImage.Format_RGB32);image.fill(QColor('white'));painter=QPainter(image);painter.setPen(QPen(QColor('#073E68'),8));painter.drawRect(4,4,992,592)
+ for x,y,text in ((15,20,'Top left'),(850,20,'Top right'),(15,570,'Bottom left'),(830,570,'Bottom right')):painter.drawText(x,y,text)
+ for x in (150,400,650):painter.fillRect(x,160,160,230,QColor('#DDF3F5'));painter.drawRect(x,160,160,230)
+ painter.end();path=directory/'plant.png';assert image.save(str(path));reader=FilePlantLayouts({'P':path})
+ canvas=PlotLayoutCanvas();canvas.setStyleSheet(PLOT_STYLE);canvas.resize(970,580);canvas.show();canvas.set_layout(load_plant_layout(HIERARCHY_FULL,PlotScope((('P',),)),reader));QTest.qWait(100);canvas.grab().save(str(out/'canvas-default.png'))
+ for name,size in (('minimum',(900,580)),('enlarged',(1400,850))):
+  canvas.resize(*size);QTest.qWait(100);canvas.grab().save(str(out/f'canvas-{name}.png'))
+  assert canvas.viewport().rect().contains(canvas.mapFromScene(canvas.sceneRect()).boundingRect())
+ canvas.set_layout(load_plant_layout(HIERARCHY_FULL,PlotScope((('Q',),)),reader));QTest.qWait(100);canvas.grab().save(str(out/'canvas-missing.png'));canvas.close();canvas.deleteLater()
+ # Same-size original map constructor/loading, compiled without module imports.
+ method=next(n for n in ast.walk(tree) if isinstance(n,ast.FunctionDef) and n.name=='loadImageNew')
+ exec(compile(ast.Module(body=[method],type_ignores=[]),str(reference),'exec'),namespace)
+ original_view=QGraphicsView();original_view.setStyleSheet(PLOT_STYLE);original_view.setMinimumSize(900,580);original_view.resize(970,580);scene=QGraphicsScene(original_view);original_view.setScene(scene);original_view.show();QTest.qWait(100)
+ namespace['loadImageNew'](SimpleNamespace(),str(path),scene,original_view);QTest.qWait(100);original_view.grab().save(str(out/'source-canvas.png'));original_view.close();original_view.deleteLater()
+parent.close();app.processEvents();print('Captured original source picker/map, native selected/expanded/other-plant/empty English/Spanish, enlarged dialogs and full-image/missing canvas states.')

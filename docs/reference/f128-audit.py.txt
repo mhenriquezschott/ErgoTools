@@ -1,0 +1,19 @@
+import hashlib,json,shutil,tempfile
+from dataclasses import asdict
+from pathlib import Path
+from ergotools.infrastructure.legacy_project import read_legacy_descriptor,LegacyProject
+root=Path.cwd();reference=Path(json.loads((root/'docs/reference/provenance.json').read_text())['reference_root'])
+source=reference/'tests/ErgoTools_ComparativeRiskTest.ergprj'
+original=read_legacy_descriptor(source,'comprehensive-validation')
+paths=[source,original.database_path];before={str(p.relative_to(reference)):hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
+with tempfile.TemporaryDirectory(prefix='ergotools-f128-') as temp:
+ target=Path(temp)/source.name;shutil.copyfile(source,target)
+ copied=read_legacy_descriptor(target,'comprehensive-validation');copied.database_path.parent.mkdir(parents=True)
+ shutil.copyfile(original.database_path,copied.database_path)
+ with LegacyProject(copied) as project:inventory=project.inventory()
+ assert dict(inventory.table_counts)['IndividualAssessment']==191
+ assert copied.database_path.read_bytes()==original.database_path.read_bytes()
+for path in paths:assert hashlib.sha256(path.read_bytes()).hexdigest()==before[str(path.relative_to(reference))]
+record={'checkpoint':'F128','source_hashes':before,'inventory':asdict(inventory),'metadata':{'title':original.metadata.title,'units':original.metadata.default_units.value,'language':original.metadata.language.value},'schema_integrity':'quick_check ok; no foreign-key violations','policy':'Read-only version 8 snapshot. DataPath/DatabaseName precedence matches source. Other versions explicitly unsupported pending separate reviewed mapping. No imported/converted project yet; no UI change.'}
+(root/'docs/f128-legacy-audit.json').write_text(json.dumps(record,indent=2)+'\n')
+print('Comprehensive copied-project XML and schema audit passed:',len(inventory.table_counts),'tables; original descriptor/database hashes unchanged.')

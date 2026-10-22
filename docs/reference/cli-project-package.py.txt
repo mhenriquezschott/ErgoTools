@@ -1,0 +1,52 @@
+import hashlib
+import json
+import shutil
+import subprocess
+import sys
+import zipfile
+from pathlib import Path
+
+root = Path.cwd()
+wheel = root / 'dist/ergotools-0.1.0.dev0-py3-none-any.whl'
+destination = Path('/tmp/ergotools-cli-project-wheel')
+destination.mkdir(exist_ok=True)
+with zipfile.ZipFile(wheel) as archive:
+    archive.extractall(destination)
+    sources = list((root / 'src/ergotools').rglob('*.py'))
+    for path in sources:
+        assert archive.read('ergotools/' + str(path.relative_to(root / 'src/ergotools'))) == path.read_bytes()
+    for language in ('en', 'es'):
+        name = f'ergotools/resources/documents/user-guide-{language}.html'
+        assert archive.read(name) == (root / 'src' / name).read_bytes()
+code = '''import sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+sys.path.append(str(Path.cwd()))
+import pytest
+result = pytest.main(['-q', '-o', 'cache_dir=/tmp/ergotools-cli-project-pytest',
+    'tests/test_launcher.py', 'tests/test_startup_project.py',
+    'tests/test_recent_project_menu.py', 'tests/test_help_workflow.py', 'tests/test_resources.py'])
+assert result == 0
+assert all(not getattr(module, '__file__', None) or Path(module.__file__).is_relative_to(sys.argv[1])
+    for name, module in tuple(sys.modules.items()) if name == 'ergotools' or name.startswith('ergotools.'))
+print('All application imports confined to the rebuilt wheel.')
+'''
+subprocess.run([sys.executable, '-I', '-c', code, str(destination)], check=True, timeout=120)
+reference = Path(json.loads((root / 'docs/reference/provenance.json').read_text())['reference_root'])
+manifest = json.loads((root / 'docs/reference/source-manifest.json').read_text())
+assert all(hashlib.sha256((reference / path).read_bytes()).hexdigest() == digest for path, digest in manifest.items())
+lock = hashlib.sha256((root / 'uv.lock').read_bytes()).hexdigest()
+assert lock == '9e1f2f9f811ec3e9f57f435bd719d7e66112fb4977f6a29f0f845ce4dcaf39ae'
+shutil.copyfile(wheel, root / 'dist/linux' / wheel.name)
+delivery = root / 'dist/linux'
+(delivery / 'SHA256SUMS').write_text(''.join(
+    hashlib.sha256(path.read_bytes()).hexdigest() + '  ' + path.name + '\n'
+    for path in sorted(delivery.iterdir()) if path.is_file() and path.name != 'SHA256SUMS'
+))
+(root / 'artifacts/cli-project-package.json').write_text(json.dumps({
+    'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
+    'source_python_files_equal': len(sources), 'current_guides_equal': 2,
+    'reference_files_unchanged': len(manifest), 'lock_sha256': lock,
+    'all_application_imports_confined_to_wheel': True,
+}, indent=2) + '\n')
+print('Current Linux wheel/checksums refreshed; reference and approved lock unchanged.')
