@@ -1,6 +1,0 @@
-import sys
-from pathlib import Path
-sys.path.append(str(Path.cwd()))
-exec(compile(open('/tmp/m05-audit.py').read(),'/tmp/m05-audit.py','exec'))
-import pytest
-raise SystemExit(pytest.main(['-q','tests/test_plot_results.py','tests/test_plot_filters_panel.py','tests/test_plot_filter_controls.py','tests/test_plot_summaries.py','tests/test_plot_outcome.py','tests/test_plot_window.py']))

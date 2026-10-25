@@ -2,9 +2,6 @@
 
 The accepted design is a modular monolith with ports/adapters and desktop
 presenters. One integrated Qt application hosts LiFFT/DUET/ST, PLOT and JROT.
-The detailed accepted plan is reference/modernization-plan.md. Earlier foundation
-notes are in [checkpoint history](architecture_checkpoint_history.md), not today's
-implementation status.
 
 | Layer | Current responsibility | Internal dependencies |
 |---|---|---|
@@ -53,8 +50,7 @@ task headers synchronize actual column widths instead of space-padded strings.
 Pure rotation preparation produces plain constraints/risks. The optimizer port
 is implemented by `PulpRotationOptimizer`: CBC single-tool and HiGHS multi-tool;
 Qt worker orchestration owns cancellation/previews and never changes source from
-a solver thread. Acceptance requires explicit Apply; only the main Save publishes accepted changes. Linux packaging is accepted in M12; native Windows/macOS acceptance is
-explicitly deferred by the owner.
+a solver thread. Acceptance requires explicit Apply; only the main Save publishes accepted changes. Packaging and platform setup are described in installation.md.
 
 ## Standards and evidence
 
@@ -65,12 +61,6 @@ Initial languages are English/Spanish with stable language/message identities;
 user data is literal and never translated. Future mobile UI work can reuse the
 core/ports but requires its own presentation layer; no mobile work is in scope.
 
-Current original-feature mapping and dormant/hidden classifications are in
-feature_inventory.md. M10 integration, M11 inventory/guides and M12 Linux
-delivery are accepted. The fixed Linux migration is complete; native Windows/macOS
-testing is later follow-up by owner decision.
-No new UI framework, renderer replacement, solver research or speculative
-concurrency infrastructure is part of this milestone.
 
 
 ## Analysis history extension
@@ -83,7 +73,7 @@ route platform shortcuts to native typing or existing application history.
 No global database undo, new storage format or unified Save is introduced.
 See plot_history.md and jrot_history.md for lifetime and persistence boundaries.
 
-## Optional external migration utility — M1R supersedes M1 result policy
+## Optional external migration utility
 
 `tools/project_migration/ergotools_migration` owns original-schema reading,
 reconciliation and earlier full native format upgrades. Application code never
@@ -105,7 +95,7 @@ Manually authored job-risk estimates and frozen approved profile references are
 distinct source data, not duplicate computed assessment results; they remain intact.
 PLOT/export use the sole matching saved result. If no result exists, the existing
 read-only persisted-input evaluation path computes a temporary summary without
-writing another result. M2 guided conversion now owns a temporary-directory lifetime in the desktop.
+writing another result. Guided conversion owns a temporary-directory lifetime in the desktop.
 The localized consent dialog invokes only the injected process callback. Workspace
 switch accepts remember=False to exclude temporary paths; first Save As publishes
 the complete native snapshot and then releases temporary backing. Repository/source
@@ -238,7 +228,7 @@ Native format 16 supports direct worker assessment ownership with an optional re
 workplace assignment. Jobs are optional for PLOT Individual analysis; JROT All Jobs
 remains independent of individual assessments and organization. New projects create
 no artificial defaults or orphan assessment. Existing Default names are retained.
-See [ownership, UI, migration and rollback](optional_assessment_context.md).
+See ownership, UI, migration and rollback.
 
 
 ## Personal assessment-gauge marker preferences
@@ -404,11 +394,11 @@ PLOT reads current values on Apply/restoration. No dependency, solver or formula
 
 ## Disposable JROT developer prototype
 
-The owner-authorized English/cm/N Yes-path mockup is separate from production JROT.
+The session-only English/cm/N Yes-path mockup is separate from production JROT.
 Bootstrap copies immutable hierarchy/Job/current-risk catalogs through read-only loads;
 the prototype never receives a writer or main history. An application-only scratch
 model calls existing calculations and prepares existing optimizer input. Separate Qt
 widgets/dialog/thread own temporary task names, progress, preview restrictions and
 CBC/HiGHS results. Only session-local Settings/menu hooks touch existing presentation.
 No schema/preferences serialization or production calculator/solver changes occur.
-See jrot_prototype.md for isolation, launch, bounds and deliberately unavailable features.
+The prototype is diagnostic and does not persist data.

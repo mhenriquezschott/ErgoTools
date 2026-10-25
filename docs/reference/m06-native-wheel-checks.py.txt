@@ -1,4 +1,0 @@
-import sys
-from pathlib import Path
-sys.path.append(str(Path.cwd()))
-exec(compile(open('/tmp/m06-native.py').read(),'/tmp/m06-native.py','exec'))

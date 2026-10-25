@@ -68,5 +68,5 @@ option projection modules reach 100%, job domain 98.70%. Ruff, formatting, stric
 mypy (93 files), architecture and source/wheel builds pass. The isolated wheel smoke
 exercises version-five save/reopen, bound assessment creation and classified
 projection alongside earlier workspace/dialog workflows. See
-[f40_validation.json](f40_validation.json). All 500 original files and the approved
+f40_validation.json. All 500 original files and the approved
 dependency lock match their recorded hashes. No visual change is claimed.

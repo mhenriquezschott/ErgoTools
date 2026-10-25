@@ -8,7 +8,7 @@ The reference order is preserved: normalize cm/N with divisors 2.54 and 4.45; co
 
 The positive-damage probability uses the active reference expression: predictor = 1.7229 + 1.0239 * math.log(damage, 10), probability = exp(predictor) / (1 + exp(predictor)). No alternate logarithm or coefficient was substituted. Zero damage is outside this function's domain; summary behavior needs its own explicit policy.
 
-Metric display still uses the isolated compatibility expression `(model_moment / 0.73756) * 9.81`, rounded to one decimal. Its scientific interpretation remains unresolved; the result is deliberately named `displayed_moment`. See [the unit audit](units_localization_audit.md). This task API is isolated from application assessment workflows and the GUI pending that review.
+Metric display still uses the isolated compatibility expression `(model_moment / 0.73756) * 9.81`, rounded to one decimal. Its scientific interpretation remains unresolved; the result is deliberately named `displayed_moment`. See the unit audit. This task API is isolated from application assessment workflows and the GUI pending that review.
 
 The original 103-color palette and its damage thresholds live in presentation, separate from domain calculations and the four-category gauge palette. No icons or windows changed.
 

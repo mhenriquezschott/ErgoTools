@@ -1,5 +1,5 @@
 > Historical checkpoint, superseded by the owner-directed removal of assessment versions.
-> See [current ownership contract](single_assessment_ownership.md). The version UI/API described below no longer exists.
+> See current ownership contract. The version UI/API described below no longer exists.
 
 # Workspace history management — F53
 

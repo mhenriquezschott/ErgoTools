@@ -1,10 +1,10 @@
-> Historical component/checkpoint record. For current operation use [the user guide](user_guide.md), [development](development.md) and [STATUS](STATUS.md). Early pending-feature statements below are historical; M11 inventory records any actual remaining gap.
+> Historical component/checkpoint record. For current operation use [the user guide](user_guide.md), [development](development.md) and STATUS. Early pending-feature statements below are historical; M11 inventory records any actual remaining gap.
 
 # Current integrated Worker Management — M02
 
 Open the integrated application and use **Workers**. The original two-tab form,
 details toggle, directory/search/navigation, assignment picker and Save/Cancel/Close
-are retained. M02 acceptance is complete; see [evidence](m02_acceptance.md).
+are retained. M02 acceptance is complete; see evidence.
 Both height and weight are checked across metric/imperial Save/reopen, and all
 three assessment tools return to the exact selected worker/assignment after Close.
 Notifications now retain original `Note:` and localized `Nota:`.

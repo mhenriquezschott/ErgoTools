@@ -38,7 +38,7 @@ UI review. Programmatic `create_window` defaults to that composition; native tes
 and the integrated CLI explicitly enable VTK. Offscreen tests skip the six native
 OpenGL checks; they must be run with a working native display for acceptance.
 Exact approved packages and owner authorization are in
-[vtk-dependency_proposal.md](vtk-dependency_proposal.md).
+vtk-dependency_proposal.md.
 
 638 native tests pass; combined coverage is 96.91%. Standards, strict types,
 architecture, source/wheel build, extracted-wheel native rendering and synthetic

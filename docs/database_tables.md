@@ -32,7 +32,7 @@ rewrites opaque schedule keys without changing arrangements, and fails ambiguous
 Worker source/result payloads from formats 14-18 stay exact. Maintained fixtures are updated
 in place; original files/reference checkout stay untouched.
 
-See [Job contract](job_management_simplification_decisions.md). Historical acceptance and
+See Job contract. Historical acceptance and
 schema descriptions below document earlier checkpoints, not current profile functionality.
 
 ---
@@ -46,7 +46,7 @@ is a daily decimal-hour duration in whole minutes from 0 to 24. The UI derives
 Shifts in use from distinct active Job placements or worker workplace assignments
 in that Plant. Unused project Shift definitions do not count; no new table is added. External formats 8–17 convert on a private copy. Existing
 format-14/15/16/17 source/result payloads remain exact. Current native test projects
-were updated in place. See [acceptance](organization_input_cleanup_acceptance.md).
+were updated in place. See acceptance.
 
 ---
 
@@ -59,7 +59,7 @@ Format 16 requires the existing external conversion workflow, which removes exac
 these attributes without recalculating or changing unrelated rows. Original legacy
 files remain unchanged; their converter now excludes these fields. Both maintained
 native fixtures and the four-worker workflow file were updated at their existing
-paths. See [acceptance](shift_metadata_removal_acceptance.md).
+paths. See acceptance.
 
 ---
 
@@ -106,7 +106,7 @@ extra draft and schema bookkeeping in current format-14 conversions. Original fi
 remain unchanged outside the current format-16 copies. See single_assessment_ownership.md
 for the exact rejection/publication/data-preservation policy and acceptance evidence.
 
-Format-16 ownership, optional Jobs, migration and rollback: [current contract](optional_assessment_context.md). No new business table is added.
+Format-16 ownership, optional Jobs, migration and rollback: current contract. No new business table is added.
 
 
 ## Editing boundary — 2026-10-18

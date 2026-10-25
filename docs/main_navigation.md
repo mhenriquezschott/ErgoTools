@@ -1,4 +1,4 @@
-> Historical component/checkpoint record. For current operation use [the user guide](user_guide.md), [development](development.md) and [STATUS](STATUS.md). Early pending-feature statements below are historical; M11 inventory records any actual remaining gap.
+> Historical component/checkpoint record. For current operation use [the user guide](user_guide.md), [development](development.md) and STATUS. Early pending-feature statements below are historical; M11 inventory records any actual remaining gap.
 
 # Shared integrated navigation — F75
 

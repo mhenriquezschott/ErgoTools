@@ -1,6 +1,6 @@
 > Historical checkpoint: Job profile/version/evidence behavior below was explicitly
 > superseded on 2026-10-20. Current Job values, calculators, copying and JROT policy are
-> documented in [the owner decision record](job_management_simplification_decisions.md)
+> documented in the owner decision record
 > and [current database inventory](database_tables.md). Removed APIs are not supported.
 
 # Job Management measurement controls and Approve — F67

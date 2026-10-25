@@ -48,7 +48,7 @@ dev = [
 packages = ["src/ergotools"]
 
 [tool.hatch.build.targets.sdist]
-include = ["/src", "/tests", "/tools", "/docs", "/README.md", "/AGENTS.md", "/LICENSE.txt", "/pyproject.toml", "/uv.lock", "/.python-version", "/typings", "/test_projects"]
+include = ["/src", "/tests", "/tools", "/docs", "/README.md", "/LICENSE.txt", "/pyproject.toml", "/uv.lock", "/.python-version", "/typings", "/test_projects"]
 
 [tool.ruff]
 target-version = "py313"

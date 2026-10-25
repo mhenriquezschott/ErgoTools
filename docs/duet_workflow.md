@@ -1,6 +1,6 @@
 > Current owner-approved task-capacity and unused-row policy (2026-10-18)
 > supersedes historical clear-on-count-change and unused-slot partial-status wording
-> below. See [current behavior](task_grid_resize_acceptance.md).
+> below. See current behavior.
 
 # DUET source workflow and persistence — F16
 

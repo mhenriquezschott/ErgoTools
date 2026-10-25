@@ -13,192 +13,185 @@
 
 ## Contents
 
-[Overview](#overview) · [Workflow](#workflow) · [ErgoTools](#ergotools) ·
-[PLOT](#plot) · [JROT](#jrot) · [Scientific basis](#scientific-basis) ·
-[Installation](#installation) · [Projects and saving](#projects-and-saving) ·
-[Publications and conferences](#publications-and-conferences) ·
-[Documentation](#documentation) · [Repository structure](#repository-structure) ·
-[Contributing](#contributing) · [License](#license)
+- [Overview](#overview)
+- [ErgoTools](#ergotools)
+- [PLOT](#plot)
+- [JROT](#jrot)
+- [Scientific basis](#scientific-basis)
+- [Installation](#installation)
+- [Publications and conferences](#publications-and-conferences)
+- [Documentation](#documentation)
+- [Repository structure](#repository-structure)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Overview
 
-ErgoTools integrates three fatigue failure-based ergonomic assessment methods in one
-desktop application: **LiFFT**, **DUET**, and the **Shoulder Tool (ST)**. Assess workers
-independently, add workplace context when needed, map results with **PLOT**, and use
-Job-level risk values to compare rotation schedules with **JROT**.
+ErgoTools is a desktop platform for fatigue failure-based ergonomic assessment,
+plant-layout risk visualization and job rotation optimization. It integrates
+**LiFFT**, **DUET** and the **Shoulder Tool (ST)** with two complementary analysis
+workspaces: **PLOT** and **JROT**.
 
 | ErgoTools | PLOT — Plant-Layout Organizational Tool | JROT — Job Rotation Optimization Tool |
 | --- | --- | --- |
-| Enter task exposures, calculate cumulative damage and outcome probability, and inspect the anatomical region in 3D. | Explore Individual, Job and Comparison risk views on a plant layout, with workplace and demographic filters. | Build worker-by-time-block schedules, optimize using one tool or all three, and compare current and proposed rotations. |
+| Assess task exposures, cumulative damage and model-derived risk for the low back, distal upper extremity and shoulder. | Explore worker and Job risks across a plant layout, with population summaries and workplace filters. | Evaluate Job rotation schedules and compare optimized distributions of worker exposure. |
 
-English and Spanish interfaces, metric and imperial display, searchable worker records,
-shared Undo/Redo, and one project Save connect the three workspaces.
-
-## Workflow
-
-1. **Create or open a project and add workers.** Start with standalone assessments;
-   organization data is optional.
-2. **Enter task data and calculate.** Use LiFFT, DUET or ST for the selected worker.
-   Blank unused rows do not make an otherwise complete assessment incomplete.
-3. **Add workplace context when useful.** Define Plant → Section → Line → Station and
-   recurring shifts, then assign workers. A Job is optional for a workplace assignment.
-4. **Analyze the workplace.** Associate an existing standalone assessment with an
-   assignment or create an independent assessment for that context. Explore PLOT.
-5. **Evaluate rotations.** Define Job risks and use JROT with all active Jobs/workers
-   or a selected workplace scope. Review results before applying a proposed schedule.
-
-Use the main **Save** to store accepted edits from assessments and management/analysis
-windows together. Closing an editor retains valid changes in the open project session.
+The application supports English and Spanish, metric and imperial units, worker
+and organization management, and interactive 3D anatomical visualization.
 
 ## ErgoTools
 
-The assessment workspace combines worker selection, a live **VTK 3D avatar**, task
-inputs, per-task damage contributions, and the individual outcome summary. Select an
-anatomical region or a tool tab to move between models; rotate, zoom, or reset the body
-view. The screenshot shows a calculated standalone LiFFT assessment.
+Three assessment methods share a workspace with task inputs, calculated damage
+contributions, a 3D anatomical view and a risk summary.
 
-![ErgoTools LiFFT workspace with the live 3D avatar, task inputs and risk gauge](docs/images/ergotools_lifft.png)
+### LiFFT — Lifting Fatigue Failure Tool
 
-### Three assessment tools, one workspace
+Low-back assessment based on load, horizontal lever arm and repetitions. Results
+include lifting moment, task and cumulative damage, and probability of a high-risk Job.
 
-| Tool | Region | Task inputs | Outputs |
-| --- | --- | --- | --- |
-| **LiFFT** — Lifting Fatigue Failure Tool | Low back | Horizontal lever arm, load, repetitions | Moment, task/cumulative damage, contribution and probability of a high-risk job |
-| **DUET** — Distal Upper Extremity Tool | Distal upper extremity | OMNI-RES exertion rating, repetitions | Task/cumulative damage, contribution and outcome probability |
-| **Shoulder Tool (ST)** | Shoulder | Task type, lever arm, load, repetitions | Moment, task/cumulative damage, contribution and outcome probability |
+![LiFFT workspace with a low-risk example and visible low-back anatomy](docs/images/ergotools_lifft.png)
 
-Task counts are independent for each worker, tool and assessment context: **15 rows
-by default, up to 100**. Expanding preserves entered rows; reducing removes the
-truncated rows and can be undone. **Clear assessment** resets the active assessment.
-Gauge tick spacing and range-limit labels are configurable application preferences.
+### DUET — Distal Upper Extremity Tool
 
-<details>
-<summary><strong>View DUET and Shoulder Tool workspaces</strong></summary>
+Distal upper-extremity assessment based on exertion intensity and repetitions.
+The task table presents each activity's contribution to cumulative damage alongside
+the overall model-derived outcome probability.
 
-<table>
-<tr>
-<td width="50%"><a href="docs/images/ergotools_duet.png"><img src="docs/images/ergotools_duet.png" alt="Calculated DUET assessment with the visible avatar"></a></td>
-<td width="50%"><a href="docs/images/ergotools_shoulder.png"><img src="docs/images/ergotools_shoulder.png" alt="Calculated Shoulder Tool assessment with the visible avatar"></a></td>
-</tr>
-<tr><td><strong>DUET</strong> — exertion and repetition inputs.</td><td><strong>Shoulder Tool</strong> — task type, force and lever-arm inputs.</td></tr>
-</table>
+![DUET workspace with a moderate-risk example and visible upper-extremity anatomy](docs/images/ergotools_duet.png)
 
-</details>
+### ST — Shoulder Tool
 
-### Workers and workplace context
+Shoulder assessment incorporating task type, lever arm, load and repetitions.
+The anatomical view highlights the assessed region, while task contributions and
+the overall summary describe the modeled exposure.
+
+![Shoulder Tool workspace with a high-risk example and visible shoulder anatomy](docs/images/ergotools_shoulder.png)
+
+### Anatomy and risk summary
 
 <table>
 <tr>
-<td width="54%"><a href="docs/images/worker_management.png"><img src="docs/images/worker_management.png" alt="Worker Management with six fictional workers and optional demographic details"></a></td>
-<td width="46%"><a href="docs/images/organization_management.png"><img src="docs/images/organization_management.png" alt="Organization Management with expanded plant, section, line and station hierarchy"></a></td>
+<td width="42%" align="center"><img src="docs/images/assessment_avatar.png" alt="Interactive 3D avatar with anatomical regions and risk legend" width="300"></td>
+<td width="58%" align="center"><img src="docs/images/assessment_risk_panel.png" alt="Assessment risk panel showing the risk gauge, cumulative damage and key metrics" width="300"></td>
 </tr>
 <tr>
-<td valign="top"><strong>Worker Management</strong><br>Searchable identity records, optional demographics and workplace assignments. Each workplace can have an optional Job.</td>
-<td valign="top"><strong>Organization Management</strong><br>Plants, sections, lines, stations and recurring shifts. Dates use calendars; shift times use 24-hour input and allow overnight shifts.</td>
+<td valign="top"><strong>Anatomical context.</strong> The interactive 3D avatar identifies the region assessed by each method. The accompanying legend relates colors to the risk categories.</td>
+<td valign="top"><strong>Results at a glance.</strong> The gauge locates the calculated probability within the risk ranges. Cumulative damage and key metrics complement the probability result; the task table identifies individual damage contributions.</td>
 </tr>
 </table>
 
-A **Station** is a physical location; a **Job** is an activity that can be placed at
-one or more workplaces. A worker can have one standalone assessment per tool and
-separate assessments for distinct workplace assignments. **Follow worker** and
-**Keep context** support browsing these records without conflating them.
+### Workers and organization
+
+<table>
+<tr>
+<td width="54%"><a href="docs/images/worker_management.png"><img src="docs/images/worker_management.png" alt="Worker Management with worker records and demographic information"></a></td>
+<td width="46%"><a href="docs/images/organization_management.png"><img src="docs/images/organization_management.png" alt="Organization Management with plant, section, line and station hierarchy"></a></td>
+</tr>
+<tr>
+<td valign="top"><strong>Worker records.</strong> Identity, demographic information and workplace assignments provide context for individual and population assessments.</td>
+<td valign="top"><strong>Organization structure.</strong> Plants, sections, lines, stations and shifts describe the workplace. A Station is a physical location; a Job is an activity performed there.</td>
+</tr>
+</table>
 
 ## PLOT
 
-PLOT brings saved assessment results and Job risks onto a plant-layout image. Select
-a tool, a plant, workplace branches and a shift, then apply the filters. The plant
-view supports marker positioning, zoom, fit, opacity, capture and export.
+PLOT maps ergonomic assessment results onto a plant layout, connecting risk values
+with the physical workplace and the people working there.
 
-![PLOT Individual view with plant markers, Tools Overview charts and the group outcome](docs/images/plot_overview.png)
+![PLOT plant layout with worker markers, workplace filters and population charts](docs/images/plot_overview.png)
 
-### Individual, Job and Comparison views
+### Workplace and demographic filters
 
-<table>
-<tr>
-<td width="33%"><a href="docs/images/plot_individual_detail.png"><img src="docs/images/plot_individual_detail.png" alt="Individual risk symbols on the plant map"></a></td>
-<td width="33%"><a href="docs/images/plot_job_detail.png"><img src="docs/images/plot_job_detail.png" alt="Job risk squares on the plant map"></a></td>
-<td width="34%"><a href="docs/images/plot_comparison_detail.png"><img src="docs/images/plot_comparison_detail.png" alt="Individual symbols over Job risk squares on the plant map"></a></td>
-</tr>
-<tr>
-<td valign="top"><strong>Individual</strong><br>Worker assessment symbols colored by outcome probability.</td>
-<td valign="top"><strong>Job</strong><br>Job risk displayed at positioned stations.</td>
-<td valign="top"><strong>Comparison</strong><br>Worker symbols over Job-risk squares, with separate individual and Job summaries.</td>
-</tr>
-</table>
+Workplace filters focus the analysis on a plant, section, line, station or shift.
+Demographic filters refine the worker population by sex, age, weight and height.
 
-Circles, triangles and hexagons distinguish the recorded sex or missing sex; the
-legend explains each symbol. A blue frame identifies the selected result. Worker
-Overview connects that result to its worker, exact assignment and outcome; Job
-Overview provides the corresponding Job information.
+![PLOT workplace and demographic filters](docs/images/plot_filters.png)
+
+### Individual risk
+
+Worker markers show individual assessment outcomes at their workplace locations.
+Marker colors express risk, while shapes distinguish recorded sex categories.
+The Worker Overview panel describes the selected worker and assessment.
 
 <table>
 <tr>
-<td width="47%"><a href="docs/images/plot_worker_panel.png"><img src="docs/images/plot_worker_panel.png" alt="PLOT Worker Overview with demographics, assessment, comparison and locate control" width="390"></a></td>
-<td width="53%"><a href="docs/images/plot_comparison_gauges.png"><img src="docs/images/plot_comparison_gauges.png" alt="PLOT Comparison view with separate Individual average and Job average gauges"></a><p><strong>Compare results in context.</strong> Inspect the selected worker, locate its symbol, and compare individual assessment outcomes with applicable Job risks. The gauges summarize the active population; they do not replace individual assessments.</p></td>
+<td width="45%"><img src="docs/images/plot_individual_detail.png" alt="Worker risk markers on the plant layout"><p>Individual assessment results mapped to workplace locations.</p><img src="docs/images/plot_individual_gauge.png" alt="PLOT individual population risk gauge"><p>The individual summary represents the filtered worker population.</p></td>
+<td width="55%" align="center"><img src="docs/images/plot_worker_panel.png" alt="Worker Overview showing demographic and assessment information" width="370"></td>
 </tr>
 </table>
 
-### Filters and population summaries
+### Job risk
 
-Choose one or more sections, lines or stations inside a plant. Optional demographics
-further filter workers by sex, age, weight and height. Paired numeric limits are
-inclusive; missing values required by an active filter are excluded.
-
-![PLOT workplace and expanded demographic filter controls](docs/images/plot_filters.png)
-
-Tools Overview compares mean outcome probabilities by tool, sex or age group.
-Error bars show one standard deviation. Graph Settings controls presentation and
-figure export; high-risk station details support closer inspection.
-
-<details>
-<summary><strong>View the three population charts</strong></summary>
+The Job view displays activity-level risk at stations, independently of a particular
+worker's assessment. Job information and the Job summary provide an overview of the
+activities included in the analysis.
 
 <table>
 <tr>
-<td width="33%"><img src="docs/images/plot_chart_tools.png" alt="Mean worker risk by tool"></td>
-<td width="33%"><img src="docs/images/plot_chart_sex.png" alt="Mean worker risk by sex and tool"></td>
-<td width="34%"><img src="docs/images/plot_chart_age.png" alt="Mean worker risk by age group and tool"></td>
+<td width="50%"><img src="docs/images/plot_job_detail.png" alt="Job risk squares on the plant layout"></td>
+<td width="50%"><img src="docs/images/plot_job_gauge.png" alt="PLOT Job population risk gauge"></td>
+</tr>
+<tr><td>Job risk colors at workplace locations.</td><td>Summary of the applicable Job risks.</td></tr>
+</table>
+
+### Comparison
+
+The comparison view overlays worker symbols on Job-risk squares. Separate gauges
+summarize the individual assessment results and applicable Job risks, making the
+two sources visible together while preserving their different meanings.
+
+<table>
+<tr>
+<td width="38%"><img src="docs/images/plot_comparison_detail.png" alt="Worker markers overlaid on Job risk squares"></td>
+<td width="62%"><img src="docs/images/plot_comparison_gauges.png" alt="Individual average and Job average comparison gauges"></td>
 </tr>
 </table>
 
-</details>
+### Population charts
+
+Tools Overview summarizes the filtered worker population in three complementary
+charts. Bars represent mean model-derived outcome probabilities; error bars show
+one standard deviation.
+
+<table>
+<tr>
+<td width="33%"><img src="docs/images/plot_chart_tools.png" alt="Mean worker risk by assessment tool"></td>
+<td width="33%"><img src="docs/images/plot_chart_sex.png" alt="Mean worker risk by sex and assessment tool"></td>
+<td width="34%"><img src="docs/images/plot_chart_age.png" alt="Mean worker risk by age group and assessment tool"></td>
+</tr>
+<tr>
+<td valign="top"><strong>By tool.</strong> Compare the population's results across LiFFT, DUET and ST.</td>
+<td valign="top"><strong>By sex.</strong> Compare the recorded sex groups within each assessment method.</td>
+<td valign="top"><strong>By age.</strong> Compare age groups to examine how exposure is distributed across the workforce.</td>
+</tr>
+</table>
 
 ## JROT
 
-JROT builds and evaluates worker-by-time-block Job schedules. Use **All Jobs** for
-organization-wide planning, or **Workplace** to select station/shift scope with
-eligible Job placements and worker assignments. Enter the current rotation, inspect
-its risk distribution, then run **Optimize Tool** or **Optimize All Tools**.
+JROT evaluates worker-by-time-block Job schedules and optimizes the distribution
+of exposure. Analyses can cover all Jobs or a selected workplace scope, using
+one assessment method or LiFFT, DUET and ST together.
 
-![Current production JROT interface with six workers, four blocks and a real CBC optimized rotation](docs/images/jrot_optimized.png)
+![JROT with a six-worker rotation and optimized schedule](docs/images/jrot_optimized.png)
 
-**Optimize Tool** uses CBC to minimize the maximum worker average for the selected
-method. **Optimize All Tools** uses HiGHS to optimize the three tools together,
-then compare their distributions. Review the proposed grid and comparison before
-choosing **Use as Current** or applying the all-tool result. Main Save stores the
-accepted rotation with the project.
+Job risks can come from existing measurements, task-based calculations or copied
+worker assessments. Single-tool optimization uses CBC; combined optimization uses
+HiGHS. Comparison views present the current and proposed schedules and their exposure
+distributions.
 
 <table>
 <tr>
-<td width="46%"><a href="docs/images/job_management.png"><img src="docs/images/job_management.png" alt="Job Management with one current LiFFT, DUET and Shoulder Tool risk set"></a></td>
-<td width="54%"><a href="docs/images/jrot_comparison.png"><img src="docs/images/jrot_comparison.png" alt="Production JROT comparison of the current rotation and a real all-tool HiGHS result"></a></td>
+<td width="46%"><a href="docs/images/job_management.png"><img src="docs/images/job_management.png" alt="Job Management with LiFFT, DUET and ST risk values"></a></td>
+<td width="54%"><a href="docs/images/jrot_comparison.png"><img src="docs/images/jrot_comparison.png" alt="JROT comparison of current and optimized exposure distributions"></a></td>
 </tr>
 <tr>
-<td valign="top"><strong>Job risk values</strong><br>One current set per Job/tool: enter known values, calculate from tasks, or copy a worker assessment's inputs and results as an independent Job source.</td>
-<td valign="top"><strong>Compare before applying</strong><br>Review current and optimized schedules for LiFFT, DUET and ST using the comparison tabs.</td>
+<td valign="top"><strong>Job assessment.</strong> Activity-level measurements supply the ergonomic basis for rotation analysis.</td>
+<td valign="top"><strong>Rotation comparison.</strong> Current and optimized schedules reveal changes in the distribution of worker exposure.</td>
 </tr>
 </table>
 
-<details>
-<summary><strong>View the compact Job calculators</strong></summary>
-
-![Expanded Job calculator with retained task inputs and current results](docs/images/job_calculator.png)
-
-</details>
-
-Rotation estimates use Job-level measurements and equal time blocks. Interpret the
-results alongside Job redesign and other ergonomic controls: redistributing exposure
-does not eliminate a hazardous activity.
+Rotation analysis complements Job redesign and other ergonomic controls.
+Redistributing exposure does not eliminate a hazardous activity.
 
 ## Scientific basis
 
@@ -214,23 +207,19 @@ outcome probability are related outputs, not interchangeable quantities.
 
 ## Installation
 
-| Platform | Status | Start here |
+A graphical desktop with OpenGL, **Python 3.13.14** and Git are required.
+The installation guide includes dependencies, setup commands and desktop shortcuts
+for each platform.
+
+| Platform | Requirements | Installation |
 | --- | --- | --- |
-| **Linux x86-64** | Native desktop, VTK, CBC and HiGHS verified on Ubuntu 25.04 | [Linux installation](docs/installation.md#linux) |
-| **Windows 10/11 x64** | Pinned trial setup; native testing pending | [Windows installation and desktop shortcut](docs/installation.md#windows-trial) |
-| **macOS 11+ Intel / Apple silicon** | Pinned trial setup; native testing pending | [macOS installation and desktop alias](docs/installation.md#macos-trial) |
+| **Linux x86-64** | Qt/XCB and OpenGL system libraries; Qt 5.15.17 | [Linux setup](docs/installation.md#linux) |
+| **Windows 10/11 x64** | OpenGL-capable graphics driver; Qt 5.15.2 | [Windows setup and desktop shortcut](docs/installation.md#windows-trial) |
+| **macOS 11+ Intel / Apple silicon** | Matching Python architecture; Qt 5.15.17 | [macOS setup and desktop alias](docs/installation.md#macos-trial) |
 
-Requirements: **Python 3.13.14**, a graphical desktop with OpenGL, and the exact
-runtime versions documented in the [installation guide](docs/installation.md).
-The Linux baseline is locked in [`uv.lock`](uv.lock). Windows/macOS use a separate
-[pinned trial file](tools/requirements_desktop_trial.txt); Windows uses the approved
-Qt 5.15.2 runtime because Qt 5.15.17 has no Windows wheel. No native Windows/macOS
-success is claimed from Linux tests or package resolution.
+Windows uses Qt 5.15.2 because Qt 5.15.17 has no Windows wheel.
 
-<details>
-<summary><strong>Quick start on Linux</strong></summary>
-
-Install Git and uv 0.11.25 using the [setup guide](docs/installation.md#get-git-and-uv), then:
+**Linux quick start**, with [Git and uv installed](docs/installation.md#get-git-and-uv):
 
 ```bash
 git clone --branch main --single-branch https://github.com/mhenriquezschott/ErgoTools.git
@@ -240,31 +229,8 @@ uv sync --locked --no-dev --extra desktop --python 3.13.14
 bash tools/run.sh
 ```
 
-</details>
-
-After setup, launch with `bash tools/run.sh` on Linux, `tools\run_windows.cmd` on
-Windows, or `tools/run_macos.command` on macOS. The guide explains desktop shortcuts
-and aliases, opening a project directly, and updating with `git pull --ff-only`.
-Launchers do not install or update anything automatically.
-
-## Projects and saving
-
-Current `.ergprj` files are self-contained native projects containing organization,
-workers, assignments, task inputs, calculated results, embedded plant images, map
-positions and saved rotations. No companion project folder is required. Opening an
-older format uses the optional [external conversion utility](tools/project_migration/README.md).
-
-The **main Save** stores accepted changes across the application. Shared Undo/Redo
-works during the open project session; history is not a substitute for saving or
-backups and is not restored on reopening. Use Save As for a personal example copy,
-and keep your projects outside the source checkout.
-
-Example datasets are in [`test_projects/native/`](test_projects/native/README.md).
-`comparative_risk_test.ergprj` includes populated assessments, a plant layout and
-rotations; `jrot_workflow_demo.ergprj` has six fictional workers, six calculated Jobs
-and a realistic organization. It has no worker assessments or saved rotations, so
-an empty individual grid there is expected. Screenshots above use disposable demo
-copies; illustrative values are not recommendations for actual work.
+Launch scripts: `tools/run.sh` for Linux, `tools\run_windows.cmd` for Windows,
+and `tools/run_macos.command` for macOS.
 
 ## Publications and conferences
 
@@ -294,40 +260,32 @@ software citation have not yet been published.
 
 ## Documentation
 
-| For users | For developers |
+| Users | Developers |
 | --- | --- |
-| [Installation and desktop launchers](docs/installation.md) | [Development and verification](docs/development.md) |
+| [Installation and desktop launchers](docs/installation.md) | [Development](docs/development.md) |
 | [English user guide](docs/user_guide.md) · [Guía en español](docs/user_guide_es.md) | [Architecture](docs/architecture.md) · [Coding standards](docs/coding_standards.md) |
 | [Backup and recovery](docs/recovery.md) | [API contracts](docs/api_contracts.md) · [Database reference](docs/database_tables.md) |
-| [Native example projects](test_projects/native/README.md) | [Current validation and status](docs/STATUS.md) · [Platform review](docs/platform_review.md) |
+| [Example projects](test_projects/native/README.md) | [Scientific calculations](#scientific-basis) |
 
 ## Repository structure
 
 | Path | Purpose |
 | --- | --- |
-| `src/ergotools/domain/` | Assessment models, units, validation and scientific calculations |
-| `src/ergotools/application/` | Project, assessment, PLOT and rotation use cases and ports |
-| `src/ergotools/infrastructure/` | Native storage, settings, resources and CBC/HiGHS adapters |
-| `src/ergotools/presentation/` | Qt interfaces, charts, shared controls and isolated VTK rendering |
-| `src/ergotools/resources/` | Packaged icons, logo, anatomical models and bilingual Help |
-| `tests/` | Scientific, persistence, workflow, UI and architecture regressions |
-| `test_projects/native/` | Current self-contained demonstration and test projects |
-| `test_projects/originals/` | Frozen original-format conversion fixtures |
-| `tools/` | Launchers, verification, packaging and optional project conversion |
-| `docs/` | User/developer guides, scientific contracts, validation and screenshots |
-| `pyproject.toml` · `uv.lock` | Package metadata and the exact approved dependency baseline |
+| `src/ergotools/domain/` | Scientific calculations, assessment models, units and validation |
+| `src/ergotools/application/` | Assessment, project, PLOT and rotation services |
+| `src/ergotools/infrastructure/` | Storage, settings and solver adapters |
+| `src/ergotools/presentation/` | Desktop interfaces, charts and 3D rendering |
+| `src/ergotools/resources/` | Anatomical models, icons and bilingual Help |
+| `tests/` | Calculation, storage, interface and integration tests |
+| `test_projects/` | Example projects and conversion test datasets |
+| `tools/` | Launchers, development checks and conversion utilities |
+| `docs/` | User guides, technical documentation and screenshots |
 
 ## Contributing
 
-Use focused changes that preserve calculations, project integrity and established
-workflows. Read the architecture and coding standards, document changed contracts,
-and run `bash tools/check.sh` in the approved development environment. UI changes
-also need inspection of populated, empty, selected, expanded and collapsed states,
-including the avatar, result panels and bottom controls.
-
-Dependency changes require project-owner approval. Bug reports should include
-reproduction steps, OS/architecture and a screenshot or de-identified example project.
-Use synthetic or anonymized worker data in public contributions.
+Bug reports should include the operating system, reproduction steps and, where
+helpful, a screenshot or anonymized example project. For code contributions, consult
+the architecture and coding standards and run `bash tools/check.sh`.
 
 ## License
 

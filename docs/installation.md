@@ -171,4 +171,4 @@ these instructions never reset local work.
 
 These are the native Windows/macOS checks still to be performed. Report OS version,
 CPU architecture, `uv --version`, Python version and the exact error if startup fails.
-Use [the platform checklist](platform_review.md) for the fuller acceptance review.
+Use the platform checklist for the fuller acceptance review.

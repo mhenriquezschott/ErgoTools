@@ -1,6 +1,6 @@
 # Coding and acceptance standards
 
-The detailed accepted standards are in section 3 of [the plan](reference/modernization-plan.md). Use English identifiers, snake_case modules/functions/variables, PascalCase classes and UPPER_SNAKE_CASE constants. Use UTF-8, LF, four spaces and 88-column formatting. Preserve branded UI names and necessary framework override names through narrowly documented exceptions when introduced.
+Use English identifiers, snake_case modules/functions/variables, PascalCase classes and UPPER_SNAKE_CASE constants. Use UTF-8, LF, four spaces and 88-column formatting. Preserve branded UI names and necessary framework override names through narrowly documented exceptions when introduced.
 
 All maintained functions/methods/private/nested helpers require substantive
 Google-style docstrings, including arguments and return/yield values; document units, errors, side effects and scientific sources where relevant.
@@ -78,8 +78,7 @@ remain separate functional contracts.
 
 Use the shared presentation dialog palette for ErgoTools-owned forms, numeric/item
 inputs and confirmations, while retaining established local styles and packaged
-assets. File, color and font selectors use platform defaults, as explicitly directed
-by the owner; do not force non-native variants or apply the owned-dialog helper to
+assets. File, color and font selectors use platform defaults, do not force non-native variants or apply the owned-dialog helper to
 them. Use standard selector APIs and preserve existing filters/save policy rather
 than implementing a custom browser. Verify native responsiveness manually without
 claiming a mocked chooser-boundary test establishes platform UI acceptance.

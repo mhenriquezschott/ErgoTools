@@ -45,7 +45,7 @@ Partial calculations retain their explicit status; missing risk is never zero ri
 Current format-18 files need neither the converter nor original folders. Maintained
 test projects are updated in place at `test_projects/native`; no parallel fixture
 folder or automatic backups are created. See
-[ownership, schema and rollback](../../docs/optional_assessment_context.md).
+ownership, schema and rollback.
 
 ## Desktop integration and errors
 

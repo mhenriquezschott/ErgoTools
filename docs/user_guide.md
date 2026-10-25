@@ -136,7 +136,7 @@ the durable Save/Discard/Cancel boundary.
 
 Cleanup M1 separates old-project conversion into the removable
 `tools/project_migration` utility. See its README and
-[M1 acceptance](cleanup_m1_acceptance.md). The current installed wheel excludes
+M1 acceptance. The current installed wheel excludes
 conversion code. Guided migration and separate original/native fixture organization
 are accepted in M2; comprehensive per-symbol documentation completion is M4. All six cleanup milestones are now accepted for Linux; owner acceptance testing
 can use the current native fixtures and final delivery package.

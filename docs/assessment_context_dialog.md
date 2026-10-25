@@ -8,7 +8,7 @@ at the original 700×540 minimum. All labels/tooltips and summaries support Engl
 and Spanish. Exact typed assignment IDs, not captions, select ownership. Selection
 opens saved data or a deferred draft and never moves/copies data or creates a record.
 
-See [current workflow and regression catalog](assessment_navigation_acceptance.md).
+See current workflow and regression catalog.
 
 ---
 
