@@ -7,3 +7,7 @@ Tool examples illustrate low, moderate and high modeled risk respectively.
 All worker identities used for these demonstrations are fictional. Values illustrate
 the software and are not exposure recommendations. Detail images are crops of actual
 application captures; the original logo is retained in the application resources.
+
+JROT comparisons include a single-tool-optimized schedule evaluated under the other
+two methods, and all three tabs of one jointly optimized schedule. The workplace
+scope image shows the production location/shift selector.

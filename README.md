@@ -169,29 +169,75 @@ one standard deviation.
 ## JROT
 
 JROT evaluates worker-by-time-block Job schedules and optimizes the distribution
-of exposure. Analyses can cover all Jobs or a selected workplace scope, using
-one assessment method or LiFFT, DUET and ST together.
+of exposure. Job risks can come from existing measurements, task-based calculations
+or copied worker assessments.
 
-![JROT with a six-worker rotation and optimized schedule](docs/images/jrot_optimized.png)
+![JROT showing current and LiFFT-optimized schedules for six workers](docs/images/jrot_optimized.png)
 
-Job risks can come from existing measurements, task-based calculations or copied
-worker assessments. Single-tool optimization uses CBC; combined optimization uses
-HiGHS. Comparison views present the current and proposed schedules and their exposure
-distributions.
+### Two analysis scopes
+
+| Scope | Analysis population | Typical use |
+| --- | --- | --- |
+| **All Jobs** | The project's active Jobs with risk values and its worker records, without requiring workplace assignments. | Compare rotations across a Job pool independently of physical locations. |
+| **Workplace** | Jobs placed at selected stations and workers assigned within the selected locations and shift. The Plant → Section → Line → Station hierarchy defines the scope. | Evaluate rotations within a specific production area and shift. |
 
 <table>
 <tr>
-<td width="46%"><a href="docs/images/job_management.png"><img src="docs/images/job_management.png" alt="Job Management with LiFFT, DUET and ST risk values"></a></td>
-<td width="54%"><a href="docs/images/jrot_comparison.png"><img src="docs/images/jrot_comparison.png" alt="JROT comparison of current and optimized exposure distributions"></a></td>
+<td width="52%"><a href="docs/images/jrot_scope.png"><img src="docs/images/jrot_scope.png" alt="JROT workplace scope selector with shift and plant, section, line and station hierarchy"></a></td>
+<td width="48%"><a href="docs/images/job_management.png"><img src="docs/images/job_management.png" alt="Job Management with LiFFT, DUET and ST measurements"></a></td>
 </tr>
 <tr>
-<td valign="top"><strong>Job assessment.</strong> Activity-level measurements supply the ergonomic basis for rotation analysis.</td>
-<td valign="top"><strong>Rotation comparison.</strong> Current and optimized schedules reveal changes in the distribution of worker exposure.</td>
+<td valign="top"><strong>Workplace scope.</strong> The hierarchy identifies the locations included in the rotation analysis for a selected shift.</td>
+<td valign="top"><strong>Job assessment.</strong> Activity-level measurements provide the ergonomic basis for either analysis scope.</td>
 </tr>
 </table>
 
-Rotation analysis complements Job redesign and other ergonomic controls.
-Redistributing exposure does not eliminate a hazardous activity.
+### Optimize one tool or all three
+
+| Mode | Optimization goal | Interpreting the result |
+| --- | --- | --- |
+| **Optimize Tool** | Minimize the highest worker schedule average for the selected method: LiFFT, DUET or ST. Uses CBC. | A schedule optimized for one anatomical region may improve or worsen the results for the other methods. The comparison view evaluates those other methods without optimizing again. |
+| **Optimize All Tools** | Consider LiFFT, DUET and ST together, first minimizing the sum of their maximum worker averages, then reducing the exposure spread within those bounds. Uses HiGHS. | Produces one shared schedule balancing the three methods. Each comparison tab evaluates that schedule with a different tool; the tabs are not three independent optimizations. |
+
+Both modes retain the scheduled Job occurrences and the staffing constraints.
+Redistributing work can reduce the highest worker exposure or make the distribution
+more even without lowering the population average.
+
+### Rotation comparison
+
+**Current** and **optimized** matrices show each worker's Job in each time block,
+with risk colors and a schedule average at the end of the row. These averages use
+Job-level risk values across equal time blocks; they are not individual worker
+assessment results.
+
+**After single-tool optimization**, the main JROT window shows the selected tool's
+result. The additional comparison shows the same rotation under the other two
+methods. Here, a LiFFT-optimized schedule is evaluated with DUET and ST, making
+cross-region trade-offs visible.
+
+[![DUET and Shoulder Tool comparisons for a LiFFT-optimized schedule](docs/images/jrot_single_comparison.png)](docs/images/jrot_single_comparison.png)
+
+**After all-tool optimization**, the three tabs compare the original rotation with
+one jointly optimized schedule. The LiFFT tab below shows the low-back results;
+the DUET and ST captures show the corresponding distal upper-extremity and shoulder
+results for exactly the same assignments.
+
+[![All-tool optimization comparison evaluated with LiFFT](docs/images/jrot_comparison.png)](docs/images/jrot_comparison.png)
+
+<table>
+<tr>
+<td width="50%"><a href="docs/images/jrot_comparison_duet.png"><img src="docs/images/jrot_comparison_duet.png" alt="DUET tab comparing the current rotation with the jointly optimized schedule"></a></td>
+<td width="50%"><a href="docs/images/jrot_comparison_shoulder.png"><img src="docs/images/jrot_comparison_shoulder.png" alt="Shoulder Tool tab comparing the current rotation with the same jointly optimized schedule"></a></td>
+</tr>
+<tr>
+<td valign="top"><strong>DUET.</strong> Compare distal upper-extremity exposure before and after the joint optimization.</td>
+<td valign="top"><strong>ST.</strong> Compare shoulder exposure before and after the same joint optimization.</td>
+</tr>
+</table>
+
+Click any comparison image for full resolution. Rotation analysis complements Job
+redesign and other ergonomic controls; redistributing exposure does not eliminate a
+hazardous activity.
 
 ## Scientific basis
 
