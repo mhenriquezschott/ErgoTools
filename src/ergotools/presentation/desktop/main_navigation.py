@@ -2,6 +2,8 @@
 
 Ported from setupTopWidgets/setupNavigationButtons/setupTabsTopControls and
 setupWorkspaceFooter. This view owns selector/filter state, never SQL or drafts.
+The localized Project caption identifies the shared toolbar's action scope;
+the separate brand caption identifies the loaded project.
 
 Presentation layer. The contracts below define owned controls/view values and injected
 operations. Qt components run on the GUI thread; scientific calculations, canonical
@@ -10,30 +12,37 @@ host owners.
 """
 
 from collections.abc import Callable, Mapping
-from string import ascii_uppercase
 
-from PyQt5.QtCore import QSignalBlocker, QSize, Qt
+from PyQt5.QtCore import QAbstractAnimation, QSignalBlocker, QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
+    QAbstractButton,
     QAction,
-    QButtonGroup,
-    QCheckBox,
     QComboBox,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QToolBar,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
 from ergotools.application.settings import Language
-from ergotools.domain.assessments.context import WorkplaceContext
 from ergotools.domain.model_units import MeasurementSystem
 from ergotools.domain.work_catalog import WorkCatalog
+from ergotools.presentation.desktop.alphabet_navigation import AlphabetNavigation
+from ergotools.presentation.desktop.assessment_location_browser import (
+    AssessmentLocationBrowser,
+)
+from ergotools.presentation.desktop.buffered_controls import BufferedControls
 from ergotools.presentation.desktop.combo_popup import style_combo_popup
+from ergotools.presentation.desktop.expandable_section import ExpandableSection
 from ergotools.presentation.desktop.main_navigation_text import navigation_text
+from ergotools.presentation.desktop.project_caption import ProjectCaption
 from ergotools.presentation.worker_options import WorkerOrder, worker_options
 
 # Original main toolbar action ordering, English captions and explanatory tooltips.
@@ -52,6 +61,9 @@ _TOOLBAR = (
 
 class MainNavigation(QWidget):
     """Original shared controls with explicit worker IDs and injected actions."""
+
+    # Display intent only; the integrated host owns project preference acceptance.
+    context_expanded_changed = pyqtSignal(bool)
 
     def __init__(
         self,
@@ -76,20 +88,19 @@ class MainNavigation(QWidget):
             None.
         """
         super().__init__(parent)
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         self._select_worker = select_worker
         self._catalog: WorkCatalog | None = None
         self._current_worker: str | None = None
         self._filter: str | None = None
         self._order = WorkerOrder.ID
         self.language = Language.ENGLISH
-        self._arrows: list[QLabel] = []
-        self._texts: list[tuple[QLabel | QPushButton | QAction, str, str]] = []
+        self._texts: list[tuple[QLabel | QAbstractButton | QAction, str, str]] = []
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
         header = QFrame(self)
         header.setObjectName("brandHeader")
-        header.setFixedHeight(112)
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(20, 8, 10, 8)
         identity = QHBoxLayout()
@@ -105,14 +116,34 @@ class MainNavigation(QWidget):
         brand_box.setSpacing(2)
         brand = QLabel("ErgoTools")
         brand.setObjectName("brandName")
-        self.project_label = QLabel()
-        self.project_label.setObjectName("projectName")
+        self.project_label = ProjectCaption()
         brand_box.addWidget(brand)
         brand_box.addWidget(self.project_label)
         identity.addLayout(brand_box)
         header_layout.addLayout(identity, 1)
-        self.toolbar = QToolBar(header)
+        # A separate caption scopes the existing actions without widening buttons
+        # or repeating the loaded project's name from the brand area.
+        toolbar_panel = QFrame(header)
+        toolbar_panel.setObjectName("projectToolbarPanel")
+        toolbar_box = QVBoxLayout(toolbar_panel)
+        toolbar_box.setContentsMargins(0, 0, 0, 0)
+        toolbar_box.setSpacing(0)
+        self.toolbar_title = QLabel("Project", toolbar_panel)
+        self.toolbar_title.setObjectName("projectToolbarTitle")
+        # Reserve the complete font box, including lowercase descenders, while
+        # keeping the zero-padding caption close to the toolbar's top edge.
+        self.toolbar_title.setFixedHeight(
+            max(20, self.toolbar_title.fontMetrics().height() + 2)
+        )
+        self.toolbar_title.setAlignment(
+            Qt.Alignment(Qt.AlignmentFlag.AlignLeft) | Qt.AlignmentFlag.AlignTop
+        )
+        header.setFixedHeight(self.toolbar_title.height() + 106)
+        self._texts.append((self.toolbar_title, "Project", ""))
+        toolbar_box.addWidget(self.toolbar_title)
+        self.toolbar = QToolBar(toolbar_panel)
         self.toolbar.setObjectName("mainToolbar")
+        self.toolbar.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.toolbar.setFixedHeight(90)
         self.toolbar.setIconSize(QSize(38, 38))
         self.toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
@@ -157,34 +188,67 @@ class MainNavigation(QWidget):
         assert toolbar_layout is not None
         toolbar_layout.setSpacing(3)
         toolbar_layout.setContentsMargins(7, 7, 7, 7)
-        header_layout.addWidget(self.toolbar)
+        toolbar_box.addWidget(self.toolbar)
+        header_layout.addWidget(toolbar_panel)
         layout.addWidget(header)
         worker_bar = QFrame()
+        self.worker_bar = worker_bar
+        self._context_project: str | None = None
+        self._context_expanded = False
+        self._animate_context = False
         worker_bar.setObjectName("contextBar")
         worker_bar_layout = QVBoxLayout(worker_bar)
         worker_bar_layout.setContentsMargins(14, 7, 12, 7)
         worker_bar_layout.setSpacing(2)
-        row = QHBoxLayout()
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(8)
+        worker_area = BufferedControls()
+        self.worker_controls = worker_area
+        worker_area.setMinimumWidth(0)
+        worker_area.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+        worker_area.setFixedHeight(65)
+        worker_area.setObjectName("workerControls")
+        worker_area.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        worker_grid = QGridLayout(worker_area)
+        worker_grid.setContentsMargins(0, 0, 0, 0)
+        worker_grid.setHorizontalSpacing(6)
+        worker_grid.setVerticalSpacing(1)
         worker_icon = QLabel()
         worker_icon.setPixmap(icons["worker"].pixmap(26, 26))
         worker_icon.setFixedSize(28, 28)
-        worker_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        worker_icon.setToolTip("Worker associated with the assessment currently shown.")
         self._worker_icon = worker_icon
-        row.addWidget(worker_icon)
+        worker_grid.addWidget(worker_icon, 0, 0)
         worker_label = QLabel("Worker")
         worker_label.setObjectName("contextLabel")
         self._texts.append((worker_label, "Worker", ""))
-        row.addWidget(worker_label)
+        worker_grid.addWidget(worker_label, 0, 1)
         self.workers = QComboBox()
         style_combo_popup(self.workers)
-        self.workers.setMinimumWidth(280)
+        self.workers.setMinimumWidth(0)
+        self.workers.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
         self.workers.currentIndexChanged.connect(self._worker_changed)
-        row.addWidget(self.workers, 1)
-        self.buttons: dict[str, QPushButton] = {}
-        self.order_button = self._button(
+        worker_grid.addWidget(self.workers, 0, 2)
+        worker_grid.setColumnStretch(2, 1)
+        self.buttons: dict[str, QAbstractButton] = {}
+        self.alphabet = AlphabetNavigation("All", self.filter_workers)
+        self.alphabet.setStyleSheet(
+            self.alphabet.styleSheet()
+            + "QPushButton#copyAlphabetButton { border: 0; border-radius: 3px; "
+            "background: transparent; color: #416487; font-size: 11px; height: 27px; } "
+            "QPushButton#copyAlphabetButton:checked { "
+            "background: #0B326C; color: white; } "
+            'QPushButton#copyAlphabetButton[currentInitial="true"] { '
+            "font-weight: 900; font-size: 13px; color: #001C2B; } "
+            "QPushButton#copyAlphabetButton:checked { color: white; } "
+            "QPushButton#copyAlphabetButton:hover:enabled { font-size: 16px; "
+            "background: #DDF3F5; color: #0B326C; } "
+            "QPushButton#copyAlphabetButton:disabled { color: #C7D0D7; }"
+        )
+        self.alphabet.setFixedHeight(28)
+        for letter in self.alphabet.buttons.values():
+            letter.setFixedHeight(28)
+        self.alphabet_buttons = self.alphabet.buttons
+        self.alphabet_group = self.alphabet.group
+        worker_grid.addWidget(self.alphabet, 1, 2, Qt.AlignmentFlag.AlignTop)
+        self.order_button = self._worker_button(
             "order",
             "A-Z",
             "alphabet_order",
@@ -192,36 +256,11 @@ class MainNavigation(QWidget):
             icons,
             self.change_order,
         )
-        row.addWidget(self.order_button)
-        for key, caption, icon, tip in (
-            ("workers", "Workers", "worker_management", "Open Worker Management."),
-            (
-                "search",
-                "Search",
-                "search",
-                (
-                    "Find and open a saved assessment by worker, "
-                    "workplace, and the active ergonomic tool."
-                ),
-            ),
-            (
-                "transfer",
-                "Transfer",
-                "transfer_worker_data",
-                "Transfer worker assessment data to another context.",
-            ),
-            (
-                "refresh",
-                "Refresh",
-                "refresh",
-                "Reload workers and assessment context values from the project.",
-            ),
-        ):
-            button = self._button(key, caption, icon, tip, icons, actions.get(key))
-            if key == "transfer":
-                button.setIconSize(QSize(30, 30))
-            row.addWidget(button)
-        row.addSpacing(10)
+        worker_grid.addWidget(self.order_button, 0, 3)
+        navigation = QWidget()
+        arrows = QHBoxLayout(navigation)
+        arrows.setContentsMargins(0, 0, 0, 0)
+        arrows.setSpacing(3)
         self.nav_buttons = []
         for caption, icon, position in (
             ("First worker", "first", 0),
@@ -229,8 +268,8 @@ class MainNavigation(QWidget):
             ("Next worker", "next", 1),
             ("Last worker", "last", 2),
         ):
-            button = QPushButton()
-            button.setObjectName("navButton")
+            button = QToolButton()
+            button.setObjectName("workerNavigationButton")
             button.setFixedSize(38, 36)
             button.setIcon(icons[icon])
             button.setIconSize(QSize(24, 24))
@@ -239,149 +278,81 @@ class MainNavigation(QWidget):
             )
             self._texts.append((button, "", caption))
             self.nav_buttons.append(button)
-            row.addWidget(button)
-        worker_bar_layout.addLayout(row)
-        alphabet_row = QHBoxLayout()
-        alphabet_row.setContentsMargins(100, 0, 0, 0)
-        alphabet_row.setSpacing(3)
-        alphabet_label = QLabel("Last name")
-        alphabet_label.setObjectName("supportingText")
-        alphabet_label.setFixedWidth(68)
-        alphabet_label.setAlignment(
-            Qt.AlignmentFlag(
-                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-            )
-        )
-        self._texts.append(
+            arrows.addWidget(button)
+        for key, caption, icon, tip in (
+            ("workers", "Workers", "worker_management", "Open Worker Management."),
             (
-                alphabet_label,
-                "Last name",
-                ("Filter the worker selector by the first letter of the last name."),
-            )
-        )
-        alphabet_row.addWidget(alphabet_label)
-        alphabet_row.addSpacing(5)
-        self.alphabet_group = QButtonGroup(self)
-        self.alphabet_group.setExclusive(True)
-        self.alphabet_buttons: dict[str, QPushButton] = {}
-        for value in ("All", *ascii_uppercase):
-            button = QPushButton(value)
-            button.setObjectName("mainAlphabetButton")
-            button.setCheckable(True)
-            button.setChecked(value == "All")
-            button.clicked.connect(
-                lambda checked, value=value: self.filter_workers(value)
-            )
-            self.alphabet_group.addButton(button)
-            self.alphabet_buttons[value] = button
-            alphabet_row.addWidget(button)
-        alphabet_row.addStretch(1)
-        worker_bar_layout.addLayout(alphabet_row)
-        layout.addWidget(worker_bar)
-        self.context_frame = QFrame(self)
-        self.context_frame.setObjectName("contextBar")
-        self.context_frame.hide()
-        self._context_project: str | None = None
-        self._organization_present = False
-        context_layout = QVBoxLayout(self.context_frame)
-        context_layout.setContentsMargins(14, 6, 12, 6)
-        context_layout.setSpacing(6)
-        association = QHBoxLayout()
-        association.setContentsMargins(0, 0, 0, 0)
-        title = QLabel("Assessment context")
-        title.setObjectName("contextLabel")
-        self._texts.append(
-            (
-                title,
-                "Assessment context",
+                "search",
+                "Search",
+                "search",
                 (
-                    "Worker, Job, workplace, and shift associated "
-                    "with the active assessment."
+                    "Find and open a saved assessment by worker, workplace, and "
+                    "the active ergonomic tool."
                 ),
-            )
-        )
-        association.addWidget(title)
-        context_widget = QWidget()
-        summary = QHBoxLayout(context_widget)
-        summary.setContentsMargins(0, 0, 0, 0)
-        summary.setSpacing(5)
-        self.context_labels = tuple(QLabel() for _ in range(5))
-        for label in self.context_labels:
-            label.setObjectName("contextSummary")
-            summary.addWidget(label)
-            arrow = QLabel()
-            arrow.setObjectName("contextArrow")
-            arrow.setPixmap(icons["next"].pixmap(14, 14))
-            arrow.setFixedSize(16, 16)
-            arrow.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self._arrows.append(arrow)
-            arrow.setToolTip("Next workplace level")
-            summary.addWidget(arrow)
-        self.job_label = QLabel()
-        self.job_label.setObjectName("contextSummary")
-        summary.addWidget(self.job_label)
-        summary.addStretch(1)
-        association.addWidget(context_widget, 1)
-        context_button = self._button(
-            "context",
-            "Select assessment context",
-            "station",
-            (
-                "Select which classified Job and workplace "
-                "assessment to view. This does not move data."
             ),
-            icons,
-            actions["context"],
+            (
+                "transfer",
+                "Transfer",
+                "transfer_worker_data",
+                "Transfer worker assessment data to another context.",
+            ),
+        ):
+            button = self._worker_button(
+                key, caption, icon, tip, icons, actions.get(key)
+            )
+            button.setFixedHeight(36)
+            arrows.addWidget(button)
+        worker_grid.addWidget(navigation, 0, 4)
+        self.context_disclosure = QToolButton()
+        self.context_disclosure.setObjectName("assessmentContextDisclosure")
+        self.context_disclosure.setCheckable(True)
+        self.context_disclosure.setToolButtonStyle(
+            Qt.ToolButtonStyle.ToolButtonTextBesideIcon
         )
-        context_button.setObjectName("primaryOutlineButton")
-        context_button.setIconSize(QSize(24, 24))
-        self.follow_worker_button = self._button(
-            "follow_worker",
-            "Follow worker",
-            "",
-            "Restore this worker's last-used valid assessment context.",
+        self.context_disclosure.setIconSize(QSize(18, 18))
+        self.context_disclosure.setFixedHeight(36)
+        self.context_disclosure.toggled.connect(self._toggle_context)
+
+        self.context_disclosure.setFixedHeight(28)
+        self.location_browser = AssessmentLocationBrowser(icons)
+        self.context_frame = ExpandableSection(self.location_browser)
+        self.standalone_button = self._button(
+            "standalone",
+            "Standalone assessment",
+            "worker",
+            "Open this worker's standalone assessment for the current tool.",
             icons,
-            actions["follow_worker"],
+            actions.get("standalone"),
         )
-        self.keep_context_button = self._button(
-            "keep_context",
-            "Keep context",
-            "",
-            "Keep this workplace while navigating workers.",
-            icons,
-            actions["keep_context"],
+        self.standalone_button.setObjectName("standaloneAssessmentButton")
+        self.standalone_button.setFixedHeight(36)
+        worker_grid.addWidget(self.standalone_button, 0, 5)
+        self.location_browser.summary.setObjectName("supportingText")
+        self.location_browser.summary.setSizePolicy(
+            QSizePolicy.Ignored, QSizePolicy.Fixed
         )
-        self.context_mode_group = QButtonGroup(self)
-        self.context_mode_group.setExclusive(True)
-        for button in (self.keep_context_button, self.follow_worker_button):
-            button.setCheckable(True)
-            button.setObjectName("contextModeButton")
-            self.context_mode_group.addButton(button)
-            association.addWidget(button)
-        self.follow_worker_button.setChecked(True)
-        association.addWidget(context_button)
-        organization = self._button(
-            "organization",
-            "Manage organization",
-            "plant",
-            "Manage plants, sections, lines, stations, and shifts.",
-            icons,
-            actions["organization"],
-        )
-        organization.setObjectName("primaryOutlineButton")
-        organization.setFixedWidth(210)
-        organization.setIconSize(QSize(26, 26))
-        organization.hide()
-        context_layout.addLayout(association)
-        self.associate_button = self._button(
-            "associate",
-            "Associate assessment...",
-            "station",
-            "Associate this saved assessment; its inputs and results stay unchanged.",
-            icons,
-            actions.get("associate"),
-        )
-        context_layout.addWidget(self.associate_button, 0, Qt.AlignmentFlag.AlignRight)
+        assessment_status = QWidget()
+        status_layout = QHBoxLayout(assessment_status)
+        status_layout.setContentsMargins(0, 0, 0, 0)
+        status_layout.setSpacing(6)
+        status_layout.addWidget(self.location_browser.summary, 1)
+        status_layout.addWidget(self.context_disclosure, 0, Qt.AlignmentFlag.AlignRight)
+        worker_grid.addWidget(assessment_status, 1, 3, 1, 3)
+        self.context_frame.animation.stateChanged.connect(self._context_motion_changed)
+        self.location_browser.summary.show()
+        add_assessment = actions.get("add_assessment")
+        if add_assessment is not None:
+            self.location_browser.add_button.clicked.connect(add_assessment)
+        else:
+            self.location_browser.add_button.setEnabled(False)
+        delete_assessment = actions.get("delete_assessment")
+        if delete_assessment is not None:
+            self.location_browser.delete_button.clicked.connect(delete_assessment)
+        else:
+            self.location_browser.delete_button.setEnabled(False)
+        worker_bar_layout.addWidget(worker_area)
+        worker_bar_layout.addWidget(self.context_frame)
+        layout.addWidget(worker_bar)
         self.footer = QFrame(self)
         self.footer.setObjectName("workspaceFooter")
         footer_layout = QHBoxLayout(self.footer)
@@ -392,47 +363,171 @@ class MainNavigation(QWidget):
         self.file_label = QLabel()
         footer_layout.addWidget(self.tool_label)
         footer_layout.addWidget(self.unit_label)
-        self.context_toggle = QCheckBox(self.footer)
-        self.context_toggle.setObjectName("contextLabel")
-        self.context_toggle.toggled.connect(self.context_frame.setVisible)
-        footer_layout.addWidget(self.context_toggle)
         footer_layout.addStretch()
         footer_layout.addWidget(self.file_label)
         self.footer.setAutoFillBackground(True)
 
-    def update_context_visibility(
-        self, project_id: str | None, has_organization: bool, language: Language
+    def _context_motion_changed(
+        self, state: QAbstractAnimation.State, _previous: QAbstractAnimation.State
     ) -> None:
-        """Show optional organization controls without reserving collapsed height.
+        """Buffer the unchanged upper strip only while the lower browser is moving.
 
         Args:
-            project_id: Open project identity; None clears prior view state.
-            has_organization: Real organization exists, including names such as Default.
-            language: Interface language, independent of saved organization names.
+            state: Accepted animation state, independent of source/ownership.
+            _previous: Prior state; reversal releases then renews the buffer.
 
         Returns:
-            None. Empty projects start collapsed. Opening a project with organization,
-            or adding its first plant, expands the controls. Manual collapse remains
-            session-local; reopening a populated project expands it again.
+            None; native controls remain the sole owners of input and focus.
         """
-        self.context_toggle.setText(
-            "Contexto de evaluación"
-            if language is Language.SPANISH
-            else "Assessment context"
+        if state == QAbstractAnimation.State.Running:
+            self.worker_controls.freeze()
+        else:
+            self.worker_controls.thaw()
+
+    def _toggle_context(self, expanded: bool) -> None:
+        """Request context visibility independently of the active assessment.
+
+        Args:
+            expanded: Explicit visibility intent; restoration blocks signals.
+
+        Returns:
+            None; the host records the project preference and refreshes visibility.
+        """
+        self._animate_context = True
+        self.context_expanded_changed.emit(expanded)
+
+    def update_context_visibility(
+        self,
+        project_id: str | None,
+        language: Language,
+        saved_expanded: bool | None = None,
+    ) -> None:
+        """Restore the context disclosure without changing the open assessment.
+
+        Args:
+            project_id: Open project identity; None disables the toggle and browser.
+            language: Interface language only, independent of saved names.
+            saved_expanded: Explicit expansion, or None for the collapsed default.
+
+        Returns:
+            None; explicit user toggles animate the nested worker-area height.
+            Project restoration settles immediately; repeated refreshes preserve
+            in-flight animation, source selection and task text.
+        """
+        spanish = language is Language.SPANISH
+        self.context_disclosure.setText(
+            ("Evaluación" if spanish else "Assessment")
+            + f" ({self.location_browser.assessment_count})"
         )
-        self.context_toggle.setToolTip(
-            "Mostrar u ocultar la organización opcional de la evaluación."
-            if language is Language.SPANISH
-            else "Show or hide optional assessment organization controls."
+        self.context_disclosure.setToolTip(
+            (
+                "Mostrar u ocultar el contexto de evaluación "
+                "sin cambiar los datos abiertos."
+            )
+            if spanish
+            else (
+                "Show or hide assessment context without changing the open assessment."
+            )
         )
-        self.context_toggle.setEnabled(project_id is not None)
-        if project_id != self._context_project or (
-            has_organization and not self._organization_present
-        ):
-            self.context_toggle.setChecked(has_organization)
-        self._context_project = project_id
-        self._organization_present = has_organization
-        self.context_frame.setVisible(self.context_toggle.isChecked())
+        self.context_disclosure.setEnabled(project_id is not None)
+        expanded = project_id is not None and bool(saved_expanded)
+        with QSignalBlocker(self.context_disclosure):
+            self.context_disclosure.setChecked(expanded)
+        self.context_disclosure.setArrowType(
+            Qt.ArrowType.DownArrow if expanded else Qt.ArrowType.RightArrow
+        )
+        project_changed = project_id != self._context_project
+        changed = expanded != self._context_expanded
+        animate = self._animate_context and self.isVisible() and not project_changed
+        self._animate_context = False
+        if changed or project_changed:
+            self._context_expanded = expanded
+            self._context_project = project_id
+            self.context_frame.set_expanded(expanded, animate=animate)
+
+    def set_modified(self, modified: bool) -> None:
+        """Update only the brand status without rebuilding stable worker controls.
+
+        Args:
+            modified: Accepted project/display changes need main Save.
+
+        Returns:
+            None; literal project title and all worker selections remain unchanged.
+        """
+        caption = (
+            self.project_label.text()
+            .removesuffix("  •  Modified")
+            .removesuffix("  •  Modificado")
+        )
+        if modified:
+            caption += (
+                "  •  Modificado"
+                if self.language is Language.SPANISH
+                else "  •  Modified"
+            )
+        self.project_label.setText(caption)
+
+    def update_assessment_selection(self, *, standalone: bool, available: bool) -> None:
+        """Highlight the actual source and advertise available workplace choices.
+
+        Args:
+            standalone: The open source or preview has no workplace owner.
+            available: A real worker/tool view exists; empty projects highlight nothing.
+
+        Returns:
+            None; highlight changes never select, save or create data.
+        """
+        self.standalone_button.setProperty(
+            "assessmentCurrent", available and standalone
+        )
+        style = self.standalone_button.style()
+        assert style is not None
+        style.unpolish(self.standalone_button)
+        style.polish(self.standalone_button)
+        self.standalone_button.update()
+        count = self.location_browser.assessment_count
+        spanish = self.language is Language.SPANISH
+        self.context_disclosure.setText(
+            ("Evaluación" if spanish else "Assessment") + f" ({count})"
+        )
+
+    def _worker_button(
+        self,
+        key: str,
+        caption: str,
+        icon: str,
+        tip: str,
+        icons: Mapping[str, QIcon],
+        callback: Callable[[], None] | None,
+    ) -> QToolButton:
+        """Build a compact worker action aligned with the selector row.
+
+        Args:
+            key: Stable action identity stored for enablement and localization.
+            caption: Localized through the existing main navigation text catalog.
+            icon: Packaged asset identity; no platform asset lookup.
+            tip: Existing descriptive tooltip.
+            icons: Injected processed icon catalog.
+            callback: Existing host command; None disables an unavailable action.
+
+        Returns:
+            Native 36-pixel button with icon beside its caption; commands stay external.
+        """
+        button = QToolButton()
+        button.setObjectName("workerActionButton")
+        button.setText(caption)
+        button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        button.setIcon(icons[icon])
+        button.setIconSize(QSize(22, 22))
+        button.setFixedHeight(36)
+        button.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.buttons[key] = button
+        self._texts.append((button, caption, tip))
+        if callback is not None:
+            button.clicked.connect(callback)
+        else:
+            button.setEnabled(False)
+        return button
 
     def _button(
         self,
@@ -493,8 +588,6 @@ class MainNavigation(QWidget):
         self,
         catalog: WorkCatalog | None,
         current_worker: str | None,
-        workplace: WorkplaceContext | None,
-        job: tuple[str, str] | None,
         project: str | None,
         system: MeasurementSystem,
         language: Language,
@@ -508,9 +601,6 @@ class MainNavigation(QWidget):
                 identity inference.
             current_worker: Saved worker ID owning the committed assessment, or None
                 with no active owner.
-            workplace: Exact committed workplace/shift context, or None for an unbound
-                source.
-            job: Optional stored job ID/name pair for the association bar.
             project: Current project's displayed name, or None when no project is
                 loaded.
             system: Measurement display policy; conversions preserve canonical
@@ -522,6 +612,10 @@ class MainNavigation(QWidget):
         Returns:
             None.
         """
+        if self.context_frame.animation.state() == QAbstractAnimation.State.Running:
+            # Source/tool/language changes must be visible immediately, not cached.
+            self.context_frame.set_expanded(self._context_expanded, animate=False)
+        self.worker_controls.thaw()
         self.language = language
         self._catalog = catalog
         self._current_worker = current_worker
@@ -552,11 +646,6 @@ class MainNavigation(QWidget):
         self._worker_icon.setToolTip(
             self._text("Worker associated with the assessment currently shown.")
         )
-        for arrow in self._arrows:
-            arrow.setToolTip(self._text("Next workplace level"))
-        self.job_label.setToolTip(
-            self._text("Job performed in this assessment context.")
-        )
         self.tool_label.setToolTip(
             self._text("The ergonomic assessment tool currently selected.")
         )
@@ -574,30 +663,6 @@ class MainNavigation(QWidget):
             caption
             + ("  •  " + self._text("Loaded") if project_loaded and project else "")
         )
-        values = (
-            (
-                workplace.plant_name,
-                workplace.section_name,
-                workplace.line_name,
-                workplace.station_id,
-                workplace.shift_id,
-            )
-            if workplace is not None
-            else ("—",) * 5
-        )
-        for label, level, value in zip(
-            self.context_labels,
-            ("Plant", "Section", "Line", "Station", "Shift"),
-            values,
-            strict=True,
-        ):
-            label.setText(self._text(level) + ": " + value)
-            label.setToolTip(self._text(level) + ": " + value)
-        self.job_label.setText(
-            self._text("Job")
-            + ": "
-            + (" | ".join(job) if job else self._text("Unclassified"))
-        )
         self.tool_label.setText(self._text("Tool") + ": LiFFT")
         self.unit_label.setText(
             self._text("Units") + ": " + self._text(system.value.capitalize())
@@ -608,11 +673,7 @@ class MainNavigation(QWidget):
         for key in (
             "workers",
             "search",
-            "refresh",
-            "context",
-            "organization",
-            "follow_worker",
-            "keep_context",
+            "standalone",
         ):
             self.buttons[key].setEnabled(catalog is not None)
         self.workers.setEnabled(catalog is not None and bool(catalog.workers))
@@ -670,9 +731,9 @@ class MainNavigation(QWidget):
             )
             button.setText(self._text("All") if value == "All" else value)
             if value == "All":
-                # Spanish caption needs room; the alphabet row's stretch absorbs it.
-                width = 34 if self.language is Language.SPANISH else 18
-                button.setStyleSheet(f"min-width: {width}px; max-width: {width}px;")
+                button.setFixedWidth(
+                    button.fontMetrics().horizontalAdvance(button.text()) + 12
+                )
             button.setToolTip(
                 self._text("Show every worker")
                 if value == "All"

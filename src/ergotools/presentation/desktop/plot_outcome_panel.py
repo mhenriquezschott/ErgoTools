@@ -341,6 +341,8 @@ class PlotOutcomePanel(QGroupBox):
         """
         results = self.layer.results
         if results is self._results:
+            # Map membership can change without replacing immutable risk results.
+            self.update_view()
             return
         self._results = results
         self.summary = (
@@ -439,6 +441,25 @@ class PlotOutcomePanel(QGroupBox):
         self.risk_title.setText(
             self.text(
                 f"{name} {score} Group Risk Score:", f"Riesgo grupal {name} {score}:"
+            )
+        )
+        if job:
+            self.risk_title.setText(
+                self.text(
+                    f"{name} Job average (workplace scope):",
+                    f"Media del trabajo {name} (ámbito):",
+                )
+            )
+        self.gauge.setToolTip(
+            self.text(
+                "Placement-weighted Job average in the current workplace scope. "
+                "Repeated map occurrences reuse each Job's current assessment."
+                if job
+                else "Average outcome probability for enabled worker assignments.",
+                "Media por ubicación del trabajo en el ámbito actual. Las ubicaciones "
+                "del mapa usan la evaluación actual de cada trabajo."
+                if job
+                else "Probabilidad media de las asignaciones habilitadas.",
             )
         )
         values = self.metric_values(job=job, comparison=comparison, tool=name)
@@ -605,17 +626,34 @@ class PlotOutcomePanel(QGroupBox):
             return tuple(
                 (self.text(en, es), value)
                 for en, es, value in (
-                    ("Placed Jobs", "Trabajos ubicados", str(jobs.unique_jobs)),
+                    ("Jobs in scope", "Trabajos del ámbito", str(jobs.unique_jobs)),
                     ("Active placements", "Ubicaciones activas", str(jobs.placements)),
                     (
-                        "Positioned stations",
-                        "Estaciones posicionadas",
-                        str(jobs.positioned_stations),
+                        "Squares on map",
+                        "Cuadrados en el mapa",
+                        str(
+                            sum(
+                                item.isVisible()
+                                for key, item in self.layer.items.items()
+                                if key[0] == "job"
+                            )
+                        ),
                     ),
                     (
-                        "Unpositioned stations",
-                        "Estaciones sin posición",
-                        str(jobs.unpositioned_stations),
+                        "Unmapped assignments",
+                        "Asignaciones sin marcador",
+                        str(
+                            sum(
+                                ("job", row.assessment.assignment_id)
+                                not in self.layer.items
+                                or not self.layer.items[
+                                    "job", row.assessment.assignment_id
+                                ].isVisible()
+                                for row in self._results.workers
+                            )
+                        )
+                        if self._results
+                        else "0",
                     ),
                     (
                         "Jobs with risk values",
@@ -628,8 +666,8 @@ class PlotOutcomePanel(QGroupBox):
                         number(jobs.damage, ".4f"),
                     ),
                     (
-                        "Average Job risk",
-                        "Riesgo medio del trabajo",
+                        "Scoped placement average",
+                        "Media de ubicaciones del ámbito",
                         number(jobs.risk.mean_percent, suffix="%"),
                     ),
                     (

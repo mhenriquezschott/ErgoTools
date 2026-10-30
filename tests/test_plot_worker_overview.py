@@ -62,8 +62,8 @@ def test_worker_overview_selection_drafts_units_and_locate(
     panel.show()
     results = saved_plot_results(project, PlotFilterSelection(SCOPE), current_year=2026)
     layer.set_results(results)
-    assert panel.combo.count() == 2 and panel.selected_id == 1
-    assert panel.controls.identity == 1 and panel.combo.itemText(0) == "w (Zed, Ana)"
+    assert len(panel.selector.rows) == 2 and panel.selected_id == 1
+    assert panel.controls.identity == 1 and panel.selector.text() == "w · Zed, Ana"
     assert panel.values["age"].text() == "26"
     assert panel.values["weight"].text() == "70"
     assert panel.values["job_risk"].text() == "0.0%"
@@ -82,9 +82,11 @@ def test_worker_overview_selection_drafts_units_and_locate(
     assert project.load_plot_positions().marker(1).point.x == -20.5
     assert project.load_plot_positions().marker(3).point.x == 325
     panel.toggle_order()
-    assert panel.combo.itemData(0) == 3 and panel.selected_id == 1
+    assert (
+        panel.selector.rows[0].assessment.assignment_id == 3 and panel.selected_id == 1
+    )
     panel.set_letter("A")
-    assert panel.combo.count() == 1 and panel.selected_id == 3
+    assert len(panel.selector.rows) == 1 and panel.selected_id == 3
     assert not panel.letters["B"].isEnabled()
     layer.select(layer.items["worker", 1])
     assert panel.letter == "All" and panel.selected_id == 1
@@ -168,7 +170,7 @@ def test_worker_overview_missing_scientific_risk_and_literal_names(
         selection=replace(result.selection, risk_view=PlotRiskView.COMPARISON),
     )
     layer.set_results(result)
-    assert panel.combo.currentText() == "w"
+    assert panel.selector.text() == "w · <b>A & B</b>"
     assert panel.values["risk"].text() == "Not available"
     assert panel.values["difference"].text() == "Not available"
     assert panel.values["job_risk"].text() == "0.0%"

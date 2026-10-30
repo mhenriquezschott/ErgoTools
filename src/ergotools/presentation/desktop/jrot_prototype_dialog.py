@@ -402,6 +402,7 @@ class JrotPrototypeDialog(QDialog):
         for button in (self.yes, self.no):
             button.setAutoDefault(False)
             button.setMinimumWidth(250)
+        choices.addStretch(1)
         choices.addWidget(self.yes)
         choices.addWidget(self.no)
         choices.addStretch(1)
@@ -942,7 +943,12 @@ class JrotPrototypeDialog(QDialog):
         self.matrix = self._table(["Worker"], 340)
         layout.addWidget(self.matrix)
         row = QHBoxLayout()
-        row.addWidget(prototype_button("Fill balanced example", self._balanced_matrix))
+        example = prototype_button("Fill rotating example", self._fill_rotating_example)
+        example.setToolTip(
+            "Replace temporary assignments with a cyclic example. "
+            "This does not run the optimizer or guarantee balanced risk."
+        )
+        row.addWidget(example)
         row.addStretch(1)
         self.matrix_note = QLabel()
         self.matrix_note.setObjectName("supporting")
@@ -957,11 +963,11 @@ class JrotPrototypeDialog(QDialog):
         )
         page.addStretch(1)
 
-    def _populate_matrix(self, balanced: bool = False) -> None:
+    def _populate_matrix(self, rotating: bool = False) -> None:
         """Preserve accepted cells or create an explicit, fully staffed sample.
 
         Args:
-            balanced: True resets to a cyclic example; False retains matching data.
+            rotating: True resets to a cyclic example; False retains matching data.
 
         Returns:
             None; rebuild only on participant/count changes or explicit request.
@@ -971,7 +977,7 @@ class JrotPrototypeDialog(QDialog):
             tuple(job.key for job in self.session.jobs),
             self.blocks.value(),
         )
-        if signature == self._matrix_signature and not balanced:
+        if signature == self._matrix_signature and not rotating:
             # Preserve exact cells while reflecting renamed scratch Jobs/workers.
             names = {job.key: job.name for job in self.session.jobs}
             for row, worker in enumerate(self.session.workers):
@@ -999,7 +1005,7 @@ class JrotPrototypeDialog(QDialog):
                     combo.addItem(job.name, job.key)
                 shift = (
                     block
-                    if balanced
+                    if rotating
                     else (1 if block == self.blocks.value() - 1 else 0)
                 )
                 combo.setCurrentIndex((row + shift) % len(self.session.jobs))
@@ -1011,8 +1017,8 @@ class JrotPrototypeDialog(QDialog):
         )
         self._invalidate_solution()
 
-    def _balanced_matrix(self) -> None:
-        """Replace only the scratch matrix with a balanced cyclic demonstration.
+    def _fill_rotating_example(self) -> None:
+        """Replace scratch assignments with a cyclic example, without optimizing risk.
 
         Args:
             None.
@@ -1103,6 +1109,27 @@ class JrotPrototypeDialog(QDialog):
             self.tool_tabs.addTab(grid, _TOOL_NAMES[kind])
         self.tool_tabs.currentChanged.connect(self._tool_changed)
         task_layout.addWidget(self.tool_tabs)
+        results = QGridLayout()
+        for row, title, label in (
+            (0, "Cumulative damage", QLabel("—")),
+            (1, "Outcome probability", QLabel("—")),
+        ):
+            caption = QLabel(title)
+            caption.setAlignment(
+                Qt.Alignment(Qt.AlignmentFlag.AlignRight)
+                | Qt.AlignmentFlag.AlignVCenter
+            )
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            label.setMinimumWidth(140)
+            label.setMaximumWidth(240)
+            results.addWidget(caption, row, 0)
+            results.addWidget(label, row, 1)
+            if row == 0:
+                self.task_damage = label
+            else:
+                self.task_probability = label
+        results.setColumnStretch(0, 1)
+        task_layout.addLayout(results)
         self.task_summary = QLabel()
         self.task_summary.setObjectName("prototypeNotice")
         self.task_summary.setWordWrap(True)
@@ -1168,6 +1195,8 @@ class JrotPrototypeDialog(QDialog):
             None; no task source is deleted when switching tools.
         """
         self._invalidate_solution()
+        if hasattr(self, "optimized_tabs"):
+            self._sync_optimized_tabs()
         if hasattr(self, "job_progress"):
             self._refresh_progress()
 
@@ -1282,12 +1311,29 @@ class JrotPrototypeDialog(QDialog):
         job = self.session.jobs[self._selected_job]
         kind = tuple(AssessmentKind)[self.tool_tabs.currentIndex()]
         value = job.measurements.get(kind)
+        complete = value is not None and value.complete and kind not in job.skipped
+        self.task_damage.setText(
+            f"{value.cumulative_damage:.6g}" if complete and value else "—"
+        )
+        self.task_probability.setText(
+            f"{value.probability_percent:.2f}%" if complete and value else "—"
+        )
+        color = (
+            measurement_color(kind, value.cumulative_damage)
+            if complete and value and value.cumulative_damage is not None
+            else "#EAF2F6"
+        )
+        for label in (self.task_damage, self.task_probability):
+            label.setStyleSheet(
+                f"background: {color}; color: #0B326C; "
+                "padding: 4px; border-radius: 5px;"
+            )
         if kind in job.skipped:
             text = "Skipped for now · unavailable to optimization until calculated."
         elif value and value.complete:
             text = (
-                f"Cumulative damage: {value.cumulative_damage:.6g}    ·    "
-                f"Probability: {value.probability_percent:.2f}%"
+                f"{_TOOL_NAMES[kind]} · {job.name} · Calculated results. "
+                "These Job values are summarized again in step 05."
             )
             if value.source is None:
                 text += (
@@ -1478,6 +1524,7 @@ class JrotPrototypeDialog(QDialog):
         self.baseline_context.setText(
             f"{len(self.session.workers)} workers · {len(self.session.jobs)} Jobs · "
             f"{self.blocks.value()} equal blocks · "
+            "Before optimization · "
             f"Analysis: {', '.join(_TOOL_NAMES[k] for k in kinds)}"
         )
         self.worker_baseline.setMinimumHeight(
@@ -1556,15 +1603,83 @@ class JrotPrototypeDialog(QDialog):
         self.solve_status.setWordWrap(True)
         layout.addWidget(self.solve_status)
         page.addWidget(card)
+        self.optimized_tabs = QTabWidget()
+        self.optimized_tables: dict[AssessmentKind, QTableWidget] = {}
+        self._sync_optimized_tabs()
+        page.addWidget(self.optimized_tabs)
+        self.result_explanation = self._notice(
+            "Job risks appear in block cells; worker schedule averages summarize "
+            "the full row. Changing tool tabs does not run another optimization."
+        )
+        page.addWidget(self.result_explanation)
         self.constraint_notice = self._notice(
             "Prototype limitation: fixed/excluded workers and high-risk "
             "sequencing rules are NOT enforced. Review this result only as an "
             "unconstrained demonstration."
         )
         page.addWidget(self.constraint_notice)
-        self.optimized_table = self._table(["Worker"], 300)
-        page.addWidget(self.optimized_table)
+        self.optimized_tabs.currentChanged.connect(self._render_optimized_view)
         page.addStretch(1)
+
+    def _sync_optimized_tabs(self) -> None:
+        """Match matrix tabs to analyzed tools and retain an available active tab.
+
+        Args:
+            None. Read the current one-tool/all-three analysis choice.
+
+        Returns:
+            None; detached tables are deleted when the analyzed tool set changes.
+            Switching tabs never changes the optimization objective or schedule.
+        """
+        kinds = self.kinds()
+        selected = self.optimized_tabs.currentWidget()
+        selected_kind = next(
+            (
+                kind
+                for kind, table in self.optimized_tables.items()
+                if table is selected
+            ),
+            kinds[0],
+        )
+        if tuple(self.optimized_tables) != kinds:
+            with QSignalBlocker(self.optimized_tabs):
+                self.optimized_tabs.clear()
+                for table in self.optimized_tables.values():
+                    table.deleteLater()
+                self.optimized_tables = {}
+                for kind in kinds:
+                    table = self._table(["Worker"], 300)
+                    self.optimized_tables[kind] = table
+                    self.optimized_tabs.addTab(table, _TOOL_NAMES[kind])
+                self.optimized_tabs.setCurrentIndex(
+                    kinds.index(selected_kind) if selected_kind in kinds else 0
+                )
+        self.optimized_tabs.setEnabled(self.worker is None)
+
+    def _render_optimized_view(self) -> None:
+        """Render per-tool matrices for one solution and describe the active tab.
+
+        Args:
+            None. Read only the active tool tab and a validated solution.
+
+        Returns:
+            None; no solver call, input mutation, history entry or project write.
+            Without a solution all tool tables remain empty.
+        """
+        if self.solution is None:
+            for table in self.optimized_tables.values():
+                table.setRowCount(0)
+            return
+        kind = self.kinds()[self.optimized_tabs.currentIndex()]
+        for tool, table in self.optimized_tables.items():
+            self._render_schedule(table, self.solution.schedule, tool)
+        stages = ", ".join(stage.value for stage in self.solution.stages)
+        analyzed = ", ".join(_TOOL_NAMES[item] for item in self.kinds())
+        self.solve_status.setText(
+            f"{self.solution.backend.value.upper()} completed · {stages}. "
+            f"Optimized using {analyzed}. Showing {_TOOL_NAMES[kind]} values "
+            "for the same schedule; worker rules were not enforced."
+        )
 
     def _render_schedule(
         self,
@@ -1577,8 +1692,8 @@ class JrotPrototypeDialog(QDialog):
         Args:
             table: Read-only scratch schedule table.
             schedule: Baseline or independently validated optimizer output.
-            kind: First selected tool for cell colors; comparison covers all selected
-                tools.
+            kind: Display tool for cell values/colors and worker schedule averages;
+                does not select the solver objective.
 
         Returns:
             None; block columns share spare width while worker/average columns fit
@@ -1587,7 +1702,11 @@ class JrotPrototypeDialog(QDialog):
         blocks = len(schedule[0].target_keys)
         table.setColumnCount(blocks + 2)
         table.setHorizontalHeaderLabels(
-            ["Worker", *(f"Block {i + 1}" for i in range(blocks)), "Average"]
+            [
+                "Worker",
+                *(f"Block {i + 1}" for i in range(blocks)),
+                "Schedule average",
+            ]
         )
         table.setMinimumHeight(max(260, min(6, len(schedule)) * 46 + 55))
         table.setRowCount(len(schedule))
@@ -1630,6 +1749,8 @@ class JrotPrototypeDialog(QDialog):
         self._ready_problem()
         problem = self.session.problem(self.kinds(), self.time_limit.value())
         self.solution = None
+        for table in self.optimized_tables.values():
+            table.setRowCount(0)
         self.worker = PrototypeSolveThread(self.optimizer, problem, self.kinds(), self)
         self.worker.finished.connect(self._solve_finished)
         self._set_solving(True)
@@ -1654,6 +1775,7 @@ class JrotPrototypeDialog(QDialog):
         self.next.setEnabled(not active)
         self.solve_button.setEnabled(not active)
         self.time_limit.setEnabled(not active)
+        self.optimized_tabs.setEnabled(not active)
         self.solve_progress.setVisible(active)
 
     def _solve_finished(self) -> None:
@@ -1680,16 +1802,8 @@ class JrotPrototypeDialog(QDialog):
             self.solve_status.setText("No valid preview was produced.")
             self._show_error(error or "The solve was cancelled.")
             return
-        stages = ", ".join(stage.value for stage in self.solution.stages)
-        self.solve_status.setText(
-            f"{self.solution.backend.value.upper()} completed · {stages}. "
-            "Preview only; worker rules were not enforced. "
-            f"Schedule cells show {_TOOL_NAMES[self.kinds()[0]]}; comparison covers "
-            "all selected tools."
-        )
-        self._render_schedule(
-            self.optimized_table, self.solution.schedule, self.kinds()[0]
-        )
+        self._sync_optimized_tabs()
+        self._render_optimized_view()
         self.next.setEnabled(True)
         self.next.setText("Compare results  →")
 
@@ -1717,11 +1831,20 @@ class JrotPrototypeDialog(QDialog):
         page.addLayout(self.comparison_cards)
         card, layout = prototype_card(
             "Statistical comparison",
-            "Each tool is summarized separately across worker schedule averages. "
-            "Changes are percentage points; SD is the population SD.",
+            "Compare worker schedule averages from step 02 with the optimized "
+            "assignments, separately for each tool. Job values remain unchanged; "
+            "individual worker assessments are not used. Changes are percentage "
+            "points; SD is the population SD.",
         )
         self.statistics = self._table(
-            ["Tool", "Metric", "Baseline", "Optimized", "Change (pp)"], 300
+            [
+                "Tool",
+                "Metric",
+                "Before optimization",
+                "After optimization",
+                "Change (pp)",
+            ],
+            300,
         )
         layout.addWidget(self.statistics)
         page.addWidget(card)
@@ -1797,8 +1920,9 @@ class JrotPrototypeDialog(QDialog):
             None; no main-window history/dirty marker is touched.
         """
         self.solution = None
-        if hasattr(self, "optimized_table"):
-            self.optimized_table.setRowCount(0)
+        if hasattr(self, "optimized_tables"):
+            for table in self.optimized_tables.values():
+                table.setRowCount(0)
             self.solve_status.setText(
                 "Ready to run. Input changes require a fresh solve."
             )
@@ -1892,6 +2016,8 @@ class JrotPrototypeDialog(QDialog):
             else:
                 self._render_baseline()
         elif index == 6:
+            self._sync_optimized_tabs()
+            self._render_optimized_view()
             self.solve_caption.setText(
                 "All three tools · HiGHS"
                 if len(self.kinds()) == 3

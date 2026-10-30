@@ -7,6 +7,7 @@ only explicitly supplied persistence callbacks can write.
 
 from collections.abc import Callable
 from dataclasses import dataclass, replace
+from math import isfinite
 
 from ergotools.application.session import DocumentKey, DocumentSession
 from ergotools.domain.assessments.document import AssessmentKind
@@ -18,6 +19,9 @@ from ergotools.domain.plot_filters import (
 )
 from ergotools.domain.plot_positions import PlotPositions
 from ergotools.domain.plot_scope import PlotScope
+
+# Owner-selected maximum magnification: 400% of the fitted plant image.
+MAX_PLOT_ZOOM = 4.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,6 +93,44 @@ class PlotFilterState:
 
 
 @dataclass(frozen=True, slots=True)
+class PlotNavigationState:
+    """Session-only map view; never stored as project geometry or scientific data.
+
+    Attributes:
+        plant: Exact plant whose original-image center is captured.
+        zoom: Magnification relative to fitted image size, from 1 through MAX_PLOT_ZOOM.
+        center: View center in original image pixels.
+        opacity: Marker-only opacity; the background image remains opaque.
+    """
+
+    plant: str
+    zoom: float
+    center: tuple[float, float]
+    opacity: float
+
+    def __post_init__(self) -> None:
+        """Reject invalid view snapshots before they enter shared history.
+
+        Args:
+            None; frozen dataclass fields supply the proposed view.
+
+        Returns:
+            None; valid snapshots remain independent of widgets and storage.
+
+        Raises:
+            ValueError: A view component is missing, nonfinite or outside its range.
+        """
+        if (
+            not self.plant
+            or len(self.center) != 2
+            or not all(isfinite(v) for v in (self.zoom, *self.center, self.opacity))
+            or not 1 <= self.zoom <= MAX_PLOT_ZOOM
+            or self.opacity not in (0.7, 0.8, 0.9, 1.0)
+        ):
+            raise ValueError("Invalid PLOT navigation snapshot.")
+
+
+@dataclass(frozen=True, slots=True)
 class PlotEditState:
     """One chronological map and analysis revision without widgets or image bytes.
 
@@ -96,11 +138,13 @@ class PlotEditState:
         positions: Immutable geometry in original image pixels.
         filters: Accepted control state, or None before initialization.
         applied: Last published effective selection, or None before Apply/after Clear.
+        navigation: Session-only image view, or None before the first gesture.
     """
 
     positions: PlotPositions
     filters: PlotFilterState | None = None
     applied: PlotFilterSelection | None = None
+    navigation: PlotNavigationState | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,7 +184,48 @@ class ReplacePlotFilters:
             or state.positions.project_id != self.document.project_id
         ):
             raise ValueError("PLOT filter edit belongs to another revision.")
-        return replace(state, filters=self.filters, applied=self.applied)
+        navigation = state.navigation
+        if navigation is not None and navigation.plant != self.filters.scope.plant:
+            navigation = None
+        return replace(
+            state, filters=self.filters, applied=self.applied, navigation=navigation
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ReplacePlotNavigation:
+    """Replace a session-only view in the same chronological geometry timeline.
+
+    Attributes:
+        document: Exact map/project history owner.
+        before: Expected complete immutable current state.
+        navigation: Proposed relative zoom, image center and marker opacity.
+        label_key: Localized map-view history description.
+    """
+
+    document: DocumentKey
+    before: PlotEditState
+    navigation: PlotNavigationState
+    label_key: str = "plot.history.navigation"
+
+    def apply(self, state: PlotEditState) -> PlotEditState:
+        """Validate ownership/revision and retain geometry and filters verbatim.
+
+        Args:
+            state: Current map history revision.
+
+        Returns:
+            New view revision without any project-data mutation.
+
+        Raises:
+            ValueError: The revision is stale or belongs to another project.
+        """
+        if (
+            state != self.before
+            or state.positions.project_id != self.document.project_id
+        ):
+            raise ValueError("PLOT navigation belongs to another revision.")
+        return replace(state, navigation=self.navigation)
 
 
 @dataclass(frozen=True, slots=True)

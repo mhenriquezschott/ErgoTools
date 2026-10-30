@@ -8,7 +8,7 @@ host owners.
 
 from collections.abc import Callable, Mapping
 
-from PyQt5.QtCore import QEvent, QObject, QSize, Qt
+from PyQt5.QtCore import QEvent, QObject, Qt
 from PyQt5.QtGui import QIcon, QKeyEvent, QKeySequence
 from PyQt5.QtWidgets import (
     QAction,
@@ -20,7 +20,9 @@ from PyQt5.QtWidgets import (
 
 from ergotools.domain.language import Language
 from ergotools.presentation.desktop.plot_marker_layer import PlotMarkerLayer
-from ergotools.presentation.desktop.style import HISTORY_BUTTON_STYLE
+from ergotools.presentation.desktop.secondary_history_controls import (
+    configure_history_button,
+)
 from ergotools.presentation.localization import Translator
 
 
@@ -77,12 +79,8 @@ class PlotHistoryActions(QObject):
             (self.undo_button, self.undo_action),
             (self.redo_button, self.redo_action),
         ):
-            button.setObjectName("historyButton")
-            button.setStyleSheet(HISTORY_BUTTON_STYLE)
             button.setDefaultAction(action)
-            button.setIconSize(QSize(24, 24))
-            button.setFixedSize(36, 36)
-            button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+            configure_history_button(button)
         self.undo_action.triggered.connect(lambda: self.replay(redo=False))
         self.redo_action.triggered.connect(lambda: self.replay(redo=True))
         layer.changed.connect(self.refresh)
@@ -189,6 +187,7 @@ class PlotHistoryActions(QObject):
                 if key is not None:
                     label += " " + self.translator.text(key)
             action.setText(label)
+            action.setIconText(self.translator.text(f"plot.history.{verb}"))
             action.setEnabled(enabled)
             action.setToolTip(
                 self.translator.text("plot.history.pending_fields")

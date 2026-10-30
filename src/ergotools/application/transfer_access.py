@@ -16,7 +16,7 @@ from ergotools.domain.job_catalog import JobCatalog
 
 @runtime_checkable
 class TransferRepository(Protocol):
-    """Copy/move one complete selection without project or profile side effects."""
+    """Copy/move assessments without changing project lifetime or Job risks."""
 
     def transfer_assessments(
         self,
@@ -25,20 +25,20 @@ class TransferRepository(Protocol):
         request: TransferRequest,
         document_ids: Mapping[AssessmentKind, str],
     ) -> AssessmentHistory:
-        """Commit copies/optional source removal together; conflicts change nothing.
+        """Commit copies, approved replacements and optional source removal atomically.
 
         Args:
             expected_jobs: Previously read job/placement/assignment catalog; must still
                 match saved data before writing.
-            expected_history: Previously read assignment-owned assessment-version
+            expected_history: Previously read assigned/standalone ownership
                 history used to reject stale transfer intent.
-            request: Exact source assignment, destination owner, selected tools and
-                explicit copy/move mode.
+            request: Exact assigned/standalone source, destination owner, tools and
+                explicit copy/move mode and selected-target replacement consent.
             document_ids: Caller-allocated distinct new destination document ID for each
                 selected model.
 
         Returns:
             Committed history after all selected copies and optional source removals
-            succeed together; any conflict changes nothing.
+            succeed together. Unapproved conflicts or failures change nothing.
         """
         ...

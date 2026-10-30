@@ -275,7 +275,7 @@ def test_integrated_standalone_first_save_and_context_visibility(
 
     Returns:
         None; first Save owns the selected worker, context collapse gives back height,
-        real organization expands on reopen, and workplace-only picker is usable.
+        new organization does not force expansion, and the workplace picker is usable.
     """
     path = tmp_path / "ui.ergprj"
     with AssessmentProjectFile.create_empty(path, META) as project:
@@ -293,8 +293,9 @@ def test_integrated_standalone_first_save_and_context_visibility(
         browser = view.assessment_navigation
         browser.select("A", kind, lambda: view._blank_kind(kind), explicit=True)
         view.refresh()
-        assert not view.main_navigation.context_frame.isVisible()
-        assert not view.main_navigation.context_toggle.isChecked()
+        assert not view.main_navigation.location_browser.has_assessments
+        assert view.main_navigation.location_browser.add_button.isEnabled()
+        assert not view.main_navigation.context_disclosure.isChecked()
 
         def choose_unassigned(dialog: AssessmentContextDialog) -> int:
             """Accept the only available context when no assignments exist.
@@ -335,13 +336,13 @@ def test_integrated_standalone_first_save_and_context_visibility(
             "A", kind
         )
         assert entry is not None
-        view.main_navigation.context_toggle.setChecked(True)
-        assert view.main_navigation.context_frame.isVisible()
+        view.main_navigation.context_disclosure.setChecked(True)
+        assert view.main_navigation.location_browser.isVisible()
         view.presenter.workspace.close(choice=CloseChoice.DISCARD)
         with AssessmentProjectFile.open(path) as project:
             add_real_workplace(project)
         view.open_project_location(str(path))
-        assert view.main_navigation.context_toggle.isChecked()
+        assert not view.main_navigation.context_disclosure.isChecked()
         dialog = WorkerManagementDialog(
             view.presenter.workspace,
             load_icons(),
@@ -431,108 +432,6 @@ def test_jrot_job_only_without_organization_or_worker_assessments(
     with AssessmentProjectFile.open(path) as project:
         assert project.load_rotation_schemes() == (scheme,)
         assert not project.load_hierarchy().plants
-
-
-@pytest.mark.parametrize("language", list(Language))
-def test_association_action_preserves_identity_and_standalone_navigation(
-    tmp_path: Path,
-    language: Language,
-) -> None:
-    """Use the actual association action without copying assessment inputs or results.
-
-    Args:
-        tmp_path: Disposable project/settings directory.
-        language: English or Spanish chooser labels and accepted navigation.
-
-    Returns:
-        None; one tool is associated, other tools remain standalone, and returning to
-        standalone navigation creates a fresh preview without another database row.
-    """
-    path = tmp_path / "associate.ergprj"
-    with AssessmentProjectFile.create_empty(path, META) as project:
-        project.save_hierarchy(
-            WorkHierarchy(WorkCatalog(META.project_id, (WorkerEntry("A"),)))
-        )
-        for kind in AssessmentKind:
-            project.create_historical_assessment(
-                AssignmentAssessment(kind.value, None, kind, "A"), source_for(kind)
-            )
-        add_real_workplace(project)
-    view = create_window(
-        tmp_path / "settings.json", original_navigation=True, enable_vtk=False
-    )
-    try:
-        view.language = language
-        view.open_project_location(str(path))
-        view.select_tool(0)
-        view.select_standalone_assessment()
-        original = view.presenter.workspace.active.document
-
-        def choose(dialog: WorkplaceAssignmentDialog) -> int:
-            """Choose a workplace-only leaf using the actual picker controls.
-
-            Args:
-                dialog: Owned real context picker under test.
-
-            Returns:
-                Accepted result after explicit station selection.
-            """
-            assert dialog._reuse_existing
-            dialog.select_workplace(STATION.at_shift("1"))
-            dialog.accept_button.click()
-            assert dialog.selected_workplace == STATION.at_shift("1")
-            return QDialog.Accepted
-
-        with patch.object(WorkplaceAssignmentDialog, "exec_", choose):
-            view.main_navigation.associate_button.click()
-        workspace = view.presenter.workspace
-        assert workspace.active.document == original
-        history = workspace.read_history().history
-        assert (
-            history.current_for(1, AssessmentKind.LIFFT).document_id
-            == original.document_id
-        )
-        assert history.standalone_for("A", AssessmentKind.DUET) is not None
-        assert len(history.entries) == 3
-
-        def choose_standalone(dialog: AssessmentContextDialog) -> int:
-            """Accept unassigned navigation through the separate context-dialog button.
-
-            Args:
-                dialog: Real picker owning the optional standalone choice.
-
-            Returns:
-                Accepted result from the separate standalone button.
-            """
-            assert dialog.standalone_button is not None
-            assert dialog.standalone_button.text() == (
-                "Evaluación independiente"
-                if language is Language.SPANISH
-                else "Standalone assessment"
-            )
-            dialog.standalone_button.click()
-            assert dialog.selected_standalone
-            assert dialog.selected_assignment is None
-            return dialog.result()
-
-        with patch.object(
-            AssessmentContextDialog, "exec_", return_value=QDialog.Rejected
-        ):
-            view.main_navigation.buttons["context"].click()
-        assert workspace.active.document == original
-        assert "standalone" not in view.main_navigation.buttons
-        with patch.object(AssessmentContextDialog, "exec_", choose_standalone):
-            view.main_navigation.buttons["context"].click()
-        assert view.assessment_navigation.view.workplace is None
-        assert workspace.active.document != original
-        assert not view.assessment_navigation.view.saved
-        assert len(workspace.read_history().history.entries) == 3
-    finally:
-        view.presenter.workspace.close(choice=CloseChoice.DISCARD)
-        view.close()
-        view.deleteLater()
-        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
-        _APP.processEvents()
 
 
 def test_first_worker_and_workplace_need_no_existing_assessment(tmp_path: Path) -> None:

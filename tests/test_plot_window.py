@@ -11,7 +11,7 @@ from unittest.mock import Mock
 
 import pytest
 from PIL import Image
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import QPoint, QRect, Qt, QTimer
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication, QMenuBar, QMessageBox, QToolBar
 
@@ -163,7 +163,9 @@ def test_host_original_regions_modes_resize_and_no_implicit_writes(
             _APP.processEvents()
             rail = window.map_panel.rail
             for button in window.map_panel.buttons.values():
-                assert rail.rect().contains(button.geometry())
+                assert rail.rect().contains(
+                    QRect(button.mapTo(rail, QPoint()), button.size())
+                )
             assert window.tools.canvas.height() >= 250
             assert (
                 window.tools.canvas.geometry().bottom()

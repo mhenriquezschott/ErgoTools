@@ -16,6 +16,7 @@ from ergotools.domain.assessments.document import (
     AssessmentDraft,
     AssessmentKind,
     assessment_kind,
+    task_has_data,
 )
 from ergotools.domain.assessments.duet_draft import DuetDraft, DuetTask
 from ergotools.domain.assessments.lifft_draft import LifftDraft, LifftTask
@@ -145,3 +146,87 @@ def calculate_job_measurement(
         DocumentKey(project_id, "job:" + job_id), source, units
     )
     return job_measurement_from_result(source, result)
+
+
+def auto_calculate_job_measurement(
+    project_id: str, job_id: str, source: AssessmentDraft, units: MeasurementSystem
+) -> JobRiskMeasurement:
+    """Evaluate completed Job inputs without exposing incomplete preview totals.
+
+    Args:
+        project_id: Current project identity for the detached evaluator.
+        job_id: Destination Job identity; creates no worker record or ownership link.
+        source: Immutable accepted task inputs with their units and ST convention.
+        units: Default display units for unit-independent DUET inputs.
+
+    Returns:
+        Complete exact measurement when valid; otherwise inputs with absent outputs.
+        Missing rows never invent numeric inputs or cause modal UI warnings.
+
+    Raises:
+        ValueError: The source model or declared default unit system is unsupported.
+    """
+    result = calculate_saved_result(
+        DocumentKey(project_id, "job:" + job_id), source, units
+    )
+    if result is not None and result.calculation_status is EvaluationStatus.COMPLETE:
+        return job_measurement_from_result(source, result)
+    return JobRiskMeasurement(
+        assessment_kind(source),
+        source=source,
+        unit=(
+            source.system if isinstance(source, (LifftDraft, TstDraft)) else units
+        ).value.title(),
+    )
+
+
+def copy_job_tasks(
+    measurement: JobRiskMeasurement,
+    task_ids: tuple[str, ...],
+    *,
+    project_id: str,
+    units: MeasurementSystem,
+) -> JobRiskMeasurement:
+    """Copy selected inputs with source-matched outputs, never full-source totals.
+
+    Args:
+        measurement: Revalidated source Job/worker measurement; never mutated.
+        task_ids: Nonempty unique retained identities in any selection order.
+        project_id: Open project identity for the existing detached calculator.
+        units: Display/default units for unit-independent DUET calculations.
+
+    Returns:
+        Original exact measurement when every task is selected. A proper subset keeps
+        source order/units/convention and uses the established calculator if the source
+        was calculated and selected inputs contain data. Uncalculated/blank selections
+        retain inputs only. No project source, worker or repository is created/written.
+
+    Raises:
+        ValueError: Missing task source, empty/stale/duplicate selection, or inputs
+            that cannot produce a complete calculation.
+    """
+    source = measurement.source
+    if source is None:
+        raise ValueError("This source has no task inputs to select.")
+    selected = frozenset(task_ids)
+    available = frozenset(task.task_id for task in source.tasks)
+    if not selected or len(selected) != len(task_ids) or not selected <= available:
+        raise ValueError("Select one or more existing source tasks.")
+    if selected == available:
+        return measurement
+    # Replace each concrete source to retain its typed tasks and calculation convention.
+    if isinstance(source, LifftDraft):
+        subset: AssessmentDraft = replace(
+            source, tasks=tuple(t for t in source.tasks if t.task_id in selected)
+        )
+    elif isinstance(source, DuetDraft):
+        subset = replace(
+            source, tasks=tuple(t for t in source.tasks if t.task_id in selected)
+        )
+    else:
+        subset = replace(
+            source, tasks=tuple(t for t in source.tasks if t.task_id in selected)
+        )
+    if measurement.complete and any(task_has_data(t) for t in subset.tasks):
+        return calculate_job_measurement(project_id, "selected-tasks", subset, units)
+    return JobRiskMeasurement(measurement.kind, source=subset)

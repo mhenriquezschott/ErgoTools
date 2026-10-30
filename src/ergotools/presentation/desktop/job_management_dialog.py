@@ -1,4 +1,4 @@
-"""Job details and a single current LiFFT/DUET/ST risk set with compact calculators.
+"""Task-first Job workspace with optional direct results and shared project history.
 
 Presentation layer. Preserve Job browsing/workplace controls while replacing the
 profile/evidence workflow. Sources/results, direct edits and copied worker tasks use
@@ -10,26 +10,32 @@ import logging
 from collections.abc import Callable, Mapping
 from dataclasses import replace
 
-from PyQt5.QtCore import QEvent, QLocale, QSignalBlocker, QSize, Qt
+from PyQt5 import sip
+from PyQt5.QtCore import QEvent, QLocale, QSignalBlocker, QSize, Qt, QTimer
 from PyQt5.QtGui import QCloseEvent, QIcon
 from PyQt5.QtWidgets import (
+    QButtonGroup,
     QComboBox,
     QDialog,
     QDialogButtonBox,
     QFrame,
-    QGridLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
+from ergotools.application.gauge_preferences import GaugeMarkerSettings
 from ergotools.application.job_calculation import (
+    auto_calculate_job_measurement,
     blank_job_source,
     calculate_job_measurement,
     resize_job_source,
@@ -48,16 +54,39 @@ from ergotools.domain.decimal_convention import DecimalConvention
 from ergotools.domain.job_catalog import Job
 from ergotools.domain.job_risk import JobRiskMeasurement, JobRiskValues
 from ergotools.domain.model_units import MeasurementSystem
-from ergotools.presentation.desktop.job_assessment_dialog import JobAssessmentDialog
-from ergotools.presentation.desktop.job_risk_table import JobRiskTable
+from ergotools.presentation.desktop.assessment_editor_section import (
+    AssessmentActionRow,
+    AssessmentEditorSection,
+)
+from ergotools.presentation.desktop.job_assessment_dialog import (
+    JobAssessmentDialog,
+    JobCopyDialog,
+)
+from ergotools.presentation.desktop.job_direct_values import JobDirectValues
+from ergotools.presentation.desktop.job_result_panel import (
+    JobCalculationSummary,
+    JobResultPanel,
+)
 from ergotools.presentation.desktop.job_task_editor import JobTaskEditor
 from ergotools.presentation.desktop.job_workplace_host import JobWorkplaceHost
 from ergotools.presentation.desktop.project_history_actions import ProjectHistoryActions
+from ergotools.presentation.desktop.secondary_history_controls import (
+    add_history_buttons,
+)
 from ergotools.presentation.desktop.text import (
     job_management_error,
     job_management_text,
 )
-from ergotools.presentation.desktop.theme.job_management import JOB_MANAGEMENT_STYLE
+from ergotools.presentation.desktop.theme.job_management import (
+    JOB_INPUT_MODE_STYLE,
+    JOB_MANAGEMENT_STYLE,
+)
+from ergotools.presentation.desktop.theme.main_workspace import MAIN_WORKSPACE_STYLE
+
+# Reversible session-only tool selection; no database preference or separate stack.
+_TOOL_EDITOR_KEY = "jobs.tool"
+# Session-only selected Job identity; navigation never makes project data dirty.
+_JOB_EDITOR_KEY = "jobs.selection"
 
 
 class JobManagementDialog(QDialog):
@@ -72,6 +101,8 @@ class JobManagementDialog(QDialog):
         language: Language = Language.ENGLISH,
         convention: DecimalConvention = DecimalConvention.POINT,
         selected_job: str | None = None,
+        gauge_markers: GaugeMarkerSettings | None = None,
+        change_gauge_markers: Callable[[GaugeMarkerSettings], None] | None = None,
         parent: QWidget | None = None,
     ) -> None:
         """Bind Job editing to explicit project/unit/language owners.
@@ -83,10 +114,12 @@ class JobManagementDialog(QDialog):
             language: UI language, independent of numeric conventions.
             convention: Application decimal separator for every editable numeric field.
             selected_job: Existing exact Job identity to initially select, or None.
+            gauge_markers: Personal gauge appearance, independent of project data.
+            change_gauge_markers: Personal-preference owner callback, or local preview.
             parent: Owning main window; this modal does not own the workspace.
 
         Returns:
-            None; construction creates no Job, risk values or calculator task source.
+            None; construction persists no Job, risk values or task source.
         """
         super().__init__(parent)
         self._workspace = workspace
@@ -94,6 +127,9 @@ class JobManagementDialog(QDialog):
         self._system = system
         self._language = language
         self._convention = convention
+        self._gauge_markers = gauge_markers
+        self._change_gauge_markers = change_gauge_markers
+        self._direct_tools: set[AssessmentKind] = set()
         self._accepting_job = True
         self._busy = False
         self._loaded_job_id: str | None = None
@@ -110,12 +146,22 @@ class JobManagementDialog(QDialog):
         self.setWindowTitle(self._text("Job Management"))
         self.setWindowIcon(icons["job_management"])
         self.setStyleSheet(JOB_MANAGEMENT_STYLE)
-        self._collapsed_height = 680
-        self.setMinimumSize(1040, 620)
-        self.resize(1200, self._collapsed_height)
+        self.setMinimumSize(1260, 830)
+        self.resize(1620, 940)
         self._setup_ui()
         self._translate_controls()
+        self._install_tooltips()
+        if workspace.editing is not None:
+            retained = workspace.editing.editor(_TOOL_EDITOR_KEY)
+            if isinstance(retained, int) and 0 <= retained < 3:
+                with QSignalBlocker(self.tool_tabs):
+                    self.tool_tabs.setCurrentIndex(retained)
+            workspace.editing.seed_editor(
+                _TOOL_EDITOR_KEY, self.tool_tabs.currentIndex()
+            )
         self._reload_jobs(selected_job)
+        if workspace.editing is not None:
+            workspace.editing.project_editor(_JOB_EDITOR_KEY, self._loaded_job_id)
         self._accepting_job = False
         if workspace.editing is not None:
             self.save_button.hide()
@@ -129,11 +175,22 @@ class JobManagementDialog(QDialog):
                 pending=self._pending_label,
             )
             self.title_row.addStretch(1)
-            self.title_row.addWidget(self.project_history.undo_button)
-            self.title_row.addWidget(self.project_history.redo_button)
+            add_history_buttons(
+                self.title_row,
+                self.project_history.undo_button,
+                self.project_history.redo_button,
+            )
+            for button in (
+                self.project_history.undo_button,
+                self.project_history.redo_button,
+            ):
+                button.setFixedSize(70, 70)
+                button.setIconSize(QSize(34, 34))
             self.job_name_input.textEdited.connect(self.project_history.refresh)
             self.job_description_input.textChanged.connect(self.project_history.refresh)
-            self.risk_table.pending_input_changed.connect(self.project_history.refresh)
+            self.direct_values.pending_input_changed.connect(
+                self.project_history.refresh
+            )
             self._watch_task_edits()
 
     def tr_text(self, english: str, spanish: str) -> str:
@@ -147,6 +204,97 @@ class JobManagementDialog(QDialog):
             Current interface wording, never a stored identity.
         """
         return spanish if self._language is Language.SPANISH else english
+
+    def _update_gauge_markers(self, settings: GaugeMarkerSettings) -> None:
+        """Apply personal marker options only after the preference owner accepts them.
+
+        Args:
+            settings: Validated shared gauge visibility/interval preferences.
+
+        Returns:
+            None; failures retain appearance without changing project history.
+        """
+
+        def apply() -> None:
+            """Persist through the injected owner before repainting the Job gauge.
+
+            Args:
+                None.
+
+            Returns:
+                None; errors propagate to the dialog's existing action boundary.
+            """
+            if self._change_gauge_markers is not None:
+                self._change_gauge_markers(settings)
+            self.result_panel.risk_gauge.set_marker_settings(settings)
+
+        self._run(apply)
+
+    def _install_tooltips(self) -> None:
+        """Describe Job actions and editable metadata without replacing action tooltips.
+
+        Args:
+            None.
+
+        Returns:
+            None; tooltips carry no history, validation or persistence behavior.
+        """
+        for control, english, spanish in (
+            (
+                self.close_button,
+                "Close and retain valid edits; use the main Save to store the project.",
+                "Cerrar conservando cambios válidos; Guardar almacena el proyecto.",
+            ),
+            (
+                self.save_button,
+                "Accept this Job's valid edits.",
+                "Aceptar los cambios válidos del trabajo.",
+            ),
+            (
+                self.search_button,
+                "Find a Job by ID or name.",
+                "Buscar trabajo por ID o nombre.",
+            ),
+            (
+                self.job_description_input,
+                "Optional description of this Job.",
+                "Descripción opcional del trabajo.",
+            ),
+            (
+                self.new_button,
+                "Start a new Job; valid edits to the current Job are retained.",
+                "Crear trabajo; se conservan los cambios válidos del trabajo actual.",
+            ),
+            (
+                self.delete_button,
+                "Delete this Job after confirmation; referenced Jobs are protected.",
+                "Eliminar con confirmación; los trabajos referenciados están "
+                "protegidos.",
+            ),
+            (
+                self.copy_assessment_button,
+                "Copy all or selected tasks from a worker assessment; the source "
+                "stays unchanged.",
+                "Copiar tareas de una evaluación de trabajador sin modificar el "
+                "origen.",
+            ),
+            (
+                self.copy_job_button,
+                "Choose another Job and copy all or selected tasks for this tool.",
+                "Elegir otro trabajo y copiar tareas de esta herramienta.",
+            ),
+            (
+                self.clear_tool_button,
+                "Clear this tool's tasks and result; Undo restores them.",
+                "Vaciar tareas y resultado de esta herramienta; Deshacer los restaura.",
+            ),
+            (
+                self.calculate_button,
+                "Recalculate the current tool from all entered tasks.",
+                "Recalcular esta herramienta con todas las tareas ingresadas.",
+            ),
+        ):
+            control.setToolTip(self.tr_text(english, spanish))
 
     def _translate_controls(self) -> None:
         """Translate the existing Job details/browser labels in place.
@@ -182,11 +330,7 @@ class JobManagementDialog(QDialog):
             self.job_id_combo.currentText(),
             self.job_name_input.text(),
             self.job_description_input.toPlainText(),
-            *(
-                self.risk_table._cell(row, col).text()
-                for row in range(3)
-                for col in (1, 2)
-            ),
+            *(field.text() for field in self.direct_values.fields.values()),
         )
 
     def _pending_label(self) -> str | None:
@@ -203,7 +347,7 @@ class JobManagementDialog(QDialog):
         return (
             "save_job_details"
             if self._job_values() != self._job_baseline
-            or self.risk_table.has_pending()
+            or self.direct_values.has_pending()
             or any(editor.has_pending() for editor in self.editors.values())
             else None
         )
@@ -250,10 +394,20 @@ class JobManagementDialog(QDialog):
         """
         if self._accepting_job:
             return True
-        if not self.risk_table.accept_pending():
+        if not self.direct_values.accept_pending():
+            for kind, error in self.direct_values.errors.items():
+                if error.text():
+                    with QSignalBlocker(self.tool_tabs):
+                        self.tool_tabs.setCurrentIndex(list(AssessmentKind).index(kind))
+                    self._tool_changed()
+                    self.direct_values.fields[kind].setFocus()
+                    break
             return False
-        for editor in self.editors.values():
+        for kind, editor in self.editors.items():
             if not editor.accept_pending():
+                with QSignalBlocker(self.tool_tabs):
+                    self.tool_tabs.setCurrentIndex(list(AssessmentKind).index(kind))
+                self._tool_changed()
                 return False
         if not self.job_id_combo.currentText().strip():
             has_tasks = any(
@@ -313,12 +467,16 @@ class JobManagementDialog(QDialog):
                 description=self.job_description_input.toPlainText(),
             )
         )
-        values = JobRiskValues(identity, self.risk_table.measurements())
+        values = JobRiskValues(identity, self.direct_values.measurements())
         self._jobs, self._risk = self._workspace.save_job_details(
             self._jobs, self._risk, job, values
         )
         self._values = self._risk.risk.for_job(identity)
+        self._tool_changed()
         self._loaded_job_id = identity
+        self._update_assessment_heading()
+        if self._workspace.editing is not None:
+            self._workspace.editing.project_editor(_JOB_EDITOR_KEY, identity)
         if self.job_id_combo.findText(identity) < 0:
             with QSignalBlocker(self.job_id_combo):
                 self.job_id_combo.addItem(identity)
@@ -326,6 +484,7 @@ class JobManagementDialog(QDialog):
         self._job_baseline = self._job_values()
         self._navigation(True)
         self._workplace_count()
+        self._refresh_copy_jobs()
         if self.project_history is not None:
             self.project_history.refresh()
 
@@ -336,11 +495,19 @@ class JobManagementDialog(QDialog):
             None.
 
         Returns:
-            None; retain selected tool/expanded calculator and surviving Job identity.
+            None; restore the recorded tool/Job, falling back for a missing Job.
         """
         self._accepting_job = True
         try:
             selected = self._loaded_job_id
+            editing = self._workspace.editing
+            retained = editing.editor(_TOOL_EDITOR_KEY) if editing is not None else None
+            selection = editing.editor(_JOB_EDITOR_KEY) if editing is not None else None
+            if isinstance(selection, str):
+                selected = selection
+            if isinstance(retained, int) and 0 <= retained < 3:
+                with QSignalBlocker(self.tool_tabs):
+                    self.tool_tabs.setCurrentIndex(retained)
             self._jobs = self._workspace.read_jobs()
             self._risk = self._workspace.read_job_risk()
             self._reload_jobs(selected)
@@ -387,12 +554,10 @@ class JobManagementDialog(QDialog):
         self._values = (
             self._risk.risk.for_job(identity) if identity else JobRiskValues("draft")
         )
-        self.risk_table.load(self._values.measurements)
-        for kind, editor in self.editors.items():
-            item = next((m for m in self._values.measurements if m.kind is kind), None)
-            editor.load_source(
-                item.source if item else None, item.task_results if item else ()
-            )
+        self._direct_tools.clear()
+        self.direct_values.load(self._values.measurements)
+        for kind in self.editors:
+            self._load_tool_editor(kind)
         self._watch_task_edits()
         self._tool_changed()
         self._identity_availability()
@@ -475,30 +640,67 @@ class JobManagementDialog(QDialog):
             None; existing values remain intact if an ID is cleared, and acceptance
             requires restoring an ID rather than silently discarding entered tasks.
         """
+        self._update_assessment_heading()
         enabled = bool(self.job_id_combo.currentText().strip())
-        self.risk_table.setEnabled(enabled)
-        self.calculator_toggle.setEnabled(enabled)
-        self.calculator_area.setEnabled(enabled)
+        self.direct_values.setEnabled(enabled)
+        self.assessment_area.setEnabled(enabled)
+        self.copy_assessment_button.setEnabled(enabled)
+        self._refresh_copy_jobs()
 
-    def _calculator_visibility_changed(self, expanded: bool) -> None:
-        """Give expanded task controls room and restore the prior compact Job height.
+    def _update_assessment_heading(self) -> None:
+        """Identify the visible Job in its task heading without accepting any edit.
 
         Args:
-            expanded: Explicit calculator disclosure state chosen by the user.
+            None.
 
         Returns:
-            None; preserve width, task data and history while keeping summary/bottom
-            controls fully visible. Collapsed details do not leave a large empty pane.
+            None; long literal names wrap, and pending metadata/history stay unchanged.
         """
-        if expanded:
-            self._collapsed_height = self.height()
-            self.calculator_area.setVisible(True)
-            self.setMinimumHeight(860)
-            self.resize(self.width(), max(920, self.height()))
+        title = self.tr_text("Tasks & assessment", "Tareas y evaluación")
+        identity = self.job_id_combo.currentText().strip()
+        if identity:
+            title += ": " + identity
+            name = self.job_name_input.text().strip()
+            if name:
+                title += " - " + name
+        self.assessment_heading.setText(title)
+        self.assessment_heading.setToolTip(title)
+
+    def _load_tool_editor(self, kind: AssessmentKind) -> None:
+        """Display retained tasks, one unsaved starter row, or an empty direct tool.
+
+        Args:
+            kind: Exact tool whose editor is rebound after navigation or replay.
+
+        Returns:
+            None; opening an empty tool never inserts a source or history action.
+        """
+        item = self._measurement(kind)
+        editor = self.editors[kind]
+        if item.source is not None:
+            editor.load_source(item.source, item.task_results)
         else:
-            self.calculator_area.setVisible(False)
-            self.setMinimumHeight(620)
-            self.resize(self.width(), max(620, self._collapsed_height))
+            editor.load_source(
+                blank_job_source(kind, self._system)
+                if not item.complete and kind not in self._direct_tools
+                else None
+            )
+
+    def _select_tool(self, index: int) -> None:
+        """Accept pending inputs, then record the selected tool as a clean view action.
+
+        Args:
+            index: Newly requested LiFFT/DUET/ST tab index.
+
+        Returns:
+            None; invalid input stays on its tool instead of becoming hidden.
+        """
+        if not self._accepting_job and not self.accept_pending_job():
+            return
+        self._tool_changed()
+        editing = self._workspace.editing
+        if not self._accepting_job and editing is not None:
+            editing.set_editor(_TOOL_EDITOR_KEY, index, "job.tool")
 
     def _tool_changed(self) -> None:
         """Project mode/task capacity without saving or creating default task sources.
@@ -507,27 +709,52 @@ class JobManagementDialog(QDialog):
             None.
 
         Returns:
-            None; only explicitly selected calculation mode creates one blank task.
+            None; an empty task-input tool shows its unsaved one-row starter preview.
         """
-        item = self._measurement(self._kind())
-        with QSignalBlocker(self.mode_combo):
-            self.mode_combo.setCurrentIndex(1 if item.source is not None else 0)
-        count = len(item.source.tasks) if item.source is not None else 0
+        kind = self._kind()
+        item = self._measurement(kind)
+        task_mode = item.source is not None or (
+            not item.complete and kind not in self._direct_tools
+        )
+        mode_button = self.input_modes.button(1 if task_mode else 0)
+        assert mode_button is not None
+        mode_button.setChecked(True)
+        self.direct_values.select_kind(kind)
+        self.calculation_summary.set_direct_mode(not task_mode)
+        source = item.source or (self.editors[kind].source if task_mode else None)
+        count = len(source.tasks) if source is not None else 0
         self.tool_status.setText(
             self.tr_text(
-                (
-                    "Tasks: {count}. Inputs retain their recorded units; "
-                    "calculated values are read-only in the summary."
-                ),
-                (
-                    "Tareas: {count}. Se conservan las unidades originales; los "
-                    "valores calculados son de solo lectura en el resumen."
-                ),
+                "{count} task(s) · Results update when input is complete."
+                if task_mode
+                else "Direct result · No task inputs recorded for this tool.",
+                "{count} tarea(s) · Resultados al completar los datos."
+                if task_mode
+                else "Resultado directo · Sin tareas registradas.",
             ).format(count=count)
         )
-        self.add_task_button.setEnabled(0 < count < 100)
-        self.remove_task_button.setEnabled(count > 1)
-        self.calculate_button.setEnabled(count > 0)
+        self.add_task_button.setEnabled(task_mode and count < 100)
+        self.remove_task_button.setEnabled(task_mode and count > 0)
+        self.calculate_button.setEnabled(task_mode and count > 0)
+        self.result_panel.show_measurement(item)
+        self.calculation_summary.show_measurement(item)
+        QTimer.singleShot(0, self._align_results)
+
+    def _align_results(self) -> None:
+        """Align summary values with the active grid's Damage column after layout.
+
+        Args:
+            None.
+
+        Returns:
+            None; resize, tab selection and horizontal scrolling add no history action.
+        """
+        if sip.isdeleted(self.calculation_summary):
+            return
+        editor = self.editors[self._kind()]
+        target = editor.headers[-2]
+        self.calculation_summary.summary.align_to(target, self.assessment_area)
+        self.direct_values.setFixedWidth(target.width())
 
     def _set_measurement(
         self, item: JobRiskMeasurement, *, rebind: bool = True
@@ -545,9 +772,9 @@ class JobManagementDialog(QDialog):
         self._values = JobRiskValues(
             self.job_id_combo.currentText().strip() or "draft", (*values, item)
         )
-        self.risk_table.load(self._values.measurements)
+        self.direct_values.load(self._values.measurements)
         if rebind:
-            self.editors[item.kind].load_source(item.source, item.task_results)
+            self._load_tool_editor(item.kind)
             self._watch_task_edits(item.kind)
         self.editors[item.kind].show_results(item.task_results)
         self._tool_changed()
@@ -555,7 +782,7 @@ class JobManagementDialog(QDialog):
             self._save_form()
 
     def _source_changed(self, kind: AssessmentKind, source: object) -> None:
-        """Invalidate the selected tool's output for one accepted task input change.
+        """Accept task input and its automatic result as one shared history action.
 
         Args:
             kind: Explicit edited tool identity.
@@ -567,12 +794,33 @@ class JobManagementDialog(QDialog):
         if isinstance(source, (LifftDraft, DuetDraft, TstDraft)):
             self._run(
                 lambda: self._set_measurement(
-                    JobRiskMeasurement(
-                        kind, unit=self._measurement(kind).unit, source=source
+                    auto_calculate_job_measurement(
+                        self._jobs.jobs.project_id,
+                        self.job_id_combo.currentText().strip() or "draft",
+                        source,
+                        self._system,
                     ),
                     rebind=False,
                 )
             )
+
+    def _preview_direct_result(self, kind: object, value: object) -> None:
+        """Project current direct typing into the single summary without accepting it.
+
+        Args:
+            kind: Tool identity emitted by the guarded direct input stack.
+            value: Valid transient measurement, or None for absent/invalid input.
+
+        Returns:
+            None; pending text retains native undo and only editing completion commits.
+        """
+        if isinstance(kind, AssessmentKind) and kind == self._kind():
+            item = (
+                value
+                if isinstance(value, JobRiskMeasurement)
+                else JobRiskMeasurement(kind)
+            )
+            self.calculation_summary.show_measurement(item)
 
     def _manual_changed(self) -> None:
         """Accept one completed direct risk edit through the same shared history.
@@ -598,7 +846,13 @@ class JobManagementDialog(QDialog):
         if self._accepting_job:
             return
         item = self._measurement(self._kind())
-        if self.mode_combo.currentIndex() == 1 and item.source is None:
+        if self.input_modes.checkedId() == 1 and item.source is None:
+            self._direct_tools.discard(item.kind)
+            if not item.complete:
+                self._load_tool_editor(item.kind)
+                self._watch_task_edits(item.kind)
+                self._tool_changed()
+                return
             if (
                 item.complete
                 and self._question(
@@ -614,14 +868,8 @@ class JobManagementDialog(QDialog):
             ):
                 self._tool_changed()
                 return
-            self._run(
-                lambda: self._set_measurement(
-                    JobRiskMeasurement(
-                        item.kind, source=blank_job_source(item.kind, self._system)
-                    )
-                )
-            )
-        elif self.mode_combo.currentIndex() == 0 and item.source is not None:
+            self._run(lambda: self._set_measurement(JobRiskMeasurement(item.kind)))
+        elif self.input_modes.checkedId() == 0 and item.source is not None:
             if (
                 self._question(
                     self._text("Confirm Deletion"),
@@ -641,14 +889,19 @@ class JobManagementDialog(QDialog):
             ):
                 self._tool_changed()
                 return
+            self._direct_tools.add(item.kind)
             self._run(
                 lambda: self._set_measurement(
                     replace(item, source=None, task_results=())
                 )
             )
+        elif self.input_modes.checkedId() == 0:
+            self._direct_tools.add(item.kind)
+            self._load_tool_editor(item.kind)
+            self._tool_changed()
 
     def add_task(self) -> None:
-        """Append one blank task, preserving existing inputs and invalidating outputs.
+        """Append one task row, preserving existing inputs and invalidating outputs.
 
         Args:
             None.
@@ -659,19 +912,22 @@ class JobManagementDialog(QDialog):
         if not self.accept_pending_job():
             return
         item = self._measurement(self._kind())
-        source = item.source
-        if source is not None:
-            self._run(
-                lambda: self._set_measurement(
-                    replace(
-                        item,
-                        source=resize_job_source(source),
-                        cumulative_damage=None,
-                        probability_percent=None,
-                        task_results=(),
-                    )
+        source = item.source or self.editors[item.kind].source
+        self._run(
+            lambda: self._set_measurement(
+                replace(
+                    item,
+                    source=(
+                        resize_job_source(source)
+                        if source is not None
+                        else blank_job_source(item.kind, self._system)
+                    ),
+                    cumulative_damage=None,
+                    probability_percent=None,
+                    task_results=(),
                 )
             )
+        )
 
     def remove_task(self) -> None:
         """Remove the selected task after warning when it contains entered values.
@@ -680,14 +936,14 @@ class JobManagementDialog(QDialog):
             None.
 
         Returns:
-            None; at least one task remains, and shared Undo restores removed data.
+            None; removing the last stored task shows a starter; Undo restores data.
         """
         if not self.accept_pending_job():
             return
         item = self._measurement(self._kind())
         source = item.source
-        row = self.editors[item.kind].currentRow()
-        if source is None or len(source.tasks) <= 1 or row < 0:
+        row = self.editors[item.kind].selected_task_index
+        if source is None or row < 0:
             return
         if (
             task_has_data(source.tasks[row])
@@ -708,7 +964,9 @@ class JobManagementDialog(QDialog):
             lambda: self._set_measurement(
                 replace(
                     item,
-                    source=resize_job_source(source, remove=row),
+                    source=resize_job_source(source, remove=row)
+                    if len(source.tasks) > 1
+                    else None,
                     cumulative_damage=None,
                     probability_percent=None,
                     task_results=(),
@@ -723,7 +981,7 @@ class JobManagementDialog(QDialog):
             None.
 
         Returns:
-            None; calculation mode returns to one blank task; shared Undo restores all.
+            None; task mode returns to one blank starter row; shared Undo restores all.
         """
         item = self._measurement(self._kind())
         if (
@@ -740,19 +998,7 @@ class JobManagementDialog(QDialog):
             != QMessageBox.Yes
         ):
             return
-        source = (
-            blank_job_source(
-                item.kind,
-                item.source.system
-                if isinstance(item.source, (LifftDraft, TstDraft))
-                else self._system,
-            )
-            if item.source is not None
-            else None
-        )
-        self._run(
-            lambda: self._set_measurement(JobRiskMeasurement(item.kind, source=source))
-        )
+        self._run(lambda: self._set_measurement(JobRiskMeasurement(item.kind)))
 
     def calculate_tool(self) -> None:
         """Calculate only the selected tool through the shared scientific evaluator.
@@ -766,7 +1012,7 @@ class JobManagementDialog(QDialog):
         if not self.accept_pending_job():
             return
         item = self._measurement(self._kind())
-        source = item.source
+        source = item.source or self.editors[item.kind].source
         if source is not None:
             self._run(
                 lambda: self._set_measurement(
@@ -821,10 +1067,74 @@ class JobManagementDialog(QDialog):
             self._risk = self._workspace.read_job_risk()
             selected = dialog.selected
             self._run(lambda: self._set_measurement(selected))
-            self.calculator_toggle.setChecked(True)
         finally:
             dialog.close()
             dialog.deleteLater()
+            self._jobs = self._workspace.read_jobs()
+            self._risk = self._workspace.read_job_risk()
+
+    def _refresh_copy_jobs(self) -> None:
+        """Enable explicit Job-source browsing when another real Job exists.
+
+        Args:
+            None.
+
+        Returns:
+            None; no source selector or implicit copy is kept in the main Job window.
+        """
+        identity = self.job_id_combo.currentText().strip()
+        self.copy_job_button.setEnabled(
+            bool(identity)
+            and any(job.job_id != identity for job in self._jobs.jobs.jobs)
+        )
+
+    def copy_job_values(self) -> None:
+        """Choose another Job's tool values, then confirm one independent copy.
+
+        Args:
+            None.
+
+        Returns:
+            None; Cancel leaves values intact. Existing project history owns mutation.
+        """
+        if not self.accept_pending_job():
+            return
+        picker = JobCopyDialog(
+            self._workspace,
+            self._kind(),
+            self._icons,
+            self._language,
+            self.job_id_combo.currentText().strip(),
+            self,
+            convention=self._convention,
+        )
+        try:
+            if picker.exec() != QDialog.Accepted or picker.selected is None:
+                return
+            item = picker.selected
+            previous = self._measurement(self._kind())
+            if (
+                previous.complete
+                or (
+                    previous.source is not None
+                    and any(task_has_data(t) for t in previous.source.tasks)
+                )
+            ) and self._question(
+                self._text("Confirm Deletion"),
+                self.tr_text(
+                    "Replace this tool's tasks and results with the selected "
+                    "Job values? Undo can restore them.",
+                    "¿Reemplazar las tareas y resultados con los valores "
+                    "seleccionados? Deshacer permite restaurarlos.",
+                ),
+            ) != QMessageBox.Yes:
+                return
+            self._jobs = self._workspace.read_jobs()
+            self._risk = self._workspace.read_job_risk()
+            self._run(lambda: self._set_measurement(item))
+        finally:
+            picker.close()
+            picker.deleteLater()
             self._jobs = self._workspace.read_jobs()
             self._risk = self._workspace.read_job_risk()
 
@@ -878,23 +1188,8 @@ class JobManagementDialog(QDialog):
         """
         self._run(self._save_form)
 
-    def discard_changes(self) -> None:
-        """Discard only unaccepted form text, preserving already shared accepted edits.
-
-        Args:
-            None.
-
-        Returns:
-            None; accepted operations are reverted using the shared Undo controls.
-        """
-        self._accepting_job = True
-        try:
-            self._show_job()
-        finally:
-            self._accepting_job = False
-
     def _setup_ui(self) -> None:
-        """Retain the reference panel hierarchy, controls, margins and spacing.
+        """Build Job navigation, task-first tool editors and one shared result card.
 
         Args:
             None.
@@ -906,34 +1201,54 @@ class JobManagementDialog(QDialog):
         layout.setContentsMargins(18, 16, 18, 16)
         layout.setSpacing(12)
         title = QLabel("Job Management")
-        title.setObjectName("dialogTitle")
+        title.setObjectName("jobManagementTitle")
         intro = QLabel(
-            "Enter a Job ID, then define current risks. Main Save writes the project."
+            self.tr_text(
+                "Select a Job to review its tasks, calculate risk or "
+                "reuse existing assessments.",
+                "Seleccione un trabajo para revisar tareas, calcular "
+                "riesgos o reutilizar evaluaciones.",
+            )
         )
         intro.setObjectName("supportingText")
         self.title_row = QHBoxLayout()
         self.title_row.addWidget(title)
+        metadata = self._workspace.project_metadata
+        self.project_badge = QLabel(
+            self.tr_text("Project: ", "Proyecto: ")
+            + (metadata.title if metadata else "—")
+        )
+        self.project_badge.setObjectName("jobProjectBadge")
+        self.project_badge.setWordWrap(True)
+        self.project_badge.setMaximumWidth(650)
+        self.project_badge.setToolTip(
+            self._workspace.location or self.project_badge.text()
+        )
+        self.title_row.addWidget(self.project_badge)
         layout.addLayout(self.title_row)
         layout.addWidget(intro)
         content = QHBoxLayout()
         content.setSpacing(14)
         browser_panel = QFrame()
         browser_panel.setObjectName("workspacePanel")
-        browser_panel.setMinimumWidth(280)
-        browser_panel.setMaximumWidth(340)
+        browser_panel.setMinimumWidth(235)
+        browser_panel.setMaximumWidth(260)
         browser_layout = QVBoxLayout(browser_panel)
         browser_layout.setContentsMargins(14, 12, 14, 12)
         browser_layout.setSpacing(9)
         browser_title = QLabel("Jobs")
         browser_title.setObjectName("panelTitle")
         browser_layout.addWidget(browser_title)
-        browser_layout.addWidget(QLabel("Job ID"))
+        identity_group = QGroupBox(self.tr_text("Job details", "Datos del trabajo"))
+        browser_layout.addWidget(identity_group)
+        identity_layout = QVBoxLayout(identity_group)
+        identity_layout.addWidget(QLabel("Job ID"))
         self.job_id_combo = QComboBox()
         self.job_id_combo.setEditable(True)
         self.job_id_combo.setToolTip(
             "Select an existing job or enter an ID for a new job."
         )
-        browser_layout.addWidget(self.job_id_combo)
+        identity_layout.addWidget(self.job_id_combo)
         navigation = QHBoxLayout()
         navigation.setSpacing(6)
         nav_specs = (
@@ -950,126 +1265,219 @@ class JobManagementDialog(QDialog):
             button.clicked.connect(callback)
             setattr(self, attr, button)
             navigation.addWidget(button)
-        browser_layout.addLayout(navigation)
+        identity_layout.addLayout(navigation)
         self.search_button = QPushButton("Search")
         self.search_button.setIcon(self._icons["search"])
         self.search_button.clicked.connect(self.search_job)
-        browser_layout.addWidget(self.search_button)
-        browser_layout.addStretch(1)
-        content.addWidget(browser_panel)
-        details_panel = QFrame()
-        details_panel.setObjectName("workspacePanel")
-        details_layout = QVBoxLayout(details_panel)
-        details_layout.setContentsMargins(16, 12, 16, 14)
-        details_layout.setSpacing(10)
-        details_header = QHBoxLayout()
-        details_title = QLabel("Job details")
-        details_title.setObjectName("panelTitle")
+        identity_layout.addWidget(self.search_button)
+        identity_layout.addWidget(QLabel(self._text("Job name")))
+        self.job_name_input = QLineEdit()
+        self.job_name_input.setToolTip("Enter a descriptive name for this job.")
+        identity_layout.addWidget(self.job_name_input)
+        identity_layout.addWidget(QLabel(self._text("Description")))
+        self.job_description_input = QTextEdit()
+        self.job_description_input.setMaximumHeight(90)
+        identity_layout.addWidget(self.job_description_input)
+        job_actions = QHBoxLayout()
+        self.new_button = QPushButton(self.tr_text("Add Job", "Agregar"))
+        self.new_button.setIcon(self._icons["new"])
+        self.new_button.clicked.connect(self.new_job)
+        self.delete_button = QPushButton(self._text("Delete"))
+        self.delete_button.setIcon(self._icons["delete"])
+        self.delete_button.setObjectName("dangerButton")
+        self.delete_button.clicked.connect(self.delete_job)
+        job_actions.addWidget(self.new_button)
+        job_actions.addWidget(self.delete_button)
+        identity_layout.addLayout(job_actions)
+        workplaces_group = QGroupBox(
+            self.tr_text("Workplace assignments", "Asignaciones de lugar")
+        )
+        browser_layout.addWidget(workplaces_group)
+        workplaces_layout = QVBoxLayout(workplaces_group)
         self.workplaces_button = QPushButton("Workplaces (0)")
         self.workplaces_button.setIcon(self._icons["plant"])
-        self.workplaces_button.setIconSize(QSize(22, 22))
         self.workplaces_button.setToolTip(
             "Assign this Job to one or more workplace contexts."
         )
         self.workplaces_button.clicked.connect(self.open_workplaces)
-        details_header.addWidget(details_title)
-        details_header.addStretch(1)
-        details_header.addWidget(self.workplaces_button)
-        details_layout.addLayout(details_header)
-        form_layout = QGridLayout()
-        form_layout.setHorizontalSpacing(12)
-        form_layout.setVerticalSpacing(9)
-        form_layout.addWidget(QLabel("Job name"), 0, 0)
-        self.job_name_input = QLineEdit()
-        self.job_name_input.setToolTip("Enter a descriptive name for this job.")
-        form_layout.addWidget(self.job_name_input, 0, 1)
-        form_layout.addWidget(QLabel("Description"), 1, 0, Qt.AlignmentFlag.AlignTop)
-        self.job_description_input = QTextEdit()
-        self.job_description_input.setMaximumHeight(70)
-        self.job_description_input.setPlaceholderText("Optional job description")
-        form_layout.addWidget(self.job_description_input, 1, 1)
-        form_layout.setColumnStretch(1, 1)
-        details_layout.addLayout(form_layout)
-        self.risk_table = JobRiskTable(
-            self._system, language=self._language, convention=self._convention
+        workplaces_layout.addWidget(self.workplaces_button)
+        browser_layout.addStretch(1)
+        reuse_group = QGroupBox(
+            self.tr_text("Reuse assessment values", "Reutilizar evaluaciones")
         )
-        self.risk_table.setFixedHeight(162)
-        details_layout.addWidget(self.risk_table)
-        self.calculator_toggle = QPushButton(
-            self.tr_text("Calculate or copy tool values", "Calcular o copiar valores")
+        reuse_layout = QVBoxLayout(reuse_group)
+        browser_layout.addWidget(reuse_group)
+        self.copy_assessment_button = QPushButton(
+            self.tr_text("Copy from worker…", "Copiar de trabajador…")
         )
-        self.calculator_toggle.setCheckable(True)
-        self.calculator_toggle.setIcon(self._icons["job_management"])
-        details_layout.addWidget(self.calculator_toggle)
-        self.calculator_area = QWidget()
-        calc_layout = QVBoxLayout(self.calculator_area)
-        calc_layout.setContentsMargins(0, 0, 0, 0)
+        self.copy_assessment_button.setIcon(self._icons["worker"])
+        reuse_layout.addWidget(self.copy_assessment_button)
+        self.copy_job_button = QPushButton(
+            self.tr_text("Copy from Job", "Copiar de trabajo")
+        )
+        self.copy_job_button.setIcon(self._icons["job_management"])
+        self.copy_job_button.clicked.connect(self.copy_job_values)
+        reuse_layout.addWidget(self.copy_job_button)
+        copy_note = QLabel(
+            self.tr_text(
+                "Copies can be edited independently.",
+                "Las copias se pueden editar de forma independiente.",
+            )
+        )
+        copy_note.setWordWrap(True)
+        copy_note.setObjectName("supportingText")
+        reuse_layout.addWidget(copy_note)
+        content.addWidget(browser_panel)
+        self.assessment_area = QFrame()
+        self.assessment_area.setObjectName("workspacePanel")
+        self.assessment_area.setStyleSheet(MAIN_WORKSPACE_STYLE)
+        details_layout = QVBoxLayout(self.assessment_area)
+        details_layout.setContentsMargins(14, 14, 14, 14)
+        details_layout.setSpacing(10)
+        method_row = QHBoxLayout()
+        self.assessment_heading = QLabel()
+        self.assessment_heading.setObjectName("jobAssessmentHeading")
+        self.assessment_heading.setTextFormat(Qt.TextFormat.PlainText)
+        self.assessment_heading.setWordWrap(True)
+        self.assessment_heading.setMinimumWidth(0)
+        self.assessment_heading.setSizePolicy(
+            QSizePolicy.Ignored, QSizePolicy.Preferred
+        )
+        method_row.addWidget(self.assessment_heading, 1)
+        self.input_modes = QButtonGroup(self)
+        method_buttons = QHBoxLayout()
+        method_buttons.setSpacing(0)
+        for identity, english, spanish in (
+            (1, "Task inputs", "Datos de tareas"),
+            (0, "Direct result", "Resultado directo"),
+        ):
+            button = QPushButton(self.tr_text(english, spanish))
+            button.setObjectName("jobInputModeButton")
+            button.setStyleSheet(JOB_INPUT_MODE_STYLE)
+            button.setMinimumWidth(
+                button.fontMetrics().horizontalAdvance(button.text()) + 36
+            )
+            button.setToolTip(
+                self.tr_text(
+                    "Enter task inputs; results update after each completed valid edit."
+                    if identity
+                    else "Enter cumulative damage directly; probability is derived.",
+                    "Ingrese tareas; resultados automáticos al completar datos válidos."
+                    if identity
+                    else "Ingrese el daño acumulado; la probabilidad se deriva.",
+                )
+            )
+            button.setCheckable(True)
+            self.input_modes.addButton(button, identity)
+            method_buttons.addWidget(button)
+        method_row.addLayout(method_buttons)
+        details_layout.addLayout(method_row)
         self.tool_tabs = QTabWidget()
-        self.tool_tabs.setObjectName("jobToolTabs")
+        self.tool_tabs.setObjectName("assessmentTabs")
         self.editors: dict[AssessmentKind, JobTaskEditor] = {}
         for kind, label in (
             (AssessmentKind.LIFFT, "LiFFT"),
             (AssessmentKind.DUET, "DUET"),
             (AssessmentKind.TST, "ST"),
         ):
-            editor = JobTaskEditor(self._language, self._convention)
+            editor = JobTaskEditor(
+                self._language,
+                self._convention,
+                kind=kind,
+                system=self._system,
+                precision=(
+                    self._workspace.project_metadata.precision
+                    if self._workspace.project_metadata
+                    else None
+                ),
+            )
+            editor.geometry_changed.connect(self._align_results)
             editor.source_edited.connect(
                 lambda source, k=kind: self._source_changed(k, source)
             )
             self.editors[kind] = editor
-            self.tool_tabs.addTab(editor, label)
-        calc_layout.addWidget(self.tool_tabs)
-        self.tool_status = QLabel()
-        self.tool_status.setWordWrap(True)
-        calc_layout.addWidget(self.tool_status)
-        actions = QHBoxLayout()
-        self.mode_combo = QComboBox()
-        self.mode_combo.addItems(
-            [
-                self.tr_text("Direct values", "Valores directos"),
-                self.tr_text("Task calculation", "Cálculo con tareas"),
-            ]
+            icon = "shoulder" if kind is AssessmentKind.TST else kind.value
+            caption = {
+                AssessmentKind.LIFFT: "Lifting Fatigue Failure Tool (LiFFT)",
+                AssessmentKind.DUET: "Distal Upper Extremity Tool (DUET)",
+                AssessmentKind.TST: "The Shoulder Tool (ST)",
+            }[kind]
+            index = self.tool_tabs.addTab(editor, self._icons[icon], caption)
+            self.tool_tabs.setTabToolTip(
+                index,
+                self.tr_text(
+                    "Shoulder Tool (ST)" if label == "ST" else label,
+                    "Herramienta de hombro (ST)" if label == "ST" else label,
+                ),
+            )
+        self.tool_tabs.setIconSize(QSize(36, 36))
+        tab_bar = self.tool_tabs.tabBar()
+        assert tab_bar is not None
+        tab_bar.setElideMode(Qt.TextElideMode.ElideNone)
+        tab_bar.setUsesScrollButtons(True)
+        tab_bar.setExpanding(False)
+        self.direct_values = JobDirectValues(
+            self._system, self._language, self._convention
         )
-        actions.addWidget(self.mode_combo)
-        self.add_task_button = QPushButton("+")
-        self.add_task_button.setFixedWidth(38)
+        self.tool_status = QLabel()
+        self.tool_status.setObjectName("supportingText")
+        self.tool_status.setWordWrap(True)
+        self.add_task_button = QPushButton(self.tr_text("+ Task", "+ Tarea"))
         self.add_task_button.setToolTip(
             self.tr_text("Add a task (maximum 100)", "Agregar tarea (máximo 100)")
         )
-        self.remove_task_button = QPushButton("-")
-        self.remove_task_button.setFixedWidth(38)
+        self.remove_task_button = QPushButton(self.tr_text("- Task", "- Tarea"))
         self.remove_task_button.setToolTip(
             self.tr_text("Remove selected task", "Quitar tarea seleccionada")
         )
-        self.clear_tool_button = QPushButton(
-            self.tr_text("Clear tool", "Limpiar herramienta")
+        self.calculation_summary = JobCalculationSummary(
+            self._language,
+            self._convention,
+            self._workspace.project_metadata.precision
+            if self._workspace.project_metadata
+            else None,
         )
-        self.clear_tool_button.setIcon(self._icons["delete"])
-        self.calculate_button = QPushButton(self.tr_text("Calculate", "Calcular"))
-        self.calculate_button.setIcon(self._icons["calculate_light"])
-        self.calculate_button.setStyleSheet("background: #087E91; color: white;")
-        for button in (
-            self.add_task_button,
-            self.remove_task_button,
-            self.clear_tool_button,
-            self.calculate_button,
-        ):
-            actions.addWidget(
-                button,
-                1 if button in (self.clear_tool_button, self.calculate_button) else 0,
-            )
-        calc_layout.addLayout(actions)
-        details_layout.addWidget(self.calculator_area, 1)
-        self.calculator_area.setVisible(False)
-        self.calculator_toggle.toggled.connect(self._calculator_visibility_changed)
-        self.copy_assessment_button = QPushButton(
-            self.tr_text("Use worker assessment…", "Usar evaluación de trabajador…")
+        self.calculation_summary.bind_direct_values(self.direct_values)
+        self.direct_values.preview_changed.connect(self._preview_direct_result)
+        self.assessment_actions = AssessmentActionRow(
+            self._icons, middle=(self.add_task_button, self.remove_task_button)
         )
-        self.copy_assessment_button.setIcon(self._icons["worker"])
-        calc_layout.addWidget(self.copy_assessment_button)
-        details_layout.addStretch(1)
-        content.addWidget(details_panel, 1)
+        self.clear_tool_button = self.assessment_actions.clear_button
+        self.clear_tool_button.setText(
+            self.tr_text("Clear assessment", "Limpiar evaluación")
+        )
+        self.calculate_button = self.assessment_actions.calculate_button
+        self.calculate_button.setText(self.tr_text("Calculate", "Calcular"))
+        self.editor_section = AssessmentEditorSection(
+            self.tool_tabs,
+            self.calculation_summary,
+            self.assessment_actions,
+            status=self.tool_status,
+            spacing=10,
+        )
+        details_layout.addWidget(self.editor_section, 1)
+        content.addWidget(self.assessment_area, 1)
+        self.result_panel = JobResultPanel(
+            self._language,
+            self._convention,
+            self._icons,
+            self._gauge_markers,
+            self._update_gauge_markers,
+            parent=self,
+            precision=self._workspace.project_metadata.precision
+            if self._workspace.project_metadata
+            else None,
+        )
+        self.result_panel.setMinimumHeight(self.result_panel.minimumSizeHint().height())
+        result_scroll = QScrollArea()
+        result_scroll.setFrameShape(QFrame.NoFrame)
+        result_scroll.setWidgetResizable(True)
+        result_scroll.setMinimumWidth(310)
+        result_scroll.setMaximumWidth(325)
+        result_scroll.setWidget(self.result_panel)
+        content.addWidget(result_scroll)
         layout.addLayout(content, 1)
+        self.job_name_input.textChanged.connect(self._update_assessment_heading)
         self.job_id_combo.currentIndexChanged.connect(self.load_job)
         identity_editor = self.job_id_combo.lineEdit()
         assert identity_editor is not None
@@ -1077,7 +1485,6 @@ class JobManagementDialog(QDialog):
         button_layout = QHBoxLayout()
         button_layout.addStretch(1)
         for attr, text, icon, callback, name in (
-            ("new_button", "Add Job", "new", self.new_job, ""),
             (
                 "save_button",
                 "Save changes",
@@ -1085,8 +1492,6 @@ class JobManagementDialog(QDialog):
                 self.save_job,
                 "primaryOutlineButton",
             ),
-            ("delete_button", "Delete", "delete", self.delete_job, "dangerButton"),
-            ("cancel_button", "Discard changes", "undo", self.discard_changes, ""),
             ("close_button", "Close", "close", self.close_dialog, ""),
         ):
             button = QPushButton(self._text(text))
@@ -1097,9 +1502,9 @@ class JobManagementDialog(QDialog):
             setattr(self, attr, button)
             button_layout.addWidget(button)
         layout.addLayout(button_layout)
-        self.risk_table.measurements_changed.connect(self._manual_changed)
-        self.tool_tabs.currentChanged.connect(self._tool_changed)
-        self.mode_combo.currentIndexChanged.connect(self._mode_changed)
+        self.direct_values.measurements_changed.connect(self._manual_changed)
+        self.tool_tabs.currentChanged.connect(self._select_tool)
+        self.input_modes.idClicked.connect(self._mode_changed)
         self.add_task_button.clicked.connect(self.add_task)
         self.remove_task_button.clicked.connect(self.remove_task)
         self.clear_tool_button.clicked.connect(self.clear_tool)
@@ -1115,7 +1520,7 @@ class JobManagementDialog(QDialog):
             None.
 
         Returns:
-            None; invalid text retains the dialog for correction or Discard changes.
+            None; invalid text retains the dialog for correction or native text Undo.
         """
         if self.accept_pending_job():
             super().reject()
@@ -1137,13 +1542,13 @@ class JobManagementDialog(QDialog):
         super().closeEvent(event)
 
     def load_job(self) -> None:
-        """Select stored details once, without reloading SQL or saving form edits.
+        """Accept pending edits, then record Job navigation on the shared clean cursor.
 
         Args:
             None.
 
         Returns:
-            None.
+            None; dropdown, arrows and search share one reversible view operation.
         """
         target = self.job_id_combo.currentText()
         if (
@@ -1163,6 +1568,10 @@ class JobManagementDialog(QDialog):
             self._show_job()
         finally:
             self._accepting_job = previous
+
+        editing = self._workspace.editing
+        if not previous and editing is not None and self._loaded_job_id is not None:
+            editing.set_editor(_JOB_EDITOR_KEY, self._loaded_job_id, "job.selection")
 
     def _run(self, action: Callable[[], None]) -> None:
         """Invoke one explicit operation and display expected failures.
@@ -1351,6 +1760,10 @@ class JobManagementDialog(QDialog):
                 self._jobs, self._risk, job_id
             )
             self._reload_jobs()
+            if self._workspace.editing is not None:
+                self._workspace.editing.project_editor(
+                    _JOB_EDITOR_KEY, self._loaded_job_id
+                )
             self._information(
                 self._text("Success"),
                 self._text("Job '{job_id}' has been deleted successfully.").format(

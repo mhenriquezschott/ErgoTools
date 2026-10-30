@@ -24,6 +24,10 @@ from ergotools.application.settings import Language
 from ergotools.presentation.desktop.theme.risk import RISK_APPEARANCES
 from ergotools.presentation.desktop.workspace_text import workspace_text
 
+# Compact integrated layouts must reserve the fixed captions/legend/buttons first;
+# the model can use this logical-pixel floor and expand toward its 400-pixel hint.
+MIN_BODY_VIEWPORT_HEIGHT = 220
+
 
 class _ModelViewport(QFrame):
     """Reserve the reference QVTK widget's preferred space before adapter wiring."""
@@ -74,7 +78,7 @@ class BodyRegionPanel(QFrame):
         layout.addLayout(title_row)
         self.viewport = _ModelViewport()
         self.viewport.setObjectName("vtkWorkspace")
-        self.viewport.setMinimumHeight(315)
+        self.viewport.setMinimumHeight(MIN_BODY_VIEWPORT_HEIGHT)
         viewport_layout = QVBoxLayout(self.viewport)
         pending = self._label("3D view unavailable", "bodyRiskLabel")
         pending.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -182,12 +186,16 @@ class BodyRegionPanel(QFrame):
                 its adapter.
 
         Returns:
-            None.
+            None; the integrated viewport floor reserves space for fixed captions,
+            while larger layouts retain the renderer's preferred size.
         """
         layout = self.viewport.layout()
         assert layout is not None
         self._pending.hide()
         layout.removeWidget(self._pending)
+        # The replaceable renderer's standalone minimum must not force overlap with
+        # the integrated panel's fixed captions when assessment context is expanded.
+        widget.setMinimumHeight(MIN_BODY_VIEWPORT_HEIGHT)
         layout.addWidget(widget)
         for button, action in zip(
             self.view_buttons,

@@ -62,6 +62,8 @@ class UserSettings:
         undo_limit: Personal shared project history budget; independent of saved data.
         gauge_markers: Personal main-risk gauge tick/label visibility and spacing;
             independent of projects and calculator outputs.
+        animated_risk_gauge: Animate risk displays; False immediately shows targets.
+        animated_cumulative_damage: Animate damage bars; independent of calculated data.
         animated_body_region_focus: Explicit avatar focus/animation preference; False
             uses the established full-body policy.
     """
@@ -75,6 +77,8 @@ class UserSettings:
     gauge_markers: GaugeMarkerSettings = field(default_factory=GaugeMarkerSettings)
 
     undo_limit: int = DEFAULT_UNDO_LIMIT
+    animated_risk_gauge: bool = True
+    animated_cumulative_damage: bool = True
 
     def __post_init__(self) -> None:
         """Reject invalid preferences and ambiguous or unbounded recent history.
@@ -98,6 +102,11 @@ class UserSettings:
             raise ValueError("Unsupported decimal convention.")
         if type(self.animated_body_region_focus) is not bool:
             raise ValueError("Camera animation preference must be boolean.")
+        if any(
+            type(value) is not bool
+            for value in (self.animated_risk_gauge, self.animated_cumulative_damage)
+        ):
+            raise ValueError("Result animation preferences must be boolean.")
         if not isinstance(self.gauge_markers, GaugeMarkerSettings):
             raise ValueError("Unsupported gauge marker preferences.")
         validate_undo_limit(self.undo_limit)

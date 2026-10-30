@@ -14,6 +14,11 @@ uv sync --locked --extra desktop --python 3.13.14
 bash tools/run.sh
 ```
 
+On Linux, `tools/run.sh` defaults to Qt XCB and removes `XDG_SESSION_TYPE` from
+the launched process when using XCB. You do not need to prefix the command with
+`env -u XDG_SESSION_TYPE QT_QPA_PLATFORM=xcb`. An explicitly configured
+`QT_QPA_PLATFORM` is respected; other operating systems keep their native defaults.
+
 The development environment includes Ruff, mypy, pytest, coverage and Hatchling.
 `uv.lock` records exact dependencies so installations can be reproduced. Keep it
 under version control; update dependencies deliberately and review compatibility.
@@ -49,3 +54,21 @@ remains separate under `tools/project_migration/`.
 Keep domain and application code independent of Qt, SQL, solvers and rendering.
 Adapters implement those integrations. Preserve scientific calculations, units,
 localization and project integrity when changing interfaces.
+
+## Shared assessment presentation
+
+Use [AssessmentTaskGrid and AssessmentEditorSection](shared_assessment_editor.md) for
+new ergonomic task editors. Main, Jobs and compact copy previews share these controls.
+Keep host source acceptance, unit conversion, validation, calculation, history and
+saving outside the grid; do not add another per-window row/header implementation.
+The experimental JROT workflow can adopt the component in its separately authorized
+follow-up; this refactor does not change that prototype.
+
+
+## Documentation map
+
+[The documentation index](README.md) distinguishes current operating/API guides from
+historical component records. Public guides must not link to personal checkpoint notes
+or ignored local evidence. Retired widgets/modules must be identified as removed rather
+than documented as active interfaces. Screenshot projects are private copies with fictional
+records; do not modify maintained fixtures to prepare README images.

@@ -11,7 +11,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt5.QtCore import QPoint
+from PyQt5.QtWidgets import QApplication, QLabel, QWidget
 
 from ergotools.application.contracts.body_renderer import (
     BodyRegion,
@@ -24,6 +25,7 @@ from ergotools.domain.assessments.lifft_draft import LifftDraft, LifftTask
 from ergotools.domain.model_units import MeasurementSystem
 from ergotools.domain.project import ProjectMetadata
 from ergotools.infrastructure.resources import read_asset
+from ergotools.presentation.desktop.body_region_panel import MIN_BODY_VIEWPORT_HEIGHT
 from ergotools.presentation.desktop.lifft_window import LifftWindow
 from ergotools.presentation.desktop.rendering.vtk_body_renderer import VtkBodyRenderer
 
@@ -83,14 +85,14 @@ def renderer(window: LifftWindow) -> VtkBodyRenderer:
 
 
 def test_packaged_meshes_camera_and_layout(window: LifftWindow) -> None:
-    """All eight meshes decode and the original torso shot fits its viewport.
+    """Packaged meshes/camera survive adaptive host sizing without caption overlap.
 
     Args:
         window: Live synthetic Qt form supplied by the test fixture; fixture/caller owns
             its close and repository cleanup.
 
     Returns:
-        None.
+        None; the integrated viewport respects its host floor and fixed captions.
     """
     engine = renderer(window)
     assert len(engine.actors) == 8
@@ -105,7 +107,24 @@ def test_packaged_meshes_camera_and_layout(window: LifftWindow) -> None:
     assert camera.GetParallelScale() == pytest.approx(shot.parallel_scale)
     assert camera.GetParallelProjection()
     assert engine.widget.width() >= 250
-    assert engine.widget.height() >= 315
+    assert engine.widget.minimumHeight() == MIN_BODY_VIEWPORT_HEIGHT == 220
+    assert engine.widget.height() >= MIN_BODY_VIEWPORT_HEIGHT
+    panel = window.body_panel
+    region = panel.findChild(QLabel, "activeRegionName")
+    caption = panel.findChild(QLabel, "activeRegionCaption")
+    assert region is not None and caption is not None
+    assert (
+        panel.viewport.mapTo(panel, QPoint()).y() + panel.viewport.height()
+        <= region.mapTo(panel, QPoint()).y()
+    )
+    assert (
+        region.mapTo(panel, QPoint()).y() + region.height()
+        <= caption.mapTo(panel, QPoint()).y()
+    )
+    assert all(
+        button.mapTo(panel, QPoint()).y() + button.height() <= panel.height()
+        for button in panel.view_buttons
+    )
     assert all(
         b.isEnabled() and not b.icon().isNull() for b in window.body_panel.view_buttons
     )

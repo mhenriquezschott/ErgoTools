@@ -1,4 +1,4 @@
-"""Saved-tool modal filtering, identity and integrated dirty-source decisions.
+"""Canonical saved-assessment search, exact identity and dirty-source decisions.
 
 Test layer. Characterize the contracts named below using immutable inputs, controlled
 adapters or disposable projects. Native Qt cases drive owned real controls; scheduled
@@ -13,13 +13,11 @@ from unittest.mock import patch
 
 import pytest
 from PyQt5.QtCore import QCoreApplication, QEvent, Qt, QTimer
-from PyQt5.QtGui import QFontMetrics
 from PyQt5.QtWidgets import QApplication
 
 from ergotools.application.document_lifecycle import CloseChoice
-from ergotools.application.settings import Language
 from ergotools.bootstrap import create_window
-from ergotools.domain.assessment_history import AssessmentHistory, AssignmentAssessment
+from ergotools.domain.assessment_history import AssignmentAssessment
 from ergotools.domain.assessments.document import AssessmentKind
 from ergotools.domain.assessments.duet_draft import DuetDraft, DuetTask
 from ergotools.domain.assessments.lifft_draft import LifftDraft, LifftTask
@@ -28,8 +26,7 @@ from ergotools.domain.assessments.tst_draft import TstDraft
 from ergotools.domain.job_catalog import WorkerJobAssignment
 from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
 from ergotools.presentation.desktop.lifft_window import LifftWindow
-from ergotools.presentation.desktop.tool_data_dialog import ToolDataDialog
-from ergotools.presentation.saved_tool_options import saved_tool_options
+from ergotools.presentation.desktop.worker_search_dialog import WorkerSearchDialog
 from tests.test_history_persistence import HIERARCHY, JOBS, META, OWNER
 
 # One retained QApplication for native Qt tests; keeps widgets alive and uses the
@@ -152,7 +149,7 @@ def test_saved_grid_invalid_text_and_retained_project_edits(
         field = panel.inputs[0][2]
     field.setText("bad")
     field.textEdited.emit("bad")
-    assert panel.context_button.isEnabled()
+    assert window.main_navigation.buttons["search"].isEnabled()
 
     def close() -> None:
         """Verify exact saved assignment IDs 1/2 in the actual owned browser.
@@ -167,15 +164,15 @@ def test_saved_grid_invalid_text_and_retained_project_edits(
             None.
         """
         modal = QApplication.activeModalWidget()
-        assert isinstance(modal, ToolDataDialog) and modal.parent() is window
-        assert modal.table.rowCount() == 2
+        assert isinstance(modal, WorkerSearchDialog) and modal.parent() is window
+        assert modal.table.rowCount() == 3
         assert {
-            modal.table.item(r, 0).data(Qt.UserRole).assignment_id for r in range(2)
-        } == {1, 2}
-        modal.close_button.click()
+            modal.table.item(r, 0).data(Qt.UserRole).assignment_id for r in range(3)
+        } == {1, 2, 3}
+        modal.reject()
 
     QTimer.singleShot(0, close)
-    panel.context_button.click()
+    window.main_navigation.buttons["search"].click()
     assert active.state is before and field.text() == "bad" and panel.pending
 
     def load() -> None:
@@ -191,24 +188,24 @@ def test_saved_grid_invalid_text_and_retained_project_edits(
             None.
         """
         modal = QApplication.activeModalWidget()
-        assert isinstance(modal, ToolDataDialog)
+        assert isinstance(modal, WorkerSearchDialog)
         modal.table.sortItems(0, Qt.DescendingOrder)
         row = next(
             r
-            for r in range(2)
+            for r in range(3)
             if modal.table.item(r, 0).data(Qt.UserRole).assignment_id == 2
         )
         modal.table.selectRow(row)
-        modal.load_button.click()
+        modal.use_button.click()
 
     QTimer.singleShot(0, load)
-    panel.context_button.click()
+    window.main_navigation.buttons["search"].click()
     assert window.presenter.workspace.active is active and field.text() == "bad"
     field.setText("500")
     field.textEdited.emit("500")
     with patch.object(window, "dirty_choice") as departure:
         QTimer.singleShot(0, load)
-        panel.context_button.click()
+        window.main_navigation.buttons["search"].click()
     departure.assert_not_called()
     workspace = window.presenter.workspace
     assert workspace.active.document.document_id == f"{KINDS[index]}-2"
@@ -249,15 +246,15 @@ def test_saved_grid_invalid_text_and_retained_project_edits(
         modal = QApplication.activeModalWidget()
         row = next(
             r
-            for r in range(2)
+            for r in range(3)
             if modal.table.item(r, 0).data(Qt.UserRole).assignment_id == 1
         )
         modal.table.selectRow(row)
-        modal.load_button.click()
+        modal.use_button.click()
 
     with patch.object(window, "dirty_choice") as departure:
         QTimer.singleShot(0, return_first)
-        panel.context_button.click()
+        window.main_navigation.buttons["search"].click()
     departure.assert_not_called()
     second = next(
         e.document
@@ -276,54 +273,3 @@ def test_saved_grid_invalid_text_and_retained_project_edits(
             ).task_count
             == 1
         )
-
-
-def test_empty_and_spanish_selection_warning(window: LifftWindow) -> None:
-    """Empty browser rejects Load with the localized reference warning.
-
-    Args:
-        window: Live synthetic Qt form supplied by the test fixture; fixture/caller owns
-            its close and repository cleanup.
-
-    Returns:
-        None.
-    """
-    dialog = ToolDataDialog((), language=Language.SPANISH, parent=window)
-    with patch(
-        "ergotools.presentation.desktop.tool_data_dialog.QMessageBox.warning"
-    ) as warning:
-        dialog.load_button.click()
-    assert warning.call_args.args[1:] == (
-        "Error de selección",
-        "Seleccione una fila antes de continuar.",
-    )
-    assert dialog.selected is None and dialog.result() == 0
-    assert dialog.table.horizontalHeaderItem(5).text() == "Herramienta"
-    metrics = QFontMetrics(dialog.table.horizontalHeader().font())
-    for column in range(6):
-        text = dialog.table.horizontalHeaderItem(column).text()
-        assert dialog.table.columnWidth(column) >= metrics.horizontalAdvance(text) + 24
-    dialog.close()
-
-
-def test_options_reject_foreign_history_and_omit_noncurrent(
-    window: LifftWindow,
-) -> None:
-    """Filter current versions by worker/tool, retaining closed owners.
-
-    Args:
-        window: Live synthetic Qt form supplied by the test fixture; fixture/caller owns
-            its close and repository cleanup.
-
-    Returns:
-        None.
-    """
-    workspace = window.presenter.workspace
-    jobs = workspace.read_jobs().jobs
-    history = workspace.read_history().history
-    options = saved_tool_options(jobs, history, "w", KINDS[0])
-    assert [o.assignment_id for o in options] == [1, 2]
-    assert all(o.document_id != "old" for o in options)
-    assert saved_tool_options(jobs, history, "missing", KINDS[0]) == ()
-    with pytest.raises(ValueError):
-        saved_tool_options(jobs, AssessmentHistory("foreign"), "w", KINDS[0])

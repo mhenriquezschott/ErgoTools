@@ -134,13 +134,14 @@ class AssessmentHistoryActions(QObject):
             None.
 
         Returns:
-            True after the existing parser/command boundary and shared staging;
-            invalid input is interlocked before entry. No calculation or Save runs.
+            True after parsing/staging and automatic result attachment to this input
+            action. Invalid input is interlocked before entry; no file Save runs.
         """
         panel = self.view.secondary_panel() or self.view.task_panel
         if panel is not None and panel.commit_inputs():
             panel.context = panel.presenter.bind()
             self.refresh()
+            self.view.auto_calculate()
         return True
 
     def focused_field(self) -> QLineEdit | None:

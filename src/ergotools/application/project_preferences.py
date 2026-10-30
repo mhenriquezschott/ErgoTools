@@ -17,7 +17,8 @@ class ProjectPreferencesRepository(Protocol):
         """Persist validated display defaults on the owned repository.
 
         Args:
-            metadata: Same project identity/details with changed units/precision only.
+            metadata: Same project identity/details with changed units, precision
+                or context disclosure only.
 
         Returns:
             None after successful persistence; failure must retain previous metadata.

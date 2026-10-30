@@ -102,7 +102,8 @@ def test_yes_flow_real_solver_and_discard(mode: int) -> None:
         mode: LiFFT, DUET, ST or all-three analysis selector index.
 
     Returns:
-        None; the solver validates staffing and dialog close empties scratch state.
+        None; real solves validate staffing, display-only choices retain the solution
+        without another solver call, and dialog close empties scratch state.
     """
     dialog = JrotPrototypeDialog(
         PrototypeCatalog("Sample"), PulpRotationOptimizer(), load_icons()
@@ -121,6 +122,50 @@ def test_yes_flow_real_solver_and_discard(mode: int) -> None:
         RotationBackend.HIGHS if mode == 3 else RotationBackend.CBC
     )
     before.validate_schedule(dialog.solution.schedule)
+    solution = dialog.solution
+    with (
+        patch.object(
+            dialog.optimizer,
+            "optimize_single_tool",
+            side_effect=AssertionError("Display must not run CBC"),
+        ),
+        patch.object(
+            dialog.optimizer,
+            "optimize_all_tools",
+            side_effect=AssertionError("Display must not run HiGHS"),
+        ),
+    ):
+        assert dialog.optimized_tabs.count() == len(dialog.kinds())
+        layout = dialog.page_layouts[6]
+        assert (
+            layout.indexOf(dialog.optimized_tabs)
+            < layout.indexOf(dialog.result_explanation)
+            < layout.indexOf(dialog.constraint_notice)
+        )
+        for index, kind in enumerate(dialog.kinds()):
+            dialog.optimized_tabs.setCurrentIndex(index)
+            table = dialog.optimized_tables[kind]
+            rotation = solution.schedule[0]
+            jobs = {job.key: job for job in dialog.session.jobs}
+            values = [
+                jobs[key].measurements[kind].probability_percent
+                for key in rotation.target_keys
+            ]
+            assert all(value is not None for value in values)
+            expected = sum(value for value in values if value is not None) / len(values)
+            average_column = len(rotation.target_keys) + 1
+            assert table.item(0, average_column).text() == (f"{expected:.1f}%")
+            assert dialog.optimized_tabs.currentWidget() is table
+            assert (
+                f"Showing {dialog.optimized_tabs.tabText(index)} values"
+                in dialog.solve_status.text()
+            )
+            assert all(
+                not table.isColumnHidden(column)
+                for column in range(table.columnCount())
+            )
+            assert dialog.solution is solution
+            assert dialog.session.problem(dialog.kinds(), 3) == before
     dialog.advance()
     assert dialog._page == 7
     assert dialog.statistics.rowCount() == (12 if mode == 3 else 4)
@@ -798,4 +843,83 @@ def test_owned_hierarchy_shift_and_worker_record_pickers() -> None:
     QTimer.singleShot(0, choose_worker)
     dialog._worker_choices[0].choose()
     assert dialog._worker_choices[0].key == "W03"
+    dispose(dialog)
+
+
+def test_compact_task_results_follow_edits_tools_and_jobs() -> None:
+    """Show current totals immediately and remove stale totals before recalculation.
+
+    Args:
+        None.
+
+    Returns:
+        None; temporary input edits invalidate only the selected Job/tool result.
+    """
+    dialog = meeting_dialog()
+    dialog.go(4)
+    job = dialog.session.jobs[0]
+    result = job.measurements[AssessmentKind.LIFFT]
+    assert dialog.task_damage.text() == f"{result.cumulative_damage:.6g}"
+    assert dialog.task_probability.text() == f"{result.probability_percent:.2f}%"
+    arm = dialog.grids[AssessmentKind.LIFFT].controls[0][0]
+    assert isinstance(arm, QLineEdit)
+    arm.setText("55")
+    arm.textEdited.emit("55")
+    assert dialog.task_damage.text() == dialog.task_probability.text() == "—"
+    assert "Not calculated" in dialog.task_summary.text()
+    dialog._calculate()
+    changed = job.measurements[AssessmentKind.LIFFT]
+    assert changed.complete and changed != result
+    assert dialog.task_damage.text() == f"{changed.cumulative_damage:.6g}"
+    assert dialog.task_probability.text() == f"{changed.probability_percent:.2f}%"
+    for index, kind in enumerate(AssessmentKind):
+        dialog.tool_tabs.setCurrentIndex(index)
+        current = job.measurements[kind]
+        assert dialog.task_probability.text() == f"{current.probability_percent:.2f}%"
+    dialog.job_progress.setCurrentRow(1)
+    current = dialog.session.jobs[1].measurements[AssessmentKind.TST]
+    assert dialog.task_probability.text() == f"{current.probability_percent:.2f}%"
+    dialog._clear_tool()
+    assert dialog.task_damage.text() == dialog.task_probability.text() == "—"
+    dispose(dialog)
+
+
+def test_baseline_tabs_use_current_assignments_without_individual_assessments() -> None:
+    """Separate Job values from before-optimization means and preserve view-only state.
+
+    Args:
+        None.
+
+    Returns:
+        None; rotating-example replacement changes averages through assignments only.
+    """
+    dialog = meeting_dialog()
+    dialog.go(5)
+    before = dialog.session.problem(dialog.kinds(), 3)
+    assert "Before optimization" in dialog.baseline_context.text()
+    assert dialog.baseline_tabs.count() == 2
+    for index, table in enumerate((dialog.worker_baseline, dialog.job_baseline)):
+        dialog.baseline_tabs.setCurrentIndex(index)
+        assert dialog.baseline_tabs.currentWidget() is table
+        assert dialog.session.problem(dialog.kinds(), 3) == before
+    first = dialog.session.current[0]
+    jobs = {job.key: job for job in dialog.session.jobs}
+    for column, kind in enumerate(AssessmentKind, 1):
+        values = [
+            jobs[key].measurements[kind].probability_percent
+            for key in first.target_keys
+        ]
+        expected = sum(value for value in values if value is not None) / len(values)
+        assert dialog.worker_baseline.item(0, column).text() == f"{expected:.1f}%"
+        risk = dialog.session.jobs[0].measurements[kind].probability_percent
+        assert dialog.job_baseline.item(0, column).text() == f"{risk:.1f}%"
+    assert first.target_keys[:3] == (dialog.session.jobs[0].key,) * 3
+    dialog.go(3)
+    dialog._fill_rotating_example()
+    dialog.go(5)
+    assert dialog.session.current[0].target_keys == tuple(
+        job.key for job in dialog.session.jobs[:4]
+    )
+    assert dialog.session.current != before.current
+    assert dialog.session.problem(dialog.kinds(), 3).risks == before.risks
     dispose(dialog)

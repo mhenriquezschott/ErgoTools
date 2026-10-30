@@ -52,9 +52,11 @@ def test_map_rail_click_zoom_opacity_reset_capture_and_pending_edits(
     was_pending = item.pending
     initial = canvas.transform().m11()
     QTest.mouseClick(panel.buttons["zoom_in"], Qt.MouseButton.LeftButton)
-    assert canvas.zoom_pending and canvas.cursor().shape() == Qt.CursorShape.CrossCursor
+    assert (
+        canvas.zoom_pending and canvas.cursor().shape() == Qt.CursorShape.BitmapCursor
+    )
     QTest.mouseClick(canvas.viewport(), Qt.MouseButton.LeftButton, pos=QPoint(250, 200))
-    assert not canvas.zoom_pending
+    assert canvas.zoom_pending
     assert canvas.transform().m11() == pytest.approx(initial * 1.5)
     assert item.pos() == before and item.pending is was_pending
     for expected in (0.9, 0.8, 0.7, 1.0):
@@ -63,13 +65,16 @@ def test_map_rail_click_zoom_opacity_reset_capture_and_pending_edits(
             marker.opacity() == expected for marker in window.layer.items.values()
         )
         assert canvas.background.opacity() == 1.0
-    canvas.resetTransform()
-    canvas.scale(1.1, 1.1)
+    # Zoom out uses the same click-target interaction and the actual fitted floor.
     QTest.mouseClick(panel.buttons["zoom_out"], Qt.MouseButton.LeftButton)
-    assert canvas.transform().m11() == 1.0
-    QTest.mouseClick(panel.buttons["zoom_out"], Qt.MouseButton.LeftButton)
-    assert canvas.transform().m11() == 1.0
-    QTest.mouseClick(panel.buttons["actual_size"], Qt.MouseButton.LeftButton)
+    assert canvas.zoom_pending
+    QTest.mouseClick(canvas.viewport(), Qt.MouseButton.LeftButton, pos=QPoint(250, 200))
+    assert canvas.transform().m11() == pytest.approx(initial)
+    assert not panel.buttons["zoom_out"].isEnabled()
+    assert not panel.buttons["pan"].isEnabled()
+    panel.buttons["select"].click()
+    assert not canvas.zoom_pending
+    QTest.mouseClick(panel.buttons["fit"], Qt.MouseButton.LeftButton)
     assert canvas.transform().m11() == pytest.approx(initial)
     assert window.layer.results is saved and window.layer.worker_drafts == pending
     for size in ((1300, 1045), (1800, 1200)):
@@ -151,7 +156,7 @@ def test_map_actions_disable_without_pixels_and_clear_armed_zoom(
     assert panel.canvas.zoom_pending
     assert window.filters.workplace.set_scope(PlotScope((("Empty",),)))
     assert not panel.canvas.zoom_pending and panel.canvas.background is None
-    for key in ("zoom_in", "zoom_out", "actual_size", "opacity", "capture"):
+    for key in ("zoom_in", "zoom_out", "fit", "opacity", "capture"):
         assert not panel.buttons[key].isEnabled()
     panel.canvas.begin_zoom()
     assert not panel.canvas.zoom_pending

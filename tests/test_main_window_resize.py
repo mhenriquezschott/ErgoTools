@@ -104,7 +104,7 @@ def test_enlargement_preserves_pending_input_and_column_alignment(
                 for widget in (
                     window.body_panel,
                     window.results_sidebar,
-                    window.main_navigation.context_frame,
+                    window.main_navigation.location_browser,
                     panel.calculate_button,
                     panel.clear_button,
                 ):

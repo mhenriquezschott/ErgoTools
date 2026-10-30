@@ -70,19 +70,42 @@ def test_main_toolbar_shares_history_and_keeps_settings_help_in_menus(
     assert active.state is changed
 
 
-def actor_point(engine: object, key: str) -> QPoint:
+def actor_point(
+    engine: object, key: str, *, release_offset: QPoint | None = None
+) -> QPoint:
     """Locate an exposed colored actor pixel using its small projected bounds.
 
     Args:
         engine: Borrowed native VTK adapter from the fixture window.
         key: Existing mesh identity whose visible surface must be selectable.
+        release_offset: Optional held-click movement; verify its release pixel stays
+            on this actor, so mesh-edge crossings do not invalidate the gesture.
 
     Returns:
-        Widget pixel coordinate selecting that exact frontmost actor.
+        Widget pixel coordinate selecting that exact frontmost actor at press and
+        optional offset release. No renderer/camera state is changed.
 
     Raises:
-        AssertionError: No exposed point exists in the bounded projected mesh area.
+        AssertionError: The native viewport fails to settle, or no exposed gesture
+            endpoints exist in the bounded projected mesh area.
     """
+    # Qt can deliver a deferred layout/VTK resize after the first processEvents().
+    # Pick only after two stable frame intervals, then verify both gesture endpoints.
+    stable = 0
+    previous = None
+    for _ in range(10):
+        QTest.qWait(20)
+        geometry = (
+            engine.widget.size(),
+            engine.render_window.GetSize(),
+            engine.renderer.GetActiveCamera().GetParallelScale(),
+        )
+        stable = stable + 1 if geometry == previous else 0
+        if stable == 2:
+            break
+        previous = geometry
+    else:
+        raise AssertionError("Native viewport did not settle before actor picking")
     actor = engine.actors[key]
     bounds = actor.GetBounds()
     points = []
@@ -103,15 +126,21 @@ def actor_point(engine: object, key: str) -> QPoint:
                 round(x * engine.widget.width() / width),
                 round((height - 1 - y) * engine.widget.height() / height),
             )
-            # Verify the integer Qt pixel that will actually be clicked. Rounding a
-            # projected edge can move a floating-point actor hit onto neutral anatomy.
-            picker.Pick(
-                point.x() * width / engine.widget.width(),
-                height - 1 - point.y() * height / engine.widget.height(),
-                0,
-                engine.renderer,
+            # Both integer Qt endpoints must hit the intended frontmost region.
+            # A one-pixel drift from an edge can correctly land on neutral anatomy.
+            targets = (
+                (point,) if release_offset is None else (point, point + release_offset)
             )
-            if picker.GetActor() == actor:
+            for target in targets:
+                picker.Pick(
+                    target.x() * width / engine.widget.width(),
+                    height - 1 - target.y() * height / engine.widget.height(),
+                    0,
+                    engine.renderer,
+                )
+                if picker.GetActor() != actor:
+                    break
+            else:
                 return point
     raise AssertionError(f"No exposed picking point for {key}")
 
@@ -234,7 +263,7 @@ def test_realistic_click_hold_does_not_rotate_before_tool_selection(
         app.processEvents()
         engine = view._body_renderer
         engine.set_animation_enabled(animated)
-        point = actor_point(engine, "left_arm")
+        point = actor_point(engine, "left_arm", release_offset=QPoint(1, 0))
         camera = engine.renderer.GetActiveCamera()
         original = (camera.GetPosition(), camera.GetFocalPoint(), camera.GetViewUp())
         QTest.mousePress(engine.widget, Qt.MouseButton.LeftButton, pos=point)

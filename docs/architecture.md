@@ -103,14 +103,14 @@ ownership and source-bound calculation contracts remain unchanged.
 
 ## Assessment browsing and retained tool drafts
 
-`AssessmentNavigation` resolves Follow worker/Keep context with exact assignment IDs,
+`AssessmentNavigation` resolves worker/tool saved contexts with exact assignment IDs,
 saved history and per-user remembered contexts. It does not create records or import Qt
 or SQL. `ProjectWorkspace` retains the tab sessions behind its one active editing
 session, resolves all dirty drafts at worker/context/project departure, and saves edited
 previews only after explicit consent. `PreparedSnapshotProject` lets the application
 write retained edits to the adapter's private snapshot before exclusive publication.
 The native adapter owns cleanup, backup, validation and publication; the main-window
-presenter owns status text, mode controls, dialogs and same-Job creation confirmation.
+presenter owns status text, the saved-location browser, dialogs and same-Job creation confirmation.
 
 
 ## Project display precision and renderer overlays
@@ -211,8 +211,8 @@ assessment_bindings table is absent. Hierarchy validation traverses actual owner
 assignment rows, rejecting missing worker/workplace references. Foreign keys are enabled
 on owned repository connections; unique ownership is also enforced by immutable domain
 construction. Version creation/current-selection methods, port capability and UI handlers
-are removed, including menu text and export columns. File/codec versions and original Job
-risk-profile versions remain necessary and distinct.
+are removed, including menu text and export columns. File/codec compatibility markers remain distinct. Jobs have one current risk set,
+without a profile-version lifecycle.
 
 The external tool upgrades earlier full formats 8–15. Format-14/15 upgrades preserve all
 unrelated SQLite rows/payloads and JROT timestamps exactly; older result-envelope upgrades
@@ -235,8 +235,9 @@ See ownership, UI, migration and rollback.
 
 GaugeMarkerSettings is an immutable application preference contract (visibility
 and percentage-point spacing), independent of scientific domain calculations.
-UserSettings owns it; the JSON adapter stores it in personal settings format 5,
-reading formats 1-4 with defaults and no write on load. Native project format 16
+UserSettings owns it; the JSON adapter introduced markers in personal format 5 and
+currently writes format 7. Formats 1-6 remain readable without writes on load; marker
+defaults apply before format 5 and result-animation defaults apply before format 7. Native project format 16
 and project databases are unchanged. Gauge annotations use existing presentation
 band limits and preserve the arc/needle geometry and animated scale engine.
 The main desktop host saves right-click changes before applying them; Settings
@@ -385,7 +386,46 @@ are unchanged. See explicit_context_creation_acceptance.md.
 Domain JobRiskValues/JobRiskMeasurement/JobTaskResult own one immutable current tool set,
 optional exact task source and matching per-task outputs. Application job_calculation
 uses the existing scientific evaluator and copies only source-matched complete results.
-Job Management owns compact input widgets and selection/consent, with no formulas or SQL.
+Job Management owns task-first tool tabs, optional direct-entry fields and one selected-tool
+result panel derived from the actual main ResultsSidebar, with its key metrics and an
+additional legend. Missing Job tools show one presentation-only blank starter in task mode; browsing
+cannot create persisted source rows. Direct mode has no task template. The first cell
+edit accepts the template; + Task appends to it. Clearing or removing the last stored
+source restores the starter. Assessment controls shares the actual precision editors and
+descriptive native selectors between main panels and Job grids. JobTaskEditor uses the
+main column order, sticky headers, display precision and original ST keyboard order;
+ToolResultSummary is the same inline summary component as the main panels.
+AssessmentTaskGrid now owns the common row/control/header/scroll implementation for
+all main tool panels, Job tools and compact copy previews. AssessmentEditorSection
+and AssessmentActionRow compose shared content/totals/actions, with context selection
+in Main and task-count controls in Jobs. The thin JobTaskEditor binding accepts Job
+source edits; main panels retain presenter contexts, unit conversion and validation.
+AssessmentCellEdit transports immutable task/field/exact-token intent; the grid does
+not accept canonical source state, calculate, save or create a history stack. Main
+result formatting remains presenter-specific to preserve existing source/display units.
+See shared_assessment_editor.md for lifecycle, configuration and acceptance contracts.
+JobDirectValues occupies the existing Job summary damage cell in direct mode; its
+preview signal updates the single probability row without accepting typing. It retains
+exact stored measurements and derives deliberately changed
+manual values through the established tool functions. Worker/Job copying routes through
+existing workspace mutations with replacement consent and shared project history.
+No formulas, SQL or ownership links are introduced by the view.
+JobValuePicker renders immutable CopySource/CopyCandidate snapshots. JobAssessmentDialog
+and JobCopyDialog adapt existing read-only catalogs, then revalidate the selected identity
+on explicit Copy. Filtering/navigation/Cancel never mutate source or destination. A disclosure renders
+selected source tasks through JobTaskCopyDetails embedded as a spanning child tree
+row. Its compact read-only JobTaskEditor shows populated rows with original task
+numbers, bounded row-dependent height and copy-only identity checkboxes. All/None
+controls share the Task # header; blank capacity is not offered for selection. Explicit partial Copy calls application copy_job_tasks: full selections
+retain exact results; calculated subsets use the existing evaluator; blank/uncalculated
+subsets retain source inputs without fabricated outputs. Source units/order/convention
+remain exact and source identity is revalidated before accepting the copy. AlphabetNavigation fills the
+related selector width and uses a modest main-sized 16-pixel hover preview.
+secondary_history_controls shares the adjacent icon/caption button presentation across
+secondary windows; existing action owners retain shortcuts, native typing, pending
+acceptance, solver blocking and shared replay. The main toolbar is unchanged.
+JobCalculationSummary and JobResultPanel share the existing tool palette, RiskGauge and
+DamageScale; UI grouping and segmented input modes introduce no storage or history layer.
 The worker picker reads standalone/assigned assessments without navigating or linking them.
 Infrastructure owns strict JSON/source codecs, one Job/tool SQL row and atomic updates.
 JROT draft refresh runs in the application layer both on reopening and at main Save;
@@ -402,3 +442,246 @@ widgets/dialog/thread own temporary task names, progress, preview restrictions a
 CBC/HiGHS results. Only session-local Settings/menu hooks touch existing presentation.
 No schema/preferences serialization or production calculator/solver changes occur.
 The prototype is diagnostic and does not persist data.
+
+Job tool selection is retained as the immutable session-only `jobs.tool` editor value
+in ProjectEditingSession. A completed tab change is a chronological view action;
+pending data is accepted first, replay restores the tool under signal guards, and
+view-only navigation does not change project dirty state or native storage.
+
+## Completed-input automatic calculation and personal display animation
+
+Main task panels emit input_committed only after a changed, validated cell edit.
+Bulk form acceptance retains its existing Save/creation-consent owner and does not
+invoke automatic staging. The replay preparer explicitly calculates newly accepted
+pending input before Undo, so Redo restores the completed input and its result. The
+main host invokes its existing evaluator; only COMPLETE automatic outcomes are
+retained. Missing/invalid started rows clear obsolete automatic display, while explicit
+Calculate retains its established partial-review behavior. ProjectWorkspace's explicit
+stage_calculation automatic option persists the source-matched output into private
+state and synchronizes the current input checkpoint, without adding a Calculate action.
+Source typing and result display never write the durable file. Shared Undo/Redo restores
+inputs and their matching outputs together; exact units and ST conventions are retained.
+Job automatic calculation uses the same saved-result evaluator in application
+job_calculation; the source and its complete output are accepted by one existing Job
+mutation. Viewing an existing source or copying retained results does not recalculate it.
+
+UserSettings format 7 adds independent strict booleans for risk-gauge and cumulative-
+damage animation. Defaults retain the old animated display, and loading earlier
+personal versions never rewrites them. No native project/schema migration is involved.
+result_animation_preferences applies injected choices to an explicitly owned widget
+subtree; it performs no settings I/O or global window discovery. The main/Job/PLOT
+composition owners supply preferences. Disabling a scale settles its displayed value
+at the existing target; it never changes calculator output. Avatar animation retains
+its original separate renderer capability, grouped beside these controls in Settings.
+
+
+Job navigation retains the selected real Job ID in the shared project session under
+jobs.selection. Dropdown, navigation arrows and exact-ID search converge on load_job,
+which accepts the previous Job's pending values before recording job.selection as a
+nonpersistent view action. Replay restores both jobs.selection and jobs.tool before
+rebinding actual catalogs. Initial display and selection caused by record creation or
+deletion project into their existing checkpoints, adding no extra navigation action.
+Opening/selecting alone does not write the file or mark project data dirty.
+
+
+Job Management projects the currently edited Job ID/name into the task-area heading
+without accepting metadata or recording history. Copy-picker alphabet availability is
+computed from its detached source catalog independently of the current letter filter;
+absent initials are disabled, matching the main worker navigator's availability rule.
+Search and explicit Copy/source revalidation remain unchanged.
+
+
+ProjectCaption retains exact localized project/status text and a complete tooltip, but
+uses content-independent size hints and paint-time fitting beneath the existing brand.
+It prefers one/two lines at the normal font, then readable reduction and extreme-only
+middle elision. Main toolbar Minimum sizing reserves actual action hints. Text fitting
+never feeds shortened content back into project metadata/status or affects Undo/Save.
+
+
+## Worker controls and nested Assessment browser — 2026-10-29
+
+MainNavigation keeps selector/order/navigation/actions on its compact first row and the
+shared adaptive alphabet below. Standalone and the eliding current-selection summary
+live in the worker area. ExpandableSection owns only a clipped presentation widget and
+a 190ms sine-eased maximum-height animation. It grows the same worker frame around the
+full-width browser below the alphabet. User toggles animate from the current height,
+including rapid reversal; project loading and history restoration settle immediately.
+The worker area uses fixed 36px/28px rows, a 65px inner height and a painted backing. Disclosure projects visibility/history/Save/brand status only; it never repopulates selectors or initials. Repeated refreshes do not restart motion. Context visibility does not select data or
+validate pending task input. The existing project context_expanded preference retains
+explicit choices; missing/NULL now defaults collapsed. No new persistence is introduced.
+The integrated BodyRegionPanel retains its 220px minimum and 400px preferred viewport.
+
+AssessmentNavigation.select_worker_default is the main worker-control policy:
+current-tool standalone first, otherwise the exact alphabetically first saved workplace
+owner, otherwise a deferred standalone preview. It ignores remembered paths for this
+operation while preserving explicit selection/tool-switch APIs and shared history.
+Only saved sources qualify: an empty active assignment cannot shadow an older saved
+owner at the same path. Navigation and project opening create no assessment records.
+
+AssessmentLocationBrowser projects only current-worker/current-tool saved sources.
+Its five cascading selectors retain literal path values. Headings count relevant unique
+entries, excluding placeholders. Station carries the selected source probability/color;
+other stations show ranges for varying outputs, without invented averages. Shift has
+only its identity. Job has a separate read-only cell, or an exact-document selector
+when several saved owners share the complete path. Historical status/dates and literal
+Job ID/name remain distinct from Shift. Programmatic population blocks signals;
+rejected pending input restores the accepted path. A subtle dynamic-property outline
+identifies the actual source, independently of categorical risk colors. Availability and
+selection summaries remain visible when the browser is hidden or standalone is open.
+
+Transfer is the single Copy/Move workflow. TransferRequest permits a None source
+assignment only with an explicit source_worker_id. The pure planner resolves that
+worker's standalone tool, or the exact assigned source; cross-worker None ownership
+cannot be confused. Existing transactional source/result transfer and shared history
+are reused. Copy preserves the source; Move removes only selected sources after all
+inserts succeed. No new schema or scientific calculation is involved. The redundant
+multi-copy dialog, copy port/planner/repository method and main action are removed.
+
+### PLOT map occurrence and navigation contracts (2026-10-27)
+
+All three map modes project the same applied worker-assignment rows, visibility,
+size/scale and original-image coordinates. The Job key tag changes paint only: both
+MarkerKey tags carry an assignment ID, never a placement ID. Job-only squares use
+current Job risk and IDs; missing Job evidence is neutral/dashed. There are no
+fabricated origin points or Job-specific station-anchor/fan-out edits. Geometry edits
+use the existing assignment position application port, retaining original station
+anchor seeding semantics. No schema or calculation change is required.
+
+Job charts/outcome metrics continue to describe the scoped Job placement catalog;
+explicit map-square/unmapped-assignment counts distinguish those populations.
+PlotResultSelector/PlotResultPicker consume detached applied rows and publish exact
+assignment selections through a searchable workplace/shift/Job tree. They do not
+query storage or create edit history. The retired worker-only picker is removed.
+
+PlotLayoutCanvas owns local magnifier/Pan modes, cursors, cue, bounded pointer zoom
+and resize-stable fit/center. Gestures are consumed before marker dragging. Hidden
+scroll offsets implement panning without visible plant-image scrollbars. Completed navigation gestures enter session-only history without writing or altering
+image-pixel geometry. Accepted
+filter state enters shared project history after its local filter command, preventing
+the next geometry gesture from accidentally bundling a preceding risk-view change.
+
+
+PLOT zoom clarification (2026-10-28): the canvas fitted signal and fitted_scale
+property expose the unzoomed image fit. Marker initial dimensions normalize to that
+baseline; user magnification remains in the graphics-view transform and scales image,
+glyphs, borders and labels together. Recreated markers use the same baseline even
+while zoomed. Stored coordinates and individual symbol multipliers are unchanged.
+
+
+PLOT persistent-tool/history clarification (2026-10-28): cursor tool choice is local;
+completed zoom, pan, Fit and opacity gestures publish validated immutable
+PlotNavigationState values. PlotEditState holds them alongside geometry/filters. The
+existing map/project DocumentSession engines record and replay those views; no second
+Qt undo stack or navigation SQL is introduced. The first gesture seeds its previous
+view without an extra action. Automatic resize/fit projection is not an edit. Replays
+retain the current cursor tool, apply original-image centers and relative magnification,
+and suppress nested commands. A plant change invalidates the prior plant's view.
+Navigation stays nonpersistent in ProjectEditingSession, so it does not dirty the file.
+
+Integrated Cancel movement retains a view-local previous assignment marker for each
+completed move, restores the selected marker as one shared reversible operation, and
+clears the affordance on dataset/replay reconstruction. Coordinate drafts can instead
+be discarded. Post-acceptance refresh projects final flags after synchronous model
+acceptance. Diagnostic explicit-save cancellation still restores its saved baseline.
+Job chart labels are identities only; overview map counts include all visible
+occurrences of the selected Job, independent of scoped placement summary weighting.
+
+
+PLOT Locate/outline clarification (2026-10-28): Individual worker glyphs share the
+Comparison navy edge without changing shape or risk fill. The common Locate canvas
+helper centers on the marker bounds using Qt image-edge clamping and retains relative
+zoom/tool choice. It publishes the completed viewport change through existing
+session-only navigation history; no assignment geometry or schema is changed.
+
+
+PLOT zoom ceiling (2026-10-28): MAX_PLOT_ZOOM in the application view-history
+contract is 3.0 (300% of fitted image). Both immutable snapshot validation and
+canvas click/wheel clamping use this single value. It changes session view behavior
+only; no project schema, stored geometry or scientific formula changes.
+
+
+PLOT zoom-controls clarification (2026-10-28): the authoritative ceiling supersedes
+300% and is now MAX_PLOT_ZOOM = 4.0 (400% of fitted image). Zoom Out/Pan disable at
+fit; direct requests cannot arm them there, and returning to fit clears either active
+mode. Both magnifier tooltips project current relative zoom and cap through existing
+navigation/fit signals, including replay. This remains session-only view behavior.
+
+
+## Explicit workplace assessment creation/replacement — 2026-10-29
+
+The browser's Add action remains available with no saved workplace sources, while its
+location selectors remain empty/disabled. LifftWindow reuses WorkplaceAssignmentDialog
+in reuse-existing mode for all real hierarchy stations/project shifts, with an optional
+compatible Job. The current worker/tool remain fixed. Existing destinations need a
+No-default replace confirmation. Declining changes nothing; Yes supplies a new
+blank 15-task source. Cancel and invalid pending input do not change ownership.
+
+WorkplaceAssessmentRepository is an optional typed application port. ProjectWorkspace
+stages retained drafts and calls add_workplace_assessment with the exact expected
+existing document ID (None requires absence). The SQLite adapter atomically validates
+membership, reuses/creates the active assignment, inserts blank ownership/source or
+replaces the existing source at the same ID, and clears only that source's result.
+Any failure rolls everything back. The operation emits one shared project edit;
+selection remains an ordinary chronological navigation step. Retained target sessions
+reload the blank source so old cached data cannot overwrite the replacement. Empty
+sources save/reopen without fabricated results. Existing native schema/format,
+scientific calculators, standalone sources and unrelated records remain unchanged.
+
+
+The same-Job/different-workplace creation warning is retained through the shared
+pre-insertion duplicate-workplace query. It works even before a new assignment exists;
+declining creates nothing. Existing historical owners remain historical observations:
+Add targets the active assignment at the chosen workplace, not an unrelated older Job.
+
+
+## Static worker-strip painting and picker evidence — 2026-10-29
+
+Full rectangle traces confirm the worker controls already keep the same X/Y/width/
+height while the lower browser animates. BufferedControls addresses remaining repaint
+churn, not source/navigation geometry: it draws one device-aware pixmap in a temporary
+mouse-transparent QLabel above the original live controls. Animation Running freezes;
+Stopped releases the pixmap. Reversal renews it, real resizing thaws it, and ordinary
+MainNavigation.update_state settles the animation/thaws before changing source/tool/
+language so data never remains hidden behind a stale snapshot. No timers, copied input
+controls, persistence or native-window hacks are introduced. The buffered strip remains
+65px; group animation stays 190ms with existing visibility/history policy.
+
+The disclosure and summary now share a horizontal layout across the buttons' row,
+right-aligning the disclosure and giving the label all remaining space. Hierarchy/Job
+columns use name-weighted stretches; Shift measures identifiers within a compact bound.
+ContextValueLabel paints inside contentsRect, allowing the read-only Job's leading inset
+to align with the heading's icon/text structure without affecting zero-margin callers.
+
+WorkplaceAssignmentDialog optionally accepts immutable WorkplaceAssessmentPreview rows
+for the current worker/tool and a tool caption. None retains its original two-column
+assignment UI. A supplied tuple enables a third assessment column for the selected
+shift: Saved percentage with shared risk color, Saved/Not calculated, New, or Historical.
+Only active owners advertise replacement; historical-only evidence stays distinct and
+protected. An owned delegate keeps badge colors readable on selection while native
+selection remains in the hierarchy/type columns. The hierarchy takes remaining width;
+evidence/type columns fit their content. Main Add supplies saved result percentages,
+not calculations or source links. The picker remains read-only until existing host
+consent and transactional creation/replacement run; no schema/domain/formula changes.
+
+
+## Shared worker assessment actions
+
+The main tool action row exposes Clear, +/- Task and Calculate; the redundant saved-grid
+modal is retired in favor of the existing canonical Find Assessment. Add and Delete
+remain explicit controls in the Assessment location browser. Delete selects saved-only
+current-worker/tool data and uses ProjectWorkspace's validated exact-document deletion;
+the existing SQLite transaction and shared project history own data/Undo. Navigation
+falls back to another saved source or a deferred standalone preview. No schema, version
+model or scientific formula changes. A single read-only badge delegate renders saved
+risk values in Add, Find/Delete and both sides of Transfer. Destination badges follow
+worker/shift/tool ownership. Standalone destinations use explicit project/worker
+identity; occupied selected tools require replacement consent before the atomic transfer.
+
+
+Consented Transfer targets (2026-10-29) extend the existing pure TransferRequest/Plan,
+not WorkerContext or database ownership tables. StandaloneDestination carries project/
+worker identities only. Replacement is explicit/default-off in the domain boundary;
+SQLite target deletion/copy/Move-source removal is one transaction. Historical owners
+and unselected tools are protected. Removed target session caches are discarded after
+success. Main Save/history remains authoritative; active Move selects its new exact
+owner. Find ordering and destination badges are presentation changes only.

@@ -26,12 +26,9 @@ from ergotools.domain.plot_filters import PlotFilterSelection, PlotRiskView
 from ergotools.domain.plot_positions import (
     PlotPoint,
     PlotPositions,
-    StationPosition,
-    StationPositionSource,
     WorkerAssignmentMarker,
     WorkerPositionSource,
 )
-from ergotools.domain.work_catalog import StationKey
 from ergotools.presentation.desktop.plot_layout_canvas import PlotLayoutCanvas
 from ergotools.presentation.desktop.plot_marker_item import (
     MarkerAppearance,
@@ -42,6 +39,8 @@ from ergotools.presentation.desktop.theme.lifft_colors import lifft_damage_color
 from ergotools.presentation.desktop.theme.plot import PLOT_STYLE
 from ergotools.presentation.desktop.theme.tst_colors import tst_damage_color
 
+# Both tags identify a worker assignment; the tag selects its visual representation.
+# A Job glyph is an occurrence at that assignment, never a Job placement identity.
 type MarkerKey = tuple[Literal["worker", "job"], int]
 
 
@@ -123,6 +122,8 @@ class PlotMarkerLayer(QObject):
         self.items: dict[MarkerKey, PlotMarkerItem] = {}
         self.results: PlotResults | None = None
         self.worker_drafts: dict[int, WorkerAssignmentMarker] = {}
+        # Integrated Cancel movement restores only this view's latest selected move.
+        self.movement_origins: dict[int, WorkerAssignmentMarker] = {}
         self.history: PlotPositionHistory | None = None
         self.shared_history: PlotPositionHistory | None = None
         self.project_editing = False
@@ -180,6 +181,7 @@ class PlotMarkerLayer(QObject):
             item.deleteLater()
         self.items.clear()
         self.worker_drafts.clear()
+        self.movement_origins.clear()
         self.results = None
         self.history = None
         self.changed.emit()
@@ -225,79 +227,14 @@ class PlotMarkerLayer(QObject):
         if self.shared_history is not None:
             history.reload_positions(results.positions)
         self.history = history
-        if results.selection.risk_view is PlotRiskView.JOB:
-            counts: dict[StationKey, int] = {}
-            for row in results.jobs:
-                place = row.placement.workplace
-                station = StationKey(
-                    place.plant_name,
-                    place.section_name,
-                    place.line_name,
-                    place.station_id,
-                )
-                anchor = results.positions.station_position(station)
-                index = counts.get(station, 0)
-                counts[station] = index + 1
-                evidence = row.risk
-                unavailable = self.text("Not available", "No disponible")
-                risk = (
-                    f"{evidence.measurement.probability_percent:.1f}%"
-                    if evidence is not None
-                    and evidence.measurement.probability_percent is not None
-                    else unavailable
-                )
-                item = self.add_item(
-                    ("job", row.placement.placement_id),
-                    anchor.point if anchor is not None else PlotPoint(18, 18),
-                    MarkerAppearance(
-                        "job",
-                        plot_damage_color(
-                            results.selection.tool,
-                            evidence.measurement.cumulative_damage
-                            if evidence
-                            else None,
-                        ),
-                        label=row.job.job_id.removeprefix("Job-"),
-                    ),
-                    size=38,
-                    offset=QPointF((index % 3) * 9, (index // 3) * 9),
-                    anchored=anchor is not None,
-                )
-                self.tooltip(
-                    item,
-                    [
-                        self.text(
-                            f"Job: {row.job.job_id} - {row.job.name}",
-                            f"Puesto: {row.job.job_id} - {row.job.name}",
-                        ),
-                        self.text(
-                            f"Station: {station.station_id}",
-                            f"Estación: {station.station_id}",
-                        ),
-                        self.text(
-                            f"Shift: {place.shift_id}", f"Turno: {place.shift_id}"
-                        ),
-                        self.text(
-                            f"Assigned workers: {row.assigned_worker_count}",
-                            f"Trabajadores asignados: {row.assigned_worker_count}",
-                        ),
-                        self.text(f"Job Risk: {risk}", f"Riesgo del puesto: {risk}"),
-                        self.text(
-                            "Drag to set or move the Station position.",
-                            "Arrastre para establecer o mover "
-                            "la posición de la estación.",
-                        ),
-                    ],
-                )
-        else:
-            for worker_row in results.workers:
-                identity = worker_row.assessment.assignment_id
-                marker = results.positions.marker(identity)
-                point = results.positions.worker_point(identity, self.jobs)
-                # Creation/visibility belongs to the original worker position controls.
-                if marker is None or not marker.visible or point is None:
-                    continue
-                self._add_worker(worker_row, marker, point)
+        for worker_row in results.workers:
+            identity = worker_row.assessment.assignment_id
+            marker = results.positions.marker(identity)
+            point = results.positions.worker_point(identity, self.jobs)
+            # Every view projects the same assignment geometry; absent is never origin.
+            if marker is None or not marker.visible or point is None:
+                continue
+            self._add_worker(worker_row, marker, point)
         self.changed.emit()
 
     def _add_worker(
@@ -331,22 +268,29 @@ class PlotMarkerLayer(QObject):
             else "hexagon"
         )
         evidence = worker_row.job_risk
-        item = self.add_item(
-            ("worker", identity),
-            point,
-            MarkerAppearance(
-                shape,
-                plot_damage_color(
-                    worker_row.assessment.kind,
-                    worker_row.assessment.total_damage,
-                ),
-                plot_damage_color(
-                    worker_row.assessment.kind,
-                    evidence.measurement.cumulative_damage if evidence else None,
-                ),
-                self.results.selection.risk_view is PlotRiskView.COMPARISON,
-                evidence.measurement.probability_percent if evidence else None,
+        job_only = self.results.selection.risk_view is PlotRiskView.JOB
+        appearance = MarkerAppearance(
+            "job" if job_only else shape,
+            plot_damage_color(
+                worker_row.assessment.kind,
+                evidence.measurement.cumulative_damage if evidence else None,
+            )
+            if job_only
+            else plot_damage_color(
+                worker_row.assessment.kind, worker_row.assessment.total_damage
             ),
+            plot_damage_color(
+                worker_row.assessment.kind,
+                evidence.measurement.cumulative_damage if evidence else None,
+            ),
+            self.results.selection.risk_view is PlotRiskView.COMPARISON,
+            evidence.measurement.probability_percent if evidence else None,
+            worker_row.job.job_id.removeprefix("Job-") if worker_row.job else "—",
+        )
+        item = self.add_item(
+            ("job" if job_only else "worker", identity),
+            point,
+            appearance,
             size=marker.size,
             scale=marker.scale,
             locked=marker.locked,
@@ -379,36 +323,68 @@ class PlotMarkerLayer(QObject):
             if worker_row.assessment.total_damage is not None
             else self.text("Not available", "No disponible")
         )
-        self.tooltip(
-            item,
-            [
-                f"ID: {worker_row.worker.worker_id}",
-                self.text(
-                    f"Name: {worker_row.worker.first_name or ''} "
-                    f"{worker_row.worker.last_name or ''}",
-                    f"Nombre: {worker_row.worker.first_name or ''} "
-                    f"{worker_row.worker.last_name or ''}",
-                ),
-                self.text(f"Age: {age}", f"Edad: {age}"),
-                self.text(
-                    f"Section: {place.section_name}",
-                    f"Sección: {place.section_name}",
-                ),
-                self.text(f"Line: {place.line_name}", f"Línea: {place.line_name}"),
-                self.text(
-                    f"Station: {place.station_id}",
-                    f"Estación: {place.station_id}",
-                ),
-                self.text(f"Shift: {place.shift_id}", f"Turno: {place.shift_id}"),
-                self.text(
-                    f"Cumulative Damage: {damage}",
-                    f"Daño acumulado: {damage}",
-                ),
-                self.text(f"Individual Risk: {risk}", f"Riesgo individual: {risk}"),
-                self.text(f"Job: {job_name}", f"Puesto: {job_name}"),
-                self.text(f"Job Risk: {job_risk}", f"Riesgo del puesto: {job_risk}"),
-            ],
-        )
+        if job_only:
+            job_id = worker_row.job.job_id if worker_row.job else "—"
+            name = worker_row.job.name.strip() if worker_row.job else ""
+            job_caption = f"{job_id} — {name}" if name and name != job_id else job_id
+            self.tooltip(
+                item,
+                [
+                    self.text(
+                        f"Job: {job_caption}",
+                        f"Trabajo: {job_caption}",
+                    ),
+                    self.text(
+                        f"Job risk: {job_risk}", f"Riesgo del trabajo: {job_risk}"
+                    ),
+                    self.text(
+                        f"Worker: {worker_row.worker.worker_id}",
+                        f"Trabajador: {worker_row.worker.worker_id}",
+                    ),
+                    self.text(
+                        f"Section: {place.section_name}",
+                        f"Sección: {place.section_name}",
+                    ),
+                    self.text(f"Line: {place.line_name}", f"Línea: {place.line_name}"),
+                    self.text(
+                        f"Station: {place.station_id}", f"Estación: {place.station_id}"
+                    ),
+                    self.text(f"Shift: {place.shift_id}", f"Turno: {place.shift_id}"),
+                ],
+            )
+        else:
+            self.tooltip(
+                item,
+                [
+                    f"ID: {worker_row.worker.worker_id}",
+                    self.text(
+                        f"Name: {worker_row.worker.first_name or ''} "
+                        f"{worker_row.worker.last_name or ''}",
+                        f"Nombre: {worker_row.worker.first_name or ''} "
+                        f"{worker_row.worker.last_name or ''}",
+                    ),
+                    self.text(f"Age: {age}", f"Edad: {age}"),
+                    self.text(
+                        f"Section: {place.section_name}",
+                        f"Sección: {place.section_name}",
+                    ),
+                    self.text(f"Line: {place.line_name}", f"Línea: {place.line_name}"),
+                    self.text(
+                        f"Station: {place.station_id}",
+                        f"Estación: {place.station_id}",
+                    ),
+                    self.text(f"Shift: {place.shift_id}", f"Turno: {place.shift_id}"),
+                    self.text(
+                        f"Cumulative Damage: {damage}",
+                        f"Daño acumulado: {damage}",
+                    ),
+                    self.text(f"Individual Risk: {risk}", f"Riesgo individual: {risk}"),
+                    self.text(f"Job: {job_name}", f"Puesto: {job_name}"),
+                    self.text(
+                        f"Job Risk: {job_risk}", f"Riesgo del puesto: {job_risk}"
+                    ),
+                ],
+            )
         return item
 
     def tooltip(self, item: PlotMarkerItem, lines: list[str]) -> None:
@@ -440,7 +416,7 @@ class PlotMarkerLayer(QObject):
         """Create one typed item, preserving the background and scene rect.
 
         Args:
-            key: Typed worker/station marker identity; captions and scene positions are
+            key: Typed view/assignment marker identity; captions and scene positions are
                 not storage keys.
             point: Marker anchor in original image pixels, independent of zoom and
                 device-pixel ratio.
@@ -467,7 +443,7 @@ class PlotMarkerLayer(QObject):
             self.moved,
             size=size,
             scale=scale,
-            view_scale=self.canvas.transform().m11(),
+            view_scale=self.canvas.fitted_scale,
             offset=offset,
             anchored=anchored,
             locked=locked,
@@ -476,16 +452,16 @@ class PlotMarkerLayer(QObject):
         )
         scene = self.canvas.scene()
         assert scene is not None
+        item.setOpacity(self.canvas.marker_opacity)
         scene.addItem(item)
         self.items[key] = item
         return item
 
     def set_view_scale(self, scale: float) -> None:
-        """Resize symbols after fit without moving their original-image coordinates.
+        """Normalize symbols to fit; user zoom scales them with the image.
 
         Args:
-            scale: Positive finite dimensionless marker/view scale, as specified by the
-                owning method.
+            scale: Positive fitted baseline emitted by the canvas, excluding user zoom.
 
         Returns:
             None.
@@ -510,65 +486,35 @@ class PlotMarkerLayer(QObject):
                     self.on_select(key)
 
     def moved(self, moved: PlotMarkerItem) -> None:
-        """Record one released gesture; job previews lock peers as in the source.
+        """Record a released gesture in the same assignment history for every view.
 
         Args:
-            moved: Live marker whose completed gesture is being recorded once.
+            moved: Assignment glyph whose completed gesture updates shared map geometry.
 
         Returns:
             None.
         """
         key = next(key for key, item in self.items.items() if item is moved)
         assert self.history is not None
-        if key[0] == "worker":
-            marker = replace(
-                self.worker_settings(key[1]),
-                point=moved.anchor_point(),
-                scale=moved.marker_scale,
-                source=WorkerPositionSource.MANUAL,
-            )
-            self.preview_worker(marker, label_key="plot.history.move")
-        else:
-            self.history.edit(
-                self.history.state.with_station(
-                    StationPosition(
-                        self.job_station(key[1]),
-                        moved.anchor_point(),
-                        StationPositionSource.JOB,
-                    )
-                ),
-                "plot.history.move",
-            )
-            moved.pending = True
-            for item in self.items.values():
-                if item is not moved:
-                    item.setEnabled(False)
-            self.changed.emit()
-
-    def job_station(self, identity: int) -> StationKey:
-        """Resolve the exact station shared by a selected job placement.
-
-        Args:
-            identity: Saved assignment or placement integer identity, resolved within
-                the current result set.
-
-        Returns:
-            Exact complete station ancestry shared by the specified job placement.
-        """
-        assert self.results is not None
-        row = next(
-            row for row in self.results.jobs if row.placement.placement_id == identity
+        previous = self.worker_settings(key[1])
+        if self.project_editing and (
+            moved.anchor_point() != previous.point
+            or moved.marker_scale != previous.scale
+        ):
+            self.movement_origins[key[1]] = previous
+        marker = replace(
+            previous,
+            point=moved.anchor_point(),
+            scale=moved.marker_scale,
+            source=WorkerPositionSource.MANUAL,
         )
-        place = row.placement.workplace
-        return StationKey(
-            place.plant_name, place.section_name, place.line_name, place.station_id
-        )
+        self.preview_worker(marker, label_key="plot.history.move")
 
     def save(self, key: MarkerKey) -> bool:
         """Commit selected intent; Undo after Save remains a purely local draft.
 
         Args:
-            key: Typed worker/station marker identity; captions and scene positions are
+            key: Typed view/assignment marker identity; captions and scene positions are
                 not storage keys.
 
         Returns:
@@ -580,47 +526,13 @@ class PlotMarkerLayer(QObject):
         """
         if self.results is None or self.history is None:
             raise ValueError("There are no PLOT results to save.")
-        if key[0] == "worker":
-            return self.save_workers((self.worker_settings(key[1]),))
-        station = self.job_station(key[1])
-        # Typed job coordinates are accepted only by Save, like the original UI.
-        item = self.items[key]
-        desired = self.history.state.station_position(station)
-        if desired is not None and desired.point != item.anchor_point():
-            self.moved(item)
-            desired = self.history.state.station_position(station)
-        positions = self.results.positions
-        if desired is None:
-            positions = replace(
-                positions,
-                stations=tuple(p for p in positions.stations if p.station != station),
-            )
-        else:
-            # Preserve station order: reordering an unchanged source is not an edit.
-            positions = positions.with_station(desired)
-        try:
-            self.history.save(positions, self.save_positions)
-        except Exception:
-            logging.getLogger(__name__).exception("Unable to save PLOT marker position")
-            self.show_error(
-                self.text(
-                    "Position could not be saved. Your edits have been kept.",
-                    "No se pudo guardar la posición. Se conservaron sus cambios.",
-                )
-            )
-            return False
-        updated = replace(self.results, positions=positions)
-        self.clear()
-        self.set_results(updated)
-        self.select(self.items[key])
-        self.changed.emit()
-        return True
+        return self.save_workers((self.worker_settings(key[1]),))
 
     def cancel(self, key: MarkerKey) -> None:
         """Restore selected saved intent as an undoable edit, with no database I/O.
 
         Args:
-            key: Typed worker/station marker identity; captions and scene positions are
+            key: Typed view/assignment marker identity; captions and scene positions are
                 not storage keys.
 
         Returns:
@@ -629,31 +541,17 @@ class PlotMarkerLayer(QObject):
         assert self.history is not None
         positions = self.history.state
         saved = self.history.saved
-        if key[0] == "worker":
-            marker = saved.marker(key[1])
-            positions = replace(
-                positions,
-                workers=tuple(
-                    marker if p.assignment_id == key[1] and marker is not None else p
-                    for p in positions.workers
-                    if p.assignment_id != key[1] or marker is not None
-                ),
-            )
-            if marker is not None and positions.marker(key[1]) is None:
-                positions = replace(positions, workers=(*positions.workers, marker))
-        else:
-            station = self.job_station(key[1])
-            anchor = saved.station_position(station)
-            positions = replace(
-                positions,
-                stations=tuple(
-                    anchor if p.station == station and anchor is not None else p
-                    for p in positions.stations
-                    if p.station != station or anchor is not None
-                ),
-            )
-            if anchor is not None and positions.station_position(station) is None:
-                positions = positions.with_station(anchor)
+        marker = saved.marker(key[1])
+        positions = replace(
+            positions,
+            workers=tuple(
+                marker if p.assignment_id == key[1] and marker is not None else p
+                for p in positions.workers
+                if p.assignment_id != key[1] or marker is not None
+            ),
+        )
+        if marker is not None and positions.marker(key[1]) is None:
+            positions = replace(positions, workers=(*positions.workers, marker))
         self.history.edit(positions, "plot.history.cancel")
         self.worker_drafts.pop(key[1], None)
         self.restore_history()
@@ -704,36 +602,18 @@ class PlotMarkerLayer(QObject):
         assert self.history is not None and self.results is not None
         self.worker_drafts.clear()
         self.history_restored.emit()
-        if self.results.selection.risk_view is PlotRiskView.JOB:
-            pending_station: StationKey | None = None
-            for key, item in self.items.items():
-                station = self.job_station(key[1])
-                anchor = self.history.state.station_position(station)
-                saved = self.history.saved.station_position(station)
-                point = anchor.point if anchor is not None else PlotPoint(18, 18)
-                item.setPos(point.x + item.offset.x(), point.y + item.offset.y())
-                item.anchored = anchor is not None
-                item.pending = anchor != saved
-                if item.pending:
-                    pending_station = station
-                item.setEnabled(True)
-                item.update()
-            if pending_station is not None:
-                for key, item in self.items.items():
-                    item.setEnabled(self.job_station(key[1]) == pending_station)
-        else:
-            for row in self.results.workers:
-                identity = row.assessment.assignment_id
-                marker = self.history.state.ensure_marker(identity, self.jobs).marker(
-                    identity
-                )
-                saved_marker = self.history.saved.ensure_marker(
-                    identity, self.jobs
-                ).marker(identity)
-                assert marker is not None
-                if marker != saved_marker:
-                    self.worker_drafts[identity] = marker
-                self._project_worker(marker, pending=marker != saved_marker)
+        for row in self.results.workers:
+            identity = row.assessment.assignment_id
+            marker = self.history.state.ensure_marker(identity, self.jobs).marker(
+                identity
+            )
+            saved_marker = self.history.saved.ensure_marker(identity, self.jobs).marker(
+                identity
+            )
+            assert marker is not None
+            if marker != saved_marker:
+                self.worker_drafts[identity] = marker
+            self._project_worker(marker, pending=marker != saved_marker)
         self.changed.emit()
 
     def worker_settings(self, identity: int) -> WorkerAssignmentMarker:
@@ -781,11 +661,9 @@ class PlotMarkerLayer(QObject):
             None.
 
         Raises:
-            ValueError: Worker visual controls require a worker risk view.
+            ValueError: The assignment is outside the current result set.
         """
         self.worker_settings(marker.assignment_id)
-        if self.results is None or self.results.selection.risk_view is PlotRiskView.JOB:
-            raise ValueError("Worker visual controls require a worker risk view.")
         assert self.history is not None
         positions = self.history.state.ensure_marker(marker.assignment_id, self.jobs)
         positions = replace(
@@ -812,7 +690,11 @@ class PlotMarkerLayer(QObject):
             None.
         """
         assert self.results is not None
-        item = self.items.get(("worker", marker.assignment_id))
+        key: MarkerKey = (
+            "job" if self.results.selection.risk_view is PlotRiskView.JOB else "worker",
+            marker.assignment_id,
+        )
+        item = self.items.get(key)
         if item is None and marker.visible and marker.point is not None:
             row = next(
                 row
@@ -850,11 +732,7 @@ class PlotMarkerLayer(QObject):
             ValueError: There are no worker settings to save. Duplicate worker settings
                 in Save.
         """
-        if (
-            self.results is None
-            or not markers
-            or self.results.selection.risk_view is PlotRiskView.JOB
-        ):
+        if self.results is None or not markers:
             raise ValueError("There are no worker settings to save.")
         if len({marker.assignment_id for marker in markers}) != len(markers):
             raise ValueError("Duplicate worker settings in Save.")
@@ -890,9 +768,17 @@ class PlotMarkerLayer(QObject):
             assert committed is not None
             self._project_worker(committed, pending=False)
             self.worker_drafts.pop(marker.assignment_id, None)
-            item = self.items.get(("worker", marker.assignment_id))
+            key: MarkerKey = (
+                "job"
+                if self.results.selection.risk_view is PlotRiskView.JOB
+                else "worker",
+                marker.assignment_id,
+            )
+            item = self.items.get(key)
             if item is not None:
                 item.mark_saved()
+        for key, item in self.items.items():
+            item.setEnabled(self.worker_settings(key[1]).enabled)
         self.changed.emit()
         return True
 

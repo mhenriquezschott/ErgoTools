@@ -17,7 +17,7 @@ from ergotools.application.document_lifecycle import CloseChoice
 from ergotools.application.project_workspace import ProjectWorkspace
 from ergotools.application.session import DocumentKey
 from ergotools.bootstrap import load_icons
-from ergotools.domain.assessments.document import AssessmentDraft
+from ergotools.domain.assessments.document import AssessmentDraft, AssessmentKind
 from ergotools.domain.model_units import MeasurementSystem
 from ergotools.domain.project import ProjectMetadata
 from ergotools.domain.work_catalog import WorkerEntry
@@ -247,7 +247,8 @@ def test_organization_and_job_close_accept_into_one_project_save(
             assert jobs.save_button.isHidden()
             jobs.job_id_combo.setEditText("J01")
             jobs.job_name_input.setText("Packing")
-            jobs.risk_table.item(0, 1).setText("0")
+            jobs.input_modes.button(0).click()
+            jobs.direct_values.fields[AssessmentKind.LIFFT].setText("0")
             jobs.close()
         finally:
             jobs.deleteLater()
@@ -428,7 +429,8 @@ def test_management_rich_text_undo_stays_local(tmp_path: Path) -> None:
     try:
         dialog.job_id_combo.setEditText("J01")
         dialog.job_name_input.setText("Packing")
-        dialog.risk_table.item(0, 1).setText("0")
+        dialog.input_modes.button(0).click()
+        dialog.direct_values.fields[AssessmentKind.LIFFT].setText("0")
         assert dialog.accept_pending_job()
         editing = workspace.editing
         revision = editing.history.revision

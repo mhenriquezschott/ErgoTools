@@ -10,7 +10,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from PyQt5.QtCore import QSize, Qt
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QBrush, QColor, QIcon
 from PyQt5.QtWidgets import (
     QAbstractItemView,
     QButtonGroup,
@@ -35,8 +35,11 @@ from ergotools.domain.assessment_history import AssessmentHistory
 from ergotools.domain.assessments.document import AssessmentKind
 from ergotools.domain.job_catalog import JobCatalog
 from ergotools.domain.language import Language
+from ergotools.domain.risk import classify_probability
 from ergotools.domain.work_hierarchy import WorkHierarchy
+from ergotools.presentation.desktop.assessment_badges import AssessmentBadgeDelegate
 from ergotools.presentation.desktop.theme.main_workspace import MAIN_WORKSPACE_STYLE
+from ergotools.presentation.desktop.theme.risk import RISK_APPEARANCES
 
 # Spanish Find Assessment captions for the original text/alphabet/workplace search
 # workflow.
@@ -174,6 +177,9 @@ _SEARCH_STYLE = """
 class SearchAssessment:
     """Display metadata plus exact ownership; labels never resolve a selection.
 
+    Exact document identity, optional Job ID and historical ownership accompany the
+    visible row; selection never parses these captions.
+
     Age follows the original current-year minus birth-year convention. Context contains
     plant, section, line, station and shift, without translated keys.
     """
@@ -185,6 +191,9 @@ class SearchAssessment:
     sex: str
     age: str
     context: tuple[str, ...]
+    document_id: str = ""
+    job: str = ""
+    historical: bool = False
 
 
 def search_assessments(
@@ -195,7 +204,7 @@ def search_assessments(
     *,
     year: int,
 ) -> tuple[SearchAssessment, ...]:
-    """Project current saved versions, including closed owners, without SQL.
+    """Project saved standalone and assigned sources, including closed owners.
 
     Project/ownership mismatches raise ValueError. Different assignments at one
     workplace remain separately addressable, as required by historical ownership. No
@@ -206,14 +215,14 @@ def search_assessments(
             selection tree.
         jobs: Immutable job/placement/assignment catalog used to resolve marker
             ownership.
-        history: Immutable saved assessment ownership/current-version catalog.
+        history: Immutable saved ownership catalog, one source per owner/tool.
         kind: Exact ergonomic tool identity (LiFFT, DUET or Shoulder Tool); display
             captions are not keys.
         year: Explicit year used for worker age projections; no current date is inferred
             here.
 
     Returns:
-        Immutable current saved assessment search rows with exact
+        Immutable saved assessment search rows with exact
         worker/assignment/workplace ownership and literal captions.
 
     Raises:
@@ -255,6 +264,20 @@ def search_assessments(
                     place.station_id if place is not None else "",
                     place.shift_id if place is not None else "",
                 ),
+                entry.document_id,
+                (
+                    next(
+                        (
+                            p.job_id
+                            for p in jobs.placements
+                            if p.placement_id == owner.placement_id
+                        ),
+                        "",
+                    )
+                    if owner is not None
+                    else ""
+                ),
+                owner is not None and not owner.active,
             )
         )
     return tuple(
@@ -290,6 +313,7 @@ class WorkerSearchDialog(QDialog):
         icons: Mapping[str, QIcon] | None = None,
         *,
         language: Language = Language.ENGLISH,
+        probabilities: Mapping[str, float | None] | None = None,
         parent: QWidget | None = None,
     ) -> None:
         """Retain original size/layout and snapshot supplied rows/assets.
@@ -305,6 +329,8 @@ class WorkerSearchDialog(QDialog):
                 theme names.
             language: UI language only; does not reinterpret saved names, numeric inputs
                 or units.
+            probabilities: Saved percentages by document ID; supplied maps
+                enable the colored result column without calculating or writing data.
             parent: Qt owner of the new control; None leaves top-level ownership to the
                 caller.
 
@@ -313,6 +339,7 @@ class WorkerSearchDialog(QDialog):
         """
         super().__init__(parent)
         self.rows = tuple(rows)
+        self.probabilities = probabilities
         self.hierarchy = hierarchy
         self.icons = icons or {}
         self.language = language
@@ -336,6 +363,9 @@ class WorkerSearchDialog(QDialog):
             self.setStyleSheet(
                 self.styleSheet() + "QPushButton#alphabetButton { min-width: 12px; }"
             )
+        if probabilities is not None:
+            self.resize(1380, 720)
+            self.setMinimumSize(1120, 600)
         self.build_ui()
         self.populate_workplace_tree()
         available = {row.last_name[0].upper() for row in self.rows if row.last_name}
@@ -375,7 +405,7 @@ class WorkerSearchDialog(QDialog):
         return self.icons.get(name, QIcon())
 
     def build_ui(self) -> None:
-        """Build the original controls, fixed widths and stretch regions from source.
+        """Build search/filter controls and optional colored saved-risk results.
 
         Args:
             None.
@@ -508,7 +538,7 @@ class WorkerSearchDialog(QDialog):
             alphabet_row.addWidget(button)
         alphabet_row.addStretch(1)
         directory_layout.addLayout(alphabet_row)
-        self.table = QTableWidget(0, 7)
+        self.table = QTableWidget(0, 8 if self.probabilities is not None else 7)
         self.table.setHorizontalHeaderLabels(
             [
                 self.text("Worker ID"),
@@ -519,6 +549,11 @@ class WorkerSearchDialog(QDialog):
                 self.text("Workplace"),
                 self.text("Shift"),
             ]
+            + (
+                ["Riesgo (%)" if self.language is Language.SPANISH else "Risk (%)"]
+                if self.probabilities is not None
+                else []
+            )
         )
         workplace_header = self.table.horizontalHeaderItem(5)
         shift_header = self.table.horizontalHeaderItem(6)
@@ -549,6 +584,9 @@ class WorkerSearchDialog(QDialog):
         header.setSectionResizeMode(5, QHeaderView.Stretch)
         header.setSectionResizeMode(6, QHeaderView.Fixed)
         self.table.setColumnWidth(6, 58)
+        if self.probabilities is not None:
+            header.setSectionResizeMode(7, QHeaderView.ResizeToContents)
+            self.table.setItemDelegateForColumn(7, AssessmentBadgeDelegate(self.table))
         header.setSortIndicator(1, Qt.SortOrder.AscendingOrder)
         self.table.setToolTip(
             self.text(
@@ -591,7 +629,7 @@ class WorkerSearchDialog(QDialog):
         root.addWidget(buttons)
 
     def populate_workplace_tree(self) -> None:
-        """Include empty hierarchy parents, matching the original workplace tree.
+        """Include only saved-source paths and an explicit standalone root.
 
         Args:
             None.
@@ -599,14 +637,32 @@ class WorkerSearchDialog(QDialog):
         Returns:
             None.
         """
+        if any(not row.context[0] for row in self.rows):
+            label = (
+                "Evaluaciones independientes"
+                if self.language is Language.SPANISH
+                else "Standalone assessments"
+            )
+            standalone = self.add_workplace_item(None, label, "All", ("", "", "", ""))
+            standalone.setIcon(0, self.icon("worker"))
         all_item = self.add_workplace_item(None, self.text("All workplaces"), "All", ())
         all_item.setIcon(0, self.icon("plant"))
+        relevant = {
+            row.context[:depth]
+            for row in self.rows
+            for depth in range(1, 5)
+            if row.context[0]
+        }
         hierarchy = self.hierarchy
         for plant in sorted(hierarchy.plants, key=str.casefold):
+            if (plant,) not in relevant:
+                continue
             p = self.add_workplace_item(None, plant, "Plant", (plant,))
             for section in sorted(
                 hierarchy.sections_in(plant), key=lambda s: s.section_name.casefold()
             ):
+                if (plant, section.section_name) not in relevant:
+                    continue
                 s = self.add_workplace_item(
                     p, section.section_name, "Section", (plant, section.section_name)
                 )
@@ -614,11 +670,15 @@ class WorkerSearchDialog(QDialog):
                     hierarchy.lines_in(section), key=lambda x: x.line_name.casefold()
                 ):
                     path = (plant, section.section_name, line.line_name)
+                    if path not in relevant:
+                        continue
                     child = self.add_workplace_item(s, line.line_name, "Line", path)
                     for station in sorted(
                         hierarchy.stations_in(line),
                         key=lambda x: x.station_id.casefold(),
                     ):
+                        if (*path, station.station_id) not in relevant:
+                            continue
                         self.add_workplace_item(
                             child,
                             station.station_id,
@@ -743,15 +803,54 @@ class WorkerSearchDialog(QDialog):
                 row.first_name or "-",
                 self.text(row.sex),
                 row.age,
-                " > ".join(row.context[:4]),
+                (
+                    " > ".join(row.context[:4])
+                    if row.context[0]
+                    else (
+                        "Evaluación independiente"
+                        if self.language is Language.SPANISH
+                        else "Standalone assessment"
+                    )
+                )
+                + (
+                    (
+                        " · Histórica"
+                        if self.language is Language.SPANISH
+                        else " · Historical"
+                    )
+                    if row.historical
+                    else ""
+                ),
                 row.context[4],
             )
             for column, value in enumerate(values):
                 item = QTableWidgetItem(value)
                 if column == 0:
                     item.setData(Qt.ItemDataRole.UserRole, row.selection)
-                item.setToolTip(value)
+                item.setToolTip(
+                    value + (("\nJob: " + row.job) if row.job and column == 5 else "")
+                )
                 self.table.setItem(index, column, item)
+            if self.probabilities is not None:
+                probability = self.probabilities.get(row.document_id)
+                caption = (
+                    f"{probability:.1f}%"
+                    if probability is not None
+                    else (
+                        "Sin calcular"
+                        if self.language is Language.SPANISH
+                        else "Not calculated"
+                    )
+                )
+                badge = QTableWidgetItem(caption)
+                color = (
+                    RISK_APPEARANCES[classify_probability(probability)].color_hex
+                    if probability is not None
+                    else "#F0F4F7"
+                )
+                badge.setBackground(QBrush(QColor(color)))
+                badge.setToolTip(caption)
+                self.table.setItem(index, 7, badge)
         self.table.setSortingEnabled(True)
         self.table.sortItems(1, Qt.SortOrder.AscendingOrder)
         self.table.clearSelection()

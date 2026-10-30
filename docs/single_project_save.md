@@ -1,17 +1,9 @@
 # One project Save and shared Undo/Redo
 
-Owner-approved workflow change, 2026-10-18. Linux migration and cleanup remain
-complete at 100%; this is the bounded owner-testing correction, not a new milestone.
-Linux verification passes: 1,400 tests, 94.28% combined coverage, required standards/
-review/build checks, 50 independent-wheel tests and 64 inspected EN/ES captures.
-See acceptance and limitations. The subsequent
-pending worker Undo correction passes 1,406 tests
-at 94.29% coverage, forty independent-wheel tests and twelve additional UI captures.
-
 ## User contract
 
 The integrated application's main Save writes all accepted project data together:
-workers/demographics, organization, assignments, Jobs/risk profiles, assessment
+workers/demographics, organization, assignments, Jobs/current tool values, assessment
 inputs/results, plant images/geometry and complete JROT schemes. Closing a management
 or analysis window retains accepted changes in the open project. It does not write
 the `.ergprj` file. Closing or switching the project offers Save/Discard/Cancel.

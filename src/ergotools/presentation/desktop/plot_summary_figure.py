@@ -184,9 +184,7 @@ def summary_figure(
             linewidth=0.8,
         )
         axis.set_yticks(list(range(len(rows))))
-        axis.set_yticklabels(
-            [f"{row.job_id} ({row.placement_count})" for row in rows], fontsize=6.5
-        )
+        axis.set_yticklabels([row.job_id for row in rows], fontsize=6.5)
         axis.invert_yaxis()
         axis.set_xlim(0, 100)
         axis.set_xlabel(
@@ -195,7 +193,7 @@ def summary_figure(
             fontweight="bold",
         )
         axis.set_title(
-            _text("Job Risk by Placed Job", "Riesgo por trabajo ubicado", language),
+            _text("Current risk by Job", "Riesgo actual por trabajo", language),
             fontsize=9,
             fontweight="bold",
         )

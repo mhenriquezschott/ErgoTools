@@ -16,8 +16,17 @@ from PyQt5.QtGui import QKeySequence
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication
 
-from ergotools.application.plot_history import PlotPositionHistory, ReplacePlotPositions
+from ergotools.application.plot_history import (
+    PlotEditState,
+    PlotFilterState,
+    PlotNavigationState,
+    PlotPositionHistory,
+    ReplacePlotFilters,
+    ReplacePlotNavigation,
+    ReplacePlotPositions,
+)
 from ergotools.application.session import DocumentKey
+from ergotools.domain.assessments.document import AssessmentKind
 from ergotools.domain.language import Language
 from ergotools.domain.plot_filters import PlotRiskView
 from ergotools.domain.plot_positions import (
@@ -273,41 +282,38 @@ def test_typed_batch_failure_hidden_markers_cancel_and_history_rebind(
     w.deleteLater()
 
 
-def test_job_zero_anchor_save_undo_missing_anchor_and_cancel(
+def test_job_occurrence_zero_position_save_undo_and_cancel(
     project: AssessmentProjectFile, tmp_path: Path
 ) -> None:
-    """Undo of first placement restores absent anchor; peers follow a saved anchor.
+    """Job edits replay assignment geometry without changing station anchors.
 
     Args:
-        project: Isolated native project fixture owned by this test; never the reference
-            checkout.
-        tmp_path: Pytest-owned temporary directory; all created projects, images and
-            settings stay inside it.
+        project: Disposable native project with real assigned sources.
+        tmp_path: Temporary PLOT widget assets.
 
     Returns:
-        None.
+        None; zero is a real point and Save/Undo/Redo/Cancel retain their boundaries.
     """
     w = host(project, tmp_path)
     layer = w.layer
-    project.save_plot_positions(PlotPositions("p"))
     w.filters.risk_buttons[PlotRiskView.JOB].click()
-    saved_workers = project.load_plot_positions().workers
+    baseline = project.load_plot_positions()
     key = ("job", 1)
     item = layer.items[key]
-    assert not item.anchored
     item.setPos(0, 0)
     layer.moved(item)
     assert layer.save(key)
-    assert layer.undo() and layer.pending and not layer.items[key].anchored
-    assert project.load_plot_positions().stations[0].point == PlotPoint(0, 0)
+    assert layer.undo() and layer.pending
+    assert layer.items[key].anchor_point() == baseline.marker(1).point
+    assert project.load_plot_positions().marker(1).point == PlotPoint(0, 0)
     assert layer.save(key) and not layer.pending
-    assert not project.load_plot_positions().stations
     assert layer.redo() and layer.pending
     layer.cancel(key)
     assert not layer.pending
     assert layer.undo() and layer.pending
     assert layer.save(key) and not layer.pending
-    assert project.load_plot_positions().workers == saved_workers
+    assert project.load_plot_positions().stations == baseline.stations
+    assert project.load_plot_positions().marker(3) == baseline.marker(3)
     w.close()
     w.deleteLater()
 
@@ -355,16 +361,89 @@ def test_save_keeps_exact_drag_values_instead_of_rounded_field_projection(
     result = replace(layer.results, positions=positions)
     layer.set_results(result)
     original = layer.history.state
-    layer.items[key].setPos(exact.x, exact.y)
+    job_exact = PlotPoint(77.1234567890123, -18.9876543210987)
+    layer.items[key].setPos(job_exact.x, job_exact.y)
     layer.moved(layer.items[key])
     revision = layer.history.session.revision
     w.jobs.save_button.click()
     assert layer.history.session.revision == revision and not layer.pending
-    assert (
-        project.load_plot_positions().station_position(layer.job_station(1)).point
-        == exact
-    )
+    assert project.load_plot_positions().marker(1).point == job_exact
     assert layer.undo() and layer.history.state == original
     assert layer.redo() and not layer.pending
     w.close()
     w.deleteLater()
+
+
+@pytest.mark.parametrize(
+    "zoom,center,opacity",
+    [
+        (0, (0, 0), 1),
+        (4.01, (0, 0), 1),
+        (float("nan"), (0, 0), 1),
+        (1, (float("inf"), 0), 1),
+        (1, (0, 0), 0.75),
+    ],
+)
+def test_navigation_snapshots_reject_invalid_views(
+    zoom: float, center: tuple[float, float], opacity: float
+) -> None:
+    """Reject nonfinite/out-of-range snapshots before any history mutation.
+
+    Args:
+        zoom: Proposed magnification, including invalid bounds and NaN.
+        center: Proposed original-image center, possibly nonfinite.
+        opacity: Marker opacity, restricted to the existing cycle levels.
+
+    Returns:
+        None; invalid snapshots raise without requiring a database or Qt widget.
+    """
+    with pytest.raises(ValueError, match="navigation"):
+        PlotNavigationState("P", zoom, center, opacity)
+
+
+def test_navigation_command_ownership_and_data_preservation() -> None:
+    """View history is immutable, source-preserving and rejects foreign/stale edits.
+
+    Args:
+        None.
+
+    Returns:
+        None; only the navigation member changes in an accepted command.
+    """
+    state = PlotEditState(geometry())
+    view = PlotNavigationState("P", 1.5, (120, 80), 0.9)
+    command = ReplacePlotNavigation(DocumentKey("p", "map"), state, view)
+    after = command.apply(state)
+    assert after.positions is state.positions and after.navigation == view
+    with pytest.raises(ValueError, match="revision"):
+        command.apply(after)
+    with pytest.raises(ValueError, match="revision"):
+        replace(command, document=DocumentKey("other", "map")).apply(state)
+
+
+def test_scope_history_keeps_view_only_for_its_own_plant() -> None:
+    """Changing plants starts a fitted view while same-plant filters retain zoom.
+
+    Args:
+        None.
+
+    Returns:
+        None; the prior revision still retains its original plant view for Undo.
+    """
+    from tests.test_plot_results import SCOPE
+
+    view = PlotNavigationState("P", 2, (120, 80), 1)
+    state = PlotEditState(geometry(), navigation=view)
+    filters = PlotFilterState(
+        SCOPE, AssessmentKind.LIFFT, PlotRiskView.JOB, False, None, (None,) * 6
+    )
+    document = DocumentKey("p", "map")
+    assert (
+        ReplacePlotFilters(document, state, filters, filters.selection())
+        .apply(state)
+        .navigation
+        == view
+    )
+    other = replace(filters, scope=replace(SCOPE, paths=(("Q",),)))
+    after = ReplacePlotFilters(document, state, other, other.selection()).apply(state)
+    assert after.navigation is None and state.navigation == view

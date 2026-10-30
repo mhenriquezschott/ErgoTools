@@ -59,3 +59,7 @@ artifacts/
 /docs/window_current_version.md
 /docs/worker_hiring_date_investigation.md
 /docs/workflow_testing_pause.md
+
+# Local document drafts and temporary image exports.
+/output/
+/tmp/

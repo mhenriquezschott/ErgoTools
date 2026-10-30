@@ -123,7 +123,7 @@ class PlotFiltersPanel(QGroupBox):
         self.risk_buttons: dict[PlotRiskView, QToolButton] = {}
         for mode, english, spanish in (
             (PlotRiskView.INDIVIDUAL, "Individual", "Individual"),
-            (PlotRiskView.JOB, "Job", "Puesto"),
+            (PlotRiskView.JOB, "Job", "Trabajo"),
             (PlotRiskView.COMPARISON, "Comparison", "Comparación"),
         ):
             button = QToolButton(self.risk_group)
@@ -139,9 +139,9 @@ class PlotFiltersPanel(QGroupBox):
                     "Mostrar el riesgo de la evaluación individual de cada trabajador.",
                 ),
                 PlotRiskView.JOB: (
-                    "Show current Job risk at each positioned Station.",
+                    "Show Job risk at the same assignment squares as Comparison.",
                     "Mostrar el riesgo actual del trabajo en "
-                    "cada estación posicionada.",
+                    "cada cuadrado de asignación de Comparación.",
                 ),
                 PlotRiskView.COMPARISON: (
                     "Compare the individual worker symbol with "

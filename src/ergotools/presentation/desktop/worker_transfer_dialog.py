@@ -8,10 +8,11 @@ host owners.
 
 import logging
 from collections.abc import Callable, Mapping
+from dataclasses import replace
 from uuid import uuid4
 
-from PyQt5.QtCore import QSignalBlocker, QSize, Qt
-from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import QEvent, QObject, QSignalBlocker, QSize, Qt
+from PyQt5.QtGui import QBrush, QColor, QIcon
 from PyQt5.QtWidgets import (
     QAbstractItemView,
     QButtonGroup,
@@ -38,9 +39,16 @@ from PyQt5.QtWidgets import (
 from ergotools.application.document_lifecycle import CloseChoice
 from ergotools.application.project_workspace import ProjectWorkspace
 from ergotools.application.settings import Language
-from ergotools.domain.assessment_transfer import TransferRequest, plan_transfer
+from ergotools.domain.assessment_transfer import (
+    StandaloneDestination,
+    TransferRequest,
+    plan_transfer,
+)
 from ergotools.domain.assessments.context import WorkerContext, WorkplaceContext
 from ergotools.domain.assessments.document import AssessmentDraft, AssessmentKind
+from ergotools.domain.risk import classify_probability
+from ergotools.presentation.desktop.assessment_badges import AssessmentBadgeDelegate
+from ergotools.presentation.desktop.theme.risk import RISK_APPEARANCES
 from ergotools.presentation.desktop.theme.worker_transfer import WORKER_TRANSFER_STYLE
 from ergotools.presentation.desktop.worker_transfer_text import transfer_text
 from ergotools.presentation.worker_options import WorkerOrder, worker_options
@@ -62,11 +70,12 @@ class WorkerTransferDialog(QDialog):
     def __init__(
         self,
         workspace: ProjectWorkspace[AssessmentDraft],
-        source_assignment_id: int,
+        source_assignment_id: int | None,
         icons: Mapping[str, QIcon],
         resolve_move: Callable[[TransferRequest], CloseChoice | None],
         *,
         language: Language,
+        source_worker_id: str | None = None,
         parent: QWidget,
     ) -> None:
         """Receive exact source ownership and an explicit dirty-move resolver.
@@ -74,12 +83,13 @@ class WorkerTransferDialog(QDialog):
         Args:
             workspace: Existing project/session owner; this component borrows its
                 capabilities.
-            source_assignment_id: Exact saved source assignment whose selected tool
-                versions may be copied/moved.
+            source_assignment_id: Exact saved source assignment, or None for standalone
+                worker assessments.
             icons: Processed packaged icons indexed by stable asset identity, not system
                 theme names.
             resolve_move: Host callback resolving dirty consent for a move affecting the
                 active assessment.
+            source_worker_id: Required worker identity for standalone sources.
             language: UI language only; does not reinterpret saved names, numeric inputs
                 or units.
             parent: Required Qt owner of the new control; ownership follows the parent
@@ -87,6 +97,9 @@ class WorkerTransferDialog(QDialog):
 
         Returns:
             None.
+
+        Raises:
+            ValueError: The explicit source assignment/worker is absent.
         """
         super().__init__(parent)
         self.workspace = workspace
@@ -98,23 +111,48 @@ class WorkerTransferDialog(QDialog):
         self.hierarchy = workspace.read_hierarchy().hierarchy
         self.source_assignment_id = source_assignment_id
         self.source_owner = next(
-            a.worker
-            for a in self.jobs.jobs.assignments
-            if a.assignment_id == source_assignment_id
+            (
+                a.worker
+                for a in self.jobs.jobs.assignments
+                if a.assignment_id == source_assignment_id
+            ),
+            None,
         )
+        if self.source_owner is None and source_assignment_id is not None:
+            raise ValueError("Source assignment does not exist.")
+        self.source_worker_id = (
+            self.source_owner.worker_id if self.source_owner else source_worker_id
+        )
+        if not any(
+            w.worker_id == self.source_worker_id for w in self.hierarchy.work.workers
+        ):
+            raise ValueError("Select a valid source worker.")
         self.selected_worker_id: str | None = None
         self.selected_station_path: tuple[str, str, str, str] | None = None
+        self.selected_standalone = False
         self.active_letter: str | None = None
         self.alphabet_buttons: dict[str, QPushButton] = {}
         self.completed = False
         self.setObjectName("workerTransferDialog")
         self.setWindowTitle(self.text("Transfer Assessment Data"))
-        self.resize(1280, 720)
+        self.resize(1440, 760)
         # The inherited 1080-pixel width clips the fixed alphabet/tree columns.
         self.setMinimumSize(1280, 640)
         self.setStyleSheet(WORKER_TRANSFER_STYLE)
         self._build_ui()
+        self._available_kinds: tuple[AssessmentKind, ...] = ()
+        self._fitting_dest = False
         self.load_data()
+        viewport = self.workplace_tree.viewport()
+        assert viewport is not None
+        viewport.installEventFilter(self)
+        self.workplace_tree.itemExpanded.connect(
+            lambda _: self._fit_destination_columns()
+        )
+        self.workplace_tree.itemCollapsed.connect(
+            lambda _: self._fit_destination_columns()
+        )
+        self._fit_destination_columns()
 
     def text(self, english: str) -> str:
         """Localize transfer commands and principal controls independently of units.
@@ -226,8 +264,10 @@ class WorkerTransferDialog(QDialog):
         available_label = QLabel(self.text("Available tools"))
         available_label.setObjectName("panelTitle")
         source_layout.addWidget(available_label)
-        self.tool_table = QTableWidget(0, 2)
-        self.tool_table.setHorizontalHeaderLabels(["Include", "Assessment tool"])
+        self.tool_table = QTableWidget(0, 3)
+        self.tool_table.setHorizontalHeaderLabels(
+            ["Include", "Assessment tool", "Risk (%)"]
+        )
         self.header(self.tool_table, vertical=True).hide()
         self.tool_table.setSelectionMode(QAbstractItemView.NoSelection)
         self.tool_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -235,6 +275,12 @@ class WorkerTransferDialog(QDialog):
             0, QHeaderView.ResizeToContents
         )
         self.header(self.tool_table).setSectionResizeMode(1, QHeaderView.Stretch)
+        self.header(self.tool_table).setSectionResizeMode(
+            2, QHeaderView.ResizeToContents
+        )
+        self.tool_table.setItemDelegateForColumn(
+            2, AssessmentBadgeDelegate(self.tool_table)
+        )
         self.tool_table.setToolTip(
             self.text("Select the assessment tools to copy or move.")
         )
@@ -283,9 +329,8 @@ class WorkerTransferDialog(QDialog):
         operation_layout.addStretch(1)
         operation_note = QLabel(
             self.text(
-                "Move is completed as one database transaction. If "
-                "any selected destination conflicts, nothing is cha"
-                "nged."
+                "All selected tools transfer together. If any part fails, "
+                "nothing changes."
             )
         )
         operation_note.setObjectName("supportingText")
@@ -295,8 +340,8 @@ class WorkerTransferDialog(QDialog):
 
         destination_panel, destination_layout = self.panel(
             "3. Destination",
-            "Choose a worker, then select the station and shift"
-            " that should receive the assessment.",
+            "Choose a worker, then a standalone assessment or a destination "
+            "station and shift.",
         )
         search_row = QHBoxLayout()
         self.worker_search = QLineEdit()
@@ -360,7 +405,7 @@ class WorkerTransferDialog(QDialog):
         destination_split.addWidget(self.worker_table, 1)
 
         workplace_column = QVBoxLayout()
-        workplace_label = QLabel(self.text("Workplace and shift"))
+        workplace_label = QLabel(self.text("Assessment destination"))
         workplace_label.setObjectName("panelTitle")
         workplace_column.addWidget(workplace_label)
         self.workplace_tree = QTreeWidget()
@@ -374,7 +419,10 @@ class WorkerTransferDialog(QDialog):
         self.workplace_tree.setAlternatingRowColors(True)
         self.workplace_tree.currentItemChanged.connect(self.workplace_selection_changed)
         self.workplace_tree.setToolTip(
-            self.text("Expand the hierarchy and select the destination station.")
+            self.text(
+                "Select Standalone assessment, or expand the hierarchy and"
+                " choose a station."
+            )
         )
         workplace_column.addWidget(self.workplace_tree, 1)
         shift_row = QHBoxLayout()
@@ -430,16 +478,18 @@ class WorkerTransferDialog(QDialog):
             None.
         """
         owner = self.source_owner
-        place = owner.workplace
+        place = owner.workplace if owner is not None else None
         self.source_worker_label.setText(
             next(
                 option.label
                 for option in worker_options(self.hierarchy.work, WorkerOrder.ID)
-                if option.worker_id == owner.worker_id
+                if option.worker_id == self.source_worker_id
             )
         )
         self.source_path_label.setText(
-            "\n".join(
+            self.text("Standalone assessment")
+            if place is None
+            else "\n".join(
                 f"{self.text(label)}: {value}"
                 for label, value in zip(
                     ("Plant", "Section", "Line", "Station", "Shift"),
@@ -457,10 +507,17 @@ class WorkerTransferDialog(QDialog):
         available = [
             kind
             for kind in TOOLS
-            if self.history.history.current_for(self.source_assignment_id, kind)
+            if (
+                self.history.history.current_for(self.source_assignment_id, kind)
+                if self.source_assignment_id is not None
+                else self.history.history.standalone_for(
+                    self.source_worker_id or "", kind
+                )
+            )
             is not None
         ]
         available.sort(key=lambda kind: TOOLS[kind][0])
+        self._available_kinds = tuple(available)
         self.tool_table.setRowCount(len(available))
         for row, kind in enumerate(available):
             checkbox = QCheckBox()
@@ -486,9 +543,39 @@ class WorkerTransferDialog(QDialog):
             item.setData(Qt.ItemDataRole.UserRole, kind)
             item.setToolTip(title)
             self.tool_table.setItem(row, 1, item)
+            entry = (
+                self.history.history.current_for(self.source_assignment_id, kind)
+                if self.source_assignment_id is not None
+                else self.history.history.standalone_for(
+                    self.source_worker_id or "", kind
+                )
+            )
+            result = (
+                self.workspace.saved_assessment_result(entry.document_id)
+                if entry
+                else None
+            )
+            risk = QTableWidgetItem()
+            self._set_risk(
+                risk,
+                result.probability_percent if result else None,
+                exists=entry is not None,
+            )
+            self.tool_table.setItem(row, 2, risk)
             self.tool_table.setRowHeight(row, 44)
         self.tool_table.setVisible(bool(available))
         self.empty_tools_label.setVisible(not available)
+        self.standalone_item = QTreeWidgetItem(
+            [self.text("Standalone assessment"), self.text("Standalone")]
+        )
+        self.standalone_item.setIcon(0, self.icons["worker"])
+        self.standalone_item.setToolTip(
+            0,
+            self.text(
+                "Create or replace standalone assessments for the selected worker."
+            ),
+        )
+        self.workplace_tree.addTopLevelItem(self.standalone_item)
         nodes: dict[tuple[str, ...], QTreeWidgetItem] = {}
         paths = (
             [(p,) for p in self.hierarchy.plants]
@@ -518,18 +605,34 @@ class WorkerTransferDialog(QDialog):
             else:
                 nodes[path[:-1]].addChild(node)
             nodes[path] = node
+        self.workplace_nodes = nodes
         self.workplace_tree.collapseAll()
         self.shift_combo.addItems(list(self.hierarchy.work.shifts))
         self.worker_search.setPlaceholderText(self.text("Search worker ID or name"))
         self.tool_table.setHorizontalHeaderLabels(
-            [self.text("Include"), self.text("Assessment tool")]
+            [
+                self.text("Include"),
+                self.text("Assessment tool"),
+                "Riesgo (%)" if self.language is Language.SPANISH else "Risk (%)",
+            ]
         )
         self.worker_table.setHorizontalHeaderLabels(
             [self.text("Worker ID"), self.text("Last name"), self.text("First name")]
         )
         self.workplace_tree.setHeaderLabels(
-            [self.text("Workplace hierarchy"), self.text("Type")]
+            [
+                self.text("Workplace hierarchy"),
+                self.text("Type"),
+                *[TOOLS[k][0] + " (%)" for k in self._available_kinds],
+            ]
         )
+        for column in range(2, 2 + len(self._available_kinds)):
+            self.workplace_tree.setItemDelegateForColumn(
+                column, AssessmentBadgeDelegate(self.workplace_tree)
+            )
+        tree_header = self.workplace_tree.header()
+        assert tree_header is not None
+        tree_header.setStretchLastSection(False)
         initials = {
             (w.last_name or "")[:1].upper() for w in self.hierarchy.work.workers
         }
@@ -538,25 +641,34 @@ class WorkerTransferDialog(QDialog):
         self.filter_workers()
         for row in range(self.worker_table.rowCount()):
             candidate = self.worker_table.item(row, 0)
-            if (
-                candidate is not None
-                and candidate.data(Qt.ItemDataRole.UserRole) != owner.worker_id
+            if candidate is not None and (
+                (
+                    self.source_owner is None
+                    and candidate.data(Qt.ItemDataRole.UserRole)
+                    == self.source_worker_id
+                )
+                or (
+                    self.source_owner is not None
+                    and candidate.data(Qt.ItemDataRole.UserRole)
+                    != self.source_worker_id
+                )
             ):
                 self.worker_table.selectRow(row)
                 break
-        station = (
-            place.plant_name,
-            place.section_name,
-            place.line_name,
-            place.station_id,
-        )
-        if station in nodes:
-            self.workplace_tree.setCurrentItem(nodes[station])
-            ancestor = nodes[station].parent()
-            while ancestor is not None:
-                ancestor.setExpanded(True)
-                ancestor = ancestor.parent()
-        self.shift_combo.setCurrentText(place.shift_id)
+        if place is not None:
+            station = (
+                place.plant_name,
+                place.section_name,
+                place.line_name,
+                place.station_id,
+            )
+            if station in nodes:
+                self.workplace_tree.setCurrentItem(nodes[station])
+                ancestor = nodes[station].parent()
+                while ancestor is not None:
+                    ancestor.setExpanded(True)
+                    ancestor = ancestor.parent()
+            self.shift_combo.setCurrentText(place.shift_id)
         self.update_preview()
 
     def set_alphabet(self, letter: str) -> None:
@@ -641,7 +753,7 @@ class WorkerTransferDialog(QDialog):
         item: QTreeWidgetItem | None,
         previous: QTreeWidgetItem | None = None,
     ) -> None:
-        """Only a station establishes a complete destination workplace.
+        """Select standalone ownership or an exact destination station.
 
         Args:
             item: Borrowed live tree/graphics item carrying typed owner data; None
@@ -652,6 +764,10 @@ class WorkerTransferDialog(QDialog):
         Returns:
             None.
         """
+        self.selected_standalone = (
+            item is getattr(self, "standalone_item", None) and item is not None
+        )
+        self.shift_combo.setEnabled(not self.selected_standalone)
         path = item.data(0, Qt.ItemDataRole.UserRole) if item is not None else None
         self.selected_station_path = (
             (path[0], path[1], path[2], path[3])
@@ -688,24 +804,28 @@ class WorkerTransferDialog(QDialog):
             Complete exact copy/move request, or None while destination/tool selection
             is incomplete.
         """
-        if (
-            self.selected_worker_id is None
-            or self.selected_station_path is None
-            or not self.shift_combo.currentText()
-        ):
+        if self.selected_worker_id is None:
             return None
-        destination = WorkerContext(
-            self.source_owner.project_id,
-            self.selected_worker_id,
-            WorkplaceContext(
-                *self.selected_station_path, self.shift_combo.currentText()
-            ),
-        )
+        if self.selected_standalone:
+            destination: WorkerContext | StandaloneDestination = StandaloneDestination(
+                self.hierarchy.work.project_id, self.selected_worker_id
+            )
+        else:
+            if self.selected_station_path is None or not self.shift_combo.currentText():
+                return None
+            destination = WorkerContext(
+                self.hierarchy.work.project_id,
+                self.selected_worker_id,
+                WorkplaceContext(
+                    *self.selected_station_path, self.shift_combo.currentText()
+                ),
+            )
         return TransferRequest(
             self.source_assignment_id,
             destination,
             self.selected_tools(),
             self.move_radio.isChecked(),
+            source_worker_id=self.source_worker_id,
         )
 
     def update_preview(self, *_: object) -> None:
@@ -720,10 +840,20 @@ class WorkerTransferDialog(QDialog):
         """
         if not hasattr(self, "transfer_button"):
             return
+        conflicts = self._update_destination_assessments()
         request = self.request()
-        valid = bool(
-            request and request.kinds and request.destination != self.source_owner
+        same = bool(
+            request
+            and (
+                request.destination == self.source_owner
+                or (
+                    isinstance(request.destination, StandaloneDestination)
+                    and self.source_assignment_id is None
+                    and request.destination.worker_id == self.source_worker_id
+                )
+            )
         )
+        valid = bool(request and request.kinds and not same)
         self.transfer_button.setEnabled(valid)
         kinds = self.selected_tools()
         if not kinds:
@@ -732,30 +862,224 @@ class WorkerTransferDialog(QDialog):
             message = self.text("Select a destination worker.")
         elif request is None:
             message = self.text(
-                "Select a destination station from the workplace hierarchy."
+                "Select Standalone assessment or a destination station "
+                "from the hierarchy."
             )
         else:
             mode = self.text("Move" if request.move else "Copy")
-            place = request.destination.workplace
-            path = " > ".join(
-                (
-                    place.plant_name,
-                    place.section_name,
-                    place.line_name,
-                    place.station_id,
+            if isinstance(request.destination, StandaloneDestination):
+                message = self.text(
+                    "{mode} {count} selected tools to {worker}: standalone assessment."
+                ).format(
+                    mode=mode, count=len(kinds), worker=request.destination.worker_id
                 )
-            )
-            template = self.text(
-                "{mode} {count} selected tools to {worker} at {path}, shift {shift}."
-            )
-            message = template.format(
-                mode=mode,
-                count=len(kinds),
-                worker=request.destination.worker_id,
-                path=path,
-                shift=place.shift_id,
-            )
+            else:
+                place = request.destination.workplace
+                path = " > ".join(
+                    (
+                        place.plant_name,
+                        place.section_name,
+                        place.line_name,
+                        place.station_id,
+                    )
+                )
+                message = self.text(
+                    "{mode} {count} selected tools to {worker} at {path}, "
+                    "shift {shift}."
+                ).format(
+                    mode=mode,
+                    count=len(kinds),
+                    worker=request.destination.worker_id,
+                    path=path,
+                    shift=place.shift_id,
+                )
+        if conflicts and not same:
+            listing = ", ".join(TOOLS[k][0] for k in conflicts)
+            message += " " + self.text(
+                "Existing {tools} tasks and results will be replaced after"
+                " confirmation. Undo can restore them."
+            ).format(tools=listing)
+        if valid and self.selected_standalone:
+            missing = ", ".join(TOOLS[k][0] for k in kinds if k not in conflicts)
+            if missing:
+                message += " " + self.text(
+                    "New {tools} standalone assessments will be created."
+                ).format(tools=missing)
+        if same:
+            message = self.text("Source and destination contexts are identical.")
         self.preview_label.setText(self.text("Transfer preview: ") + message)
+
+    def _set_risk(
+        self, item: QTableWidgetItem, probability: float | None, *, exists: bool
+    ) -> None:
+        """Set one read-only source badge without inventing missing calculations.
+
+        Args:
+            item: Owned source-table result cell.
+            probability: Saved percent, or None when uncalculated.
+            exists: Distinguish missing source from saved uncalculated inputs.
+
+        Returns:
+            None; no result is calculated, saved or copied here.
+        """
+        item.setText(
+            f"{probability:.1f}%"
+            if probability is not None
+            else (
+                "Sin calcular"
+                if self.language is Language.SPANISH
+                else "Not calculated"
+            )
+            if exists
+            else "—"
+        )
+        color = (
+            RISK_APPEARANCES[classify_probability(probability)].color_hex
+            if probability is not None
+            else "#F0F4F7"
+        )
+        item.setBackground(QBrush(QColor(color)))
+        item.setToolTip(item.text())
+
+    def _update_destination_assessments(self) -> tuple[AssessmentKind, ...]:
+        """Show saved per-tool values on standalone and destination station rows.
+
+        Args:
+            None.
+
+        Returns:
+            Selected tools already present at the standalone or workplace destination.
+            Historical owners
+            are retained and are not misidentified as current transfer conflicts.
+        """
+        if not hasattr(self, "workplace_nodes"):
+            return ()
+        conflicts = []
+        shift = self.shift_combo.currentText()
+        nodes = [((), self.standalone_item), *self.workplace_nodes.items()]
+        for path, node in nodes:
+            if path and len(path) != 4:
+                continue
+            owner = next(
+                (
+                    a
+                    for a in self.jobs.jobs.assignments
+                    if a.active
+                    and a.worker.worker_id == self.selected_worker_id
+                    and (
+                        a.worker.workplace.plant_name,
+                        a.worker.workplace.section_name,
+                        a.worker.workplace.line_name,
+                        a.worker.workplace.station_id,
+                    )
+                    == path
+                    and a.worker.workplace.shift_id == shift
+                ),
+                None,
+            )
+            for column, kind in enumerate(self._available_kinds, 2):
+                entry = (
+                    (
+                        self.history.history.standalone_for(
+                            self.selected_worker_id, kind
+                        )
+                        if self.selected_worker_id is not None
+                        else None
+                    )
+                    if not path
+                    else self.history.history.current_for(owner.assignment_id, kind)
+                    if owner
+                    else None
+                )
+                result = (
+                    self.workspace.saved_assessment_result(entry.document_id)
+                    if entry
+                    else None
+                )
+                probability = result.probability_percent if result else None
+                label = (
+                    f"{probability:.1f}%"
+                    if probability is not None
+                    else (
+                        "Sin calcular"
+                        if self.language is Language.SPANISH
+                        else "Not calculated"
+                    )
+                    if entry
+                    else "—"
+                )
+                color = (
+                    RISK_APPEARANCES[classify_probability(probability)].color_hex
+                    if probability is not None
+                    else "#F0F4F7"
+                )
+                node.setText(column, label)
+                node.setBackground(column, QBrush(QColor(color)))
+                node.setToolTip(
+                    column,
+                    TOOLS[kind][0]
+                    + ": "
+                    + (
+                        label
+                        if entry
+                        else self.text("No assessment; creates on transfer.")
+                    ),
+                )
+                if (
+                    (
+                        (not path and self.selected_standalone)
+                        or (path and path == self.selected_station_path)
+                    )
+                    and entry is not None
+                    and kind in self.selected_tools()
+                ):
+                    conflicts.append(kind)
+        self._fit_destination_columns()
+        return tuple(conflicts)
+
+    def _fit_destination_columns(self) -> None:
+        """Fit hierarchy/type/risk cells, filling spare width or scrolling when needed.
+
+        Args:
+            None.
+
+        Returns:
+            None; literal hierarchy values stay available and risk columns fit content.
+        """
+        if self._fitting_dest or not hasattr(self, "workplace_nodes"):
+            return
+        self._fitting_dest = True
+        try:
+            tree = self.workplace_tree
+            header = tree.header()
+            assert header is not None
+            widths = []
+            for column in range(tree.columnCount()):
+                header.setSectionResizeMode(column, QHeaderView.Interactive)
+                tree.resizeColumnToContents(column)
+                widths.append(tree.columnWidth(column))
+            widths[0] = max(210, widths[0])
+            viewport = tree.viewport()
+            assert viewport is not None
+            widths[0] += max(0, viewport.width() - sum(widths))
+            for column, width in enumerate(widths):
+                tree.setColumnWidth(column, width)
+        finally:
+            self._fitting_dest = False
+
+    def eventFilter(self, watched: QObject | None, event: QEvent | None) -> bool:  # noqa: N802 — Qt override
+        """Refit the destination columns after a real viewport resize.
+
+        Args:
+            watched: Owned tree viewport or an unrelated Qt object.
+            event: Native Qt event; None performs no fitting.
+
+        Returns:
+            Default event handling; no input or selection is intercepted.
+        """
+        if event is not None and event.type() == QEvent.Type.Resize:
+            self._fit_destination_columns()
+        return super().eventFilter(watched, event)
 
     def perform_transfer(self) -> None:
         """Confirm and execute one atomic selection; failures retain the owned form.
@@ -771,11 +1095,11 @@ class WorkerTransferDialog(QDialog):
             return
         identities = {kind: uuid4().hex for kind in request.kinds}
         try:
-            plan_transfer(
+            plan = plan_transfer(
                 self.hierarchy.work,
                 self.jobs.jobs,
                 self.history.history,
-                request,
+                replace(request, replace_existing=True),
                 identities,
             )
         except (ValueError, KeyError) as error:
@@ -790,12 +1114,25 @@ class WorkerTransferDialog(QDialog):
             return
         if not self.confirm_transfer():
             return
+        request = replace(request, replace_existing=bool(plan.replaced_documents))
         try:
             choice = self.resolve_move(request) if request.move else None
             # Accepted input may refresh main navigation. Reissue modal catalog
             # snapshots after the explicit dirty resolver, before the transaction.
             self.jobs = self.workspace.read_jobs()
             self.history = self.workspace.read_history()
+            latest = plan_transfer(
+                self.hierarchy.work,
+                self.jobs.jobs,
+                self.history.history,
+                request,
+                identities,
+            )
+            if latest.replaced_documents != plan.replaced_documents:
+                self.show_warning(
+                    self.text("Transfer catalogs changed; reopen the form.")
+                )
+                return
             outcome = self.workspace.transfer_assessments(
                 self.jobs, self.history, request, identities, choice=choice
             )

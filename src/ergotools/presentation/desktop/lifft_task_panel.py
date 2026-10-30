@@ -1,39 +1,38 @@
-"""Reviewed original seven-column LiFFT task controls for the integrated layout.
+"""Main LiFFT presenter binding for the shared assessment editor.
 
-Ported from reference main.py setupLiFFTTab, sticky-header helpers and styling. Own only
-widgets/pending text; the injected presenter owns edits and evaluation.
-
-Presentation layer. The contracts below define owned controls/view values and injected
-operations. Qt components run on the GUI thread; scientific calculations, canonical
-source state and repository lifetime remain with the named application/domain ports and
-host owners.
+Presentation layer. AssessmentTaskGrid owns controls, rows, headers and scrolling;
+AssessmentEditorSection owns totals/action composition. This adapter projects display
+units, retains pending text and passes edits/results through the established presenter.
+It owns no SQL, scientific formula, independent grid layout or separate history stack.
 """
 
 from collections.abc import Callable, Mapping
-from functools import partial
+from typing import cast
 
-from PyQt5.QtCore import QEvent, QObject, QSize, Qt, QTimer
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
-    QApplication,
-    QFrame,
-    QGridLayout,
-    QHBoxLayout,
     QLabel,
-    QLayout,
-    QPushButton,
-    QScrollArea,
-    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
 from ergotools.application.settings import Language
+from ergotools.domain.assessments.document import AssessmentKind
 from ergotools.domain.assessments.lifft import LifftTaskResult
+from ergotools.domain.assessments.lifft_draft import LifftDraft, LifftTask
 from ergotools.domain.assessments.lifft_summary import LifftSummary
 from ergotools.domain.assessments.validation import DraftError
 from ergotools.domain.display_precision import DisplayPrecision
 from ergotools.domain.model_units import MeasurementSystem
+from ergotools.presentation.desktop.assessment_editor_section import (
+    AssessmentActionRow,
+    AssessmentEditorSection,
+)
+from ergotools.presentation.desktop.assessment_task_grid import (
+    AssessmentCellEdit,
+    AssessmentTaskGrid,
+)
 from ergotools.presentation.desktop.historical_result_display import (
     historical_damage_color,
     historical_number,
@@ -67,9 +66,6 @@ _TEXT = {
     ),
     "Calculate risk results from the task data currently shown.": (
         "Calcule el riesgo con los datos de tareas mostrados."
-    ),
-    "Open the task-data grid view for the active tool.": (
-        "Abra la cuadrícula de datos de tareas de la herramienta activa."
     ),
     "Enter the lower-back lever arm for this lifting task.": (
         "Ingrese el brazo de palanca lumbar de esta tarea de levantamiento."
@@ -116,6 +112,9 @@ _INPUT_TIPS = (
 class LifftTaskPanel(QWidget):
     """Original editable task grid with event-driven headers and injected services."""
 
+    # Emitted only after a changed cell has completed validation/acceptance.
+    input_committed = pyqtSignal()
+
     def __init__(
         self,
         presenter: LifftPresenter,
@@ -123,7 +122,6 @@ class LifftTaskPanel(QWidget):
         *,
         calculate: Callable[[], None],
         clear: Callable[[], None],
-        select_context: Callable[[], None],
         invalidate: Callable[[], None],
         parent: QWidget | None = None,
     ) -> None:
@@ -136,8 +134,6 @@ class LifftTaskPanel(QWidget):
                 theme names.
             calculate: Callback running the host's explicit Calculate action.
             clear: Host-owned confirmation and scoped reversible assessment clearing.
-            select_context: Callback browsing saved assessments for the active
-                worker/tool, without changing their workplace ownership.
             invalidate: Callback refreshing host results and shared-history actions
                 when input becomes pending or a completed cell is accepted.
             parent: Qt owner of the new control; None leaves top-level ownership to the
@@ -158,81 +154,42 @@ class LifftTaskPanel(QWidget):
         self.outputs: list[tuple[QLabel, QLabel, QLabel]] = []
         self.task_ids: tuple[str, ...] = ()
         self.selected_task_id: str | None = None
-        self._input_tasks: dict[QObject, str] = {}
-        self._sync_scheduled = False
         self.setStyleSheet(MAIN_WORKSPACE_STYLE)
         layout = QVBoxLayout(self)
-        self.header_widget = QWidget()
-        self.header_grid = QGridLayout(self.header_widget)
-        self.headers = tuple(QLabel() for _ in range(7))
-        font = self.font()
-        font.setBold(True)
-        for column, label in enumerate(self.headers):
-            label.setFont(font)
-            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            label.setWordWrap(True)
-            label.setFixedHeight(42)
-            self.header_grid.addWidget(label, 0, column)
-        self.header = QScrollArea()
-        self.header.setObjectName("stickyHeaderScroll")
-        self.header_widget.setObjectName("stickyHeader")
-        self.header.setFrameShape(QFrame.NoFrame)
-        self.header.setWidgetResizable(False)
-        self.header.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.header.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.header.setFixedHeight(42)
-        self.header.setWidget(self.header_widget)
-        layout.addWidget(self.header)
-        self.body_scroll = QScrollArea()
-        self.body_scroll.setWidgetResizable(True)
-        self.frame = QFrame()
-        frame_layout = QVBoxLayout(self.frame)
-        self.grid = QGridLayout()
-        self.grid.setAlignment(Qt.AlignmentFlag.AlignTop)
-        frame_layout.addLayout(self.grid)
-        frame_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinAndMaxSize)
-        self.body_scroll.setWidget(self.frame)
-        body_bar = self.body_scroll.horizontalScrollBar()
-        header_bar = self.header.horizontalScrollBar()
-        assert body_bar is not None and header_bar is not None
-        body_bar.valueChanged.connect(header_bar.setValue)
-        viewport = self.body_scroll.viewport()
-        assert viewport is not None
-        viewport.installEventFilter(self)
-        layout.addWidget(self.body_scroll, 1)
+        self.task_grid = AssessmentTaskGrid(
+            self.language,
+            self.presenter.convention,
+            kind=AssessmentKind.LIFFT,
+            worker_layout=True,
+        )
+        self.header_widget = self.task_grid.header_widget
+        self.header_grid = self.task_grid.header_grid
+        self.headers = self.task_grid.headers
+        self.header = self.task_grid.header
+        self.body_scroll = self.task_grid.body_scroll
+        self.frame = self.task_grid.frame
+        self.grid = self.task_grid.grid
+        self.task_grid.input_edited.connect(self._mark_pending)
+        self.task_grid.cell_finished.connect(self._complete_cell)
+        self.task_grid.task_focused.connect(self._select_task)
         self.summary = ToolResultSummary()
         self.total_title = self.summary.total_title
         self.total_value = self.summary.total_value
         self.probability_title = self.summary.probability_title
         self.probability_value = self.summary.probability_value
-        layout.addLayout(self.summary)
-        buttons = QHBoxLayout()
-        self.clear_button = QPushButton()
-        self.clear_button.setObjectName("clearAssessmentButton")
-        self.clear_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        self.clear_button.setMinimumHeight(40)
-        self.clear_button.setIcon(icons["delete"])
-        self.clear_button.setIconSize(QSize(26, 26))
+        self.action_row = AssessmentActionRow(icons, tasks=True)
+        self.clear_button = self.action_row.clear_button
+        self.calculate_button = self.action_row.calculate_button
+        assert self.action_row.add_task_button is not None
+        assert self.action_row.remove_task_button is not None
+        self.add_task_button = self.action_row.add_task_button
+        self.remove_task_button = self.action_row.remove_task_button
         self.clear_button.clicked.connect(clear)
-        # Share the available width equally around the fixed-size chooser.
-        buttons.addWidget(self.clear_button, 1)
-        self.context_button = QPushButton()
-        self.context_button.setIcon(icons["body_view"])
-        self.context_button.setIconSize(QSize(30, 30))
-        self.context_button.setFixedSize(40, 40)
-        self.context_button.clicked.connect(select_context)
-        buttons.addWidget(self.context_button)
-        self.calculate_button = QPushButton()
-        self.calculate_button.setObjectName("calculateButton")
-        self.calculate_button.setMinimumHeight(40)
-        self.calculate_button.setSizePolicy(
-            QSizePolicy.Expanding, QSizePolicy.Preferred
-        )
-        self.calculate_button.setIcon(icons["calculate_light"])
-        self.calculate_button.setIconSize(QSize(28, 28))
         self.calculate_button.clicked.connect(calculate)
-        buttons.addWidget(self.calculate_button, 1)
-        layout.addLayout(buttons)
+        self.editor_section = AssessmentEditorSection(
+            self.task_grid, self.summary, self.action_row
+        )
+        layout.addWidget(self.editor_section, 1)
 
     def _text(self, text: str) -> str:
         """Resolve this component's UI wording without translating saved user values.
@@ -262,75 +219,52 @@ class LifftTaskPanel(QWidget):
         # Discard only projection-local completion signals before retiring fields;
         # callers resolve drafts before intentional navigation or bulk acceptance.
         self.pending = False
-        # Retiring focused controls otherwise advance focus through the replacement
-        # rows and make QScrollArea reveal the final task during Undo/Redo.
-        focus = QApplication.focusWidget()
-        if focus is not None and self.frame.isAncestorOf(focus):
-            focus.clearFocus()
         self.context = context
         self.language = language
         self.pending = False
-        self.inputs.clear()
-        self._input_tasks.clear()
-        self.outputs.clear()
-        while self.grid.count():
-            item = self.grid.takeAt(0)
-            if item is not None:
-                widget = item.widget()
-                if widget is not None:
-                    widget.hide()
-                    widget.deleteLater()
-        self.hidden_headers = tuple(QLabel() for _ in range(7))
-        for column, label in enumerate(self.hidden_headers):
-            label.setFont(self.headers[column].font())
-            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            label.setFixedHeight(0)
-            self.grid.addWidget(label, 0, column)
-        rows = context.view.tasks if context is not None else ()
-        self.task_ids = tuple(t.task_id for t in rows)
+        precision = (
+            self.presenter.workspace.project_metadata.precision
+            if self.presenter.workspace.project_metadata
+            else DisplayPrecision()
+        )
+        self.task_grid.language = self.language
+        self.task_grid.convention = (
+            context.convention if context else self.presenter.convention
+        )
+        self.task_grid.precision = precision
+        self.task_grid.system = self.presenter.system
+        rows = context.view.tasks if context else ()
+        projected = (
+            LifftDraft(
+                context.view.system if context else self.presenter.system,
+                tuple(
+                    LifftTask(t.task_id, t.lever_arm, t.load, t.repetitions)
+                    for t in rows
+                ),
+            )
+            if context
+            else None
+        )
+        self.task_grid.load_source(projected)
+        self.headers = self.task_grid.headers
+        self.task_ids = tuple(t.task_id for t in projected.tasks) if projected else ()
         if self.selected_task_id not in self.task_ids:
             self.selected_task_id = self.task_ids[0] if self.task_ids else None
-        for row, task in enumerate(rows):
-            label = QLabel(str(row + 1))
-            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.grid.addWidget(label, row + 1, 0)
-            precision = (
-                self.presenter.workspace.project_metadata.precision
-                if self.presenter.workspace.project_metadata
-                else DisplayPrecision()
+        self.hidden_headers = tuple(self.task_grid.hidden_headers)
+        self.inputs = [
+            (
+                cast(PrecisionLineEdit, row[0]),
+                cast(PrecisionLineEdit, row[1]),
+                cast(PrecisionLineEdit, row[2]),
             )
-            assert context is not None
-            assert context is not None
-            inputs = (
-                PrecisionLineEdit(task.lever_arm, context.convention, precision.inputs),
-                PrecisionLineEdit(task.load, context.convention, precision.inputs),
-                PrecisionLineEdit(task.repetitions, context.convention, 0),
-            )
-            for column, _field, editor, tip in zip(
-                (1, 2, 4),
-                ("lever_arm", "load", "repetitions"),
-                inputs,
-                _INPUT_TIPS,
-                strict=True,
-            ):
-                assert context is not None
-                # Compact text keeps exact unchanged values in PrecisionLineEdit.
-                editor.setCursorPosition(0)
-                editor.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                editor.setToolTip(self._text(tip))
-                editor.textEdited.connect(self._mark_pending)
-                editor.editingFinished.connect(
-                    partial(self.commit_cell, task.task_id, inputs.index(editor) + 1)
-                )
-                self._input_tasks[editor] = task.task_id
-                editor.installEventFilter(self)
-                self.grid.addWidget(editor, row + 1, column)
-            self.inputs.append(inputs)
-            outputs = (QLabel("0.0"), QLabel("0.0"), QLabel("0.0"))
-            for column, output in zip((3, 5, 6), outputs, strict=True):
-                output.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                self.grid.addWidget(output, row + 1, column)
-            self.outputs.append(outputs)
+            for row in self.task_grid.inputs
+        ]
+        self.outputs = [
+            cast(tuple[QLabel, QLabel, QLabel], row) for row in self.task_grid.outputs
+        ]
+        for inputs in self.inputs:
+            for control, tip in zip(inputs, _INPUT_TIPS, strict=True):
+                control.setToolTip(self._text(tip))
         system = context.view.system if context else self.presenter.system
         units = (
             ("in", "lb", "ft.lb")
@@ -372,7 +306,6 @@ class LifftTaskPanel(QWidget):
                 self.calculate_button,
                 "Calculate risk results from the task data currently shown.",
             ),
-            (self.context_button, "Open the task-data grid view for the active tool."),
         ):
             button.setToolTip(self._text(tip))
         self.total_title.setText(self._text("Total Cumulative Damage:"))
@@ -380,11 +313,34 @@ class LifftTaskPanel(QWidget):
             self._text("Probability of High Risk Job * (%):")
         )
         self.setEnabled(context is not None)
-        self.context_button.setEnabled(
-            self.presenter.workspace.supports_assignment_history
-        )
         self.show_result()
-        self._schedule_sync()
+        self.task_grid.refresh_geometry()
+
+    def _complete_cell(self, edit: AssessmentCellEdit) -> None:
+        """Bind shared-grid completion to the existing presenter cell command.
+
+        Args:
+            edit: Exact completed display token and identity; the presenter retains
+                parsing from the complete retained input projection.
+
+        Returns:
+            None; parsing, source conversion, validation and history stay in the host.
+        """
+        fields = self.task_grid.input_fields
+        if edit.field in ("direction", "omni_res_scale"):
+            self._mark_pending()
+        self.commit_cell(edit.task_id, fields.index(edit.field) + 1)
+
+    def _select_task(self, task_id: str) -> None:
+        """Retain main-window row selection from the reusable grid's focus signal.
+
+        Args:
+            task_id: Stable currently displayed task identity.
+
+        Returns:
+            None; selecting a row does not modify source or history.
+        """
+        self.selected_task_id = task_id
 
     def _mark_pending(self) -> None:
         """Mark edited task text as pending and clear obsolete calculation display.
@@ -449,9 +405,9 @@ class LifftTaskPanel(QWidget):
 
         Returns:
             None. Valid changed input is one existing source/history command, without
-            rebuilding widgets or saving/calculating. Other unfinished cells remain
-            local. Invalid/stale completion is retained for correction; projection
-            loads disable completion before retiring focused controls.
+            rebuilding widgets. input_committed lets the host calculate; unfinished
+            cells remain local. Invalid/stale input stays editable; projection loads
+            disable completion before retiring focused controls.
 
         Raises:
             ValueError: Active source belongs to another tool or widget rows violate
@@ -470,6 +426,8 @@ class LifftTaskPanel(QWidget):
         self.pending = self.pending_change() is not False
         self.show_result()
         self._invalidate()
+        if changed and not self.pending:
+            self.input_committed.emit()
 
     def commit_inputs(self) -> bool:
         """Commit all text once; invalid input stays visible and source stays intact.
@@ -541,91 +499,3 @@ class LifftTaskPanel(QWidget):
             outputs[2].setText(share)
             if color:
                 outputs[1].setStyleSheet("background-color: " + color)
-
-    def _schedule_sync(self) -> None:
-        """Queue one sticky-header geometry synchronization.
-
-        Queue one sticky-header geometry synchronization after the current Qt layout
-        pass.
-
-        Args:
-            None.
-
-        Returns:
-            None.
-        """
-        if not self._sync_scheduled:
-            self._sync_scheduled = True
-            QTimer.singleShot(0, self._sync_header)
-
-    def _sync_header(self) -> None:
-        """Align fixed header labels to actual task-column widths.
-
-        Align fixed header labels to actual task-column widths and scrollbar geometry.
-
-        Header/body horizontal scrolling remains synchronized; no space padding or
-        periodic refresh is used.
-
-        Args:
-            None.
-
-        Returns:
-            None.
-        """
-        self._sync_scheduled = False
-        viewport = self.body_scroll.viewport()
-        assert viewport is not None
-        self.grid.activate()
-        for column, label in enumerate(self.headers):
-            item = self.grid.itemAtPosition(1, column)
-            if item is not None and item.widget() is not None:
-                widget = item.widget()
-                assert widget is not None
-                label.setFixedWidth(widget.width())
-        header_viewport = self.header.viewport()
-        assert header_viewport is not None
-        margins = self.grid.contentsMargins()
-        self.header_grid.setContentsMargins(
-            margins.left(),
-            margins.top(),
-            margins.right() + header_viewport.width() - viewport.width(),
-            margins.bottom(),
-        )
-        self.header_grid.setHorizontalSpacing(self.grid.horizontalSpacing())
-        bar = self.body_scroll.horizontalScrollBar()
-        assert bar is not None
-        self.header_widget.setFixedWidth(header_viewport.width() + bar.maximum())
-        self.header_widget.setFixedHeight(42)
-        self.header_grid.activate()
-        # Qt stylesheet polishing can replace fixed minima set during construction.
-        for button in (
-            self.clear_button,
-            self.context_button,
-            self.calculate_button,
-        ):
-            button.setFixedHeight(40)
-        self.summary.align_to(self.outputs[0][1] if self.outputs else None, self)
-
-    def eventFilter(self, watched: QObject | None, event: QEvent | None) -> bool:  # noqa: N802 - Qt override
-        """Synchronize geometry after a viewport resize; no periodic refresh timer.
-
-        Args:
-            watched: QObject receiving the event; may be None in direct defensive calls.
-            event: Qt event delivered on the GUI thread; optional overrides tolerate
-                None.
-
-        Returns:
-            True only when this filter explicitly consumes the event; otherwise the
-            normal Qt base-filter result.
-        """
-        if (
-            watched is not None
-            and event is not None
-            and event.type() == QEvent.Type.FocusIn
-        ):
-            self.selected_task_id = self._input_tasks.get(
-                watched, self.selected_task_id
-            )
-        if event is not None and event.type() == QEvent.Type.Resize:
-            self._schedule_sync()
-        return super().eventFilter(watched, event)

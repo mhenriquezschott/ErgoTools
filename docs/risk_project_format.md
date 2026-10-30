@@ -1,3 +1,7 @@
+> Historical implementation record. Its original controls, storage and pending-work
+> statements are superseded by the [current documentation index](README.md),
+> [user guide](user_guide.md) and [API contracts](api_contracts.md).
+
 # Explicit risk-capable projects — F64
 
 AssessmentProjectFile.create_with_risk_profiles explicitly creates format seven.

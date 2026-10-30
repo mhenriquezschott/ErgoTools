@@ -1,4 +1,4 @@
-"""Original PLOT Job Placement overview with owned selection and explicit saves.
+"""Original PLOT Job-only assignment overview with owned selection and explicit saves.
 
 Presentation layer. The contracts below define owned controls/view values and injected
 operations. Qt components run on the GUI thread; scientific calculations, canonical
@@ -11,7 +11,6 @@ from collections.abc import Mapping
 from PyQt5.QtCore import QSize, Qt, QTimer
 from PyQt5.QtGui import QCloseEvent, QIcon
 from PyQt5.QtWidgets import (
-    QComboBox,
     QFrame,
     QGridLayout,
     QGroupBox,
@@ -24,15 +23,20 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from ergotools.application.plot_results import PlotJobResult
+from ergotools.application.plot_results import PlotWorkerResult
 from ergotools.domain.language import Language
 from ergotools.domain.plot_positions import PlotPoint
 from ergotools.presentation.desktop.plot_marker_item import PlotMarkerItem
-from ergotools.presentation.desktop.plot_marker_layer import MarkerKey, PlotMarkerLayer
+from ergotools.presentation.desktop.plot_marker_layer import (
+    MarkerKey,
+    PlotMarkerLayer,
+    plot_damage_color,
+)
+from ergotools.presentation.desktop.plot_result_selector import PlotResultSelector
 
 
 class PlotJobOverview(QScrollArea):
-    """Port source placement controls; the injected layer owns geometry and storage."""
+    """Inspect Job risks at shared assignment positions; the layer owns all geometry."""
 
     def __init__(
         self,
@@ -76,26 +80,21 @@ class PlotJobOverview(QScrollArea):
         root.setSpacing(5)
         selector = QHBoxLayout()
         selector.setSpacing(7)
-        self.combo = QComboBox(panel)
-        self.combo.setToolTip(
-            self.text(
-                "Select a Job placement from the current map scope.",
-                "Seleccione un puesto del ámbito actual del plano.",
-            )
+        self.selector = PlotResultSelector(
+            icons, job_view=True, language=language, parent=panel
         )
-        selector.addWidget(self.combo, 1)
-        self.locate_button = QPushButton(panel)
+        selector.addWidget(self.selector, 1)
+        self.locate_button = QPushButton(self.text("Locate", "Localizar"), panel)
+        self.locate_button.setObjectName("locateJobButton")
         self.locate_button.setIcon(icons["locate"])
         self.locate_button.setIconSize(QSize(22, 22))
-        self.locate_button.setFixedSize(36, 36)
         self.locate_button.setToolTip(
             self.text(
-                "Locate the selected Job placement on the plant layout.",
-                "Localizar el puesto seleccionado en el plano.",
+                "Locate the selected Job occurrence on the plant layout.",
+                "Localizar el trabajo seleccionado en el plano.",
             )
         )
         self.locate_button.clicked.connect(self.locate)
-        selector.addWidget(self.locate_button)
         root.addLayout(selector)
         navigation = QHBoxLayout()
         navigation.setSpacing(5)
@@ -103,20 +102,24 @@ class PlotJobOverview(QScrollArea):
         for asset, english, spanish in (
             (
                 "first",
-                "Select the first Job placement.",
-                "Seleccionar el primer puesto.",
+                "Select the first Job occurrence.",
+                "Seleccionar el primer trabajo.",
             ),
             (
                 "previous",
-                "Select the previous Job placement.",
-                "Seleccionar el puesto anterior.",
+                "Select the previous Job occurrence.",
+                "Seleccionar el trabajo anterior.",
             ),
             (
                 "next",
-                "Select the next Job placement.",
-                "Seleccionar el siguiente puesto.",
+                "Select the next Job occurrence.",
+                "Seleccionar el siguiente trabajo.",
             ),
-            ("last", "Select the last Job placement.", "Seleccionar el último puesto."),
+            (
+                "last",
+                "Select the last Job occurrence.",
+                "Seleccionar el último trabajo.",
+            ),
         ):
             button = QPushButton(panel)
             button.setIcon(icons[asset])
@@ -126,13 +129,13 @@ class PlotJobOverview(QScrollArea):
             self.navigation.append(button)
         self.navigation[0].clicked.connect(lambda: self.navigate(0))
         self.navigation[1].clicked.connect(
-            lambda: self.navigate(self.combo.currentIndex() - 1)
+            lambda: self.navigate(self.selector.current_index - 1)
         )
         self.navigation[2].clicked.connect(
-            lambda: self.navigate(self.combo.currentIndex() + 1)
+            lambda: self.navigate(self.selector.current_index + 1)
         )
         self.navigation[3].clicked.connect(
-            lambda: self.navigate(self.combo.count() - 1)
+            lambda: self.navigate(len(self.selector.rows) - 1)
         )
         root.addLayout(navigation)
         self.context = QLabel(panel)
@@ -144,14 +147,14 @@ class PlotJobOverview(QScrollArea):
         self.values: dict[str, QLabel] = {}
         for title, fields in (
             (
-                self.text("Job placement", "Puesto de trabajo"),
+                self.text("Job occurrence", "Ubicación del trabajo"),
                 (
-                    ("job", "Job", "Puesto"),
-                    ("workers", "Assigned workers", "Trabajadores asignados"),
+                    ("job", "Job", "Trabajo"),
+                    ("occurrences", "Squares on map", "Cuadrados en el mapa"),
                 ),
             ),
             (
-                self.text("Current Job risk", "Riesgo actual del puesto"),
+                self.text("Current Job risk", "Riesgo actual del trabajo"),
                 (
                     ("damage", "Cumulative damage", "Daño acumulado"),
                     ("risk", "Outcome probability", "Probabilidad"),
@@ -172,9 +175,11 @@ class PlotJobOverview(QScrollArea):
                 grid.addWidget(QLabel(self.text(english, spanish), group), index, 0)
                 grid.addWidget(value, index, 1)
             grid.setColumnStretch(1, 1)
+            if any(key == "risk" for key, _english, _spanish in fields):
+                grid.addWidget(self.locate_button, len(fields), 0, 1, 2)
             root.addWidget(group)
         group = QGroupBox(
-            self.text("Station map position", "Posición de la estación"), panel
+            self.text("Assignment map position", "Posición de la asignación"), panel
         )
         group.setObjectName("workerSubgroup")
         position = QVBoxLayout(group)
@@ -182,8 +187,8 @@ class PlotJobOverview(QScrollArea):
         position.setSpacing(5)
         note = QLabel(
             self.text(
-                "Shared by every Job placement at this Station.",
-                "Compartida por todos los puestos de esta estación.",
+                "Same assignment position in Individual, Job and Comparison views.",
+                "La misma posición en las vistas Individual, Trabajo y Comparación.",
             ),
             group,
         )
@@ -215,12 +220,30 @@ class PlotJobOverview(QScrollArea):
             button.setIcon(icons[asset])
             button.setIconSize(QSize(20, 20))
             actions.addWidget(button)
+        self.cancel_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cancel_button.setToolTip(
+            self.text(
+                "Restore the last move of this square. Undo/Redo reverses this action.",
+                "Restaurar el último movimiento; la acción es reversible.",
+            )
+        )
         self.cancel_button.clicked.connect(self.cancel)
         self.save_button.clicked.connect(self.save)
         position.addLayout(actions)
+        self.movement_hint = QLabel(
+            self.text(
+                "Cancel restores this square's last move in this view. Undo/Redo also "
+                "restores accepted changes.",
+                "Cancelar restaura el último movimiento en esta vista. "
+                "Deshacer/Rehacer también restaura cambios aceptados.",
+            ),
+            group,
+        )
+        self.movement_hint.setWordWrap(True)
+        position.addWidget(self.movement_hint)
         root.addWidget(group)
         root.addStretch(1)
-        self.combo.currentIndexChanged.connect(self.selection_changed)
+        self.selector.selection_changed.connect(self.selection_changed)
         layer.history_restored.connect(self.history_restored)
         layer.changed.connect(self.refresh)
         layer.selection_changed.connect(self.marker_selected)
@@ -289,33 +312,25 @@ class PlotJobOverview(QScrollArea):
             None.
         """
         self.stop_locate()
-        rows = self.layer.results.jobs if self.layer.results is not None else ()
-        previous = self.combo.blockSignals(True)
-        self.combo.clear()
-        for row in rows:
-            place = row.placement.workplace
-            self.combo.addItem(
-                f"{row.job.job_id}  |  {place.station_id}  |  "
-                f"{self.text('Shift', 'Turno')} {place.shift_id}",
-                row.placement.placement_id,
-            )
-        index = self.combo.findData(self.selected_id)
-        self.combo.setCurrentIndex(index if index >= 0 else (0 if rows else -1))
-        self.combo.blockSignals(previous)
+        rows = self.layer.results.workers if self.layer.results is not None else ()
+        self.selector.set_rows(rows, self.selected_id)
+        self.selected_id = self.selector.selected_id
         if rows:
-            self.selected_id = rows[self.combo.currentIndex()].placement.placement_id
-            self.show_row(rows[self.combo.currentIndex()])
+            row = self.selector.row_for_id(self.selected_id)
+            assert row is not None
+            self.show_row(row)
         else:
             self.context.setText(
                 self.text(
-                    "No Job placements match the current filters.",
-                    "No hay puestos que coincidan con los filtros actuales.",
+                    "No assignment results match the current filters.",
+                    "No hay asignaciones que coincidan con los filtros actuales.",
                 )
             )
             for value in self.values.values():
                 value.setText("\u2013")
+                value.setStyleSheet("")
         marker = self.selected_marker()
-        pending = marker is not None and marker.pending
+        pending = marker is not None and (marker.pending or self._editing_fields)
         if marker is not None:
             for key, item in self.layer.items.items():
                 if key[0] == "job":
@@ -328,13 +343,22 @@ class PlotJobOverview(QScrollArea):
             )
             self.x_input.setText(f"{point.x:.1f}" if point else "")
             self.y_input.setText(f"{point.y:.1f}" if point else "")
+        accepted_caption = (
+            self.text("Map position accepted", "Posición del mapa aceptada")
+            if self.layer.project_editing
+            else self.text("Map position saved", "Posición del mapa guardada")
+        )
         self.status.setText(
-            self.text("Unsaved Station position", "Posición de estación sin guardar")
+            self.text("Unsaved map position", "Posición del mapa sin guardar")
             if pending
-            else self.text("Station anchor saved", "Posición de estación guardada")
+            else accepted_caption
             if marker is not None and marker.anchored
-            else self.text("Station anchor not positioned", "Estación sin posición")
+            else self.text("Map position not set", "Posición del mapa no definida")
             if marker is not None
+            else self.text(
+                "Assignment not shown on map", "Asignación no visible en el mapa"
+            )
+            if self.selected_id is not None
             else self.text("No position selected", "Ninguna posición seleccionada")
         )
         self.status.setProperty("pending", pending)
@@ -346,34 +370,57 @@ class PlotJobOverview(QScrollArea):
         style.unpolish(self.status)
         style.polish(self.status)
         for button in self.navigation:
-            button.setEnabled(marker is not None and not pending)
-        self.combo.setEnabled(marker is not None and not pending)
+            button.setEnabled(bool(rows) and not pending)
+        self.selector.setEnabled(bool(rows) and not pending)
         self.locate_button.setEnabled(marker is not None)
         self.x_input.setEnabled(marker is not None)
         self.y_input.setEnabled(marker is not None)
         self.save_button.setEnabled(pending)
-        self.cancel_button.setEnabled(pending)
+        self.cancel_button.setEnabled(
+            pending
+            or self._editing_fields
+            or self.selected_id in self.layer.movement_origins
+        )
 
-    def show_row(self, row: PlotJobResult) -> None:
-        """Display literal placement and optional current Job values; zero is valid.
+    def show_row(self, row: PlotWorkerResult) -> None:
+        """Display the Job risk at this assignment; never substitute individual risk.
 
         Args:
-            row: Saved typed result row carrying exact source/assignment ownership and
-                optional evidence.
+            row: Exact map assignment with its optional current Job measurement.
 
         Returns:
-            None.
+            None; missing Jobs/risks stay explicit and coordinates share other views.
         """
-        place = row.placement.workplace
+        place = row.assessment.owner.workplace
         self.context.setText(
-            f"{place.plant_name}  \u203a  {place.section_name}  \u203a  "
-            f"{place.line_name}  \u203a  {place.station_id}   •   "
-            f"{self.text('Shift', 'Turno')} {place.shift_id}"
+            f"{place.plant_name} \u203a {place.section_name} \u203a "
+            f"{place.line_name} \u203a "
+            f"{place.station_id} · {self.text('Shift', 'Turno')} {place.shift_id}\n"
+            + self.text(
+                f"Worker: {row.worker.worker_id}",
+                f"Trabajador: {row.worker.worker_id}",
+            )
         )
-        job_name = row.job.name or self.text("Unnamed Job", "Puesto sin nombre")
-        self.values["job"].setText(f"{row.job.job_id} - {job_name}")
-        self.values["workers"].setText(str(row.assigned_worker_count))
-        evidence = row.risk
+        job_name = (
+            f"{row.job.job_id} — {row.job.name}"
+            if row.job
+            else self.text("No Job", "Sin trabajo")
+        )
+        self.values["job"].setText(job_name)
+        results = self.layer.results
+        count = (
+            sum(
+                peer.job == row.job
+                and (row.job is not None or peer.assessment.owner.workplace == place)
+                and ("job", peer.assessment.assignment_id) in self.layer.items
+                and self.layer.items["job", peer.assessment.assignment_id].isVisible()
+                for peer in results.workers
+            )
+            if results is not None
+            else 0
+        )
+        self.values["occurrences"].setText(str(count))
+        evidence = row.job_risk
         missing = self.text("Not available", "No disponible")
         damage = evidence.measurement.cumulative_damage if evidence else None
         risk = evidence.measurement.probability_percent if evidence else None
@@ -381,20 +428,25 @@ class PlotJobOverview(QScrollArea):
             f"{damage:.4f}" if damage is not None else missing
         )
         self.values["risk"].setText(f"{risk:.1f}%" if risk is not None else missing)
+        color = plot_damage_color(row.assessment.kind, damage)
+        for key in ("damage", "risk"):
+            self.values[key].setStyleSheet(
+                f"background: {color}; color: #071B2D; "
+                "padding: 3px; border-radius: 3px;"
+            )
 
-    def selection_changed(self, index: int) -> None:
-        """Select one owner without sending feedback from marker notifications.
+    def selection_changed(self, identity: int) -> None:
+        """Select an exact map assignment from the workplace/Job hierarchy.
 
         Args:
-            index: Zero-based combo/tab/directory position within the current local
-                selection.
+            identity: Stable assignment ID chosen by the shared selector.
 
         Returns:
-            None.
+            None; no position or assessment data is modified.
         """
-        if index < 0:
+        if self.selector.row_for_id(identity) is None:
             return
-        self.selected_id = int(self.combo.itemData(index))
+        self.selected_id = identity
         self._editing_fields = False
         marker = self.selected_marker()
         if marker is not None:
@@ -405,7 +457,7 @@ class PlotJobOverview(QScrollArea):
         """Accept marker selection and refresh only this overview.
 
         Args:
-            key: Typed worker/station marker identity; captions and scene positions are
+            key: Typed view/assignment marker identity; captions and scene positions are
                 not storage keys.
 
         Returns:
@@ -427,8 +479,8 @@ class PlotJobOverview(QScrollArea):
             None.
         """
         marker = self.selected_marker()
-        if marker is not None and not marker.pending:
-            self.combo.setCurrentIndex(max(0, min(index, self.combo.count() - 1)))
+        if marker is None or not marker.pending:
+            self.selector.navigate(index)
 
     def coordinate_edited(self, _text: str) -> None:
         """Keep partially typed coordinates until explicit Save validates both.
@@ -473,8 +525,8 @@ class PlotJobOverview(QScrollArea):
         except ValueError:
             self.layer.show_error(
                 self.text(
-                    "Station X and Y must be valid finite numbers.",
-                    "X e Y de la estación deben ser números finitos válidos.",
+                    "Map X and Y must be valid finite numbers.",
+                    "X e Y del mapa deben ser números finitos válidos.",
                 )
             )
             return
@@ -485,20 +537,44 @@ class PlotJobOverview(QScrollArea):
             self.refresh()
 
     def cancel(self) -> None:
-        """Discard typed/moved position without writing or changing selected owner.
+        """Restore the last integrated move or discard an unaccepted coordinate draft.
 
         Args:
             None.
 
         Returns:
-            None.
+            None; accepted restoration is reversible in shared history. Diagnostic
+            explicit-save windows retain their saved-position cancellation behavior.
         """
-        if self.selected_id is not None and self.selected_marker() is not None:
+        if self.selected_id is None or self.selected_marker() is None:
+            return
+        if self.layer.project_editing:
+            if self._editing_fields:
+                self._editing_fields = False
+                self.layer.restore_history()
+                self.refresh()
+                self.movement_hint.setText(
+                    self.text(
+                        "Coordinate draft cancelled; accepted position retained.",
+                        "Coordenadas canceladas; posición aceptada conservada.",
+                    )
+                )
+                return
+            original = self.layer.movement_origins.pop(self.selected_id, None)
+            if original is not None:
+                self.layer.preview_worker(original, label_key="plot.history.cancel")
+                self.movement_hint.setText(
+                    self.text(
+                        "Previous position restored. Undo can restore the move.",
+                        "Posición restaurada. Deshacer recupera el movimiento.",
+                    )
+                )
+        else:
             self._editing_fields = False
             self.layer.cancel(("job", self.selected_id))
 
     def locate(self) -> None:
-        """Ensure visibility and pulse the source blue selection ten times.
+        """Center the selected Job square at current zoom and pulse its blue frame.
 
         Args:
             None.
@@ -512,7 +588,7 @@ class PlotJobOverview(QScrollArea):
             self._pulse_item = marker
             self._pulses = 10
             marker.setSelected(True)
-            self.layer.canvas.ensureVisible(marker)
+            self.layer.canvas.locate_item(marker)
             self.timer.start()
 
     def stop_locate(self) -> None:

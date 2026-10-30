@@ -14,14 +14,6 @@ documentation changes.
 # Original Qt stylesheet for integrated main workspace: brand/toolbar, avatar panel,
 # assessment tabs, context, result cards, footer and shared controls.
 MAIN_WORKSPACE_STYLE = """
-            QPushButton#contextModeButton {
-                min-height: 30px; padding: 0 10px; border-radius: 0;
-                border: 1px solid #9EB0BE; color: #405462;
-            }
-            QPushButton#contextModeButton:checked {
-                background: #DDF3F5; color: #087E91;
-                border: 2px solid #08A9B5; font-weight: 700;
-            }
             QMainWindow, QWidget#mainWorkspace {
                 background: #F4F7F9;
                 color: #1B2933;
@@ -35,6 +27,11 @@ MAIN_WORKSPACE_STYLE = """
                 font-size: 16px;
                 font-weight: 700;
                
+            }
+            QFrame#projectToolbarPanel { background: white; border-radius: 6px; }
+            QLabel#projectToolbarTitle {
+                color: #0B326C; font-size: 12px; font-weight: 700;
+                padding: 0 10px;
             }
             QToolBar#mainToolbar {
                 background: white;
@@ -210,43 +207,6 @@ MAIN_WORKSPACE_STYLE = """
             }
             QPushButton:hover { background: #EDF7F8; border-color: #08A9B5; }
             QPushButton#compactButton { padding: 0 9px; }
-            QPushButton#mainAlphabetButton {
-                min-width: 18px;
-                max-width: 18px;
-                min-height: 27px;
-                max-height: 27px;
-                padding: 0; border: 0; background: transparent; color: #173544;
-                font-size: 11px; font-weight: 850;
-            }
-            QPushButton#mainAlphabetButton:hover {
-                background: #DDF3F5;
-                color: #0B326C;
-                font-size: 16px;
-               
-            }
-            QPushButton#mainAlphabetButton:checked {
-                background: #0B326C;
-                color: white;
-                border-radius: 4px;
-                font-size: 11px;
-               
-            }
-            QPushButton#mainAlphabetButton[currentInitial="true"] {
-                color: #001C2B;
-                font-weight: 900;
-                font-size: 13px;
-               
-            }
-            QPushButton#mainAlphabetButton:checked[currentInitial="true"] {
-                color: white;
-               
-            }
-            QPushButton#mainAlphabetButton:disabled {
-                color: #C7D0D7;
-                font-weight: 600;
-                font-size: 10px;
-               
-            }
             QPushButton#primaryOutlineButton { border: 2px solid #08A9B5; }
             QPushButton#calculateButton {
                 background: #087E91;
@@ -355,4 +315,43 @@ MAIN_WORKSPACE_STYLE = """
                
             }
         
+"""
+
+# Compact worker actions and a native assessment-context disclosure button.
+MAIN_WORKSPACE_STYLE += """
+QToolButton#workerActionButton, QToolButton#workerNavigationButton,
+QToolButton#assessmentContextDisclosure {
+ color: #0B326C; background: white; border: 1px solid #BCC9D3;
+ border-radius: 5px; padding: 3px 6px;
+}
+QToolButton#workerActionButton:hover, QToolButton#workerNavigationButton:hover,
+QToolButton#assessmentContextDisclosure:hover {
+ background: #EDF7F8; border-color: #08A9B5;
+}
+QToolButton#assessmentContextDisclosure:checked {
+ background: #DDF3F5; color: #008DA4; border-color: #00B3C4;
+}
+QToolButton#workerActionButton:disabled, QToolButton#workerNavigationButton:disabled,
+QToolButton#assessmentContextDisclosure:disabled {
+ color: #A9B6C0; background: #F2F5F7; border-color: #D5DEE5;
+}
+"""
+
+# The actual in-view assessment has one subtle teal outline, independent of risk colors.
+MAIN_WORKSPACE_STYLE += """
+QPushButton#standaloneAssessmentButton[assessmentCurrent="true"] {
+ background: #EAF7F8; border: 1px solid #08A9B5; color: #0B326C;
+}
+QGroupBox#assessmentLocationBrowser { background: white; }
+QGroupBox#assessmentLocationBrowser[assessmentCurrent="true"] {
+ border: 1px solid #08A9B5;
+}
+QComboBox[assessmentCurrent="true"] {
+ border: 1px solid #08A9B5; background: #F3FBFC;
+}
+"""
+
+# The stable worker rows paint their own backing while the browser animates below.
+MAIN_WORKSPACE_STYLE += """
+QWidget#workerControls { background: white; border: 0; }
 """

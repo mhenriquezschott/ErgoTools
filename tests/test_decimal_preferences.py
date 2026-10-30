@@ -139,7 +139,7 @@ def test_version_one_is_read_without_write_and_upgrades_explicitly(
     assert saved.decimal_convention is DecimalConvention.POINT
     assert path.read_bytes() == original
     store.save(saved.remember("new"))
-    assert json.loads(path.read_text())["version"] == 6
+    assert json.loads(path.read_text())["version"] == 7
     assert store.load().recent_documents == ("new", "old")
     payload = json.loads(path.read_text())
     payload["decimal_convention"] = "auto"

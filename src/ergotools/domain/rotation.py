@@ -71,11 +71,12 @@ class WorkerRotation:
 
 @dataclass(frozen=True, slots=True)
 class RotationRisk:
-    """Job-profile probability in percent; zero is valid and absence is rejected.
+    """Current Job probability in percent; zero is valid and absence is rejected.
 
     Target keys distinguish Job/placement identities through the calling
     repository. Percentages are dimensionless; source unit evidence stays with the
-    profile and is not converted here. This value does not certify model validity.
+    current Job measurement and is not converted here. This value does not certify
+    model validity.
 
     Attributes:
         target_key: Opaque Job/placement identity matching a scheduled target.

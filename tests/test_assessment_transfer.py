@@ -270,7 +270,12 @@ def test_actual_modal_pending_copy_and_move_dirty_cancel(
         QTimer.singleShot(0, act)
         window.main_navigation.buttons["transfer"].click()
     errors.assert_not_called()
-    assert workspace.active is (None if mode == "move" else active)
+    if mode == "move":
+        assert workspace.active is not active
+        assert window.assessment_navigation.view.worker_id == "y"
+        assert workspace.active.state.tasks[0].repetitions == 350
+    else:
+        assert workspace.active is active
     if mode != "move":
         assert field.text() == "bad"
     with AssessmentProjectFile.open(Path(workspace.location)) as project:
@@ -326,7 +331,7 @@ def test_filters_clear_destination_and_tool_selection_disables_transfer(
         dialog.close()
 
 
-def test_actual_modal_move_save_keeps_older_sources_and_clears_open_current(
+def test_actual_modal_move_save_keeps_older_sources_and_opens_destination(
     window: LifftWindow,
 ) -> None:
     """Confirmed Move retains valid input privately until the sole main Save.
@@ -372,7 +377,8 @@ def test_actual_modal_move_save_keeps_older_sources_and_clears_open_current(
         QTimer.singleShot(0, act)
         window.main_navigation.buttons["transfer"].click()
     errors.assert_not_called()
-    assert workspace.active is None
+    assert window.assessment_navigation.view.worker_id == "y"
+    assert workspace.active.state.tasks[0].repetitions == 350
     with AssessmentProjectFile.open(Path(workspace.location)) as saved:
         assert all(a.worker.worker_id != "y" for a in saved.load_jobs().assignments)
     window.save_project()

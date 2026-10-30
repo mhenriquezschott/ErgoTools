@@ -7,7 +7,7 @@ host owners.
 """
 
 from collections.abc import Callable, Mapping
-from pathlib import Path
+from html import escape
 
 from PyQt5.QtWidgets import QAction, QMenu, QMenuBar, QPushButton, QWidget
 
@@ -123,6 +123,7 @@ class AssessmentMenu(QMenuBar):
         self._recent_locations: tuple[str, ...] = ()
         self._language = language
         self.recent = QMenu(self.project)
+        self.recent.setToolTipsVisible(True)
         self.recent.setIcon(buttons["open"].icon())
         self.project.insertMenu(self.actions_by_key["save"], self.recent)
         self.recent.aboutToShow.connect(refresh_recent)
@@ -283,15 +284,18 @@ class AssessmentMenu(QMenuBar):
                 or opened here.
 
         Returns:
-            None.
+            None; full saved paths distinguish duplicate filenames. Tooltips retain
+            literal paths when a screen bounds an unusually wide native menu.
         """
         self._recent_locations = locations
         self.recent.clear()
         for number, location in enumerate(locations, 1):
-            action = self.recent.addAction(f"{number}. {Path(location).name}")
+            # QAction treats ampersands as mnemonics; paths remain literal display data.
+            caption = location.replace("&", "&&")
+            action = self.recent.addAction(f"{number}. {caption}")
             assert action is not None
             action.setData(location)
-            action.setToolTip(location)
+            action.setToolTip("<qt>" + escape(location) + "</qt>")
             action.triggered.connect(
                 lambda checked=False, location=location: self._open_recent(location)
             )

@@ -64,6 +64,8 @@ class PreferencesDialog(QDialog):
         assessment_context: str = "",
         project_open: bool = False,
         animated_focus: bool = True,
+        animated_risk_gauge: bool = True,
+        animated_cumulative_damage: bool = True,
         gauge_markers: GaugeMarkerSettings | None = None,
         undo_limit: int = DEFAULT_UNDO_LIMIT,
         developer_enabled: bool = False,
@@ -83,6 +85,8 @@ class PreferencesDialog(QDialog):
                 displayed literally and never used to locate or mutate a source.
             project_open: Enable project display controls only with an open project.
             animated_focus: Personal body-camera animation preference.
+            animated_risk_gauge: Personal gauge-animation preference.
+            animated_cumulative_damage: Personal damage-bar animation preference.
             undo_limit: Personal maximum shared Undo/Redo steps, 1-50.
             gauge_markers: Shared main/PLOT risk-gauge options, or None for defaults.
             developer_enabled: Window-session developer menu flag; never serialized.
@@ -225,18 +229,30 @@ class PreferencesDialog(QDialog):
         gauges.addLayout(gauge_form)
         gauges.addStretch(1)
         avatar = self._add_page(
-            "avatar",
-            "Avatar",
-            "Enfoque del cuerpo al cambiar de herramienta."
+            "animations",
+            "Animaciones" if spanish else "Animations",
+            "Animaciones de presentación; no modifican los cálculos."
             if spanish
-            else "Body-view focus when changing assessment tools.",
+            else "Display animations; calculated values are unchanged.",
             appearance,
         )
         self.animated_focus = QCheckBox(
             "Animar enfoque del avatar" if spanish else "Animate avatar focus"
         )
         self.animated_focus.setChecked(animated_focus)
-        avatar.addWidget(self.animated_focus)
+        animation_group = QGroupBox("Animaciones" if spanish else "Animations")
+        animation_layout = QVBoxLayout(animation_group)
+        self.animated_gauge = QCheckBox(
+            "Animar indicador de riesgo" if spanish else "Animate risk gauge"
+        )
+        self.animated_damage = QCheckBox(
+            "Animar daño acumulado" if spanish else "Animate cumulative damage"
+        )
+        self.animated_gauge.setChecked(animated_risk_gauge)
+        self.animated_damage.setChecked(animated_cumulative_damage)
+        for control in (self.animated_focus, self.animated_gauge, self.animated_damage):
+            animation_layout.addWidget(control)
+        avatar.addWidget(animation_group)
         avatar.addStretch(1)
         project = self._add_page(
             "project",
@@ -356,6 +372,8 @@ class PreferencesDialog(QDialog):
             self.decimal.currentIndex(),
             self.undo_limit.value(),
             self.animated_focus.isChecked(),
+            self.animated_gauge.isChecked(),
+            self.animated_damage.isChecked(),
             self.gauge_ticks.isChecked(),
             self.gauge_labels.isChecked(),
             self.gauge_interval.value(),

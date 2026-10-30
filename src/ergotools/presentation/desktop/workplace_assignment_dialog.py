@@ -7,9 +7,10 @@ writes projects or infers membership from displayed labels.
 """
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 
 from PyQt5.QtCore import QSignalBlocker, QSize, Qt
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QBrush, QColor, QIcon
 from PyQt5.QtWidgets import (
     QComboBox,
     QDialog,
@@ -27,12 +28,30 @@ from ergotools.domain.assessments.context import WorkplaceContext
 from ergotools.domain.job_catalog import JobCatalog
 from ergotools.domain.language import Language
 from ergotools.domain.plot_scope import hierarchy_paths
+from ergotools.domain.risk import classify_probability
 from ergotools.domain.work_catalog import StationKey
 from ergotools.domain.work_hierarchy import WorkHierarchy
+from ergotools.presentation.desktop.assessment_badges import AssessmentBadgeDelegate
+from ergotools.presentation.desktop.theme.risk import RISK_APPEARANCES
 from ergotools.presentation.desktop.theme.worker_management import (
     WORKER_MANAGEMENT_STYLE,
 )
 from ergotools.presentation.desktop.worker_text import worker_text
+
+
+@dataclass(frozen=True, slots=True)
+class WorkplaceAssessmentPreview:
+    """Detached current-tool evidence for a station/shift, never picker-owned data.
+
+    Attributes:
+        workplace: Literal saved location/shift; not inferred from a tree caption.
+        probability: Saved percentage, or None for an uncalculated assessment.
+        active: Current assignment flag; historical evidence remains separate.
+    """
+
+    workplace: WorkplaceContext
+    probability: float | None
+    active: bool = True
 
 
 class WorkplaceAssignmentDialog(QDialog):
@@ -58,6 +77,8 @@ class WorkplaceAssignmentDialog(QDialog):
         current: WorkplaceContext | None = None,
         placement_id: int | None = None,
         reuse_existing: bool = False,
+        assessments: tuple[WorkplaceAssessmentPreview, ...] | None = None,
+        assessment_tool: str = "",
         parent: QWidget | None = None,
     ) -> None:
         """Build a hierarchy, shift and optional Job picker from saved snapshots.
@@ -72,6 +93,9 @@ class WorkplaceAssignmentDialog(QDialog):
             placement_id: Optional matching Job to preselect with current.
             reuse_existing: Association mode reuses an existing active worker context
                 and locks its Job rather than silently reclassifying it.
+            assessments: Optional current-worker/tool evidence; None retains the normal
+                two-column assignment picker. Empty tuple enables explicit New states.
+            assessment_tool: Current tool caption for the evidence heading/tooltip.
             parent: Qt owner, independent of any worker-management implementation.
 
         Returns:
@@ -83,6 +107,7 @@ class WorkplaceAssignmentDialog(QDialog):
         super().__init__(parent)
         jobs.validate_hierarchy(hierarchy)
         self._jobs, self._worker_id = jobs, worker_id
+        self._assessments, self._assessment_tool = assessments, assessment_tool
         self._language, self._reuse_existing = language, reuse_existing
         self.selected_workplace: WorkplaceContext | None = None
         self.selected_placement_id: int | None = None
@@ -120,12 +145,25 @@ class WorkplaceAssignmentDialog(QDialog):
         self.tree.setObjectName("workplaceTree")
         self.tree.setHeaderLabels(
             [self._text("Workplace hierarchy"), self._text("Type")]
+            + (
+                [
+                    assessment_tool
+                    + " · "
+                    + ("Evaluación" if language is Language.SPANISH else "Assessment")
+                ]
+                if assessments is not None
+                else []
+            )
         )
         self.tree.setSelectionMode(QTreeWidget.SingleSelection)
         header = self.tree.header()
         assert header is not None
         header.setSectionResizeMode(0, QHeaderView.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        if assessments is not None:
+            header.setStretchLastSection(False)
+            header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+            self.tree.setItemDelegateForColumn(2, AssessmentBadgeDelegate(self.tree))
         items: dict[tuple[str, ...], QTreeWidgetItem] = {}
         for path in hierarchy_paths(hierarchy):
             kind = ("Plant", "Section", "Line", "Station")[len(path) - 1]
@@ -278,6 +316,7 @@ class WorkplaceAssignmentDialog(QDialog):
                 and existing is None
             )
         self._job_changed()
+        self._update_assessment_previews()
         self.accept_button.setEnabled(self.selected_workplace is not None)
         self.note.setText(
             self._text(
@@ -294,6 +333,71 @@ class WorkplaceAssignmentDialog(QDialog):
                 )
             )
         )
+
+    def _update_assessment_previews(self) -> None:
+        """Project current-shift availability and saved risk into station badges.
+
+        Args:
+            None.
+
+        Returns:
+            None; only existing preview values are painted. No sources are loaded,
+            created, selected or recalculated; other picker clients remain unchanged.
+        """
+        if self._assessments is None:
+            return
+        spanish = self._language is Language.SPANISH
+        shift = self.shift.currentData()
+        for station, item in self._stations.items():
+            rows = tuple(
+                r
+                for r in self._assessments
+                if isinstance(shift, str) and r.workplace == station.at_shift(shift)
+            )
+            current = next((r for r in rows if r.active), None)
+            color = "#F0F4F7"
+            if current is not None:
+                value = (
+                    f"{current.probability:.1f}%"
+                    if current.probability is not None
+                    else ("Sin calcular" if spanish else "Not calculated")
+                )
+                caption = ("Guardada · " if spanish else "Saved · ") + value
+                tip = (
+                    "Ya existe una evaluación; se pedirá confirmar el reemplazo."
+                    if spanish
+                    else "Existing assessment; replacement requires confirmation."
+                )
+                if current.probability is not None:
+                    color = RISK_APPEARANCES[
+                        classify_probability(current.probability)
+                    ].color_hex
+            elif rows:
+                caption = "Histórica" if spanish else "Historical"
+                caption += (
+                    f" · {rows[0].probability:.1f}%"
+                    if len(rows) == 1 and rows[0].probability is not None
+                    else f" ({len(rows)})"
+                )
+                tip = (
+                    "Observaciones históricas; crear la actual las conserva."
+                    if spanish
+                    else "Historical observations remain when a current "
+                    "assessment is added."
+                )
+            else:
+                caption = "Nueva" if spanish else "New"
+                tip = (
+                    "No existe una evaluación actual aquí; se creará una vacía."
+                    if spanish
+                    else "No assessment exists here; a blank one will be created."
+                )
+            item.setText(2, caption)
+            item.setBackground(2, QBrush(QColor(color)))
+            item.setForeground(2, QBrush(QColor("#102A43")))
+            item.setToolTip(
+                2, f"{self._worker_id} · {self._assessment_tool} · {shift}\n{tip}"
+            )
 
     def _job_changed(self) -> None:
         """Read the optional explicit placement identity after dropdown selection.

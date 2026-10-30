@@ -12,7 +12,9 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QComboBox
 
+from ergotools.application.assessments.evaluation import EvaluationStatus
 from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.application.saved_results import calculate_saved_result
 from ergotools.domain.assessments.document import AssessmentDraft
 from ergotools.domain.assessments.duet_draft import DuetDraft, DuetTask
 from ergotools.domain.assessments.lifft_draft import LifftDraft, LifftTask
@@ -112,6 +114,7 @@ def test_each_completed_input_is_one_shared_history_step(
     path = Path(workspace.location)
     durable = path.read_bytes()
     snapshots = [original]
+    calculated = [original_result]
     panel = window.secondary_panel() or window.task_panel
     for column in range(len(panel.inputs[row])):
         field = panel.inputs[row][column]
@@ -138,6 +141,16 @@ def test_each_completed_input_is_one_shared_history_step(
         if completion == "enter" and not isinstance(field, QComboBox):
             assert field.hasFocus()
         snapshots.append(workspace.active.state)
+        oracle = calculate_saved_result(
+            workspace.active.document, workspace.active.state, system
+        )
+        expected_result = (
+            oracle
+            if oracle and oracle.calculation_status is EvaluationStatus.COMPLETE
+            else None
+        )
+        assert workspace.historical_result() == expected_result
+        calculated.append(expected_result)
     nav = window.main_navigation
     undo = nav.toolbar.widgetForAction(nav.toolbar_actions["undo"])
     redo = nav.toolbar.widgetForAction(nav.toolbar_actions["redo"])
@@ -147,9 +160,7 @@ def test_each_completed_input_is_one_shared_history_step(
         panel = window.secondary_panel() or window.task_panel
         assert panel.presenter.parse_grid(panel.context, panel.input_rows()) == expected
         assert not panel.pending
-        assert workspace.historical_result() == (
-            original_result if expected == original else None
-        )
+        assert workspace.historical_result() == calculated[snapshots.index(expected)]
         assert path.read_bytes() == durable
     assert not undo.isEnabled() and redo.isEnabled()
     for expected in snapshots[1:]:
@@ -157,7 +168,7 @@ def test_each_completed_input_is_one_shared_history_step(
         assert workspace.active.state == expected
         panel = window.secondary_panel() or window.task_panel
         assert panel.presenter.parse_grid(panel.context, panel.input_rows()) == expected
-        assert workspace.historical_result() is None
+        assert workspace.historical_result() == calculated[snapshots.index(expected)]
     assert not redo.isEnabled() and path.read_bytes() == durable
     key = workspace.active.document
     window.save_project()

@@ -9,7 +9,7 @@ import logging
 from collections.abc import Callable, Mapping
 
 from PyQt5 import sip
-from PyQt5.QtCore import QObject, QSize, Qt
+from PyQt5.QtCore import QObject, Qt
 from PyQt5.QtGui import QIcon, QKeySequence
 from PyQt5.QtWidgets import (
     QAction,
@@ -29,10 +29,19 @@ from ergotools.application.project_editing import ProjectEditingSession
 from ergotools.domain.language import Language
 from ergotools.presentation.desktop.optional_date_edit import OptionalDateEdit
 from ergotools.presentation.desktop.optional_duration_edit import OptionalDurationEdit
-from ergotools.presentation.desktop.style import HISTORY_BUTTON_STYLE
+from ergotools.presentation.desktop.secondary_history_controls import (
+    configure_history_button,
+)
 
 # Stable repository operations mapped to owner-facing action descriptions in EN/ES.
 _LABELS = {
+    "transfer_assessments": ("Transfer assessments", "Transferir evaluaciones"),
+    "update_display_settings": (
+        "Change project display settings",
+        "Cambiar visualización del proyecto",
+    ),
+    "job.selection": ("Change Job selection", "Cambiar selección de trabajo"),
+    "job.tool": ("Change Job tool", "Cambiar herramienta de trabajo"),
     "replace_worker_catalogs": ("Edit worker", "Editar trabajador"),
     "replace_hierarchy": ("Edit organization", "Editar organización"),
     "associate_assessment_at_workplace": (
@@ -46,6 +55,11 @@ _LABELS = {
     "replace_jobs": ("Edit assignments", "Editar asignaciones"),
     "save_job_details": ("Edit Job", "Editar trabajo"),
     "delete_job": ("Delete Job", "Eliminar trabajo"),
+    "add_workplace_assessment": (
+        "Add or replace assessment",
+        "Añadir o reemplazar evaluación",
+    ),
+    "delete_historical_assessment": ("Delete assessment", "Eliminar evaluación"),
     "create_historical_assessment": ("Create assessment", "Crear evaluación"),
     "assessment.edit": ("Edit assessment", "Editar evaluación"),
     "assessment.clear": ("Clear assessment", "Limpiar evaluación"),
@@ -143,9 +157,7 @@ class ProjectHistoryActions(QObject):
         """
         button = QToolButton(self.window)
         button.setDefaultAction(action)
-        button.setStyleSheet(HISTORY_BUTTON_STYLE)
-        button.setIconSize(QSize(24, 24))
-        button.setFixedSize(36, 36)
+        configure_history_button(button)
         return button
 
     @property
@@ -210,7 +222,7 @@ class ProjectHistoryActions(QObject):
         return self.text(*pair)
 
     def refresh(self) -> None:
-        """Synchronize action labels and availability with the shared cursor.
+        """Synchronize labels and availability while keeping icon captions concise.
 
         Args:
             None.
@@ -234,6 +246,7 @@ class ProjectHistoryActions(QObject):
             ),
         ):
             action.setText(caption + (": " + self.description(label) if label else ""))
+            action.setIconText(caption)
             action.setToolTip(action.text())
             action.setEnabled(
                 label is not None and not (self.blocked and self.blocked())

@@ -8,6 +8,7 @@ host owners.
 
 import logging
 from collections.abc import Callable, Mapping
+from contextlib import nullcontext
 from dataclasses import replace
 from datetime import date, datetime
 from functools import partial
@@ -74,6 +75,7 @@ from ergotools.application.session import DocumentKey, DocumentSession
 from ergotools.application.settings import Language, SettingsStore
 from ergotools.domain.assessment_history import AssignmentAssessment
 from ergotools.domain.assessment_transfer import TransferRequest
+from ergotools.domain.assessments.context import WorkerContext, WorkplaceContext
 from ergotools.domain.assessments.document import (
     AssessmentDraft,
     AssessmentKind,
@@ -98,6 +100,9 @@ from ergotools.presentation.desktop.assessment_context_dialog import (
 from ergotools.presentation.desktop.assessment_history_actions import (
     AssessmentHistoryActions,
 )
+from ergotools.presentation.desktop.assessment_location_browser import (
+    AssessmentLocation,
+)
 from ergotools.presentation.desktop.assessment_menu import AssessmentMenu
 from ergotools.presentation.desktop.assignment_dialog_host import AssignmentDialogHost
 from ergotools.presentation.desktop.authors_dialog import AuthorsDialog
@@ -121,6 +126,9 @@ from ergotools.presentation.desktop.project_migration_dialog import (
 from ergotools.presentation.desktop.project_properties_dialog import (
     ProjectPropertiesDialog,
 )
+from ergotools.presentation.desktop.result_animation_preferences import (
+    apply_result_animations,
+)
 from ergotools.presentation.desktop.results_sidebar import ResultsSidebar
 from ergotools.presentation.desktop.style import WORKSPACE_STYLE
 from ergotools.presentation.desktop.text import desktop_text
@@ -128,7 +136,6 @@ from ergotools.presentation.desktop.theme.duet_summary import display_duet_summa
 from ergotools.presentation.desktop.theme.lifft_summary import display_lifft_summary
 from ergotools.presentation.desktop.theme.main_workspace import MAIN_WORKSPACE_STYLE
 from ergotools.presentation.desktop.theme.tst_summary import display_tst_summary
-from ergotools.presentation.desktop.tool_data_dialog import ToolDataDialog
 from ergotools.presentation.desktop.tool_tab_focus import ToolTabFocus
 from ergotools.presentation.desktop.tst_presenter import TstPresenter
 from ergotools.presentation.desktop.tst_task_panel import TstTaskPanel
@@ -141,12 +148,12 @@ from ergotools.presentation.desktop.worker_search_dialog import (
 )
 from ergotools.presentation.desktop.worker_transfer_dialog import WorkerTransferDialog
 from ergotools.presentation.desktop.workplace_assignment_dialog import (
+    WorkplaceAssessmentPreview,
     WorkplaceAssignmentDialog,
 )
 from ergotools.presentation.edit_context import EditContext
 from ergotools.presentation.localization import Translator
 from ergotools.presentation.numeric_input import DecimalConvention, format_input_number
-from ergotools.presentation.saved_tool_options import saved_tool_options
 from ergotools.presentation.summary_csv import summary_csv_table
 from ergotools.presentation.worker_options import WorkerOrder, worker_options
 
@@ -383,9 +390,14 @@ class LifftWindow(QMainWindow):
                 icons,
                 calculate=lambda: self.run(self.calculate),
                 clear=lambda: self.run(self.clear_assessment),
-                select_context=lambda: self.run(self.open_saved_tool_data),
                 invalidate=self.show_result,
                 parent=self,
+            )
+            self.task_panel.add_task_button.clicked.connect(
+                lambda: self.run(lambda: self.change_assessment_tasks(1))
+            )
+            self.task_panel.remove_task_button.clicked.connect(
+                lambda: self.run(lambda: self.change_assessment_tasks(-1))
             )
             content.addWidget(self.task_panel, 3)
         else:
@@ -449,6 +461,9 @@ class LifftWindow(QMainWindow):
         self.refresh()
         if original_navigation:
             self._install_original_navigation()
+        for task_grid in (self.task_panel, self.duet_panel, self.tst_panel):
+            if task_grid is not None:
+                task_grid.input_committed.connect(lambda: self.run(self.auto_calculate))
 
     def open_organization(self) -> None:
         """Edit workplace identities/details without rebuilding assessment source.
@@ -533,10 +548,23 @@ class LifftWindow(QMainWindow):
             self.icons,
             self.presenter.system,
             selected_job=selected_job if previous_location == location else None,
+            gauge_markers=(
+                self._settings_store.load().gauge_markers
+                if self._settings_store is not None
+                else None
+            ),
+            change_gauge_markers=self.change_gauge_markers,
             language=self.language,
             convention=self.presenter.convention,
             parent=self,
         )
+        if self._settings_store is not None:
+            preferences = self._settings_store.load()
+            apply_result_animations(
+                dialog,
+                preferences.animated_risk_gauge,
+                preferences.animated_cumulative_damage,
+            )
         try:
             dialog.exec()
             self._job_selection = (location, dialog.selected_job_id)
@@ -593,8 +621,8 @@ class LifftWindow(QMainWindow):
                 and action
                 not in (
                     self.open_task_count,
-                    self.open_saved_tool_data,
                     self.search_assessment,
+                    self.delete_saved_assessment,
                     self.clear_assessment,
                     self.open_preferences,
                     self.refresh_recent_projects,
@@ -623,8 +651,8 @@ class LifftWindow(QMainWindow):
                 and action
                 not in (
                     self.open_task_count,
-                    self.open_saved_tool_data,
                     self.search_assessment,
+                    self.delete_saved_assessment,
                     self.clear_assessment,
                     self.open_preferences,
                     self.refresh_recent_projects,
@@ -1163,6 +1191,8 @@ class LifftWindow(QMainWindow):
             }[self.active_kind()],
             project_open=metadata is not None,
             animated_focus=store.load().animated_body_region_focus,
+            animated_risk_gauge=store.load().animated_risk_gauge,
+            animated_cumulative_damage=store.load().animated_cumulative_damage,
             gauge_markers=store.load().gauge_markers,
             undo_limit=store.load().undo_limit,
             developer_enabled=self._developer_enabled,
@@ -1185,6 +1215,8 @@ class LifftWindow(QMainWindow):
             )
             undo_limit = dialog.undo_limit.value()
             animated_focus = dialog.animated_focus.isChecked()
+            animated_gauge = dialog.animated_gauge.isChecked()
+            animated_damage = dialog.animated_damage.isChecked()
             gauge_markers = GaugeMarkerSettings(
                 dialog.gauge_ticks.isChecked(),
                 dialog.gauge_labels.isChecked(),
@@ -1208,6 +1240,8 @@ class LifftWindow(QMainWindow):
             replace(
                 store.load(),
                 animated_body_region_focus=animated_focus,
+                animated_risk_gauge=animated_gauge,
+                animated_cumulative_damage=animated_damage,
                 undo_limit=undo_limit,
                 gauge_markers=gauge_markers,
                 language=language,
@@ -1215,6 +1249,7 @@ class LifftWindow(QMainWindow):
                 decimal_convention=convention,
             )
         )
+        apply_result_animations(self, animated_gauge, animated_damage)
         editing = self.presenter.workspace.editing
         if editing is not None:
             editing.set_undo_limit(undo_limit)
@@ -1362,6 +1397,42 @@ class LifftWindow(QMainWindow):
         self.language = list(Language)[self.languages.currentIndex()]
         self.translate()
         self.run(self.refresh)
+
+    def change_assessment_tasks(self, delta: int) -> None:
+        """Resize the active tool by one row using established scoped count commands.
+
+        Args:
+            delta: One to append or minus one to remove the final task.
+
+        Returns:
+            None; invalid input/cancel preserves data. One through 100 rows are allowed;
+            removing entered data requires consent and shared Undo restores it exactly.
+        """
+        source = self.active_source()
+        if source is None or delta not in (-1, 1):
+            return
+        count = len(source.tasks) + delta
+        if not 1 <= count <= 100:
+            return
+        if self.task_count_removes_data(count) and not self.confirm_task_reset(
+            self.language, count
+        ):
+            return
+        if not self.resolve_context_text():
+            return
+        presenter = (
+            self.tst_presenter
+            if self.tst_active
+            else self.duet_presenter
+            if self.duet_active
+            else self.presenter
+        )
+        presenter.set_task_count(count)
+        self.refresh()
+        self.auto_calculate()
+        panel = self.secondary_panel() or self.task_panel
+        if delta > 0 and panel is not None:
+            panel.task_grid.focus_task(count - 1)
 
     def add_task(self) -> None:
         """Append an unfinished row and select it for entry.
@@ -1514,6 +1585,45 @@ class LifftWindow(QMainWindow):
             None; task resetting remains opt-in, confirmed and undoable.
         """
         self.open_preferences()
+
+    def auto_calculate(self) -> None:
+        """Calculate a completed grid quietly and retain outputs in its input action.
+
+        Args:
+            None.
+
+        Returns:
+            None; incomplete/invalid grids clear stale outputs without modal warnings.
+            No typing is accepted here and explicit Calculate remains available.
+        """
+        active = self.presenter.workspace.active
+        panel = self.secondary_panel() or self.task_panel
+        if active is None or panel is None or panel.pending:
+            return
+        evaluator = (
+            self.tst_presenter.evaluator
+            if self.tst_active
+            else self.duet_presenter.evaluator
+            if self.duet_active
+            else self.presenter.evaluator
+        )
+        result = (
+            evaluator.evaluate_tst_grid(active)
+            if self.tst_active
+            else evaluator.evaluate_duet_grid(active)
+            if self.duet_active
+            else evaluator.evaluate_lifft_grid(active)
+        )
+        if result.status is EvaluationStatus.COMPLETE:
+            self.presenter.workspace.stage_calculation(
+                self.current_result_snapshot(), automatic=True
+            )
+        else:
+            evaluator.clear()
+        self.message.clear()
+        panel.show_result()
+        self.show_result()
+        self.refresh_save_controls()
 
     def calculate(self) -> None:
         """Evaluate committed grid previews; review/invalid states show no totals.
@@ -1912,71 +2022,6 @@ class LifftWindow(QMainWindow):
             self.tst_presenter.evaluator.clear()
             self.refresh()
         return outcome.completed
-
-    def open_saved_tool_data(self) -> None:
-        """Browse saved data for the active worker/tool; Close preserves pending text.
-
-        Acceptance resolves pending input and existing Save/Discard/Cancel intent before
-        selecting the exact saved assignment. It never creates or promotes an
-        assessment, nor infers ownership from displayed workplace labels.
-
-        Args:
-            None.
-
-        Returns:
-            None.
-        """
-        workspace = self.presenter.workspace
-        active = workspace.active
-        if active is None or not workspace.supports_assignment_history:
-            return
-        history = workspace.read_history().history
-        entry = next(
-            (
-                e
-                for e in history.entries
-                if e.document_id == active.document.document_id
-            ),
-            None,
-        )
-        if entry is None:
-            return
-        jobs = workspace.read_jobs().jobs
-        options = saved_tool_options(jobs, history, entry.worker_id, self.active_kind())
-        dialog = ToolDataDialog(options, language=self.language, parent=self)
-        dialog.close_button.setIcon(self.icons["close"])
-        dialog.load_button.setIcon(self.icons["open"])
-        try:
-            accepted = dialog.exec() == QDialog.Accepted
-            selected = dialog.selected
-        finally:
-            dialog.close()
-            dialog.deleteLater()
-        if not accepted or selected is None:
-            return
-        panel = self.secondary_panel() or self.task_panel
-        if panel is not None and panel.commit_inputs():
-            self.refresh()
-        if not self.resolve_context_text():
-            return
-        active = workspace.active
-        choice = (
-            self.browse_choice() if active is not None and active.is_dirty else None
-        )
-        outcome = workspace.select_assignment(
-            AssignmentSelection(
-                jobs.project_id,
-                selected.assignment_id,
-                selected.kind,
-                entry.worker_id if selected.assignment_id is None else None,
-            ),
-            choice=choice,
-        )
-        if outcome.completed:
-            self.presenter.evaluator.clear()
-            self.duet_presenter.evaluator.clear()
-            self.tst_presenter.evaluator.clear()
-            self.refresh()
 
     def browse_choice(self) -> CloseChoice | None:
         """Retain accepted project drafts while navigating within an open project.
@@ -2676,7 +2721,7 @@ class LifftWindow(QMainWindow):
         )
 
     def open_worker_transfer(self) -> None:
-        """Open the original modal using the exact saved assignment of the source.
+        """Transfer the exact saved source; a successful active Move opens its target.
 
         Args:
             None.
@@ -2717,6 +2762,10 @@ class LifftWindow(QMainWindow):
                 e.document_id
                 for e in dialog.history.history.entries
                 if e.assignment_id == request.source_assignment_id
+                and (
+                    request.source_worker_id is None
+                    or e.worker_id == request.source_worker_id
+                )
                 and e.kind in request.kinds
             }
             if active.document.document_id not in selected:
@@ -2726,25 +2775,33 @@ class LifftWindow(QMainWindow):
                 self.refresh()
             return self.browse_choice()
 
-        if entry.assignment_id is None:
-            self.message.setText(
-                "Asocie la evaluación a un lugar de trabajo antes de transferirla."
-                if self.language is Language.SPANISH
-                else "Associate the assessment with a workplace before transferring it."
-            )
-            return
         dialog = WorkerTransferDialog(
             workspace,
             entry.assignment_id,
             self.icons,
             resolve_move,
             language=self.language,
+            source_worker_id=entry.worker_id,
             parent=self,
         )
         try:
             dialog.exec()
             if dialog.completed:
                 if workspace.active is None:
+                    request = dialog.request()
+                    if request is not None:
+                        destination = request.destination
+                        self.assessment_navigation.select(
+                            destination.worker_id,
+                            entry.kind,
+                            lambda: self._blank_kind(entry.kind),
+                            workplace=(
+                                destination.workplace
+                                if isinstance(destination, WorkerContext)
+                                else None
+                            ),
+                            explicit=True,
+                        )
                     self._empty_kind = entry.kind
                     self.refresh()
                 else:
@@ -2949,12 +3006,10 @@ class LifftWindow(QMainWindow):
             "help": self.open_help,
             "workers": self.open_worker_management,
             "search": self.search_assessment,
-            "refresh": self.refresh_navigation,
-            "context": self.select_navigation_context,
-            "associate": lambda: self._browse_context_picker(associate=True),
+            "standalone": self.select_standalone_assessment,
+            "add_assessment": self.add_workplace_assessment,
+            "delete_assessment": self.delete_saved_assessment,
             "organization": self.open_organization,
-            "follow_worker": lambda: self.set_context_mode(True),
-            "keep_context": lambda: self.set_context_mode(False),
         }
         callbacks = {
             key: (lambda checked=False, action=action: self.navigation_action(action))
@@ -2965,6 +3020,10 @@ class LifftWindow(QMainWindow):
         )
         self.main_navigation = navigation
         layout.addWidget(navigation)
+        navigation.context_expanded_changed.connect(self.set_context_expanded)
+        navigation.location_browser.selected.connect(
+            self.open_saved_assessment_location
+        )
         content_layout = QHBoxLayout()
         content_layout.setSpacing(10)
         self.body_panel = BodyRegionPanel(self.icons, parent=root)
@@ -3017,8 +3076,11 @@ class LifftWindow(QMainWindow):
             self.tst_panel, self.icons["shoulder"], "The Shoulder Tool (ST)  "
         )
         for panel in (self.duet_panel, self.tst_panel):
-            panel.context_button.clicked.connect(
-                lambda: self.run(self.open_saved_tool_data)
+            panel.add_task_button.clicked.connect(
+                lambda: self.run(lambda: self.change_assessment_tasks(1))
+            )
+            panel.remove_task_button.clicked.connect(
+                lambda: self.run(lambda: self.change_assessment_tasks(-1))
             )
         self.assessment_tabs.currentChanged.connect(self.select_tool)
         tool_layout.addWidget(self.assessment_tabs)
@@ -3037,7 +3099,6 @@ class LifftWindow(QMainWindow):
         )
         content_layout.addWidget(self.results_sidebar)
         layout.addLayout(content_layout, 1)
-        layout.addWidget(navigation.context_frame)
         layout.addWidget(navigation.footer)
         self.message.setParent(root)
         status_bar = self.statusBar()
@@ -3337,6 +3398,7 @@ class LifftWindow(QMainWindow):
             self.open_worker_transfer,
             self.open_help,
             self.search_assessment,
+            self.delete_saved_assessment,
             self.open_authors,
             self.new_project,
         ):
@@ -3367,6 +3429,47 @@ class LifftWindow(QMainWindow):
 
         self.run(perform)
 
+    def set_context_expanded(self, expanded: bool) -> None:
+        """Accept project-local context visibility through the existing main Save path.
+
+        Args:
+            expanded: Explicit user disclosure choice, never an automatic projection.
+
+        Returns:
+            None; failure restores the accepted preference and retains task text.
+        """
+        metadata = self.presenter.workspace.project_metadata
+        if metadata is None or metadata.assessment_context_expanded is expanded:
+            return
+        try:
+            # A context disclosure must not force validation/rebuild of task-grid text.
+            self.presenter.workspace.update_display_settings(
+                replace(metadata, assessment_context_expanded=expanded)
+            )
+        except Exception:
+            # Final GUI boundary: restore accepted visibility and retain pending input.
+            _LOG.exception(
+                "Assessment context browser preference could not be retained"
+            )
+            self.message.setText(self.text("error"))
+        navigation = self.main_navigation
+        metadata = self.presenter.workspace.project_metadata
+        if navigation is not None:
+            navigation.update_context_visibility(
+                metadata.project_id if metadata else None,
+                self.language,
+                metadata.assessment_context_expanded if metadata else None,
+            )
+            navigation.update_assessment_selection(
+                standalone=self.assessment_navigation.view is not None
+                and self.assessment_navigation.view.workplace is None,
+                available=self.assessment_navigation.view is not None,
+            )
+            navigation.set_modified(self.presenter.workspace.has_unsaved_changes)
+        if self.history_actions is not None:
+            self.history_actions.refresh()
+        self.refresh_save_controls()
+
     def refresh_navigation(self) -> None:
         """Read committed context without rebuilding or discarding task-grid text.
 
@@ -3381,10 +3484,10 @@ class LifftWindow(QMainWindow):
             return
         workspace = self.presenter.workspace
         active = workspace.active
+        if active is None:
+            self.assessment_navigation.adopt_active()
         catalog = None
         worker_id = None
-        workplace = None
-        job_label = None
         if workspace.supports_assignment_history:
             self.assessment_navigation.adopt_active()
             catalog = workspace.read_hierarchy().hierarchy.work
@@ -3400,59 +3503,125 @@ class LifftWindow(QMainWindow):
             )
             if entry is not None:
                 worker_id = entry.worker_id
-            if entry is not None and entry.assignment_id is not None:
-                assignment = next(
-                    a
-                    for a in jobs.assignments
-                    if a.assignment_id == entry.assignment_id
-                )
-                worker_id = assignment.worker.worker_id
-                workplace = assignment.worker.workplace
-                if assignment.placement_id is not None:
-                    placement = next(
-                        p
-                        for p in jobs.placements
-                        if p.placement_id == assignment.placement_id
-                    )
-                    job = next(j for j in jobs.jobs if j.job_id == placement.job_id)
-                    job_label = (job.job_id, job.name)
         view = self.assessment_navigation.view
         if (
             active is not None
             and view is not None
             and view.document_id == active.document.document_id
         ):
-            worker_id, workplace, job_label = view.worker_id, view.workplace, view.job
+            worker_id = view.worker_id
         navigation.update_state(
             catalog,
             worker_id,
-            workplace,
-            job_label,
             workspace.project_metadata.title if workspace.project_metadata else None,
             self.presenter.system,
             self.language,
             project_loaded=not self._is_unsaved_project(),
         )
         metadata = workspace.project_metadata
-        has_organization = (
-            bool(workspace.read_hierarchy().hierarchy.plants)
+        navigation.set_modified(
+            workspace.editing is not None and workspace.has_unsaved_changes
+        )
+        navigation.update_context_visibility(
+            metadata.project_id if metadata else None,
+            self.language,
+            metadata.assessment_context_expanded if metadata else None,
+        )
+        locations = []
+        if worker_id is not None and workspace.supports_assignment_history:
+            jobs = workspace.read_jobs().jobs
+            assignments = {a.assignment_id: a for a in jobs.assignments}
+            for entry in workspace.read_history().history.entries:
+                if (
+                    entry.worker_id != worker_id
+                    or entry.kind is not self.active_kind()
+                    or entry.assignment_id is None
+                ):
+                    continue
+                owner = assignments[entry.assignment_id]
+                result = workspace.saved_assessment_result(entry.document_id)
+                detail = ""
+                job_info = None
+                if owner.placement_id is not None:
+                    placement = next(
+                        p
+                        for p in jobs.placements
+                        if p.placement_id == owner.placement_id
+                    )
+                    record = next(j for j in jobs.jobs if j.job_id == placement.job_id)
+                    job_info = (record.job_id, record.name)
+                if not owner.active:
+                    detail += (
+                        (
+                            " · Histórica"
+                            if self.language is Language.SPANISH
+                            else " · Historical"
+                        )
+                        + " "
+                        + (owner.started_at or "")
+                        + "-"
+                        + (owner.ended_at or "")
+                    )
+                locations.append(
+                    AssessmentLocation(
+                        entry.document_id,
+                        entry.assignment_id,
+                        owner.worker.workplace,
+                        detail.strip(" ·"),
+                        result.probability_percent if result else None,
+                        job_info,
+                    )
+                )
+        navigation.location_browser.update_rows(
+            tuple(locations),
+            view.document_id if view else None,
+            self.language,
+            {
+                AssessmentKind.LIFFT: "LiFFT",
+                AssessmentKind.DUET: "DUET",
+                AssessmentKind.TST: "ST",
+            }[self.active_kind()],
+            standalone_open=view is not None and view.workplace is None,
+        )
+        standalone_exists = (
+            any(
+                e.worker_id == worker_id
+                and e.kind is self.active_kind()
+                and e.assignment_id is None
+                for e in workspace.read_history().history.entries
+            )
             if workspace.supports_assignment_history
             else False
         )
-        if workspace.editing is not None and workspace.has_unsaved_changes:
-            modified = (
-                "  •  Modificado"
+        navigation.standalone_button.setText(
+            (
+                "Evaluación independiente"
                 if self.language is Language.SPANISH
-                else "  •  Modified"
+                else "Standalone assessment"
             )
-            navigation.project_label.setText(navigation.project_label.text() + modified)
-        navigation.update_context_visibility(
-            metadata.project_id if metadata else None, has_organization, self.language
+            + (
+                ""
+                if standalone_exists
+                else (
+                    " · Sin datos"
+                    if self.language is Language.SPANISH
+                    else " · No data"
+                )
+            )
         )
-        navigation.associate_button.setVisible(
-            view is not None and view.workplace is None and view.saved
+        navigation.standalone_button.setEnabled(view is not None)
+        navigation.location_browser.add_button.setEnabled(view is not None)
+        navigation.location_browser.delete_button.setEnabled(
+            view is not None
+            and any(
+                e.worker_id == worker_id and e.kind is self.active_kind()
+                for e in workspace.read_history().history.entries
+            )
         )
-        navigation.associate_button.setEnabled(has_organization)
+        navigation.update_assessment_selection(
+            standalone=view is not None and view.workplace is None,
+            available=view is not None,
+        )
         for panel in (self.task_panel, self.duet_panel, self.tst_panel):
             if panel is not None:
                 panel.setEnabled(
@@ -3461,12 +3630,6 @@ class LifftWindow(QMainWindow):
                     or view.assignment_id is not None
                 )
         self._show_context_status()
-        navigation.follow_worker_button.setChecked(
-            self.assessment_navigation.follow_worker
-        )
-        navigation.keep_context_button.setChecked(
-            not self.assessment_navigation.follow_worker
-        )
         can_browse = view is not None
         if active is not None and workspace.supports_assignment_history:
             can_browse = any(
@@ -3475,7 +3638,22 @@ class LifftWindow(QMainWindow):
             )
         for panel in (self.task_panel, self.duet_panel, self.tst_panel):
             if panel is not None:
-                panel.context_button.setEnabled(can_browse)
+                count = len(active.state.tasks) if active is not None else 15
+                spanish = self.language is Language.SPANISH
+                panel.add_task_button.setText("+ Tarea" if spanish else "+ Task")
+                panel.remove_task_button.setText("- Tarea" if spanish else "- Task")
+                panel.add_task_button.setToolTip(
+                    "Añadir una tarea al final."
+                    if spanish
+                    else "Add one task at the end."
+                )
+                panel.remove_task_button.setToolTip(
+                    "Quitar la última tarea; los datos requieren confirmación."
+                    if spanish
+                    else "Remove the last task; entered data requires confirmation."
+                )
+                panel.add_task_button.setEnabled(view is not None and count < 100)
+                panel.remove_task_button.setEnabled(view is not None and count > 1)
                 panel.clear_button.setEnabled(active is not None)
         navigation.toolbar_actions["save"].setEnabled(
             workspace.project_metadata is not None
@@ -3523,13 +3701,12 @@ class LifftWindow(QMainWindow):
         if self._assessment_menu is not None:
             self._assessment_menu.export_csv.setEnabled(export_enabled)
         navigation.toolbar_actions["organization"].setEnabled(
-            navigation.buttons["organization"].isEnabled()
-            and not self._is_unsaved_project()
+            catalog is not None and not self._is_unsaved_project()
         )
         if self._is_unsaved_project():
             for key in ("jobs", "plot", "jrot", "export"):
                 navigation.toolbar_actions[key].setEnabled(False)
-            for key in ("workers", "organization", "context", "transfer"):
+            for key in ("workers", "transfer", "standalone"):
                 navigation.buttons[key].setEnabled(False)
             if self._assessment_menu is not None:
                 for action in (
@@ -3564,7 +3741,20 @@ class LifftWindow(QMainWindow):
             year=date.today().year,
         )
         dialog = WorkerSearchDialog(
-            rows, hierarchy, kind, self.icons, language=self.language, parent=self
+            rows,
+            hierarchy,
+            kind,
+            self.icons,
+            language=self.language,
+            parent=self,
+            probabilities={
+                row.document_id: (
+                    result.probability_percent
+                    if (result := workspace.saved_assessment_result(row.document_id))
+                    else None
+                )
+                for row in rows
+            },
         )
         try:
             if dialog.exec_() != QDialog.Accepted or dialog.selected is None:
@@ -3629,19 +3819,28 @@ class LifftWindow(QMainWindow):
         Returns:
             None; no modal choice, new assessment or project write is performed.
         """
+        if self.main_navigation is not None:
+            # A successful project load settles any previous disclosure motion,
+            # including reopening the same project while it is still collapsing.
+            self.main_navigation.context_frame.set_expanded(
+                self.main_navigation.context_disclosure.isChecked(), animate=False
+            )
         browser = self.assessment_navigation
         workers = worker_options(
             self.presenter.workspace.read_hierarchy().hierarchy.work, WorkerOrder.ID
         )
         for kind in (AssessmentKind.LIFFT, AssessmentKind.DUET, AssessmentKind.TST):
             for worker in workers:
-                if browser.saved_contexts(worker.worker_id, kind):
-                    browser.select(
+                if any(
+                    e.worker_id == worker.worker_id and e.kind is kind
+                    for e in browser.workspace.read_history().history.entries
+                ):
+                    browser.select_worker_default(
                         worker.worker_id, kind, partial(self._blank_kind, kind)
                     )
                     return
         if workers:
-            browser.select(
+            browser.select_worker_default(
                 workers[0].worker_id,
                 AssessmentKind.LIFFT,
                 lambda: self._blank_kind(AssessmentKind.LIFFT),
@@ -3675,57 +3874,87 @@ class LifftWindow(QMainWindow):
         workspace = self.presenter.workspace
         browser = self.assessment_navigation
         kind = self.active_kind()
-        workplace = browser.view.workplace if browser.view is not None else None
         if not workspace.resolve_browse(self.browse_choice()):
             return
-        browser.select(
+        browser.select_worker_default(
             worker_id,
             kind,
             lambda: self._blank_kind(kind),
-            workplace=workplace,
-            keep=not browser.follow_worker,
         )
         self.refresh()
 
-    def set_context_mode(self, follow: bool) -> None:
-        """Apply Follow worker/Keep context without reinterpreting source ownership.
+    def open_saved_assessment_location(self, document_id: str) -> None:
+        """Open an exact current-worker/current-tool source from the location browser.
 
         Args:
-            follow: True restores this worker/tool's remembered or first saved context.
+            document_id: Saved source identity; exact owners disambiguate shared paths.
 
         Returns:
-            None; a cancelled transition restores the previous checked mode.
+            None; rejected pending-input resolution restores the accepted selection.
         """
-        browser = self.assessment_navigation
-        old = browser.follow_worker
-        browser.follow_worker = follow
-        if follow and browser.view is not None:
-            self._select_navigation_worker(browser.view.worker_id)
+
+        def select() -> None:
+            """Revalidate browser intent before browsing an existing source only.
+
+            Args:
+                None.
+
+            Returns:
+                None; stale source intent leaves the current assessment intact.
+            """
+            workspace = self.presenter.workspace
+            view = self.assessment_navigation.view
+            entry = next(
+                (
+                    e
+                    for e in workspace.read_history().history.entries
+                    if e.document_id == document_id
+                ),
+                None,
+            )
             if (
-                self.presenter.workspace.editing is None
-                and self.presenter.workspace.has_unsaved_changes
+                view is None
+                or entry is None
+                or entry.worker_id != view.worker_id
+                or entry.kind is not self.active_kind()
             ):
-                browser.follow_worker = old
+                return
+            if entry.document_id == view.document_id or entry.assignment_id is None:
+                return
+            if not workspace.resolve_browse(self.browse_choice()):
+                return
+            owner = next(
+                a
+                for a in workspace.read_jobs().jobs.assignments
+                if a.assignment_id == entry.assignment_id
+            )
+            self.assessment_navigation.select(
+                entry.worker_id,
+                entry.kind,
+                lambda: self._blank_kind(entry.kind),
+                workplace=owner.worker.workplace,
+                explicit=True,
+                assignment_id=entry.assignment_id,
+            )
+            self.refresh()
+
+        self.navigation_action(select)
+        # A rejected input boundary must also restore the visual path selection.
         self.refresh_navigation()
 
-    def _browse_context_picker(
-        self, worker_id: str | None = None, *, associate: bool = False
-    ) -> None:
-        """Open/create at the selected context, or associate a saved standalone source.
+    def _browse_context_picker(self, worker_id: str | None = None) -> None:
+        """Explicitly open/create an assessment at an existing workplace assignment.
 
         Args:
             worker_id: Explicit selected worker, or None to use the navigation view.
-            associate: Bind the saved standalone assessment to a chosen real workplace.
-                Reuse an existing assignment or create the missing one atomically;
-                ordinary opening never changes ownership. Explicit Create assessment
-                creates one blank source only for the selected assignment/tool.
+            Explicit Create assessment creates one blank source only for the selected
+            assignment/tool; ordinary browsing never changes ownership.
 
         Returns:
             None; cancelled picker/dirty consent preserves the current view and drafts.
 
         Raises:
-            ValueError: Association was requested without a saved standalone source,
-                or the chosen destination conflicts with existing assessment ownership.
+            ValueError: Chosen assignment ownership is invalid.
         """
         workspace = self.presenter.workspace
         browser = self.assessment_navigation
@@ -3733,49 +3962,6 @@ class LifftWindow(QMainWindow):
         if worker_id is None:
             worker_id = view.worker_id if view is not None else None
         if worker_id is None:
-            return
-        if associate:
-            if view is None or not view.saved or view.workplace is not None:
-                raise ValueError("Select a saved standalone assessment first.")
-            hierarchy = workspace.read_hierarchy().hierarchy
-            jobs = workspace.read_jobs().jobs
-            dialog = WorkplaceAssignmentDialog(
-                hierarchy,
-                jobs,
-                worker_id,
-                self.icons,
-                language=self.language,
-                reuse_existing=True,
-                parent=self,
-            )
-            try:
-                if (
-                    dialog.exec_() != QDialog.Accepted
-                    or dialog.selected_workplace is None
-                ):
-                    return
-                if not workspace.resolve_browse(self.browse_choice()):
-                    return
-                entry = workspace.associate_assessment_at_workplace(
-                    view.document_id,
-                    dialog.selected_workplace,
-                    dialog.selected_placement_id,
-                    effective_date=date.today(),
-                )
-                if self.history_actions is not None:
-                    self.history_actions.interactions.observe(None, None, None)
-                browser.select(
-                    worker_id,
-                    self.active_kind(),
-                    lambda: self._blank_kind(self.active_kind()),
-                    workplace=dialog.selected_workplace,
-                    explicit=True,
-                    assignment_id=entry.assignment_id,
-                )
-                self.refresh()
-            finally:
-                dialog.close()
-                dialog.deleteLater()
             return
         selector = AssignmentSelector(workspace)
         catalog = selector.refresh()
@@ -3794,7 +3980,7 @@ class LifftWindow(QMainWindow):
                 for e in workspace.read_history().history.entries
                 if e.kind is kind and e.assignment_id is not None
             ),
-            allow_standalone=not associate,
+            allow_standalone=True,
             language=self.language,
             parent=self,
         )
@@ -3857,6 +4043,265 @@ class LifftWindow(QMainWindow):
             dialog.close()
             dialog.deleteLater()
 
+    def delete_saved_assessment(self) -> None:
+        """Choose one existing worker/tool assessment and confirm reversible deletion.
+
+        Args:
+            None.
+
+        Returns:
+            None; Cancel/No preserve inputs. Only chosen source/results are removed;
+            assignments remain and current-tool location dropdowns refresh immediately.
+        """
+        view = self.assessment_navigation.view
+        if view is None:
+            return
+        workspace = self.presenter.workspace
+        hierarchy = workspace.read_hierarchy().hierarchy
+        rows = tuple(
+            row
+            for row in search_assessments(
+                hierarchy,
+                workspace.read_jobs().jobs,
+                workspace.read_history().history,
+                view.kind,
+                year=date.today().year,
+            )
+            if row.worker_id == view.worker_id
+        )
+        probabilities = {
+            row.document_id: (
+                result.probability_percent
+                if (result := workspace.saved_assessment_result(row.document_id))
+                else None
+            )
+            for row in rows
+        }
+        dialog = WorkerSearchDialog(
+            rows,
+            hierarchy,
+            view.kind,
+            self.icons,
+            language=self.language,
+            probabilities=probabilities,
+            parent=self,
+        )
+        spanish = self.language is Language.SPANISH
+        title = "Eliminar evaluación" if spanish else "Delete assessment"
+        dialog.setWindowTitle(title)
+        label = dialog.findChild(QLabel, "dialogTitle")
+        if label is not None:
+            label.setText(title + " · " + view.worker_id + " · " + dialog.tool_name)
+        subtitle = dialog.findChild(QLabel, "supportingText")
+        if subtitle is not None:
+            subtitle.setText(
+                "Seleccione una evaluación existente. La asignación se conserva."
+                if spanish
+                else "Choose an existing assessment. Workplace assignments are kept."
+            )
+        dialog.use_button.setText(title)
+        dialog.use_button.setToolTip(
+            "Confirmar la eliminación de las tareas y resultados seleccionados."
+            if spanish
+            else "Confirm deletion of the selected assessment's tasks and results."
+        )
+        dialog.table.setToolTip(
+            "Seleccione una evaluación. Eliminar solicita confirmación."
+            if spanish
+            else "Select an assessment. Delete asks for confirmation."
+        )
+        dialog.use_button.setIcon(self.icons["delete"])
+        try:
+            if dialog.exec_() != QDialog.Accepted or dialog.selected is None:
+                return
+            row = next(r for r in rows if r.selection == dialog.selected)
+            place = " / ".join(v for v in row.context if v) or (
+                "Evaluación independiente" if spanish else "Standalone assessment"
+            )
+            question = (
+                f"¿Eliminar la evaluación de {row.worker_id} en {place}? "
+                "Se eliminarán sus tareas y resultados. Deshacer permite "
+                "restaurarlos. La asignación se conserva."
+                if spanish
+                else f"Delete {row.worker_id}'s assessment at {place}? "
+                "Its tasks and results will be removed. Undo can restore them. "
+                "The workplace assignment is kept."
+            )
+            if (
+                QMessageBox.question(
+                    self,
+                    title,
+                    question,
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No,
+                )
+                != QMessageBox.Yes
+            ):
+                return
+            editing = workspace.editing
+            current = workspace.active
+            deleting_current = (
+                current is not None and current.document.document_id == row.document_id
+            )
+            with editing.stage() if editing is not None else nullcontext():
+                workspace.delete_assessment(workspace.read_history(), row.document_id)
+                if deleting_current:
+                    self.assessment_navigation.select_worker_default(
+                        view.worker_id, view.kind, lambda: self._blank_kind(view.kind)
+                    )
+                if editing is not None:
+                    editing.set_editor(
+                        "assessment.view",
+                        self.assessment_navigation.view,
+                        "delete_historical_assessment",
+                    )
+            # Refresh only after recording: automatic view/result synchronization must
+            # amend the new delete operation, never the pre-deletion history state.
+            if editing is not None:
+                editing.record("delete_historical_assessment")
+            if deleting_current:
+                self.refresh()
+            else:
+                self.refresh_navigation()
+            if self.history_actions is not None:
+                self.history_actions.refresh()
+            self.refresh_save_controls()
+        finally:
+            dialog.close()
+            dialog.deleteLater()
+
+    def add_workplace_assessment(self) -> None:
+        """Choose a real workplace and explicitly create/replace the active tool's data.
+
+        Args:
+            None.
+
+        Returns:
+            None; cancellation preserves source/ownership. A confirmed blank source
+            is accepted privately and can be saved empty for later completion.
+        """
+        view = self.assessment_navigation.view
+        if view is None or not self.resolve_context_text():
+            return
+        workspace = self.presenter.workspace
+        jobs = workspace.read_jobs().jobs
+        owners = {a.assignment_id: a for a in jobs.assignments}
+        previews = []
+        for entry in workspace.read_history().history.entries:
+            if (
+                entry.worker_id != view.worker_id
+                or entry.kind is not view.kind
+                or entry.assignment_id is None
+            ):
+                continue
+            preview_owner = owners[entry.assignment_id]
+            result = workspace.saved_assessment_result(entry.document_id)
+            previews.append(
+                WorkplaceAssessmentPreview(
+                    preview_owner.worker.workplace,
+                    result.probability_percent if result else None,
+                    preview_owner.active,
+                )
+            )
+        tool = {
+            AssessmentKind.LIFFT: "LiFFT",
+            AssessmentKind.DUET: "DUET",
+            AssessmentKind.TST: "ST",
+        }[view.kind]
+        dialog = WorkplaceAssignmentDialog(
+            workspace.read_hierarchy().hierarchy,
+            workspace.read_jobs().jobs,
+            view.worker_id,
+            self.icons,
+            language=self.language,
+            current=view.workplace,
+            reuse_existing=True,
+            assessments=tuple(previews),
+            assessment_tool=tool,
+            parent=self,
+        )
+        spanish = self.language is Language.SPANISH
+        title = "Añadir evaluación" if spanish else "Add assessment"
+        dialog.setWindowTitle(title)
+        dialog.heading.setText(title)
+        dialog.accept_button.setText(title)
+        try:
+            if dialog.exec() != QDialog.Accepted or dialog.selected_workplace is None:
+                return
+            workplace = dialog.selected_workplace
+            owner = next(
+                (
+                    a
+                    for a in workspace.read_jobs().jobs.assignments
+                    if a.active
+                    and a.worker.worker_id == view.worker_id
+                    and a.worker.workplace == workplace
+                ),
+                None,
+            )
+            existing = (
+                workspace.read_history().history.current_for(
+                    owner.assignment_id, view.kind
+                )
+                if owner is not None
+                else None
+            )
+            if existing is not None:
+                tool = {
+                    AssessmentKind.LIFFT: "LiFFT",
+                    AssessmentKind.DUET: "DUET",
+                    AssessmentKind.TST: "ST",
+                }[view.kind]
+                path = " / ".join(context_values(workplace))
+                message = (
+                    f"{view.worker_id} ya tiene una evaluación {tool} en {path}. "
+                    "¿Reemplazar sus entradas y resultados por una evaluación vacía? "
+                    "Puede restaurarlos con Deshacer."
+                    if spanish
+                    else f"{view.worker_id} already has a {tool} assessment at {path}. "
+                    "Replace its inputs and results with a blank assessment? "
+                    "Undo can restore the previous data."
+                )
+                if (
+                    QMessageBox.question(
+                        self,
+                        "Reemplazar evaluación" if spanish else "Replace assessment",
+                        message,
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.No,
+                    )
+                    != QMessageBox.Yes
+                ):
+                    return
+            if existing is None and not self._confirm_workplace_assessment_creation(
+                view.worker_id, view.kind, workplace, dialog.selected_placement_id
+            ):
+                return
+            if not workspace.resolve_browse(self.browse_choice()):
+                return
+            entry = workspace.add_workplace_assessment(
+                view.worker_id,
+                workplace,
+                dialog.selected_placement_id,
+                uuid4().hex,
+                self._blank_kind(view.kind),
+                effective_date=date.today(),
+                expected_document_id=existing.document_id if existing else None,
+            )
+            self.presenter.evaluator.clear()
+            self.assessment_navigation.select(
+                view.worker_id,
+                view.kind,
+                lambda: self._blank_kind(view.kind),
+                workplace=workplace,
+                explicit=True,
+                assignment_id=entry.assignment_id,
+            )
+            self.refresh()
+        finally:
+            dialog.close()
+            dialog.deleteLater()
+
     def select_standalone_assessment(self) -> None:
         """View this worker/tool without assigning or moving saved assessment data.
 
@@ -3908,29 +4353,58 @@ class LifftWindow(QMainWindow):
             True when no same-Job assessment exists elsewhere or consent is Yes.
             No leaves ownership and active assessment unchanged; no writes occur here.
         """
-        locations = self.assessment_navigation.duplicate_locations(entry)
-        if not locations:
+        if entry.assignment_id is None:
             return True
         jobs = self.presenter.workspace.read_jobs().jobs
         owner = next(
             a for a in jobs.assignments if a.assignment_id == entry.assignment_id
         )
-        placement = next(
-            p for p in jobs.placements if p.placement_id == owner.placement_id
+        return self._confirm_workplace_assessment_creation(
+            owner.worker.worker_id,
+            entry.kind,
+            owner.worker.workplace,
+            owner.placement_id,
         )
+
+    def _confirm_workplace_assessment_creation(
+        self,
+        worker_id: str,
+        kind: AssessmentKind,
+        workplace: WorkplaceContext,
+        placement_id: int | None,
+    ) -> bool:
+        """Retain same-Job consent before creating any new workplace owner/source.
+
+        Args:
+            worker_id: Current worker; no existing observation is moved or replaced.
+            kind: Current tool identity.
+            workplace: Intended station/shift, possibly without an assignment yet.
+            placement_id: Compatible optional Job placement.
+
+        Returns:
+            True if no other same-Job observation exists, otherwise explicit consent.
+            Declining writes no assignment, source or result.
+        """
+        locations = self.assessment_navigation.duplicate_workplace_locations(
+            worker_id, kind, workplace, placement_id
+        )
+        if not locations:
+            return True
+        jobs = self.presenter.workspace.read_jobs().jobs
+        placement = next(p for p in jobs.placements if p.placement_id == placement_id)
         tool = {
             AssessmentKind.LIFFT: "LiFFT",
             AssessmentKind.DUET: "DUET",
             AssessmentKind.TST: "ST",
-        }[entry.kind]
+        }[kind]
         listing = "\n".join("- " + " > ".join(context_values(p)) for p in locations)
         spanish = self.language is Language.SPANISH
         question = (
-            f"{owner.worker.worker_id} ya tiene una evaluación {tool} "
+            f"{worker_id} ya tiene una evaluación {tool} "
             f"para el trabajo {placement.job_id} "
             f"en otros lugares:\n\n{listing}\n\n¿Crear otra evaluación aquí?"
             if spanish
-            else f"{owner.worker.worker_id} already has a {tool} assessment "
+            else f"{worker_id} already has a {tool} assessment "
             f"for Job {placement.job_id} "
             f"at other locations:\n\n{listing}\n\n"
             "Create a separate assessment here?"

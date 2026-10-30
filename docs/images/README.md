@@ -1,13 +1,19 @@
 # Application screenshots
 
-The README images show the ErgoTools, PLOT and production JROT desktop interfaces.
-The assessment captures include the rendered VTK avatar. LiFFT, DUET and Shoulder
-Tool examples illustrate low, moderate and high modeled risk respectively.
+Current screenshots show the integrated ErgoTools, PLOT and production JROT interfaces.
+The main assessments include actual VTK rendering. LiFFT, DUET and Shoulder examples
+illustrate low, moderate and high model-derived outcomes. All worker identities are
+fictional. Values demonstrate the software, not recommended exposures.
 
-All worker identities used for these demonstrations are fictional. Values illustrate
-the software and are not exposure recommendations. Detail images are crops of actual
-application captures; the original logo is retained in the application resources.
+The assessment-location image is a crop of the main window with a saved workplace
+assessment selected. Organization and worker views show the same fictional hierarchy.
+Find and Transfer examples are linked from the detailed user guide.
 
-JROT comparisons include a single-tool-optimized schedule evaluated under the other
-two methods, and all three tabs of one jointly optimized schedule. The workplace
-scope image shows the production location/shift selector.
+PLOT captures include Individual, Job and Comparison at assignment positions, the current
+map rail and hierarchy-aware overview controls. Gauge animations are settled before capture.
+Detail images are crops of actual native UI captures, not reconstructed interfaces.
+
+Production JROT images show a real CBC single-tool solve and a real HiGHS all-tool solve.
+Single-tool comparisons evaluate the same LiFFT-optimized schedule under DUET/ST; the
+three all-tool tabs evaluate one shared optimized schedule. The guided developer workflow
+is not shown as production functionality. The original logo is retained in resources.

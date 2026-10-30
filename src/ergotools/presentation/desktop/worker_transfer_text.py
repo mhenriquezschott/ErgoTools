@@ -9,6 +9,47 @@ from ergotools.application.settings import Language
 # Spanish owned interface wording; unknown English captions retain the documented
 # fallback.
 _SPANISH = {
+    "All selected tools transfer together. If any part fails, nothing changes.": (
+        "Las herramientas seleccionadas se transfieren juntas. "
+        "Si alguna parte falla, no cambia nada."
+    ),
+    "New {tools} standalone assessments will be created.": (
+        "Se crearán evaluaciones independientes nuevas de {tools}."
+    ),
+    "No assessment; creates on transfer.": "Sin evaluación; se creará al transferir.",
+    ("Standalone"): ("Independiente"),
+    ("Create or replace standalone assessments for the selected worker."): (
+        "Crear o reemplazar evaluaciones independientes del trabajador seleccionado."
+    ),
+    (
+        "Choose a worker, then a standalone assessment or a destination"
+        " station and shift."
+    ): (
+        "Elija un trabajador y una evaluación independiente o una "
+        "estación y turno de destino."
+    ),
+    ("Assessment destination"): ("Destino de evaluación"),
+    ("Select Standalone assessment, or expand the hierarchy and choose a station."): (
+        "Seleccione Evaluación independiente o expanda la jerarquía y "
+        "elija una estación."
+    ),
+    ("Select Standalone assessment or a destination station from the hierarchy."): (
+        "Seleccione Evaluación independiente o una estación de destino de la jerarquía."
+    ),
+    ("{mode} {count} selected tools to {worker}: standalone assessment."): (
+        "{mode} {count} herramientas a {worker}: evaluación independiente."
+    ),
+    (
+        "Existing {tools} tasks and results will be replaced after "
+        "confirmation. Undo can restore them."
+    ): (
+        "Las tareas y resultados existentes de {tools} se reemplazarán "
+        "tras confirmar. Deshacer permite restaurarlos."
+    ),
+    ("Transfer catalogs changed; reopen the form."): (
+        "Los datos de transferencia cambiaron; vuelva a abrir la ventana."
+    ),
+    "Standalone assessment": "Evaluación independiente",
     ("Move"): ("Mover"),
     ("Copy"): ("Copiar"),
     ("Transfer preview: "): ("Vista previa: "),

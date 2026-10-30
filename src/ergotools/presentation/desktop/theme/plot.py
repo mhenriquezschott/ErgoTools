@@ -149,7 +149,7 @@ PLOT_STYLE = """
             QPushButton#plotAlphabetButton:disabled {
                 color: #C7D0D7;
             }
-            QPushButton#locateWorkerButton {
+            QPushButton#locateWorkerButton, QPushButton#locateJobButton {
                 min-height: 24px;
                 max-height: 24px;
                 padding: 0 14px;
@@ -338,4 +338,18 @@ PLOT_STYLE = """
             padding: 6px;
             }
         
+"""
+
+# Result buttons open scoped trees; checked tools expose navigation mode.
+PLOT_STYLE += """
+QToolButton#plotSelectionButton { background: white; color: #0B326C;
+ border: 1px solid #BCC9D3; border-radius: 4px; padding: 4px 7px; text-align: left; }
+QToolButton#plotSelectionButton:hover { background: #EDF7F8; border-color: #08A9B5; }
+QToolButton#plotSelectionButton:disabled { color: #89969E; background: #F4F7F9; }
+QPushButton#plotToolButton[compactZoom="true"] { min-width: 31px; max-width: 31px; }
+QPushButton#plotToolButton[compactZoom="true"][zoomOut="true"] {
+ min-width: 32px; max-width: 32px; }
+QPushButton#plotToolButton:checked { background: #DDF3F5;
+ border-bottom: 1px solid #08A9B5; }
+QTreeWidget#plotResultTree::item { min-height: 29px; padding: 2px; }
 """

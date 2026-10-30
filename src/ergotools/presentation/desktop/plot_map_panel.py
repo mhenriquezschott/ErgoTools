@@ -36,10 +36,17 @@ from ergotools.domain.plant_layout_image import PlantLayoutImage
 from ergotools.domain.plot_scope import PlotScope
 from ergotools.domain.work_hierarchy import WorkHierarchy
 from ergotools.presentation.desktop.plot_layout_canvas import PlotLayoutCanvas
+from ergotools.presentation.desktop.plot_navigation_icons import navigation_icon
 from ergotools.presentation.desktop.theme.plot import PLOT_STYLE
 
 # Original PLOT action-rail order with packaged icons and English/Spanish tooltips.
 _ACTIONS = (
+    (
+        "select",
+        "",
+        "Select and move markers (normal cursor).",
+        "Seleccionar y mover marcadores (cursor normal).",
+    ),
     ("open", "open", "Open a plant layout image.", "Abrir una imagen de la planta."),
     (
         "save",
@@ -50,20 +57,29 @@ _ACTIONS = (
     (
         "zoom_in",
         "zoom_in",
-        "Zoom in on the plant layout.",
-        "Acercar el plano de la planta.",
+        "Click an image point to zoom in; Esc cancels.",
+        "Haga clic en un punto para acercar; Esc cancela.",
     ),
     (
         "zoom_out",
         "zoom_out",
-        "Zoom out of the plant layout.",
-        "Alejar el plano de la planta.",
+        "Click an image point to zoom out; Esc cancels.",
+        "Haga clic en un punto para alejar; Esc cancela.",
     ),
     (
-        "actual_size",
-        "actual_size",
-        "Reset the layout to its actual-size view.",
-        "Restablecer la vista al tamaño real.",
+        "pan",
+        "",
+        "Drag to pan without moving markers; Esc cancels. Middle-drag also pans.",
+        (
+            "Arrastre para desplazar sin mover marcadores; Esc cancela. "
+            "También puede usar el botón central."
+        ),
+    ),
+    (
+        "fit",
+        "",
+        "Fit the entire plant image in the view.",
+        "Ajustar toda la imagen de la planta a la vista.",
     ),
     (
         "opacity",
@@ -156,15 +172,40 @@ class PlotMapPanel(QWidget):
             button.setObjectName("plotToolButton")
             button.setFixedSize(63, 63)
             button.setIconSize(QSize(48, 48))
-            button.setIcon(icons[asset])
+            button.setIcon(
+                navigation_icon(
+                    "select" if key == "select" else "pan" if key == "pan" else "fit"
+                )
+                if key in ("select", "pan", "fit")
+                else icons[asset]
+            )
             button.setToolTip(self.text(english, spanish))
             button.setEnabled(False)
-            tools.addWidget(button, 0, Qt.AlignmentFlag.AlignHCenter)
+            if key in ("select", "zoom_in", "zoom_out", "pan"):
+                button.setCheckable(True)
             self.buttons[key] = button
+        # Share one rail row between magnifiers to add Pan without a taller rail.
+        for key, *_rest in _ACTIONS:
+            if key == "zoom_in":
+                zoom_row = QWidget()
+                zoom_layout = QHBoxLayout(zoom_row)
+                zoom_layout.setContentsMargins(0, 0, 0, 0)
+                zoom_layout.setSpacing(0)
+                for zoom_key in ("zoom_in", "zoom_out"):
+                    zoom_button = self.buttons[zoom_key]
+                    zoom_button.setProperty("compactZoom", True)
+                    zoom_button.setProperty("zoomOut", zoom_key == "zoom_out")
+                    zoom_button.setFixedSize(32 if zoom_key == "zoom_out" else 31, 63)
+                    zoom_button.setIconSize(QSize(29, 29))
+                    zoom_layout.addWidget(zoom_button)
+                tools.addWidget(zoom_row, 0, Qt.AlignmentFlag.AlignHCenter)
+            elif key != "zoom_out":
+                tools.addWidget(self.buttons[key], 0, Qt.AlignmentFlag.AlignHCenter)
         tools.addStretch(1)
         self.rail.setMinimumHeight(tools.minimumSize().height())
         layout.addWidget(self.rail)
         self.canvas = PlotLayoutCanvas()
+        self.canvas.language = language
         self.canvas.setToolTip(
             self.text(
                 "Plant layout canvas. Select workers and use the tool rail "
@@ -180,11 +221,52 @@ class PlotMapPanel(QWidget):
         layout.addLayout(column, 1)
         self.buttons["open"].clicked.connect(self.open_image)
         self.buttons["save"].clicked.connect(self.save_image)
+        self.buttons["select"].clicked.connect(self.canvas.cancel_navigation)
         self.buttons["zoom_in"].clicked.connect(self.canvas.begin_zoom)
         self.buttons["zoom_out"].clicked.connect(self.canvas.zoom_out)
-        self.buttons["actual_size"].clicked.connect(self.canvas.reset_view)
+        self.buttons["fit"].clicked.connect(self.canvas.reset_view)
+        self.buttons["pan"].clicked.connect(self.canvas.begin_pan)
+        self.canvas.navigation_changed.connect(self.sync_navigation)
+        self.canvas.fitted.connect(self.sync_navigation)
+        # Qt toggles checkable buttons before clicked; active tools remain checked
+        # even when pressing the already-selected tool leaves its mode unchanged.
+        for key in ("select", "zoom_in", "zoom_out", "pan"):
+            self.buttons[key].clicked.connect(self.sync_navigation)
         self.buttons["opacity"].clicked.connect(self.canvas.cycle_opacity)
         self.buttons["capture"].clicked.connect(self.capture_image)
+
+    def sync_navigation(self) -> None:
+        """Reflect armed tools and fitted zoom limits without recording data/history.
+
+        Args:
+            None; both navigation and transform signals are projection-only.
+
+        Returns:
+            None; signal blocking avoids toggling a mode during button projection.
+        """
+        mode = self.canvas.navigation_mode
+        available = self.canvas.background is not None
+        for key in ("select", "zoom_in", "zoom_out", "pan"):
+            button = self.buttons[key]
+            previous = button.blockSignals(True)
+            button.setChecked(mode == key)
+            button.blockSignals(previous)
+            button.setEnabled(
+                available
+                and (key not in ("zoom_out", "pan") or self.canvas.can_zoom_out)
+            )
+        state = self.canvas.navigation_snapshot()
+        percentage = f"{state.zoom * 100 if state else 100:.1f}".rstrip("0").rstrip(".")
+        for key, _asset, english, spanish in _ACTIONS:
+            if key in ("zoom_in", "zoom_out"):
+                self.buttons[key].setToolTip(
+                    self.text(english, spanish)
+                    + "\n"
+                    + self.text(
+                        f"Current zoom: {percentage}% (maximum 400%).",
+                        f"Zoom actual: {percentage}% (máximo 400%).",
+                    )
+                )
 
     def text(self, english: str, spanish: str) -> str:
         """Translate owned captions without interpreting stored plant identities.
@@ -298,8 +380,9 @@ class PlotMapPanel(QWidget):
             None.
         """
         available = self.canvas.background is not None
-        for key in ("zoom_in", "zoom_out", "actual_size", "opacity", "capture"):
+        for key in ("zoom_in", "zoom_out", "pan", "fit", "opacity", "capture"):
             self.buttons[key].setEnabled(available)
+        self.sync_navigation()
 
     def choose_capture(self) -> str:
         """Use the original PNG chooser with a portable plant/timestamp filename.

@@ -12,8 +12,6 @@ from PyQt5.QtCore import QSize, Qt, QTimer
 from PyQt5.QtGui import QCloseEvent, QIcon
 from PyQt5.QtWidgets import (
     QButtonGroup,
-    QComboBox,
-    QDialog,
     QFrame,
     QGridLayout,
     QGroupBox,
@@ -40,8 +38,8 @@ from ergotools.presentation.desktop.plot_marker_layer import (
     PlotMarkerLayer,
     plot_damage_color,
 )
+from ergotools.presentation.desktop.plot_result_selector import PlotResultSelector
 from ergotools.presentation.desktop.plot_worker_controls import PlotWorkerControls
-from ergotools.presentation.desktop.plot_worker_picker import PlotWorkerPicker
 from ergotools.presentation.desktop.plot_worker_preview import PlotWorkerPreview
 
 
@@ -99,17 +97,9 @@ class PlotWorkerOverview(QScrollArea):
         layout.setSpacing(5)
         selector = QHBoxLayout()
         selector.setSpacing(7)
-        self.combo = QComboBox(panel)
-        self.combo.setToolTip(
-            self.text(
-                "Select a worker assignment to inspect or edit on the layout.",
-                "Seleccione una asignación de trabajador para ver o editar "
-                "en el plano.",
-            )
-        )
-        selector.addWidget(self.combo, 1)
+        self.selector = PlotResultSelector(icons, language=language, parent=panel)
+        selector.addWidget(self.selector, 1)
         self.order_button = QPushButton(panel)
-        self.search_button = QPushButton(panel)
         for button, asset, english, spanish in (
             (
                 self.order_button,
@@ -117,19 +107,12 @@ class PlotWorkerOverview(QScrollArea):
                 "Change worker ordering.",
                 "Cambiar el orden de los trabajadores.",
             ),
-            (
-                self.search_button,
-                "search",
-                "Search for a worker.",
-                "Buscar un trabajador.",
-            ),
         ):
             button.setFixedSize(36, 36)
             button.setIcon(icons[asset])
             button.setIconSize(QSize(24, 24))
             button.setToolTip(self.text(english, spanish))
             selector.addWidget(button)
-        self.search_button.clicked.connect(self.search)
         self.order_button.clicked.connect(self.toggle_order)
         self.icons = icons
         layout.addLayout(selector)
@@ -192,13 +175,13 @@ class PlotWorkerOverview(QScrollArea):
             self.navigation.append(button)
         self.navigation[0].clicked.connect(lambda: self.navigate(0))
         self.navigation[1].clicked.connect(
-            lambda: self.navigate(self.combo.currentIndex() - 1)
+            lambda: self.navigate(self.selector.current_index - 1)
         )
         self.navigation[2].clicked.connect(
-            lambda: self.navigate(self.combo.currentIndex() + 1)
+            lambda: self.navigate(self.selector.current_index + 1)
         )
         self.navigation[3].clicked.connect(
-            lambda: self.navigate(self.combo.count() - 1)
+            lambda: self.navigate(len(self.selector.rows) - 1)
         )
         layout.addLayout(navigation)
         layout.addSpacing(8)
@@ -277,7 +260,7 @@ class PlotWorkerOverview(QScrollArea):
             layer, icons, language=language, show_success=show_success
         )
         layout.addWidget(self.controls)
-        self.combo.currentIndexChanged.connect(self.selection_changed)
+        self.selector.selection_changed.connect(self.selection_changed)
         layer.changed.connect(self.refresh)
         layer.selection_changed.connect(self.marker_selected)
         self.refresh()
@@ -338,29 +321,17 @@ class PlotWorkerOverview(QScrollArea):
         for letter, button in self.letters.items():
             button.setEnabled(letter == "All" or letter in initials)
             button.setChecked(letter == self.letter)
-        previous = self.combo.blockSignals(True)
-        self.combo.clear()
-        for row in rows:
-            if self.letter != "All" and not (
-                row.worker.last_name or ""
-            ).strip().upper().startswith(self.letter):
-                continue
-            worker = row.worker
-            caption = (
-                f"{worker.worker_id} ({worker.last_name}, {worker.first_name})"
-                if worker.last_name and worker.first_name
-                else worker.worker_id
-            )
-            self.combo.addItem(caption, row.assessment.assignment_id)
+        visible_rows = tuple(
+            row
+            for row in rows
+            if self.letter == "All"
+            or (row.worker.last_name or "").strip().upper().startswith(self.letter)
+        )
         preferred = (
             self.selected_id if self.selected_id is not None else self._preferred_id
         )
-        index = self.combo.findData(preferred)
-        self.combo.setCurrentIndex(
-            index if index >= 0 else (0 if self.combo.count() else -1)
-        )
-        self.combo.blockSignals(previous)
-        identity = self.combo.currentData()
+        self.selector.set_rows(visible_rows, preferred, catalog=rows)
+        identity = self.selector.selected_id
         old_identity = self.selected_id
         self.selected_id = int(identity) if identity is not None else None
         if self.selected_id is not None:
@@ -385,8 +356,7 @@ class PlotWorkerOverview(QScrollArea):
         for button in self.navigation:
             button.setEnabled(self.selected_id is not None)
         self.order_button.setEnabled(bool(rows))
-        self.search_button.setEnabled(bool(rows))
-        self.combo.setEnabled(bool(rows))
+        self.selector.setEnabled(bool(rows))
         self.locate_button.setEnabled(
             self.selected_id is not None
             and ("worker", self.selected_id) in self.layer.items
@@ -513,19 +483,26 @@ class PlotWorkerOverview(QScrollArea):
         )
         self.preview.update()
 
-    def selection_changed(self, index: int) -> None:
-        """Select once; notify map callbacks only when an item exists.
+    def selection_changed(self, identity: int) -> None:
+        """Select one exact assignment from the shared hierarchy selector.
 
         Args:
-            index: Zero-based combo/tab/directory position within the current local
-                selection.
+            identity: Stable assignment ID, never a display-row index or caption.
 
         Returns:
-            None.
+            None; hidden markers reveal their details without manufacturing a position.
         """
-        if index >= 0:
-            self.selected_id = int(self.combo.itemData(index))
-            marker = self.layer.items.get(("worker", self.selected_id))
+        row = next(
+            (row for row in self.rows() if row.assessment.assignment_id == identity),
+            None,
+        )
+        if row is not None:
+            if self.letter != "All" and not (
+                row.worker.last_name or ""
+            ).strip().upper().startswith(self.letter):
+                self.letter = "All"
+            self.selected_id = identity
+            marker = self.layer.items.get(("worker", identity))
             if marker is not None:
                 self.layer.select(marker)
             else:
@@ -543,7 +520,7 @@ class PlotWorkerOverview(QScrollArea):
         """
         if key[0] == "worker":
             self.selected_id = key[1]
-            if self.combo.findData(key[1]) < 0:
+            if self.selector.row_for_id(key[1]) is None:
                 self.letter = "All"
             self.refresh()
 
@@ -557,8 +534,8 @@ class PlotWorkerOverview(QScrollArea):
         Returns:
             None.
         """
-        if self.combo.count():
-            self.combo.setCurrentIndex(max(0, min(index, self.combo.count() - 1)))
+        if len(self.selector.rows):
+            self.selector.navigate(index)
 
     def set_letter(self, letter: str) -> None:
         """Filter the selector alone; saved map results are unchanged.
@@ -606,7 +583,7 @@ class PlotWorkerOverview(QScrollArea):
         if marker is not None and marker.isVisible():
             self._pulse_item = marker
             self._pulses = 10
-            self.layer.canvas.ensureVisible(marker)
+            self.layer.canvas.locate_item(marker)
             marker.setSelected(True)
             self.timer.start()
 
@@ -665,15 +642,4 @@ class PlotWorkerOverview(QScrollArea):
         Returns:
             None.
         """
-        rows = self.rows()
-        if not rows:
-            return
-        dialog = PlotWorkerPicker(rows, self.icons, language=self.language, parent=self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            identity = dialog.selected_assignment_id
-            if identity is not None:
-                marker = self.layer.items.get(("worker", identity))
-                if marker is not None:
-                    self.layer.select(marker)
-                else:
-                    self.marker_selected(("worker", identity))
+        self.selector.open_picker()

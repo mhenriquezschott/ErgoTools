@@ -44,10 +44,10 @@ def form(window: LifftWindow, language: Language) -> WorkerTransferDialog:
 
 
 @pytest.mark.parametrize("language", list(Language))
-def test_actual_consent_and_conflict_keep_source(
+def test_actual_consent_and_replacement_refusal_keep_source(
     window: LifftWindow, language: Language
 ) -> None:
-    """Localized No remains default, and conflict rejects the full selection.
+    """Localized No preserves both sources and occupied destination values.
 
     Args:
         window: Live synthetic Qt form supplied by the test fixture; fixture/caller owns
@@ -88,17 +88,14 @@ def test_actual_consent_and_conflict_keep_source(
         dialog.perform_transfer()
         assert not dialog.completed
         assert window.presenter.workspace.read_history().history == history
-        # x already owns all three tools; actual conflict must explain the rejection.
+        # x owns all tools; replacing them needs the same explicit No-default consent.
         for row in range(dialog.worker_table.rowCount()):
             if dialog.worker_table.item(row, 0).text() == "x":
                 dialog.worker_table.selectRow(row)
                 break
 
-        def close_warning() -> None:
-            """Assert localized existing-destination conflict text and acknowledgement.
-
-            Assert localized existing-destination conflict text and acknowledgement,
-            then dismiss the actual warning.
+        def refuse_replacement() -> None:
+            """Inspect the localized replacement warning and decline without writes.
 
             Args:
                 None.
@@ -108,17 +105,13 @@ def test_actual_consent_and_conflict_keep_source(
             """
             message = QApplication.activeModalWidget()
             assert isinstance(message, QMessageBox)
-            assert message.text() == (
-                "El destino ya contiene datos de las herramientas seleccionadas."
-                if language is Language.SPANISH
-                else "Destination already contains selected assessment data."
-            )
-            assert message.button(QMessageBox.Ok).text().replace("&", "") == (
-                "Aceptar" if language is Language.SPANISH else "OK"
-            )
-            message.button(QMessageBox.Ok).click()
+            assert (
+                "reemplazarán" if language is Language.SPANISH else "replaced"
+            ) in message.text()
+            assert message.defaultButton() is message.button(QMessageBox.No)
+            message.button(QMessageBox.No).click()
 
-        QTimer.singleShot(0, close_warning)
+        QTimer.singleShot(0, refuse_replacement)
         dialog.perform_transfer()
         assert not dialog.completed
         assert window.presenter.workspace.read_history().history == history

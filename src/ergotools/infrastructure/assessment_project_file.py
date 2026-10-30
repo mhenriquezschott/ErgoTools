@@ -78,8 +78,9 @@ from ergotools.infrastructure.plot_position_store import (
     create_position_schema,
 )
 from ergotools.infrastructure.project_preferences_store import (
+    read_context_expanded,
     read_precision,
-    write_precision,
+    write_display_settings,
 )
 from ergotools.infrastructure.project_snapshot import ProjectSnapshot
 from ergotools.infrastructure.rotation_scheme_store import (
@@ -214,7 +215,11 @@ class AssessmentProjectFile:
             self._metadata = ProjectMetadata(
                 project_id, title, MeasurementSystem(units)
             )
-        self._metadata = replace(self._metadata, precision=read_precision(connection))
+        self._metadata = replace(
+            self._metadata,
+            precision=read_precision(connection),
+            assessment_context_expanded=read_context_expanded(connection),
+        )
         if connection.execute(
             "SELECT 1 FROM draft_documents WHERE project_id != ? LIMIT 1", (project_id,)
         ).fetchone():
@@ -800,7 +805,9 @@ class AssessmentProjectFile:
                         metadata.default_units.value,
                     ),
                 )
-                write_precision(connection, metadata.precision)
+                write_display_settings(
+                    connection, metadata.precision, metadata.assessment_context_expanded
+                )
                 if version >= 8:
                     connection.execute(
                         "CREATE TABLE project_details (description TEXT, "
@@ -1387,7 +1394,9 @@ class AssessmentProjectFile:
                     metadata.language.value if metadata.language is not None else None,
                 ),
             )
-            write_precision(connection, metadata.precision)
+            write_display_settings(
+                connection, metadata.precision, metadata.assessment_context_expanded
+            )
             connection.execute(
                 "UPDATE project_metadata SET version = ?, title = ?, default_units = ?",
                 (
@@ -1399,7 +1408,7 @@ class AssessmentProjectFile:
 
     @_project_edit
     def update_display_settings(self, metadata: ProjectMetadata) -> None:
-        """Commit project units and precision without altering any assessment.
+        """Commit project display/disclosure preferences without altering assessments.
 
         Args:
             metadata: Same project identity/title/details with requested display
@@ -1418,6 +1427,7 @@ class AssessmentProjectFile:
                 metadata,
                 default_units=self.metadata.default_units,
                 precision=self.metadata.precision,
+                assessment_context_expanded=self.metadata.assessment_context_expanded,
             )
             != self.metadata
         ):
@@ -1425,7 +1435,11 @@ class AssessmentProjectFile:
         _idle(self._connection)
         with self._connection:
             self._connection.execute("BEGIN IMMEDIATE")
-            write_precision(self._connection, metadata.precision)
+            write_display_settings(
+                self._connection,
+                metadata.precision,
+                metadata.assessment_context_expanded,
+            )
             self._connection.execute(
                 "UPDATE project_metadata SET default_units = ?",
                 (metadata.default_units.value,),
@@ -2451,25 +2465,26 @@ class AssessmentProjectFile:
         request: TransferRequest,
         document_ids: Mapping[AssessmentKind, str],
     ) -> AssessmentHistory:
-        """Copy selected versions and their sole matching results atomically.
+        """Copy selected sources and their sole matching results atomically.
 
         Args:
             expected_jobs: Catalog snapshot shown when the transfer was prepared.
-            expected_history: Version/ownership snapshot to recheck under the lock.
+            expected_history: Source/ownership snapshot to recheck under the lock.
             request: Source assignment, destination owner, tools and Copy/Move choice.
             document_ids: Newly allocated destination identity for each selected tool.
 
         Returns:
-            Committed ownership history. Copy keeps source versions; Move removes
+            Committed ownership history. Copy keeps sources; Move removes
             selected sources only after destination inputs/results are inserted.
+            Approved destination replacements are removed inside the same transaction.
 
         Raises:
             ValueError: Catalogs changed, identities conflict or selection is invalid.
             RuntimeError: Connection is closed or already owns a transaction.
             sqlite3.Error: A write fails; the entire transfer rolls back.
 
-        Repeat conflict/membership checks under the write lock. Older versions,
-        current Job risks and unrelated source/assignment records remain intact.
+        Repeat membership/consent checks under the write lock. Preserve closed owners,
+        Job risks and unrelated source/assignment records.
         Any insert/delete/catalog error rolls back the entire transfer.
         """
         history = self._history_store()
@@ -2497,6 +2512,8 @@ class AssessmentProjectFile:
                 self._job_store().write_in_transaction(
                     plan.jobs, hierarchy, expected=jobs
                 )
+            for document_id in plan.replaced_documents:
+                history.delete(history.read(plan.jobs), document_id, plan.jobs)
             for (source, entry), state in zip(plan.copies, payloads, strict=True):
                 source_key = DocumentKey(self.metadata.project_id, source.document_id)
                 result = self.load_saved_result(source_key)
@@ -2545,7 +2562,7 @@ class AssessmentProjectFile:
     def _validate_job_change(
         self, current: JobCatalog, replacement: JobCatalog
     ) -> None:
-        """Protect historical assessment, profile, geometry and rotation ownership.
+        """Protect assessment, current Job risk, geometry and rotation ownership.
 
         Args:
             current: Validated saved job catalog before the proposed transition.
@@ -2553,7 +2570,7 @@ class AssessmentProjectFile:
                 and protected reference identities.
 
         Returns:
-            None when assessment ownership, profiles, geometry and frozen rotations
+            None when assessment ownership, current Job risks, geometry and rotations
             remain valid under proposed jobs.
 
         Raises:
@@ -3081,6 +3098,103 @@ class AssessmentProjectFile:
             (assignment_id, document_id),
         )
         return store.read(jobs)
+
+    @_project_edit
+    def add_workplace_assessment(
+        self,
+        worker_id: str,
+        workplace: WorkplaceContext,
+        placement_id: int | None,
+        document_id: str,
+        initial: AssessmentDraft,
+        *,
+        effective_date: date,
+        expected_document_id: str | None = None,
+    ) -> AssignmentAssessment:
+        """Create a workplace source or explicitly replace it in one transaction.
+
+        Args:
+            worker_id: Saved worker; no standalone source is moved or copied.
+            workplace: Real station/project shift validated against hierarchy.
+            placement_id: Compatible optional Job; existing ownership stays unchanged.
+            document_id: New source identity, ignored for confirmed replacement.
+            initial: Validated blank source for the tool, retaining caller units/count.
+            effective_date: Assignment start date when a new owner is needed.
+            expected_document_id: Exact source confirmed for replacement, or None to
+                require absence. A changed destination rejects the whole transaction.
+
+        Returns:
+            Exact ownership after commit; one shared history action in editing mode.
+            Replacement preserves source ID and invalidates its sole saved result.
+
+        Raises:
+            ValueError: Date, ownership, Job or expected destination conflicts.
+            KeyError: Worker/station/shift membership is absent.
+            RuntimeError: Repository is closed or transaction state is not idle.
+            sqlite3.Error: Read/write fails; assignment/source/result all roll back.
+        """
+        if type(effective_date) is not date:
+            raise ValueError("Effective date must be a calendar date.")
+        kind = assessment_kind(initial)
+        _idle(self._connection)
+        assert isinstance(self._store, AssessmentSqliteStore)
+        with self._connection:
+            self._connection.execute("BEGIN IMMEDIATE")
+            hierarchy = self._hierarchy_store().read()
+            jobs = self._job_store().read()
+            history = self._history_store().read(jobs)
+            worker = hierarchy.work.worker_context(worker_id, workplace)
+            owner = next(
+                (a for a in jobs.assignments if a.active and a.worker == worker), None
+            )
+            if owner is not None and owner.placement_id != placement_id:
+                raise ValueError("Existing workplace assignment has a different Job.")
+            existing = history.current_for(owner.assignment_id, kind) if owner else None
+            if (existing.document_id if existing else None) != expected_document_id:
+                raise ValueError(
+                    "Assessment destination changed; select and confirm again."
+                )
+            if owner is None:
+                change = assign_worker(
+                    jobs,
+                    worker,
+                    placement_id,
+                    effective_date=effective_date,
+                    creation_note="Created while adding an assessment.",
+                    new_assignment_id=max(
+                        (a.assignment_id for a in jobs.assignments), default=0
+                    )
+                    + 1,
+                )
+                self._job_store().write_in_transaction(
+                    change.jobs, hierarchy, expected=jobs
+                )
+                jobs = change.jobs
+                owner = next(
+                    a
+                    for a in jobs.assignments
+                    if a.assignment_id == change.assignment_id
+                )
+            entry = existing or AssignmentAssessment(
+                document_id, owner.assignment_id, kind, worker_id
+            )
+            key = DocumentKey(self.metadata.project_id, entry.document_id)
+            self._check(key)
+            if existing is None:
+                self._store.insert_in_transaction(key, initial)
+                self._history_store().insert(entry, jobs)
+            else:
+                self._store.save_in_transaction(key, initial)
+                if self._connection.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' "
+                    "AND name='saved_assessment_results'"
+                ).fetchone():
+                    self._connection.execute(
+                        "DELETE FROM saved_assessment_results "
+                        "WHERE project_id=? AND document_id=?",
+                        (key.project_id, key.document_id),
+                    )
+            return entry
 
     @_project_edit
     def associate_assessment_at_workplace(

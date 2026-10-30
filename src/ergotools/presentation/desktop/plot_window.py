@@ -30,7 +30,11 @@ from PyQt5.QtWidgets import (
 from ergotools.application.assessment_export import SummaryExportRow
 from ergotools.application.gauge_preferences import GaugeMarkerSettings
 from ergotools.application.plot_access import PlotRepository
-from ergotools.application.plot_history import PlotEditState
+from ergotools.application.plot_history import (
+    PlotEditState,
+    PlotNavigationState,
+    ReplacePlotNavigation,
+)
 from ergotools.application.plot_layout import PlantLayoutReader, PlantLayoutWriter
 from ergotools.application.plot_results import PlotResults, saved_plot_results
 from ergotools.application.project_editing import ProjectEditingSession
@@ -48,6 +52,9 @@ from ergotools.presentation.desktop.plot_outcome_panel import PlotOutcomePanel
 from ergotools.presentation.desktop.plot_tools_overview import PlotToolsOverview
 from ergotools.presentation.desktop.plot_worker_overview import PlotWorkerOverview
 from ergotools.presentation.desktop.project_history_actions import ProjectHistoryActions
+from ergotools.presentation.desktop.secondary_history_controls import (
+    add_history_buttons,
+)
 from ergotools.presentation.desktop.theme.plot import PLOT_STYLE
 from ergotools.presentation.plot_csv import plot_csv_table
 
@@ -261,8 +268,11 @@ class PlotWindow(QDialog):
         self.title.setObjectName("dialogTitle")
         self.title_row.addWidget(self.title)
         self.title_row.addStretch(1)
-        self.title_row.addWidget(self.history_actions.undo_button)
-        self.title_row.addWidget(self.history_actions.redo_button)
+        add_history_buttons(
+            self.title_row,
+            self.history_actions.undo_button,
+            self.history_actions.redo_button,
+        )
         root.addLayout(self.title_row)
         root.addWidget(self.filters)
         # Non-collapsible children propagate their live rail/chart minima through
@@ -315,6 +325,39 @@ class PlotWindow(QDialog):
                 self.restore_project_plot()
             elif self.layer.history is not None:
                 editing.seed_editor("plot.view", self.layer.history.session.state)
+
+        self.map_panel.canvas.view_edited.connect(self.record_map_view)
+
+    def record_map_view(
+        self, before: PlotNavigationState, after: PlotNavigationState
+    ) -> None:
+        """Join completed image gestures to existing local/shared chronological history.
+
+        Args:
+            before: View before the user gesture; seeds the first view baseline.
+            after: Completed zoom, pan, Fit or opacity state for the same plant.
+
+        Returns:
+            None; replay and automatic layout never create nested commands or writes.
+        """
+        history = self.layer.history
+        if history is None or self._accepting_plot:
+            return
+        if self.editing is not None and self.editing.replaying:
+            return
+        if history.session.state.navigation is None:
+            history.session.amend_current(
+                replace(history.session.state, navigation=before)
+            )
+            if self.editing is not None:
+                self.editing.project_editor("plot.view", history.session.state)
+        history.session.execute(
+            ReplacePlotNavigation(
+                history.session.document, history.session.state, after
+            )
+        )
+        self.accept_plot_state()
+        self.history_actions.refresh()
 
     def apply_plot_batch(self) -> None:
         """Accept the existing batch-layout operation as one shared history action.
@@ -434,6 +477,9 @@ class PlotWindow(QDialog):
                     item.pending = False
                     item.setEnabled(True)
             editing.set_editor("plot.view", state, "plot.edit")
+            # The initial changed signal reached the overview before acceptance cleared
+            # pending flags. Project its final accepted state without another command.
+            self.jobs.refresh()
             if self.map_panel.pending_image is None:
                 self._plot_accept_failed = False
         except Exception:
@@ -462,6 +508,10 @@ class PlotWindow(QDialog):
         editing = self.editing
         if editing is None:
             return
+        cursor_mode = self.map_panel.canvas.navigation_mode
+        worker_selected = self.workers.selected_id
+        job_selected = self.jobs.selected_id
+        detail_tab = self.tabs.currentIndex()
         state = editing.editor("plot.view")
         if not isinstance(state, PlotEditState):
             state = None
@@ -495,6 +545,7 @@ class PlotWindow(QDialog):
                     history.saved = self.repository.load_plot_positions()
                     self.layer.shared_history = history
                     self.layer.restore_history()
+                    self.map_panel.canvas.restore_navigation(state.navigation)
             elif hierarchy.plants:
                 self.filters.clear_filters()
                 self.filters.apply_filters()
@@ -504,6 +555,12 @@ class PlotWindow(QDialog):
                 self.map_panel.update_view_actions()
             self.workers.controls.history_restored()
             self.sync_mode()
+            if worker_selected is not None:
+                self.workers.selector.select_id(worker_selected)
+            if job_selected is not None:
+                self.jobs.selector.select_id(job_selected)
+            self.tabs.setCurrentIndex(detail_tab)
+            self.map_panel.canvas.set_navigation_mode(cursor_mode)
         finally:
             self._accepting_plot = False
 
@@ -598,6 +655,9 @@ class PlotWindow(QDialog):
                 self.filters.snapshot(), results.selection if results else None
             )
             self.history_actions.refresh()
+            # The result projection emits before filter history is recorded. Accept
+            # the completed view now so the next drag remains a separate operation.
+            self.accept_plot_state()
 
     def replay_history(self, redo: bool) -> bool:
         """Restore controls/results/geometry without writes or duplicate commands.
@@ -642,6 +702,7 @@ class PlotWindow(QDialog):
         if self.layer.results is not None:
             self.layer.history = history
             self.layer.restore_history()
+            self.map_panel.canvas.restore_navigation(state.navigation)
         self.history_actions.refresh()
         return True
 
@@ -681,7 +742,7 @@ class PlotWindow(QDialog):
         self.overviews.setCurrentIndex(1 if job_view else 0)
         self.tabs.setTabText(
             1,
-            self.text("Job Placement", "Ubicación de puestos")
+            self.text("Job Overview", "Resumen de trabajos")
             if job_view
             else self.text("Worker Overview", "Resumen de trabajadores"),
         )
@@ -689,8 +750,8 @@ class PlotWindow(QDialog):
         self.tabs.setTabToolTip(
             1,
             self.text(
-                "Select and control a job placement on the plant layout.",
-                "Seleccionar y controlar un puesto en el plano de la planta.",
+                "Inspect a Job risk at its assignment position on the plant layout.",
+                "Ver el riesgo de un trabajo en su asignación del plano.",
             )
             if job_view
             else self.text(

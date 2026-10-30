@@ -30,7 +30,7 @@ class RotationSchemeRepository(Protocol):
 
         Args:
             scheme: Complete saved rotation with exact historical
-                worker/placement/profile links; optimizer previews alone are not saved.
+                worker/placement/Job links; optimizer previews alone are not saved.
 
         Returns:
             None after atomic save of the complete validated current scheme, preserving

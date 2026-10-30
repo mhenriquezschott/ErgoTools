@@ -8,7 +8,7 @@ host owners.
 
 from typing import TYPE_CHECKING
 
-from PyQt5.QtCore import QEvent, QObject, QSize, Qt
+from PyQt5.QtCore import QEvent, QObject, Qt
 from PyQt5.QtGui import QKeyEvent, QKeySequence
 from PyQt5.QtWidgets import (
     QAction,
@@ -18,7 +18,10 @@ from PyQt5.QtWidgets import (
     QToolButton,
 )
 
-from ergotools.presentation.desktop.style import HISTORY_BUTTON_STYLE
+from ergotools.presentation.desktop.secondary_history_controls import (
+    add_history_buttons,
+    configure_history_button,
+)
 
 if TYPE_CHECKING:
     from ergotools.presentation.desktop.rotation_dialog import RotationDialog
@@ -54,12 +57,8 @@ class RotationHistoryActions(QObject):
             (self.undo_button, self.undo_action),
             (self.redo_button, self.redo_action),
         ):
-            button.setObjectName("historyButton")
-            button.setStyleSheet(HISTORY_BUTTON_STYLE)
             button.setDefaultAction(action)
-            button.setIconSize(QSize(24, 24))
-            button.setFixedSize(36, 36)
-            button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+            configure_history_button(button)
         self.undo_action.triggered.connect(lambda: self.replay(redo=False))
         self.redo_action.triggered.connect(lambda: self.replay(redo=True))
         for field in view.findChildren(QLineEdit):
@@ -69,8 +68,7 @@ class RotationHistoryActions(QObject):
         app = QApplication.instance()
         assert isinstance(app, QApplication)
         app.focusChanged.connect(self.refresh)
-        view.title_row.addWidget(self.undo_button)
-        view.title_row.addWidget(self.redo_button)
+        add_history_buttons(view.title_row, self.undo_button, self.redo_button)
         self.refresh()
 
     def focused_field(self) -> QLineEdit | None:
@@ -151,6 +149,7 @@ class RotationHistoryActions(QObject):
                     else field.isRedoAvailable()
                 )
             action.setText(label)
+            action.setIconText(label)
             action.setToolTip(label)
             action.setEnabled(available and not busy)
 

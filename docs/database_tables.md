@@ -1,125 +1,85 @@
-# Current Job risk schema — native format 19, 2026-10-20
+# Current native database — format 19
 
-The owner removed Job risk-profile versions, evidence and approval/current/retirement.
-One `risk_measurements` row per Job/tool is authoritative. `risk_profiles` and
-`risk_metadata` are absent. All other functional tables and assessment ownership stay
-unchanged. This section supersedes the historical inventories below.
+A `.ergprj` file is a self-contained SQLite project. It stores organization, workers,
+Job values, assessments, plant images/geometry and production JROT schemes. The integrated
+application edits a private working database; main Save publishes accepted data. Backup
+copies the durable baseline. Foreign keys and typed cross-catalog validation protect
+relationships; multi-record edits use transactions with rollback.
 
-| Column/key | Existing functional purpose |
-|---|---|
-| job_id + kind PK | One current LiFFT, DUET or ST value set per real Job; kind is a stable enum |
-| job_id FK → jobs.id | Parent ownership; explicit Job deletion cascades its current risks |
-| damage | Current dimensionless aggregate damage; NULL before calculation or when absent |
-| probability | Current outcome on the 0-100 percent scale, zero distinct from absent |
-| unit | Recorded calculation unit label, independent of current display/default units |
-| source | Optional exact encoded task inputs and units/convention; NULL for direct entry |
-| task_results | Versioned codec envelope with canonical source digest and exact moment/damage/contribution triples; NULL before calculation/direct entry |
-| position | Stable tool-row ordering within a Job, unique with job_id |
+## Functional tables
 
-Task inputs and task outputs have distinct functional purposes. They are the one current
-calculator state, not alternate assessments or duplicate historical results. Numeric
-edits clear stale aggregate/per-task outputs. Source/result shape and tool identity are
-validated before publication. Surviving Job rows are upserted in place so assignment or
-placement replacement cannot cascade away current risks. Job metadata/risks and affected
-rotation-provenance invalidation share one transaction with rollback.
+There are 15 functional tables plus optional `project_display_settings`. No risk-profile,
+evidence/currentness or assessment-version tables participate in the current full format.
 
-Rotation payload version 2 stores Job/placement target identities and worker arrangements;
-it has no risk-profile ID or numerical risk snapshot. Saved schedules resolve current
-Job values. Changing relevant numeric values retains arrangements and marks previously
-optimized provenance manual; optimization requires explicit rerun. External conversion
-keeps uniquely selected prior Job measurements, removes obsolete profile/evidence rows,
-rewrites opaque schedule keys without changing arrangements, and fails ambiguous ownership.
-Worker source/result payloads from formats 14-18 stay exact. Maintained fixtures are updated
-in place; original files/reference checkout stay untouched.
-
-See Job contract. Historical acceptance and
-schema descriptions below document earlier checkpoints, not current profile functionality.
-
----
-
-# Organization field cleanup — format 18, 2026-10-19
-
-Native format 18 removes six Station attributes (task_description, equipment_used,
-ergonomic_risk_level, performance_metric, power_consumption, materials_used) and
-Plant number_of_shifts. Dates are canonical ISO calendar dates; operational_hours
-is a daily decimal-hour duration in whole minutes from 0 to 24. The UI derives
-Shifts in use from distinct active Job placements or worker workplace assignments
-in that Plant. Unused project Shift definitions do not count; no new table is added. External formats 8–17 convert on a private copy. Existing
-format-14/15/16/17 source/result payloads remain exact. Current native test projects
-were updated in place. See acceptance.
-
----
-
-# Shift metadata correction — format 17, 2026-10-19
-
-The owner removed `incidents_reported` and `ergonomic_risk_events` from recurring
-Shift records. Format 17 retains the same SQL tables and keys; those two attribute
-pairs are absent from `work_catalog` JSON and rejected by the domain contract.
-Format 16 requires the existing external conversion workflow, which removes exactly
-these attributes without recalculating or changing unrelated rows. Original legacy
-files remain unchanged; their converter now excludes these fields. Both maintained
-native fixtures and the four-worker workflow file were updated at their existing
-paths. See acceptance.
-
----
-
-# Current format-16 database tables and their functional purpose
-
-This inventory describes the complete current full-project schema: 17 required tables
-and an optional project_display_settings table when display precision is stored. There is no
-assessment-version table, flag, status, number or extra-value archive. One assessment per assignment/tool and one standalone assessment per worker/tool
-are enforced by both domain values and SQLite. Context-bound older
-diagnostic formats have their own actually used binding table; it is absent from the
-current full-project schema. Each JSON/BLOB value is validated through its owning adapter.
-
-| Table | Functionality | Identity and relationship protection |
+| Table | Current purpose | Identity / relationship |
 |---|---|---|
-| assessment_ownership | Direct worker/tool ownership with optional real workplace assignment | document_id PK; required worker_id; optional assignment FK; unique assigned and standalone owners |
-| draft_documents | Canonical task inputs and recorded measurement units | project_id + document_id PK; checked against ownership and tool |
-| draft_metadata | Task-source storage/codec compatibility marker | One validated format/version record; not assessment versions |
-| saved_assessment_results | Sole calculator output bound to the exact saved inputs | project_id + document_id PK; source/result matching verified |
-| jobs | Job definitions used by placements and risk profiles | Job ID PK; referenced identities protected |
-| job_placements | Job availability at an exact station and shift | Placement ID PK; Job/workplace membership validated |
-| worker_assignments | Worker doing a Job at a workplace/shift | Assignment ID PK; one active row per worker/context; closed referenced owners retained |
-| work_catalog | Workers and Plant/Section/Line/Station/Shift organization | Singleton typed hierarchy; referenced worker/workplace membership validated |
-| plant_layout_images | Embedded plant images for PLOT | Plant PK; image bytes validated; no sidecar dependency |
-| plot_station_positions | Saved station geometry used by PLOT | Exact station ownership validated against hierarchy |
-| plot_worker_markers | Saved PLOT marker geometry for worker assignments | Assignment PK; referenced assignments validated |
-| rotation_schemes | Saved JROT grids, scope and optimization provenance | Scheme ID PK; workers/targets/frozen profiles validated |
-| risk_profiles | Original Job risk-profile approval/current selection used by JROT | Profile ID PK; Job relationship and lifecycle validated; its original versions remain functional |
-| risk_measurements | LiFFT/DUET/ST risk coefficients for each Job profile | Profile/tool identities and scientific scales validated |
-| risk_metadata | Risk-catalog codec and project ownership marker | Singleton PK; format/version and exact project checked |
-| project_metadata | Project identity, title, default units and file-format compatibility | Singleton format metadata; version here is the file schema, not assessment version |
-| project_details | Description, creation timestamp and project language | Validated project detail record |
-| project_display_settings | Owner-requested project-specific displayed decimal precision | Validated single settings record |
+| project_metadata | Project ID, title, default units and native compatibility marker | One typed metadata record; file version is not an assessment version |
+| project_details | Description, creation time and language | Validated project details |
+| project_display_settings | Optional display precision/default-unit and assessment disclosure choices | One optional record; source measurements are not rounded by display changes |
+| work_catalog | Workers and Plant/Section/Line/Station/Shift organization | Typed hierarchy with exact scoped station and shift identities |
+| jobs | Activity definitions | Job ID; names/descriptions and active state |
+| job_placements | Jobs available at an exact station/shift | Placement ID plus Job and workplace membership |
+| worker_assignments | Worker workplace/shift, with optional Job placement | One active owner per worker/context; referenced closed owners retained |
+| assessment_ownership | Worker/tool source ownership, optionally assigned to a workplace | Document ID; unique assignment/tool or standalone worker/tool |
+| draft_documents | Canonical assessment inputs and original measurement units | Project/document key; model and owner checked |
+| draft_metadata | Task-source codec compatibility | Storage marker, not selectable assessment versions |
+| saved_assessment_results | One source-bound calculator result per assessment | Exact input/result binding; missing result differs from zero |
+| risk_measurements | One current Job/tool value set, optionally with exact task inputs/results | Job/tool key; parent Job and scientific scales validated |
+| plant_layout_images | Embedded encoded layout images | Exact Plant identity and validated image bytes |
+| plot_station_positions | Shared station anchors | Complete station ancestry |
+| plot_worker_markers | Assignment-owned map position/style | Assignment ID, original-image pixels, scale and visibility flags |
+| rotation_schemes | Production JROT arrangements, scope and optimization provenance | Scheme ID, worker and Job/placement links; current Job values resolved on load |
 
-The source/result split stores inputs and their calculated output, never multiple
-results for an assessment. File/codec markers and original Job risk-profile versions
-are required by compatibility and approved optimization workflows; they are unrelated
-to the removed duplicate-assessment feature. Foreign keys are enabled on repository
-connections. Cross-feature and JSON relationships are also validated by the domain and
-repository, with rollback on failed catalog changes.
+## Assessment and Job ownership
 
-The external upgrade replaces assessment_history with assessment_ownership and removes
-the unused full-project assessment_bindings table. It changes only the verified empty
-extra draft and schema bookkeeping in current format-14 conversions. Original files
-remain unchanged outside the current format-16 copies. See single_assessment_ownership.md
-for the exact rejection/publication/data-preservation policy and acceptance evidence.
+Each worker/tool may have one standalone assessment. Each workplace assignment/tool may
+also have one assessment. Historical observations keep their original assignment after
+worker reassignment. A Job is optional for a workplace assessment. There is no New version /
+Set current workflow. Scientific inputs and their matching calculation are separate
+functional records, not duplicate result archives.
 
-Format-16 ownership, optional Jobs, migration and rollback: current contract. No new business table is added.
+Job risk data use `job_id + kind` as the key. The current measurement holds damage,
+probability, recorded unit, optional encoded task source and source-bound per-task results.
+Direct values have no task source. Editing task inputs invalidates stale calculations.
+Copying a worker/Job source creates independently editable values rather than a live link.
+The removed `risk_profiles` and `risk_metadata` tables are absent from format 19.
 
+## Assessment actions and map ownership
 
-## Editing boundary — 2026-10-18
+Add assessment creates source/ownership and, if necessary, an unclassified workplace
+assignment atomically. Confirmed blank replacement retains the existing source identity.
+Delete removes only the chosen source/results; its workplace assignment remains.
+Transfer creates independent source identities at standalone or active workplace targets.
+Approved selected-target replacement, exact result copying and Move-source removal share
+one transaction. Historical owners and unselected tools remain. No schema change is needed
+for these transfer destinations or replacement consent.
 
-The same format-16 tables are edited through a private in-memory native connection
-while a project is open. Only the main Save commits the complete accepted state to
-the .ergprj file. Undo checkpoints, partial JROT drafts and creation-consent markers
-are session-local application state, never additional business tables or assessment
-versions. See [single project Save](single_project_save.md).
+PLOT Job squares reuse assignment positions from `plot_worker_markers`; Jobs do not gain
+a separate per-Job geometry table. The same assignment point is used in Individual, Job
+and Comparison views. Zoom/pan are session view state, not stored scientific geometry.
 
+## Display and organization data
 
-Shift time-editor follow-up, 2026-10-19: start_time/end_time remain optional clock
-strings in existing organization metadata. The following-day control is inferred
-from complete clock order (end <= start for the following day) and is not serialized.
-No new table, column, redundant day attribute, schema/codec version or stored UI
-placeholder is introduced. Unspecified remains None; actual midnight remains 00:00.
+`project_display_settings.context_expanded` is nullable: NULL means no explicit visibility
+choice; 0/1 are collapsed/expanded. Missing optional display storage is read without writes.
+An accepted display edit creates the needed private storage through the existing adapter;
+main Save publishes it. Gauge/animation/history-limit preferences belong to application
+settings, not the project schema.
+
+Organization metadata contain optional ISO dates and recurring Shift times. Plant shifts
+in use are derived from distinct shifts referenced by active assignments or Job placements.
+Recurring Shift records omit dated incidents/events. Station attributes omit the removed
+task/equipment/risk/performance/power/material fields. Plant operational duration is stored
+in hours at whole-minute resolution; dates and times are edited through dedicated controls.
+
+## Conversion and compatibility
+
+The desktop opens current full native projects directly. Older full formats use the
+separate external conversion tool; the application contains no original-schema decoder.
+Conversion preserves compatible source/results and selected Job values, removes obsolete
+profile/evidence data and validates ownership. Original files stay unchanged. Converted
+copies require an explicit first Save. Lower-level diagnostic formats have separate
+capabilities and are not the current integrated full-project contract.
+
+See [API contracts](api_contracts.md), [architecture](architecture.md),
+[Transfer](assessment_transfer.md) and [recovery](recovery.md).

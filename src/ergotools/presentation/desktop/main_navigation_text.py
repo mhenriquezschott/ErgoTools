@@ -8,6 +8,11 @@ from ergotools.application.settings import Language
 
 # Owned English/Spanish UI wording; keys/captions never replace saved record identities.
 _MESSAGES = {
+    ("Open this worker's standalone assessment for the current tool."): (
+        "Abrir la evaluación independiente de este trabajador para la"
+        " herramienta actual."
+    ),
+    "Project": "Proyecto",
     "Organization": "Organización",
     "Manage workplace organization.": (
         "Administrar la organización del lugar de trabajo."
@@ -19,14 +24,6 @@ _MESSAGES = {
     "Redo": "Rehacer",
     "Undo the previous edit.": "Deshacer la edición anterior.",
     "Redo the next edit.": "Rehacer la siguiente edición.",
-    "Follow worker": "Seguir al trabajador",
-    "Keep context": "Mantener contexto",
-    "Restore this worker's last-used valid assessment context.": (
-        "Restaurar el último contexto válido de evaluación del trabajador."
-    ),
-    "Keep this workplace while navigating workers.": (
-        "Mantener este lugar al navegar entre trabajadores."
-    ),
     "No saved ST assessment for this worker.": (
         "No hay una evaluación ST guardada para este trabajador."
     ),
@@ -52,7 +49,6 @@ _MESSAGES = {
     "Help": "Ayuda",
     "Search": "Buscar",
     "Transfer": "Transferir",
-    "Refresh": "Actualizar",
     "A-Z": "A-Z",
     "Worker": "Trabajador",
     "Workers": "Trabajadores",

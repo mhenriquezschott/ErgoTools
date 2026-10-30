@@ -51,6 +51,9 @@ from ergotools.presentation.desktop.optional_duration_edit import OptionalDurati
 from ergotools.presentation.desktop.optional_time_edit import OptionalTimeEdit
 from ergotools.presentation.desktop.organization_text import organization_text
 from ergotools.presentation.desktop.project_history_actions import ProjectHistoryActions
+from ergotools.presentation.desktop.secondary_history_controls import (
+    add_history_buttons,
+)
 from ergotools.presentation.desktop.theme.organization import ORGANIZATION_STYLE
 
 # Module-scoped diagnostic logger; adapters log technical failures while views retain
@@ -226,13 +229,11 @@ class OrganizationDialog(QDialog):
                 pending=self.pending_entity_action,
             )
             self.title_row.addStretch(1)
-            for button in (
+            add_history_buttons(
+                self.title_row,
                 self.project_history.undo_button,
                 self.project_history.redo_button,
-            ):
-                # Mouse replay accepts the form; focused keyboard Undo stays native.
-                button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-                self.title_row.addWidget(button)
+            )
 
     def _form_values(self) -> tuple[str, ...]:
         """Read literal form tokens for navigation acceptance without data coercion.

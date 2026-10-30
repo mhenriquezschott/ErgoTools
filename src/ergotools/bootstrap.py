@@ -52,6 +52,9 @@ from ergotools.presentation.desktop.lifft_presenter import LifftPresenter
 from ergotools.presentation.desktop.lifft_window import LifftWindow
 from ergotools.presentation.desktop.menu_icon_style import install_menu_icon_style
 from ergotools.presentation.desktop.plot_window import PlotWindow
+from ergotools.presentation.desktop.result_animation_preferences import (
+    apply_result_animations,
+)
 from ergotools.presentation.desktop.rotation_dialog import RotationDialog
 from ergotools.presentation.desktop.theme.dialogs import install_dialog_theme
 
@@ -330,6 +333,9 @@ def create_window(
         combo.blockSignals(True)
         combo.setCurrentIndex(index)
         combo.blockSignals(False)
+    apply_result_animations(
+        window, preferences.animated_risk_gauge, preferences.animated_cumulative_damage
+    )
     window.translate()
     window.refresh()
     return window
@@ -472,6 +478,13 @@ def open_plot(
         change_gauge_markers=save_gauge_markers,
         editing=editing_provider() if editing_provider else None,
     )
+    if settings_store is not None:
+        preferences = settings_store.load()
+        apply_result_animations(
+            dialog,
+            preferences.animated_risk_gauge,
+            preferences.animated_cumulative_damage,
+        )
     try:
         dialog.exec()
     finally:

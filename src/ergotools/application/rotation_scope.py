@@ -48,7 +48,7 @@ class RotationScopeOptions:
     """Original-form scope choices.
 
     A shift with only inactive jobs remains listed, while selectable contexts require
-    active jobs. Profile availability is checked when building the pool.
+    active jobs. Current Job risk availability is checked when building the pool.
 
     Attributes:
         shifts: Unique active-placement shift identities in case-insensitive order.

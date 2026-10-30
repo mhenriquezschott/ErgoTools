@@ -1,40 +1,32 @@
-"""Select a current worker calculation to copy into a Job without association.
+"""Read-only worker and Job catalogs for the shared assessment-copy picker.
 
-Presentation layer. Borrow read-only workspace capabilities; list standalone and real
-workplace assessments for one explicit tool. No calculator, ownership mutation, SQL or
-source recalculation occurs. The Job host owns replacement consent and shared history.
+Presentation layer. Adapt existing workspace snapshots into immutable picker rows.
+Worker contexts retain real standalone/assignment ownership; Job values are global
+per Job/tool. Acceptance rechecks source values without calculation or linking.
+The destination Job window owns confirmation, persistence and shared history.
 """
 
 from collections.abc import Mapping
 from contextlib import suppress
 
-from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (
-    QAbstractItemView,
-    QDialog,
-    QHBoxLayout,
-    QHeaderView,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QTableWidget,
-    QTableWidgetItem,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt5.QtWidgets import QWidget
 
 from ergotools.application.project_workspace import ProjectWorkspace
 from ergotools.application.settings import Language
 from ergotools.domain.assessments.document import AssessmentDraft, AssessmentKind
 from ergotools.domain.decimal_convention import DecimalConvention
 from ergotools.domain.job_risk import JobRiskMeasurement
-from ergotools.presentation.desktop.style import WORKSPACE_STYLE
-from ergotools.presentation.desktop.theme.dialogs import apply_dialog_theme
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.presentation.desktop.job_copy_picker import (
+    CopyCandidate,
+    CopySource,
+    JobValuePicker,
+)
 
 
-class JobAssessmentDialog(QDialog):
-    """Return an independent current source/result copy, never an assessment link."""
+class JobAssessmentDialog(JobValuePicker):
+    """Browse each worker's standalone and real workplace assessment contexts."""
 
     def __init__(
         self,
@@ -46,257 +38,177 @@ class JobAssessmentDialog(QDialog):
         *,
         convention: DecimalConvention = DecimalConvention.POINT,
     ) -> None:
-        """Read eligible assessments without navigating the main assessment editor.
+        """Read worker/context catalogs without navigating the main assessment editor.
 
         Args:
-            workspace: Borrowed open project; no repository lifetime is transferred.
-            kind: Exact Job tool to populate; other tools cannot be selected.
-            icons: Existing processed application icons.
-            language: UI wording only; worker/workplace data remain literal.
-            parent: Owning Job Management dialog.
-            convention: Application decimal mark, independent of interface language.
+            workspace: Borrowed read-only project capabilities; caller owns lifetime.
+            kind: Exact tool requested by the destination Job.
+            icons: Packaged navigation and workplace icons.
+            language: UI wording only; names remain literal.
+            parent: Job window owning replacement consent/history.
+            convention: Explicit decimal separator for result display.
 
         Returns:
-            None; acceptance is read-only and creates no Job or worker record.
+            None; missing/stale results remain visible but cannot be copied.
         """
-        super().__init__(parent)
-        self.workspace = workspace
-        self.kind = kind
-        self.language = language
-        self.convention = convention
-        self.selected: JobRiskMeasurement | None = None
-        self.setWindowTitle(
-            self.text("Use worker assessment", "Usar evaluación de trabajador")
-        )
-        self.setStyleSheet(WORKSPACE_STYLE)
-        apply_dialog_theme(self)
-        self.resize(1000, 560)
-        self.setMinimumSize(800, 480)
-        layout = QVBoxLayout(self)
-        title = QLabel(
-            self.text("Use worker assessment", "Usar evaluación de trabajador")
-        )
-        title.setObjectName("dialogTitle")
-        layout.addWidget(title)
-        intro = QLabel(
-            self.text(
-                (
-                    "Copy tasks and calculated values for this tool. The worker "
-                    "assessment remains unchanged and independent."
-                ),
-                (
-                    "Copiar tareas y valores calculados de esta herramienta. La "
-                    "evaluación del trabajador permanece independiente y sin "
-                    "cambios."
-                ),
-            )
-        )
-        intro.setWordWrap(True)
-        layout.addWidget(intro)
-        self.search = QLineEdit()
-        self.search.setPlaceholderText(
-            self.text("Search worker or workplace", "Buscar trabajador o lugar")
-        )
-        self.search.textChanged.connect(self._filter)
-        layout.addWidget(self.search)
-        self.table = QTableWidget(0, 5)
-        self.table.setHorizontalHeaderLabels(
-            [
-                self.text("Worker", "Trabajador"),
-                self.text("Assessment context", "Contexto de evaluación"),
-                self.text("Damage", "Daño"),
-                self.text("Probability (%)", "Probabilidad (%)"),
-                self.text("State", "Estado"),
-            ]
-        )
-        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        header = self.table.horizontalHeader()
-        assert header is not None
-        header.setSectionResizeMode(QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.Stretch)
-        layout.addWidget(self.table, 1)
-        footer = QHBoxLayout()
-        footer.addStretch()
-        self.cancel_button = QPushButton(self.text("Cancel", "Cancelar"))
-        self.cancel_button.setIcon(icons["cancel"])
-        self.cancel_button.clicked.connect(self.reject)
-        self.use_button = QPushButton(
-            self.text("Use assessment values", "Usar valores de evaluación")
-        )
-        self.use_button.setIcon(icons["worker"])
-        self.use_button.setObjectName("primaryOutlineButton")
-        self.use_button.setEnabled(False)
-        self.use_button.clicked.connect(self._use_selection)
-        footer.addWidget(self.cancel_button)
-        footer.addWidget(self.use_button)
-        layout.addLayout(footer)
         hierarchy = workspace.read_hierarchy().hierarchy.work
-        workers = {worker.worker_id: worker for worker in hierarchy.workers}
         catalog = workspace.read_jobs().jobs
+        history = workspace.read_history().history
         assignments = {a.assignment_id: a for a in catalog.assignments}
         placements = {p.placement_id: p for p in catalog.placements}
-        jobs = {job.job_id: job for job in catalog.jobs}
-        for entry in workspace.read_history().history.entries:
-            if entry.kind is not kind:
-                continue
-            row = self.table.rowCount()
-            self.table.insertRow(row)
-            worker = workers[entry.worker_id]
-            context = self.text("Standalone assessment", "Evaluación independiente")
-            if entry.assignment_id is not None:
-                place = assignments[entry.assignment_id].worker.workplace
-                context = " > ".join(
-                    (
+        jobs = {j.job_id: j for j in catalog.jobs}
+        sources = []
+        spanish = language is Language.SPANISH
+        for worker in hierarchy.workers:
+            candidates = []
+            for entry in history.entries:
+                if entry.kind is not kind or entry.worker_id != worker.worker_id:
+                    continue
+                measurement = None
+                with suppress(ValueError):
+                    measurement = workspace.job_measurement_from_assessment(
+                        entry.document_id
+                    )
+                job_caption = ""
+                shift = ""
+                path: tuple[str, ...] = (
+                    "Evaluación independiente" if spanish else "Standalone assessment",
+                )
+                if entry.assignment_id is not None:
+                    assignment = assignments[entry.assignment_id]
+                    place = assignment.worker.workplace
+                    placement = (
+                        placements.get(assignment.placement_id)
+                        if assignment.placement_id is not None
+                        else None
+                    )
+                    job_caption = (
+                        ("Sin trabajo" if spanish else "No Job")
+                        if placement is None
+                        else f"{placement.job_id} · {jobs[placement.job_id].name}"
+                    )
+                    shift = place.shift_id
+                    path = (
                         place.plant_name,
                         place.section_name,
                         place.line_name,
                         place.station_id,
-                        place.shift_id,
+                        ("Turno " if spanish else "Shift ") + shift,
+                    )
+                candidates.append(
+                    CopyCandidate(
+                        entry.document_id, path, job_caption, shift, measurement
                     )
                 )
-                assignment = assignments[entry.assignment_id]
-                placement = (
-                    placements.get(assignment.placement_id)
-                    if assignment.placement_id is not None
-                    else None
-                )
-                job_caption = (
-                    self.text("No Job", "Sin trabajo")
-                    if placement is None
-                    else self.text("Job", "Trabajo")
-                    + ": "
-                    + placement.job_id
-                    + " - "
-                    + jobs[placement.job_id].name
-                )
-                context = job_caption + " | " + context
-            measurement = None
-            # Uncalculated/stale sources remain visible but cannot be copied.
-            with suppress(ValueError):
-                measurement = workspace.job_measurement_from_assessment(
-                    entry.document_id
-                )
-            values = (
-                worker.worker_id
-                + (
-                    " | "
-                    + ", ".join(
-                        part for part in (worker.last_name, worker.first_name) if part
-                    )
-                    if worker.last_name or worker.first_name
-                    else ""
-                ),
-                context,
-                f"{measurement.cumulative_damage:.8g}".replace(".", convention.value)
-                if measurement
-                else "—",
-                f"{measurement.probability_percent:.4g}".replace(".", convention.value)
-                if measurement
-                else "—",
-                self.text("Ready", "Disponible")
-                if measurement
-                else self.text("Calculate first", "Calcular primero"),
+            caption = ", ".join(
+                part for part in (worker.last_name, worker.first_name) if part
             )
-            for column, value in enumerate(values):
-                item = QTableWidgetItem(value)
-                tooltip = value
-                if column == 1:
-                    tooltip += (
-                        "\n"
-                        + self.text("Assessment", "Evaluación")
-                        + ": "
-                        + entry.document_id
-                    )
-                    if entry.assignment_id is not None:
-                        assignment = assignments[entry.assignment_id]
-                        tooltip += (
-                            "\n"
-                            + self.text("Assignment", "Asignación")
-                            + f": {assignment.assignment_id} | "
-                            + (
-                                self.text("Active", "Activa")
-                                if assignment.active
-                                else self.text("Previous", "Anterior")
-                            )
-                        )
-                item.setToolTip(tooltip)
-                item.setData(Qt.ItemDataRole.UserRole, entry.document_id)
-                item.setData(Qt.ItemDataRole.UserRole + 1, measurement is not None)
-                self.table.setItem(row, column, item)
-        self.table.itemSelectionChanged.connect(self._selection_changed)
-        self.table.itemDoubleClicked.connect(self._use_selection)
-
-    def text(self, english: str, spanish: str) -> str:
-        """Resolve static UI wording without translating stored source data.
-
-        Args:
-            english: English interface text.
-            spanish: Spanish interface text.
-
-        Returns:
-            Wording for the selected application language.
-        """
-        return spanish if self.language is Language.SPANISH else english
-
-    def _filter(self, text: str) -> None:
-        """Filter visible rows without changing selection eligibility or any source.
-
-        Args:
-            text: Literal search substring compared case-insensitively.
-
-        Returns:
-            None; a hidden selection cannot be accepted.
-        """
-        for row in range(self.table.rowCount()):
-            cells = [self.table.item(row, c) for c in (0, 1)]
-            self.table.setRowHidden(
-                row,
-                not any(
-                    cell is not None and text.casefold() in cell.text().casefold()
-                    for cell in cells
-                ),
-            )
-        self._selection_changed()
-
-    def _selection_changed(self) -> None:
-        """Enable copying only for a visible current complete calculation.
-
-        Args:
-            None.
-
-        Returns:
-            None; missing/stale result rows cannot be accepted.
-        """
-        row = self.table.currentRow()
-        item = self.table.item(row, 0)
-        self.use_button.setEnabled(
-            row >= 0
-            and not self.table.isRowHidden(row)
-            and item is not None
-            and bool(item.data(Qt.ItemDataRole.UserRole + 1))
+            sources.append(CopySource(worker.worker_id, caption, tuple(candidates)))
+        super().__init__(
+            tuple(sources),
+            kind,
+            icons,
+            language,
+            convention,
+            workspace.job_measurement_from_assessment,
+            worker_sources=True,
+            project_id=catalog.project_id,
+            units=workspace.project_metadata.default_units
+            if workspace.project_metadata
+            else MeasurementSystem.METRIC,
+            parent=parent,
         )
 
-    def _use_selection(self) -> None:
-        """Recheck the exact result before returning a detached copy to the Job host.
+
+class JobCopyDialog(JobValuePicker):
+    """Browse other Jobs and recheck their selected-tool values at acceptance."""
+
+    def __init__(
+        self,
+        workspace: ProjectWorkspace[AssessmentDraft],
+        kind: AssessmentKind,
+        icons: Mapping[str, QIcon],
+        language: Language,
+        exclude_job: str,
+        parent: QWidget | None = None,
+        *,
+        convention: DecimalConvention = DecimalConvention.POINT,
+    ) -> None:
+        """Build independent Job-source choices without exposing a second main selector.
 
         Args:
-            None.
+            workspace: Borrowed open-project capabilities; no write operation is used.
+            kind: Exact tool requested by the destination Job.
+            icons: Packaged navigation/hierarchy icons.
+            language: Interface wording, never stored identities.
+            exclude_job: Destination identity omitted from source choices.
+            parent: Destination window owning replacement consent and replay.
+            convention: Explicit decimal separator for display only.
 
         Returns:
-            None; failure or unavailable selection leaves the picker open.
+            None; Jobs without a current measurement cannot be copied.
         """
-        if not self.use_button.isEnabled():
-            return
-        item = self.table.item(self.table.currentRow(), 0)
-        assert item is not None
-        try:
-            self.selected = self.workspace.job_measurement_from_assessment(
-                str(item.data(Qt.ItemDataRole.UserRole))
+        self._workspace = workspace
+        self._kind = kind
+        catalog = workspace.read_jobs().jobs
+        risk = workspace.read_job_risk().risk
+        sources = []
+        for job in catalog.jobs:
+            if job.job_id == exclude_job:
+                continue
+            item = next(
+                (m for m in risk.for_job(job.job_id).measurements if m.kind is kind),
+                None,
             )
-        except ValueError:
-            self.selected = None
-            self.use_button.setEnabled(False)
-            return
-        self.accept()
+            caption = (
+                "Valores del trabajo"
+                if language is Language.SPANISH
+                else "Job assessment values"
+            )
+            sources.append(
+                CopySource(
+                    job.job_id,
+                    job.name,
+                    (CopyCandidate(job.job_id, (caption,), job.name, "", item),),
+                )
+            )
+        super().__init__(
+            tuple(sources),
+            kind,
+            icons,
+            language,
+            convention,
+            self._resolve_job,
+            worker_sources=False,
+            project_id=catalog.project_id,
+            units=workspace.project_metadata.default_units
+            if workspace.project_metadata
+            else MeasurementSystem.METRIC,
+            parent=parent,
+        )
+
+    def _resolve_job(self, identity: str) -> JobRiskMeasurement:
+        """Recheck one selected-tool measurement without writing or calculating.
+
+        Args:
+            identity: Exact selected source Job identity.
+
+        Returns:
+            Current immutable inputs and outputs for that Job/tool.
+
+        Raises:
+            ValueError: The Job has no current value for the selected tool.
+        """
+        value = next(
+            (
+                m
+                for m in self._workspace.read_job_risk()
+                .risk.for_job(identity)
+                .measurements
+                if m.kind is self._kind
+            ),
+            None,
+        )
+        if value is None:
+            raise ValueError("Source Job has no selected-tool data.")
+        return value

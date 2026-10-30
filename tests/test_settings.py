@@ -156,7 +156,7 @@ class SettingsTests(unittest.TestCase):
             json.dumps({**valid, "extra": 1}),
         ]
         for key, values in {
-            "version": [7, True],
+            "version": [8, True],
             "format": ["other"],
             "language": ["unknown"],
             "default_units": [None],

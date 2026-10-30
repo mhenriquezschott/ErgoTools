@@ -15,6 +15,7 @@ from PyQt5.QtWidgets import QApplication
 from ergotools.application.project_editing import ProjectEditingSession
 from ergotools.bootstrap import load_icons
 from ergotools.domain.language import Language
+from ergotools.domain.plot_filters import PlotRiskView
 from ergotools.domain.plot_positions import PlotPoint
 from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
 from ergotools.infrastructure.plant_image_import import import_plant_image
@@ -174,3 +175,51 @@ def test_rotation_viewing_saved_and_cancelling_partial_remain_clean(
             editing.commit()
         finally:
             dialog.close()
+
+
+@pytest.mark.parametrize("mode", [PlotRiskView.JOB, PlotRiskView.COMPARISON])
+def test_plot_mode_and_drag_have_separate_shared_history(
+    project: AssessmentProjectFile, tmp_path: Path, mode: PlotRiskView
+) -> None:
+    """Undo a map move independently of the immediately preceding mode change.
+
+    Args:
+        project: Isolated native project containing worker and Job assessments.
+        tmp_path: Disposable image directory owned by pytest.
+        mode: Applied assignment representation whose geometry must remain shared.
+
+    Returns:
+        None; move Undo/Redo retains the selected mode and exact assignment point.
+    """
+    image_path = tmp_path / "map.png"
+    Image.new("RGB", (640, 400), "white").save(image_path)
+    project.save_plant_image("P", import_plant_image(image_path))
+    project.save_plot_positions(positions_for(project))
+    editing = ProjectEditingSession(project.metadata.project_id, project)
+    dialog = PlotWindow(
+        project,
+        project,
+        project,
+        lambda path: import_plant_image(Path(path)),
+        load_icons(),
+        current_year=2026,
+        editing=editing,
+    )
+    try:
+        dialog.filters.risk_buttons[mode].click()
+        key = ("job" if mode is PlotRiskView.JOB else "worker", 1)
+        item = dialog.layer.items[key]
+        original = item.anchor_point()
+        item.setPos(123.125, 234.25)
+        dialog.layer.moved(item)
+        assert project.load_plot_positions().marker(1).point == PlotPoint(
+            123.125, 234.25
+        )
+        dialog.history_actions.replay(redo=False)
+        assert dialog.filters.risk_view is mode
+        assert dialog.layer.items[key].anchor_point() == original
+        dialog.history_actions.replay(redo=True)
+        assert dialog.filters.risk_view is mode
+        assert dialog.layer.items[key].anchor_point() == PlotPoint(123.125, 234.25)
+    finally:
+        dialog.close()

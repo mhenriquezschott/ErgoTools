@@ -230,7 +230,7 @@ def test_header_scroll_and_minimum_bottom_controls(window: LifftWindow) -> None:
             assert header.width() == item.widget().width()
         for button in (
             panel.clear_button,
-            panel.context_button,
+            panel.add_task_button,
             panel.calculate_button,
         ):
             assert panel.rect().contains(
@@ -241,7 +241,7 @@ def test_header_scroll_and_minimum_bottom_controls(window: LifftWindow) -> None:
     assert body_bar is not None and header_bar is not None
     body_bar.setValue(body_bar.maximum())
     assert header_bar.value() == body_bar.value()
-    assert panel.context_button.icon().isNull() is False
+    assert panel.add_task_button.text() == "+ Task"
     QTest.keyClick(panel.inputs[0][0], Qt.Key.Key_Tab)
 
 

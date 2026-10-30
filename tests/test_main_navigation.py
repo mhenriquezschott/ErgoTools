@@ -126,7 +126,7 @@ def test_worker_navigation_retains_edits_until_main_save(
     )
     assert nav.workers.currentData() == "w"
     assert "O'Connor, Smith" in nav.workers.currentText()
-    assert nav.job_label.text() == "Job: j | Job"
+    assert nav.location_browser.job_combo.currentData() == "a"
     enter(window, 0, 0, "16")
     with patch.object(
         window,
@@ -136,7 +136,7 @@ def test_worker_navigation_retains_edits_until_main_save(
         nav.nav_buttons[2].click()
     assert nav.workers.currentData() == "x"
     assert window.presenter.workspace.active.document.document_id == "b"
-    assert nav.job_label.text() == "Job: k | Other"
+    assert nav.location_browser.job_combo.currentData() == "b"
     assert window.task_panel.inputs[0][0].text() == "21.0"
     with AssessmentProjectFile.open(tmp_path / "navigation.ergprj") as project:
         assert project.load(DocumentKey("p", "a")).tasks[0].lever_arm == 12
@@ -245,9 +245,14 @@ def test_original_layout_translation_and_incomplete_actions(
     window.translate()
     window.refresh_navigation()
     assert window.size().width() == 1550 and window.size().height() == 1015
+    assert nav.toolbar_title.text() == "Proyecto"
+    assert (
+        nav.toolbar_title.contentsRect().height()
+        >= nav.toolbar_title.fontMetrics().height()
+    )
     assert nav.buttons["workers"].text() == "Trabajadores"
-    assert nav.buttons["context"].text() == "Seleccionar contexto"
-    assert nav.context_labels[0].text() == "Planta: P"
+    assert nav.standalone_button.text().startswith("Evaluación independiente")
+    assert nav.location_browser.headings[0].text() == "Planta (1)"
     assert nav.unit_label.text() == "Unidades: Imperial"
     assert nav.buttons["transfer"].isEnabled()
     assert nav.toolbar_actions["help"].isEnabled()
@@ -260,7 +265,7 @@ def test_original_layout_translation_and_incomplete_actions(
     assert window.assessment_tabs.isTabEnabled(1)
     assert window.assessment_tabs.isTabEnabled(2)
     assert window.rect().contains(
-        nav.context_frame.mapTo(window, nav.context_frame.rect().bottomRight())
+        nav.location_browser.mapTo(window, nav.location_browser.rect().bottomRight())
     )
 
 
@@ -336,7 +341,7 @@ def test_context_button_uses_selected_worker_without_another_prompt(
         window, "choose_item", side_effect=AssertionError("Unexpected worker prompt")
     ):
         QTimer.singleShot(0, use_context)
-        nav.buttons["context"].click()
+        window.select_navigation_context()
     assert seen == [True]
     assert window.presenter.workspace.active.document.document_id == "a"
 

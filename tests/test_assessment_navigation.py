@@ -99,40 +99,34 @@ def test_open_has_no_assessment_picker(window: LifftWindow) -> None:
     assert window.active_source().tasks[0].lever_arm == 12
 
 
-@pytest.mark.parametrize("follow", [True, False])
-def test_all_workers_remain_navigable(window: LifftWindow, follow: bool) -> None:
+@pytest.mark.parametrize("enabled", [True, False])
+def test_all_workers_remain_navigable(window: LifftWindow, enabled: bool) -> None:
     """First/next/last browse every worker even when the active tool has no data.
 
     Args:
         window: Disposable integrated window; worker y has no saved assessment.
-        follow: Follow worker or Keep context policy to exercise.
+        enabled: Browser preference must never restrict worker navigation.
 
     Returns:
         None.
     """
-    window.set_context_mode(follow)
+    window.main_navigation.context_disclosure.setChecked(enabled)
     nav = window.main_navigation
     nav.nav_buttons[2].click()
     assert nav.workers.currentData() == "x"
     nav.nav_buttons[2].click()
     assert nav.workers.currentData() == "y"
     assert window.assessment_navigation.view.saved is False
-    if follow:
-        assert window.results_sidebar.assessment_status_label.text() == "No assessment"
-    else:
-        assert window.assessment_navigation.view.workplace == STATION.at_shift("Day")
-        assert (
-            window.results_sidebar.assessment_status_label.text()
-            == "Assignment required"
-        )
+    assert window.results_sidebar.assessment_status_label.text() == "No assessment"
+    assert window.assessment_navigation.view.workplace is None
     nav.nav_buttons[0].click()
     assert nav.workers.currentData() == "w"
 
 
-def test_follow_restores_remembered_context_across_settings_reload(
+def test_worker_navigation_uses_alphabetical_default_despite_remembered_context(
     window: LifftWindow,
 ) -> None:
-    """Per-worker/tool/project preferences restore a previously selected saved context.
+    """Worker navigation ignores last-used context and chooses the first saved location.
 
     Args:
         window: Disposable integrated window and preference file.
@@ -152,17 +146,19 @@ def test_follow_restores_remembered_context_across_settings_reload(
     window.refresh()
     window.navigate_worker("x")
     window.navigate_worker("w")
-    assert browser.view.workplace.shift_id == "Night"
-    assert window.active_source().tasks[0].lever_arm == 30
+    assert browser.view.workplace.shift_id == "Day"
+    assert window.active_source().tasks[0].lever_arm == 12
     browser._memory.clear()
     window.navigate_worker("x")
     window.navigate_worker("w")
-    assert browser.view.workplace.shift_id == "Night"
-    window.set_context_mode(False)
+    assert browser.view.workplace.shift_id == "Day"
+    window.main_navigation.context_disclosure.setChecked(False)
+    before = browser.view
+    assert browser.view == before
     window.navigate_worker("x")
-    assert browser.view.workplace.shift_id == "Night"
-    assert browser.view.saved is False
-    window.set_context_mode(True)
+    assert browser.view.workplace.shift_id == "Day"
+    assert browser.view.saved
+    window.main_navigation.context_disclosure.setChecked(True)
     assert browser.view.workplace.shift_id == "Day"
 
 
@@ -333,7 +329,7 @@ def test_context_picker_saved_new_labels_and_menu(
     window.translate()
     window.refresh_navigation()
     assert menu.work_setup.title() == "Lugar de trabajo"
-    assert window.main_navigation.follow_worker_button.text() == "Seguir al trabajador"
+    assert window.main_navigation.location_browser.title() == "Evaluación"
 
 
 def test_worker_navigation_retains_the_old_worker_draft(window: LifftWindow) -> None:

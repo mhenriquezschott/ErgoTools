@@ -66,9 +66,8 @@ def test_calculator_inputs_calculate_clear_and_save(
     dialog = JobManagementDialog(workspace, load_icons(), units)
     try:
         enter_job(dialog)
-        dialog.calculator_toggle.setChecked(True)
         dialog.tool_tabs.setCurrentIndex(list(AssessmentKind).index(kind))
-        dialog.mode_combo.setCurrentIndex(1)
+        dialog.input_modes.button(1).click()
         editor = dialog.editors[kind]
         fields = editor.inputs[0]
         if kind is AssessmentKind.DUET:
@@ -82,11 +81,15 @@ def test_calculator_inputs_calculate_clear_and_save(
                 field.editingFinished.emit()
         source = dialog._measurement(kind).source
         assert source is not None
-        assert not dialog._measurement(kind).complete
+        assert dialog._measurement(kind).complete
         expected = calculate_saved_result(
             DocumentKey(dialog._jobs.jobs.project_id, "oracle"), source, units
         )
+        automatically_calculated = dialog._measurement(kind)
+        revision = workspace.editing.history.revision
         dialog.calculate_tool()
+        assert workspace.editing.history.revision == revision
+        assert dialog._measurement(kind) == automatically_calculated
         calculated = dialog._measurement(kind)
         assert calculated.source == source and calculated.complete
         assert calculated.cumulative_damage == expected.damage
@@ -94,8 +97,7 @@ def test_calculator_inputs_calculate_clear_and_save(
         assert [
             (r.moment, r.damage, r.share_percent) for r in calculated.task_results
         ] == [(r.moment, r.damage, r.share_percent) for r in expected.tasks]
-        row = list(AssessmentKind).index(kind)
-        assert not dialog.risk_table.item(row, 1).flags() & Qt.ItemIsEditable
+        assert dialog.direct_values.fields[kind].isReadOnly()
         assert path.read_bytes() == before
         with patch.object(dialog, "_question", return_value=QMessageBox.No):
             dialog.clear_tool()
@@ -103,7 +105,8 @@ def test_calculator_inputs_calculate_clear_and_save(
         with patch.object(dialog, "_question", return_value=QMessageBox.Yes):
             dialog.clear_tool()
         assert not dialog._measurement(kind).complete
-        assert len(dialog._measurement(kind).source.tasks) == 1
+        assert dialog._measurement(kind).source is None
+        assert dialog.editors[kind].task_count == 1
         assert workspace.editing.replay(redo=False)
         assert dialog._measurement(kind) == calculated
         assert workspace.editing.replay(redo=True)
@@ -131,8 +134,7 @@ def test_numeric_cells_replay_individually_and_repeatedly(tmp_path: Path) -> Non
     dialog = JobManagementDialog(workspace, load_icons(), MeasurementSystem.METRIC)
     try:
         enter_job(dialog)
-        dialog.calculator_toggle.setChecked(True)
-        dialog.mode_combo.setCurrentIndex(1)
+        dialog.input_modes.button(1).click()
         for _ in range(2):
             fields = dialog.editors[AssessmentKind.LIFFT].inputs[0]
             fields[0].setText("50")
@@ -143,8 +145,9 @@ def test_numeric_cells_replay_individually_and_repeatedly(tmp_path: Path) -> Non
             task = dialog._measurement(AssessmentKind.LIFFT).source.tasks[0]
             assert task.lever_arm == 50 and task.load is None
             assert workspace.editing.replay(redo=False)
-            task = dialog._measurement(AssessmentKind.LIFFT).source.tasks[0]
-            assert task.lever_arm is None and task.load is None
+            assert dialog._measurement(AssessmentKind.LIFFT).source is None
+            preview = dialog.editors[AssessmentKind.LIFFT].source.tasks[0]
+            assert preview.lever_arm is None and preview.load is None
             assert workspace.editing.replay(redo=True)
             assert workspace.editing.replay(redo=True)
             assert workspace.editing.replay(redo=False)
@@ -155,7 +158,7 @@ def test_numeric_cells_replay_individually_and_repeatedly(tmp_path: Path) -> Non
         retained = dialog._measurement(AssessmentKind.LIFFT).source.tasks[0]
         dialog.add_task()
         assert dialog._measurement(AssessmentKind.LIFFT).source.tasks[0] == retained
-        dialog.editors[AssessmentKind.LIFFT].setCurrentCell(0, 0)
+        dialog.editors[AssessmentKind.LIFFT].select_task(0)
         with patch.object(dialog, "_question", return_value=QMessageBox.No):
             dialog.remove_task()
         assert len(dialog._measurement(AssessmentKind.LIFFT).source.tasks) == 2
@@ -227,15 +230,13 @@ def test_worker_copy_retains_tasks_results_and_independent_ownership(
             """
             picker = _APP.activeModalWidget()
             assert isinstance(picker, JobAssessmentDialog)
-            assert picker.table.rowCount() == 1
-            assert ("Standalone" in picker.table.item(0, 1).text()) == (
-                not bool(assigned)
-            )
+            candidate = picker.tree.currentItem().data(0, Qt.ItemDataRole.UserRole)
+            assert candidate.identity == "source"
+            assert ("Standalone assessment" in candidate.path) == (not bool(assigned))
             if assigned == "job":
-                assert "J-Source - Source Job" in picker.table.item(0, 1).text()
+                assert candidate.job == "J-Source · Source Job"
             elif assigned:
-                assert "No Job" in picker.table.item(0, 1).text()
-            picker.table.selectRow(0)
+                assert candidate.job == "No Job"
             picker.use_button.click()
 
         QTimer.singleShot(0, use_source)
@@ -299,7 +300,9 @@ def test_locale_display_preserves_exact_outputs_and_replacement_cancel(
         enter_job(dialog)
         dialog._set_measurement(expected)
         original = dialog._measurement(AssessmentKind.LIFFT)
-        text = dialog.risk_table.item(0, 2).text()
+        text = dialog.calculation_summary.summary.probability_value.text().removesuffix(
+            "%"
+        )
         assert text == f"{expected.probability_percent:.1f}".replace(
             ".", convention.value
         )
@@ -307,10 +310,10 @@ def test_locale_display_preserves_exact_outputs_and_replacement_cancel(
         assert dialog.accept_pending_job()
         assert dialog._measurement(AssessmentKind.LIFFT) == original
         with patch.object(dialog, "_question", return_value=QMessageBox.No):
-            dialog.mode_combo.setCurrentIndex(0)
+            dialog.input_modes.button(0).click()
         assert dialog._measurement(AssessmentKind.LIFFT) == original
         with patch.object(dialog, "_question", return_value=QMessageBox.Yes):
-            dialog.mode_combo.setCurrentIndex(0)
+            dialog.input_modes.button(0).click()
         assert dialog._measurement(AssessmentKind.LIFFT).source is None
         assert workspace.editing.replay(redo=False)
         assert dialog._measurement(AssessmentKind.LIFFT) == original
@@ -360,7 +363,9 @@ def test_fractional_repetitions_survive_copy_focus_and_edit(
         field.editingFinished.emit()
         changed = dialog._measurement(kind)
         assert changed.source.tasks[0].repetitions == 100.25
-        assert not changed.complete and not changed.task_results
+        assert changed == calculate_job_measurement(
+            dialog._jobs.jobs.project_id, "J1", changed.source, MeasurementSystem.METRIC
+        )
         assert workspace.editing.replay(redo=False)
         assert dialog._measurement(kind) == expected
     finally:
@@ -405,7 +410,6 @@ def test_reopened_task_edit_enables_shared_undo_before_focus_leaves(
     try:
         dialog.show()
         _APP.setActiveWindow(dialog)
-        dialog.calculator_toggle.setChecked(True)
         _APP.processEvents()
         assert _APP.activeWindow() is dialog
         assert not dialog.project_history.undo_button.isEnabled()
@@ -422,7 +426,7 @@ def test_reopened_task_edit_enables_shared_undo_before_focus_leaves(
         second = editor.inputs[1][0]
         second.setFocus()
         _APP.processEvents()
-        assert editor.currentRow() == 1
+        assert editor.selected_task_index == 1
         dialog.remove_task()
         assert (
             dialog._measurement(AssessmentKind.LIFFT).source.tasks
@@ -445,7 +449,6 @@ def test_direct_damage_delegate_exposes_pending_undo_and_commits_once(
         None; accepting and undoing the cell restores the previous exact current value.
     """
     from PyQt5.QtTest import QTest
-    from PyQt5.QtWidgets import QLineEdit
 
     from ergotools.domain.job_catalog import Job
     from ergotools.domain.job_risk import JobRiskMeasurement, JobRiskValues
@@ -465,11 +468,10 @@ def test_direct_damage_delegate_exposes_pending_undo_and_commits_once(
         dialog.show()
         _APP.processEvents()
         assert not dialog.project_history.undo_button.isEnabled()
-        cell = dialog.risk_table.item(0, 1)
-        dialog.risk_table.editItem(cell)
+        cell = dialog.direct_values.fields[AssessmentKind.LIFFT]
+        field = cell
+        field.setFocus()
         _APP.processEvents()
-        field = dialog.risk_table.findChild(QLineEdit)
-        assert field is not None
         field.selectAll()
         QTest.keyClicks(field, "0.2")
         assert dialog.project_history.undo_button.isEnabled()
@@ -494,11 +496,10 @@ def test_missing_job_id_never_discards_entered_task_data(tmp_path: Path) -> None
     workspace = editing_workspace(tmp_path)
     dialog = JobManagementDialog(workspace, load_icons(), MeasurementSystem.METRIC)
     try:
-        assert not dialog.risk_table.isEnabled()
-        assert not dialog.calculator_toggle.isEnabled()
+        assert not dialog.direct_values.isEnabled()
+        assert not dialog.assessment_area.isEnabled()
         enter_job(dialog)
-        dialog.calculator_toggle.setChecked(True)
-        dialog.mode_combo.setCurrentIndex(1)
+        dialog.input_modes.button(1).click()
         field = dialog.editors[AssessmentKind.LIFFT].inputs[0][0]
         field.setText("30")
         field.editingFinished.emit()
@@ -513,5 +514,49 @@ def test_missing_job_id_never_discards_entered_task_data(tmp_path: Path) -> None
         assert dialog._measurement(AssessmentKind.LIFFT).source == retained
     finally:
         dialog.job_id_combo.setEditText("J1")
+        dialog.close()
+        workspace.close(choice=CloseChoice.DISCARD)
+
+
+@pytest.mark.parametrize("kind", list(AssessmentKind))
+def test_direct_to_tasks_starts_one_row_without_losing_cancelled_values(
+    tmp_path: Path, kind: AssessmentKind
+) -> None:
+    """Direct-result replacement shows one starter and replays the original value.
+
+    Args:
+        tmp_path: Disposable native project directory.
+        kind: Each Job tool, independent of other tool sources.
+
+    Returns:
+        None; Cancel preserves direct values; confirmed replacement and edits replay.
+    """
+    workspace = editing_workspace(tmp_path)
+    dialog = JobManagementDialog(workspace, load_icons(), MeasurementSystem.METRIC)
+    try:
+        enter_job(dialog)
+        dialog.tool_tabs.setCurrentIndex(list(AssessmentKind).index(kind))
+        dialog.input_modes.button(0).click()
+        field = dialog.direct_values.fields[kind]
+        field.setText("0.01")
+        field.editingFinished.emit()
+        original = dialog._measurement(kind)
+        assert original.complete and original.source is None
+        with patch.object(dialog, "_question", return_value=QMessageBox.No):
+            dialog.input_modes.button(1).click()
+        assert dialog._measurement(kind) == original
+        assert dialog.input_modes.checkedId() == 0
+        assert dialog.editors[kind].task_count == 0
+        with patch.object(dialog, "_question", return_value=QMessageBox.Yes):
+            dialog.input_modes.button(1).click()
+        assert dialog.input_modes.checkedId() == 1
+        assert dialog.editors[kind].task_count == 1
+        assert not dialog._measurement(kind).complete
+        assert workspace.editing.replay(redo=False)
+        assert dialog._measurement(kind) == original
+        assert dialog.editors[kind].task_count == 0
+        assert workspace.editing.replay(redo=True)
+        assert dialog.editors[kind].task_count == 1
+    finally:
         dialog.close()
         workspace.close(choice=CloseChoice.DISCARD)

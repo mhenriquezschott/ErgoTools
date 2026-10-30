@@ -24,6 +24,7 @@ from ergotools.application.assessments.evaluation import (
 from ergotools.application.assessments.lifft_commands import SetLifftTaskCount
 from ergotools.application.assessments.tst_commands import SetTstTaskCount
 from ergotools.application.document_lifecycle import CloseChoice
+from ergotools.application.saved_results import calculate_saved_result
 from ergotools.application.session import DocumentKey, DocumentSession
 from ergotools.bootstrap import create_window
 from ergotools.domain.assessments.duet_draft import DuetDraft, DuetTask
@@ -209,10 +210,10 @@ def test_modal_cancel_accept_undo_redo_and_save(
     QTest.qWait(30)
     # A 100-row rebuild can consume the first event pump before its queued sync.
     for _ in range(100):
-        if not panel._sync_scheduled:
+        if not panel.task_grid.geometry_pending:
             break
         QTest.qWait(10)
-    assert not panel._sync_scheduled
+    assert not panel.task_grid.geometry_pending
     for c, header in enumerate(panel.headers):
         assert header.width() == panel.grid.itemAtPosition(1, c).widget().width()
 
@@ -847,7 +848,15 @@ def test_pending_task_input_shared_undo_before_calculate(
     QTest.mouseClick(redo, Qt.MouseButton.LeftButton)
     edited = workspace.active.state
     assert edited != original
-    assert workspace.historical_result() is None
+    oracle = calculate_saved_result(
+        workspace.active.document, edited, window.presenter.system
+    )
+    expected_result = (
+        oracle
+        if oracle and oracle.calculation_status is EvaluationStatus.COMPLETE
+        else None
+    )
+    assert workspace.historical_result() == expected_result
     assert path.read_bytes() == before_file
     # Invalid text preserves the accepted state and cursor, including an existing
     # Redo branch. Keyboard editing remains local to the focused text editor.
@@ -874,7 +883,15 @@ def test_pending_task_input_shared_undo_before_calculate(
     workspace.close(choice=CloseChoice.DISCARD)
     workspace.switch(str(path), key.document_id)
     assert workspace.active.state == edited
-    assert workspace.historical_result() is None
+    oracle = calculate_saved_result(
+        workspace.active.document, edited, window.presenter.system
+    )
+    expected_result = (
+        oracle
+        if oracle and oracle.calculation_status is EvaluationStatus.COMPLETE
+        else None
+    )
+    assert workspace.historical_result() == expected_result
 
 
 @pytest.mark.parametrize(
@@ -966,7 +983,17 @@ def test_repeated_task_input_undo_branches_refresh_every_control(
         if attempt % 2 == 0:
             QTest.mouseClick(redo, Qt.MouseButton.LeftButton)
             assert workspace.active.state != original
-            assert workspace.historical_result() is None
+            oracle = calculate_saved_result(
+                workspace.active.document,
+                workspace.active.state,
+                window.presenter.system,
+            )
+            expected_result = (
+                oracle
+                if oracle and oracle.calculation_status is EvaluationStatus.COMPLETE
+                else None
+            )
+            assert workspace.historical_result() == expected_result
             QTest.mouseClick(undo, Qt.MouseButton.LeftButton)
             assert workspace.active.state == original
             restored = (window.secondary_panel() or window.task_panel).inputs[row][

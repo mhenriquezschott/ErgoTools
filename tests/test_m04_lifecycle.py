@@ -107,7 +107,7 @@ def test_empty_project_open_management_copy_and_reopen_without_invented_sources(
     workspace = window.presenter.workspace
     assert workspace.active is None and workspace.project_metadata == metadata
     assert window.main_navigation.buttons["workers"].isEnabled()
-    assert window.main_navigation.buttons["organization"].isEnabled()
+    assert window.main_navigation.toolbar_actions["organization"].isEnabled()
     assert window.main_navigation.toolbar_actions["jobs"].isEnabled()
     assert window._assessment_menu.properties.isEnabled()
     assert target.read_bytes() == before

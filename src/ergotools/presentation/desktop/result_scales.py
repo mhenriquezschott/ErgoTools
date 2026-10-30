@@ -68,6 +68,7 @@ class _AnimatedScale(QWidget):
             display state.
         """
         super().__init__()
+        self.animation_enabled = True
         self.limit = limit
         self.display_value = 0.0
         self.target_value = 0.0
@@ -77,6 +78,21 @@ class _AnimatedScale(QWidget):
         self.animation.setDuration(duration)
         self.animation.setEasingCurve(QEasingCurve.Type.OutCubic)
         self.animation.valueChanged.connect(self._advance)
+
+    def set_animation_enabled(self, enabled: bool) -> None:
+        """Apply a personal display preference and settle a disabled running scale.
+
+        Args:
+            enabled: True animates future changed targets; False displays targets now.
+
+        Returns:
+            None; source/calculated quantities and the current target are unchanged.
+        """
+        self.animation_enabled = enabled
+        if not enabled:
+            self.animation.stop()
+            self.display_value = self.target_value
+            self.update()
 
     def _advance(self, value: object) -> None:
         """GUI-thread signal callback only; never calculate or save source data.
@@ -140,6 +156,10 @@ class _AnimatedScale(QWidget):
             return
         self.target_value = value
         self.animation.stop()
+        if not self.animation_enabled:
+            self.display_value = value
+            self.update()
+            return
         self.animation.setStartValue(self.display_value)
         self.animation.setEndValue(value)
         self.animation.start()

@@ -1,12 +1,9 @@
 # API, units, errors and scientific behavior contracts
 
-M11 reviews the current public surface against coding_standards.md. The generated
-symbol/docstring inventory is artifacts/m11-audit/public-api.json; it is evidence,
-not a replacement API or a new documentation framework. Strict mypy enforces
-typed source/tooling and Ruff enforces naming/docstrings/format. Summary-only
-docstrings are appropriate for short internal/value-object operations; detailed
-Args/Returns/Raises are used where ownership, side effects, units or failures need
-explanation. Documentation cannot prove scientific validity or every runtime path.
+The integrated application uses typed ports/adapters, source-bound results and one shared
+project editing session. The reviewed-source inventory and documentation checks described
+in [coding standards](coding_standards.md) cover maintained code; they do not establish
+external scientific validity or replace behavioral/native verification.
 
 | Contract family | Units/identity/lifetime | Error and side-effect policy | Main source/evidence |
 |---|---|---|---|
@@ -16,9 +13,9 @@ explanation. Documentation cannot prove scientific validity or every runtime pat
 | Worker/workplace/job/history | IDs plus full plant/section/line/station/shift; worker body cm/kg, dates ISO | ValueError for invalid/cross-project references; referenced records protected; historical ownership retained | domain/worker_details.py, work_hierarchy.py, job_catalog.py, assessment_history.py; M02/M03 |
 | Session/workspace | Caller-owned immutable snapshots and dedicated repository handles | Save/Discard/Cancel explicit; failure retains active document; snapshot/backup exclusively publishes destination; backup excludes drafts | application/session.py, project_workspace.py; M04/M10 |
 | SQLite/JSON | Versioned strict fields and typed finite values; project/document keys | DocumentFormatError/StoreFormatError/ValueError reject malformed data; sqlite3/OSError propagate to owned UI boundary; caller-owned transaction in stores | infrastructure/*_store.py, assessment_project_file.py; M04/M10 |
-| External conversion | Original files unchanged; recalculate saved inputs using established formulas/units/ST convention | One native result per version; discard old caches/archive in output; unsupported/conflicting sources fail | tools/project_migration; cleanup M1R/M2 |
-| PLOT | Scene coordinates in original-image pixels; risks retain saved owner/tool/profile identity | Missing demographic/result observations explicit; typed reversible geometry; partial Save commits only selected records; images/exports owned by adapters | application/plot_*.py, domain/plot_positions.py; M05/M06 |
-| Rotation | Probability percent, ordered blocks/targets and frozen profile IDs | Pure validation raises ValueError; optimizer has explicit outcome/cancel state; no solver-thread UI/source mutation | application/rotation_*.py; domain/rotation.py; infrastructure/pulp_rotation_optimizer.py; M07/M08 |
+| External conversion | Original files unchanged; recalculate saved inputs using established formulas/units/ST convention | One authoritative result per assessment; discard old caches/archive in output; unsupported/conflicting sources fail | tools/project_migration; cleanup M1R/M2 |
+| PLOT | Scene coordinates in original-image pixels; risks retain saved worker/assignment/tool and current Job identity | Missing demographic/result observations explicit; typed reversible geometry; accepted edits remain private until main Save; images/exports owned by adapters | application/plot_*.py, domain/plot_positions.py; M05/M06 |
+| Rotation | Probability percent, ordered blocks/targets and stable Job/placement IDs | Pure validation raises ValueError; optimizer has explicit outcome/cancel state; no solver-thread UI/source mutation | application/rotation_*.py; domain/rotation.py; infrastructure/pulp_rotation_optimizer.py; M07/M08 |
 | Settings/localization/parsing | Stable language/decimal/unit IDs; user names/notes literal | JSON atomic replacement; malformed numbers/locale grouping rejected; failed settings write reported separately from project commit | application/settings.py; infrastructure/settings_store.py; M09 |
 | Renderer and Qt views | BodyRenderer immutable states; native VTK resources remain adapter-owned | Dispose timers/interactors explicitly; no Qt/SQL/VTK in portable core; failed owned commands report and retain input | application/contracts/body_renderer.py; presentation/desktop/rendering/vtk_body_renderer.py; M09 |
 | Assets/Help | Package-relative resource bytes; fixed local cached guide filenames | Reject resource traversal/missing assets; QSaveFile complete commit before QDesktopServices launch; Help never saves project input | infrastructure/resources.py; presentation/desktop/manual_launcher.py; M11 |
@@ -173,3 +170,133 @@ no saved numerical coefficients. refresh_rotation_draft resolves current values 
 main Save as well as UI reopen, preventing retained closed windows from restoring obsolete
 optimization provenance. Numeric edits retain arrangement cells and require an explicit
 solver rerun; PLOT projections/CSV use current complete values with no evidence columns.
+
+
+## Assessment browsing and Transfer
+
+TransferRequest.source_assignment_id is an exact assignment ID, or None with a required
+source_worker_id for standalone assessments. A provided worker identity must match an
+assigned owner. Destination is either WorkerContext (worker, station and shift) or
+StandaloneDestination (project and worker only). No fake workplace is used.
+The pure plan_transfer validates all selected tools/identities/conflicts before writing.
+The existing adapter copies exact sources and matching results in one transaction;
+Move removes only the selected sources after successful destination creation. Main Save
+publishes accepted data and shared Undo/Redo replays the operation. Copy/Move are user
+choices in the existing Transfer dialog, with no redundant copy-specific port or action.
+
+ProjectWorkspace.saved_assessment_result(document_id) remains read-only. The location
+browser uses exact source IDs to distinguish historical assignments and shows only the
+current worker/tool's saved assessments. Disclosure changes visibility, never ownership.
+
+
+## Worker navigation defaults and compact browser — 2026-10-29
+
+AssessmentNavigation.select_worker_default(worker_id, kind, blank) selects that tool's
+existing standalone first, otherwise the saved workplace with the case-insensitive
+alphabetically first Plant/Section/Line/Station/Shift path. Ties prefer an active saved
+owner then stable assignment/document identity. Missing sources produce a deferred
+standalone preview. Blank active assignments are not candidates. Explicit exact-owner
+selection and generic remembered-context/tool-switch behavior remain separate APIs.
+Selection uses existing chronological history and pending-input resolution; it never
+creates ownership, copies sources or saves the public project.
+
+AssessmentLocation separates optional Job (ID, name) from historical detail. Five
+browser combos store literal path elements, including Shift; the separate Job cell
+stores exact document IDs only when disambiguation needs a selector. The selected
+signal emits that exact saved identity. Placeholders and rejected input restore the
+accepted source projection. Headings count unique relevant options, not source rows.
+ExpandableSection owns animation/lifetime only; it never reads/writes project state.
+MainNavigation highlights the actual source and advertises available workplace data.
+The existing nullable disclosure preference now has a collapsed display fallback;
+explicit saved choices and main Save/Undo/Redo retain their established contracts.
+
+
+## Add or replace workplace assessment
+
+WorkplaceAssessmentRepository[State].add_workplace_assessment(worker_id, workplace,
+placement_id, document_id, initial, effective_date=..., expected_document_id=None)
+returns exact AssignmentAssessment. The source type establishes the tool. A saved
+worker/station/shift is required; existing active assignments retain their Job. None
+expected ID rejects every existing destination; a confirmed ID must match exactly.
+Creation uses a fresh document ID; replacement retains the existing ID and ownership,
+replaces inputs with the supplied blank source and removes its saved result. Assignment,
+source, ownership and result changes are one transaction. ValueError reports ownership,
+Job/date/stale-destination conflicts, KeyError missing membership; failures retain all
+records. ProjectWorkspace invalidates catalog/target-session caches after success.
+
+The GUI uses the shared hierarchy picker and No-default replacement consent. Blank
+15-row sources are saved immediately into private editing state, may be published empty
+by main Save, and participate in shared Undo/Redo. No scientific result is invented.
+The disclosure's narrow projection does not rebuild worker/alphabet/location controls;
+it refreshes history/Save and the brand Modified indicator without moving stable rows.
+
+
+The same-Job/different-workplace creation warning is retained through the shared
+pre-insertion duplicate-workplace query. It works even before a new assignment exists;
+declining creates nothing. Existing historical owners remain historical observations:
+Add targets the active assignment at the chosen workplace, not an unrelated older Job.
+
+
+## Assessment presentation polish
+
+BufferedControls.freeze/thaw own only an ephemeral device-aware presentation pixmap.
+The overlay is mouse-transparent/unfocusable; original controls retain input and state.
+A real resize clears the cache. MainNavigation cancels/settles an active reveal before
+ordinary source/tool/language projection, then clears the buffer. Existing history and
+visibility persistence remain outside this component.
+
+WorkplaceAssignmentDialog accepts optional assessments: tuple[WorkplaceAssessmentPreview,
+...] and assessment_tool. Each preview contains a literal WorkplaceContext, optional
+saved probability percentage and active-assignment flag. None preserves the legacy
+picker; an empty tuple shows New states. The selected shift filters badges without
+loading/saving sources. Historical observations cannot be silently presented as current
+replacement targets. Missing calculations remain explicit, never zero. Badge colors use
+the shared classify_probability/RISK_APPEARANCES policy and survive row selection.
+
+
+## Explicit worker assessment management
+
+`ProjectWorkspace.delete_assessment(snapshot, document_id)` validates the latest
+issued history authority, then invokes the existing transactional source/result
+removal adapter. It clears only that document's browsing/session caches and active
+pointer if selected; unrelated pending text remains intact. The host records the
+confirmed removal and fallback view together in shared project history before
+refreshing widgets, so GUI synchronization cannot amend the pre-deletion state.
+No workplace/Job/worker is removed. `delete_active_assessment` delegates to this
+exact-document operation for existing clients.
+
+Find and Delete use immutable `SearchAssessment` rows with document ID, exact
+`AssignmentSelection`, optional Job and historical flag. The shared modal optionally
+accepts saved percentages; absent result is explicit, never a calculation. Delete
+limits rows to current worker/tool and asks No-default confirmation. Search preserves
+all current-tool worker sources and exact standalone/historical ownership. The retired
+ToolDataDialog/saved_tool_options implementation is removed; Search is canonical.
+
+Main tool panels reuse AssessmentActionRow's optional task buttons and the existing
+presenter count command (1–100). Removal of entered trailing data requires consent.
+AssessmentTaskGrid.focus_task defers reveal until coalesced header/row layout; a source
+bind cancels pending focus. The host owns calculation and shared history, not the grid.
+AssessmentBadgeDelegate reads display/background roles only and is shared by Find,
+Delete, Add and Transfer. Transfer's destination columns use active exact worker,
+station, shift and tool ownership, plus standalone ownership. Replacement requires
+explicit consent and uses the existing transaction with exact rollback/history.
+
+
+## Consented transfer replacement and standalone targets — 2026-10-29
+
+TransferRequest.replace_existing defaults False: noninteractive callers still reject
+occupied selected tools unless explicitly authorized. plan_transfer emits separate
+replaced_documents (active target tools) and removed_documents (Move source tools).
+A standalone target validates worker/project membership and creates no assignment.
+An assigned target resolves only the active exact worker/station/shift owner; historical
+observations remain. Identical source/destination owners always fail, even with consent.
+
+The SQLite adapter preloads source payloads, removes approved targets, inserts exact
+source/result copies, then removes selected Move sources under one write transaction.
+Failure rolls back all steps. Unselected tools, Jobs, historical owners and workplace
+assignments remain. ProjectWorkspace invalidates removed/replaced browsing sessions so
+revisiting the destination cannot expose retired values. UI confirms the replacement
+list, then checks it again after pending-source acceptance; changed targets require
+reopening instead of silently expanding consent. Snapshot checks repeat under the lock.
+Main host opens the destination after moving the displayed source; shared Undo restores
+the old selection and data together. No schema/version/formula change or project upgrade.

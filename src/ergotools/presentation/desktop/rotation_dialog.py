@@ -49,6 +49,9 @@ from ergotools.presentation.desktop.rotation_history import RotationHistoryActio
 from ergotools.presentation.desktop.rotation_scope_dialog import RotationScopeDialog
 from ergotools.presentation.desktop.rotation_solve import RotationSolveController
 from ergotools.presentation.desktop.rotation_table import RotationTable
+from ergotools.presentation.desktop.secondary_history_controls import (
+    add_history_buttons,
+)
 
 # Module-scoped diagnostic logger for owned rotation command/solver failures.
 _LOGGER = logging.getLogger(__name__)
@@ -154,8 +157,11 @@ class RotationDialog(RotationForm):
                     self.optimization is not None and self.optimization.busy
                 ),
             )
-            self.title_row.addWidget(self.history_actions.undo_button)
-            self.title_row.addWidget(self.history_actions.redo_button)
+            add_history_buttons(
+                self.title_row,
+                self.history_actions.undo_button,
+                self.history_actions.redo_button,
+            )
             editing.validate_on_save(
                 "rotation.view", partial(stage_rotation_draft, repository)
             )

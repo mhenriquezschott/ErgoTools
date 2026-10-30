@@ -253,10 +253,10 @@ def test_zero_scale_missing_scale_and_grid_geometry(panel: DuetTaskPanel) -> Non
         b.height() == 40
         for b in (
             panel.clear_button,
-            panel.context_button,
+            panel.add_task_button,
             panel.calculate_button,
         )
     )
-    assert not panel.context_button.isEnabled()
+    assert panel.add_task_button.isEnabled()
     for column, header in enumerate(panel.headers):
         assert header.width() == panel.grid.itemAtPosition(1, column).widget().width()

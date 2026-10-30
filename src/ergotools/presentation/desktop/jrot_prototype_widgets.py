@@ -333,7 +333,9 @@ class PrototypeTaskGrid(QTableWidget):
             kind: Exact LiFFT/DUET/ST identity.
 
         Returns:
-            None; parent dialog binds a temporary Job before editing.
+            None; parent dialog binds a temporary Job before editing. The compact
+            minimum fits two demo rows while leaving space for prominent totals and
+            Calculate; larger sources retain the table's native scrolling.
         """
         super().__init__()
         self.kind = kind
@@ -342,7 +344,7 @@ class PrototypeTaskGrid(QTableWidget):
         self.controls: list[list[QLineEdit | QComboBox]] = []
         self.names: list[QLineEdit] = []
         self._dirty = False
-        self.setMinimumHeight(240)
+        self.setMinimumHeight(170)
         self.setAlternatingRowColors(True)
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
         vertical = self.verticalHeader()

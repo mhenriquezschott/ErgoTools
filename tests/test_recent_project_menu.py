@@ -7,6 +7,7 @@ modify the reference application or approved dependency baseline.
 """
 
 import shutil
+from html import escape
 from pathlib import Path
 from unittest.mock import patch
 
@@ -353,3 +354,37 @@ def test_open_project_folder_disabled_without_saved_project(
         assert not action.isEnabled()
         window.open_project_folder()
         launch.assert_not_called()
+
+
+@pytest.mark.parametrize("language", list(Language))
+def test_recent_shows_complete_paths_and_opens_exact_duplicate_filename_location(
+    window: LifftWindow, language: Language
+) -> None:
+    """Same filenames in distinct directories stay identifiable and route exactly.
+
+    Args:
+        window: Disposable integrated window; no actual project is opened by this test.
+        language: Menu translation must not alter stored/displayed path identities.
+
+    Returns:
+        None; literal ampersands and HTML-like path characters remain safe captions.
+    """
+    paths = (
+        "/home/demo/Factory A/workflow.ergprj",
+        "/home/demo/Factory B/workflow.ergprj",
+        "/home/demo/R&D <archive>/workflow.ergprj",
+        r"C:\Projects\Données & tests\workflow.ergprj",
+    )
+    menu = window._assessment_menu
+    menu.translate(language)
+    menu.set_recent(paths)
+    assert menu.recent.toolTipsVisible()
+    actions = menu.recent.actions()[: len(paths)]
+    with patch.object(menu, "_open_recent") as open_recent:
+        for number, (action, path) in enumerate(zip(actions, paths, strict=True), 1):
+            assert action.text() == f"{number}. " + path.replace("&", "&&")
+            assert action.data() == path
+            assert action.toolTip() == "<qt>" + escape(path) + "</qt>"
+            action.trigger()
+            open_recent.assert_called_with(path)
+        assert open_recent.call_count == len(paths)

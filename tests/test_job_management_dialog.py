@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import QApplication, QDialog, QLineEdit, QMessageBox
 from ergotools.application.document_lifecycle import CloseChoice
 from ergotools.application.project_workspace import ProjectWorkspace
 from ergotools.bootstrap import create_job_management_demo, load_icons
-from ergotools.domain.assessments.document import AssessmentDraft
+from ergotools.domain.assessments.document import AssessmentDraft, AssessmentKind
 from ergotools.domain.model_units import MeasurementSystem
 from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
 from ergotools.infrastructure.settings_store import JsonSettingsStore
@@ -47,9 +47,11 @@ def enter_new(dialog: JobManagementDialog, identity: str = "assembly") -> None:
     dialog.new_button.click()
     dialog.job_id_combo.setEditText(identity)
     dialog.job_name_input.setText("Assembly")
-    cell = dialog.risk_table.item(0, 1)
+    dialog.input_modes.button(0).click()
+    cell = dialog.direct_values.fields[AssessmentKind.LIFFT]
     assert cell is not None
     cell.setText("1")
+    cell.editingFinished.emit()
 
 
 def test_create_current_values_and_reopen(tmp_path: Path) -> None:
@@ -68,14 +70,14 @@ def test_create_current_values_and_reopen(tmp_path: Path) -> None:
         dialog.save_button.click()
         assert dialog.selected_job_id == "assembly"
         assert not hasattr(dialog, "profile_combo")
-        dialog.risk_table.item(0, 1).setText("2")
+        dialog.direct_values.fields[AssessmentKind.LIFFT].setText("2")
         dialog.save_button.click()
         with AssessmentProjectFile.open(tmp_path / "project.sqlite") as project:
             current = project.load_job_risk().for_job("assembly")
             assert len(current.measurements) == 1
             assert current.measurements[0].cumulative_damage == 2
-        dialog.cancel_button.click()
-        assert dialog.risk_table.measurements() == current.measurements
+        assert not hasattr(dialog, "cancel_button")
+        assert dialog.direct_values.measurements() == current.measurements
     finally:
         dialog.close()
         workspace.close(choice=CloseChoice.DISCARD)
@@ -94,20 +96,20 @@ def test_failed_save_keeps_visible_entries_for_retry(tmp_path: Path) -> None:
     dialog = JobManagementDialog(workspace, load_icons(), MeasurementSystem.IMPERIAL)
     try:
         enter_new(dialog)
-        with patch.object(dialog, "_warning") as warning:
-            cell = dialog.risk_table.item(0, 1)
+        with patch.object(dialog, "_warning"):
+            cell = dialog.direct_values.fields[AssessmentKind.LIFFT]
             cell.setText("invalid")
             assert not dialog.accept_pending_job()
-            assert warning.called
+            assert dialog.direct_values.errors[AssessmentKind.LIFFT].text()
             with patch.object(
                 AssessmentProjectFile, "save_job_details", side_effect=OSError("disk")
             ):
                 cell.setText("2")
                 assert dialog.job_name_input.text() == "Assembly"
             dialog.save_button.click()
-            assert dialog.risk_table.measurements()[0].cumulative_damage == 2
+            assert dialog.direct_values.measurements()[0].cumulative_damage == 2
     finally:
-        dialog.risk_table.item(0, 1).setText("2")
+        dialog.direct_values.fields[AssessmentKind.LIFFT].setText("2")
         dialog.close()
         workspace.close(choice=CloseChoice.DISCARD)
 
@@ -163,7 +165,7 @@ def test_nested_workplace_save_preserves_form_and_next_save(tmp_path: Path) -> N
         workspace.close(choice=CloseChoice.DISCARD)
 
 
-def test_navigation_search_discard_and_modal_execution(tmp_path: Path) -> None:
+def test_navigation_search_and_modal_execution(tmp_path: Path) -> None:
     """Navigation follows the original order and exact-ID modal search selects once.
 
     Args:
@@ -184,7 +186,7 @@ def test_navigation_search_discard_and_modal_execution(tmp_path: Path) -> None:
         dialog.first_button.click()
         assert dialog.job_id_combo.currentText() == "j"
         enter_new(dialog)
-        dialog.cancel_button.click()
+        assert not hasattr(dialog, "cancel_button")
         assert dialog.job_id_combo.currentText() == "assembly"
 
         def search() -> None:
@@ -254,7 +256,7 @@ def test_empty_demo_creates_exclusively_and_saves_first_job(tmp_path: Path) -> N
     try:
         assert dialog.job_id_combo.count() == 0
         assert not dialog.workplaces_button.isEnabled()
-        dialog.cancel_button.click()
+        assert not hasattr(dialog, "cancel_button")
         with patch.object(QMessageBox, "information"):
             enter_new(dialog)
             dialog.save_button.click()
@@ -338,7 +340,7 @@ def test_delete_confirmation_retains_history_and_selected_form(tmp_path: Path) -
         ):
             dialog.delete_button.click()
         assert dialog.job_id_combo.currentText() == "j"
-        assert not dialog.risk_table.measurements()
+        assert not dialog.direct_values.measurements()
         with (
             patch.object(QMessageBox, "question", return_value=QMessageBox.Yes),
             patch.object(QMessageBox, "warning") as warning,

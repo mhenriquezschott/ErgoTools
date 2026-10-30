@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 import pytest
 from PyQt5.QtCore import QAbstractAnimation
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QFrame
 
 from ergotools.application.document_lifecycle import CloseChoice
 from ergotools.application.settings import Language
@@ -20,6 +20,7 @@ from ergotools.bootstrap import create_window
 from ergotools.domain.assessments.lifft_draft import LifftDraft, LifftTask
 from ergotools.domain.model_units import MeasurementSystem
 from ergotools.domain.project import ProjectMetadata
+from ergotools.presentation.desktop.body_region_panel import MIN_BODY_VIEWPORT_HEIGHT
 from ergotools.presentation.desktop.lifft_window import LifftWindow
 from ergotools.presentation.desktop.result_scales import DamageScale, RiskGauge
 
@@ -187,12 +188,16 @@ def test_panel_localization_assets_and_native_width_bounds(window: LifftWindow) 
     assert sidebar.individual_risk_title.text() == "LiFFT individual"
     assert sidebar.damage_progress.toolTip().startswith("Escala de daño")
     assert 240 <= body.width() <= 285 and 230 <= sidebar.width() <= 260
-    assert body.viewport.height() >= 315
+    assert body.viewport.height() >= MIN_BODY_VIEWPORT_HEIGHT
+    active = body.findChild(QFrame, "activeRegionPanel")
+    assert active is not None
+    assert body.viewport.geometry().bottom() < active.geometry().top()
+    assert active.height() == 56
     for widget in (
         body,
         sidebar,
         window.task_panel,
-        window.main_navigation.context_frame,
+        window.main_navigation.location_browser,
     ):
         position = widget.mapTo(window, widget.rect().bottomRight())
         assert position.x() < window.width() and position.y() < window.height()

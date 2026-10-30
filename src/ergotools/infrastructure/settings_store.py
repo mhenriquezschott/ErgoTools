@@ -72,7 +72,8 @@ class JsonSettingsStore:
         Returns:
             Validated settings; defaults only for a missing file, decimal point for
             version 1, animation True before version 3, and default gauge markers
-            before version 5 and Undo limit 25 before version 6.
+            before version 5, Undo limit 25 before version 6 and result animation True
+            before version 7.
 
         Raises:
             SettingsFormatError: Encoding, fields, duplicate members, version or
@@ -94,22 +95,24 @@ class JsonSettingsStore:
                 "default_units",
                 "recent_documents",
             }
-            if isinstance(data, dict) and data.get("version") in (2, 3, 4, 5, 6):
+            if isinstance(data, dict) and data.get("version") in (2, 3, 4, 5, 6, 7):
                 expected.add("decimal_convention")
-            if isinstance(data, dict) and data.get("version") in (3, 4, 5, 6):
+            if isinstance(data, dict) and data.get("version") in (3, 4, 5, 6, 7):
                 expected.add("animated_body_region_focus")
-            if isinstance(data, dict) and data.get("version") in (4, 5, 6):
+            if isinstance(data, dict) and data.get("version") in (4, 5, 6, 7):
                 expected.add("assessment_contexts")
-            if isinstance(data, dict) and data.get("version") in (5, 6):
+            if isinstance(data, dict) and data.get("version") in (5, 6, 7):
                 expected.add("gauge_markers")
-            if isinstance(data, dict) and data.get("version") == 6:
+            if isinstance(data, dict) and data.get("version") in (6, 7):
                 expected.add("undo_limit")
+            if isinstance(data, dict) and data.get("version") == 7:
+                expected.update(("animated_risk_gauge", "animated_cumulative_damage"))
             if not isinstance(data, dict) or set(data) != expected:
                 raise SettingsFormatError("Invalid settings fields.")
             if (
                 data["format"] != "ergotools.user-settings"
                 or type(data["version"]) is not int
-                or data["version"] not in (1, 2, 3, 4, 5, 6)
+                or data["version"] not in (1, 2, 3, 4, 5, 6, 7)
             ):
                 raise SettingsFormatError("Unsupported settings version.")
             if not isinstance(data["recent_documents"], list):
@@ -138,6 +141,8 @@ class JsonSettingsStore:
                 tuple(tuple(item) for item in contexts),
                 GaugeMarkerSettings(**markers),
                 data.get("undo_limit", DEFAULT_UNDO_LIMIT),
+                data.get("animated_risk_gauge", True),
+                data.get("animated_cumulative_damage", True),
             )
         except (ValueError, TypeError, RecursionError) as error:
             raise SettingsFormatError("Invalid user settings.") from error
@@ -150,7 +155,7 @@ class JsonSettingsStore:
         are outside this initial contract. No project locations are read.
 
         Args:
-            settings: Validated immutable preferences to write as version 6; project
+            settings: Validated immutable preferences to write as version 7; project
                 contents are not opened.
 
         Returns:
@@ -166,7 +171,9 @@ class JsonSettingsStore:
             json.dumps(
                 {
                     "format": "ergotools.user-settings",
-                    "version": 6,
+                    "version": 7,
+                    "animated_risk_gauge": settings.animated_risk_gauge,
+                    "animated_cumulative_damage": settings.animated_cumulative_damage,
                     "undo_limit": settings.undo_limit,
                     "gauge_markers": {
                         "show_ticks": settings.gauge_markers.show_ticks,

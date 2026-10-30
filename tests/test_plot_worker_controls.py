@@ -194,8 +194,8 @@ def test_unplaced_hidden_creation_and_batch_validation(
         replace(result, selection=replace(result.selection, risk_view=PlotRiskView.JOB))
     )
     assert not panel.save_button.isEnabled() and not panel.save_all_button.isEnabled()
-    with pytest.raises(ValueError):
-        layer.save_workers((layer.worker_settings(1),))
+    # The worker pane stays disabled, but Job glyphs now share assignment storage.
+    assert layer.save_workers((layer.worker_settings(1),))
     layer.clear()
     assert not panel.save_button.isEnabled() and panel.x_input.text() == ""
     with pytest.raises(ValueError):

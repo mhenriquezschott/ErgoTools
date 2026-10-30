@@ -23,6 +23,8 @@ class ProjectMetadata:
 
     Attributes:
         precision: Project-saved display decimals; never round source/result storage.
+        assessment_context_expanded: Saved disclosure choice; None retains automatic
+            defaults for older/new projects until the user explicitly chooses a state.
         project_id: Nonblank saved project identity, never derived from a file name.
         title: Nonblank saved project title, independent of its current file path.
         default_units: Explicit project display/input default; individual sources
@@ -41,6 +43,7 @@ class ProjectMetadata:
     created_at: datetime | None = None
     language: Language | None = None
     precision: DisplayPrecision = field(default_factory=DisplayPrecision)
+    assessment_context_expanded: bool | None = None
 
     def __post_init__(self) -> None:
         """Require explicit metadata without deriving identity from file paths.
@@ -57,8 +60,12 @@ class ProjectMetadata:
                 project unit default or display precision. Project description must
                 be text or absent.
                 Project creation time must be local, at second precision. Unsupported
-                project language.
+                project language or non-boolean disclosure choice.
         """
+        if self.assessment_context_expanded is not None and not isinstance(
+            self.assessment_context_expanded, bool
+        ):
+            raise ValueError("Invalid assessment context disclosure setting.")
         if not isinstance(self.precision, DisplayPrecision):
             raise ValueError("Unsupported project display precision.")
         if any(

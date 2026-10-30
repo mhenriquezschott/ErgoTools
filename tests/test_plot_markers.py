@@ -12,7 +12,7 @@ from unittest.mock import Mock
 
 import pytest
 from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
-from PyQt5.QtGui import QMouseEvent
+from PyQt5.QtGui import QColor, QImage, QMouseEvent, QPainter
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication, QGraphicsItem
 
@@ -204,16 +204,16 @@ def test_render_modes_save_retry_cancel_and_image_guard(
     )
     layer.set_results(job_result)
     job = layer.items["job", 1]
-    assert job.size == 38 and job.appearance.label == "j" and job.anchored
+    assert job.size == circle.size and job.appearance.label == "j" and job.anchored
     job.setPos(300, 200)
     layer.moved(job)
     layer.cancel(("job", 1))
-    assert job.anchor_point() == PlotPoint(100, 100)
+    assert job.anchor_point() == PlotPoint(150, 125)
     job.setPos(300, 200)
     layer.moved(job)
     assert layer.save(("job", 1))
     assert layer.items["job", 1].anchor_point() == PlotPoint(300, 200)
-    assert project.load_plot_positions().marker(1).point == PlotPoint(150, 125)
+    assert project.load_plot_positions().marker(1).point == PlotPoint(300, 200)
     assert canvas.scene().sceneRect().width() == 640
     canvas.set_layout(LoadedPlantLayout(SCOPE, None))
     assert not layer.items and layer.results is None
@@ -221,20 +221,17 @@ def test_render_modes_save_retry_cancel_and_image_guard(
     canvas.deleteLater()
 
 
-def test_unplaced_jobs_offsets_origin_and_pending_interlock(
-    project: AssessmentProjectFile,
-    tmp_path: Path,
+def test_job_occurrences_never_invent_positions_or_station_fanout(
+    project: AssessmentProjectFile, tmp_path: Path
 ) -> None:
-    """Unplaced jobs stay dashed; pending moves block peers and preserve offsets.
+    """Job placements alone never create origin squares; assignments own all geometry.
 
     Args:
-        project: Isolated native project fixture owned by this test; never the reference
-            checkout.
-        tmp_path: Pytest-owned temporary directory; all created projects, images and
-            settings stay inside it.
+        project: Disposable native source catalog with two assigned workers at one Job.
+        tmp_path: Temporary decoded-map directory.
 
     Returns:
-        None.
+        None; repeated Job squares follow separate worker points and preserve anchors.
     """
     canvas = canvas_with_map(tmp_path)
     layer = PlotMarkerLayer(
@@ -249,23 +246,24 @@ def test_unplaced_jobs_offsets_origin_and_pending_interlock(
         PlotFilterSelection(SCOPE, risk_view=PlotRiskView.JOB),
         current_year=2026,
     )
-    # A second placed row at the same station exercises the original nine-pixel fanout.
-    second = replace(
-        result.jobs[0], placement=replace(result.jobs[0].placement, placement_id=99)
-    )
-    layer.set_results(replace(result, jobs=(*result.jobs, second)))
-    first, peer = layer.items["job", 1], layer.items["job", 99]
-    assert not first.anchored and first.anchor_point() == PlotPoint(18, 18)
-    assert peer.offset == QPointF(9, 0)
+    layer.set_results(result)
+    assert not layer.items  # No fake origin and no placement-based preview.
+    positions = positions_for(project)
+    result = replace(result, positions=positions)
+    layer.set_results(result)
+    assert set(layer.items) == {("job", 1), ("job", 3)}
+    first, peer = layer.items["job", 1], layer.items["job", 3]
+    assert first.anchor_point() == PlotPoint(100, 100)
+    assert peer.anchor_point() == PlotPoint(200, 100) and peer.offset == QPointF()
+    assert first.appearance.label == peer.appearance.label == "j"
     first.setPos(0, 0)
     layer.moved(first)
-    assert not peer.isEnabled()
+    assert peer.anchor_point() == PlotPoint(200, 100)
     assert layer.save(("job", 1))
-    assert layer.items["job", 1].anchor_point() == PlotPoint(0, 0)
-    assert layer.items["job", 99].anchor_point() == PlotPoint(0, 0)
-    assert layer.items["job", 99].pos() == QPointF(9, 0)
-    assert layer.items["job", 99].isEnabled()
-    assert project.load_plot_positions().stations[0].point == PlotPoint(0, 0)
+    saved = project.load_plot_positions()
+    assert saved.marker(1).point == PlotPoint(0, 0)
+    assert saved.marker(3).point == PlotPoint(200, 100)
+    assert saved.stations == positions.stations
     canvas.close()
     canvas.deleteLater()
 
@@ -392,3 +390,29 @@ def test_hidden_unavailable_neutral_and_literal_tooltips(
         layer.save(("worker", 3))
     canvas.close()
     canvas.deleteLater()
+
+
+@pytest.mark.parametrize("shape", ["circle", "triangle", "hexagon"])
+def test_individual_symbols_have_visible_outline(shape: str) -> None:
+    """Individual symbols retain risk fill and a dark edge on a bright plant image.
+
+    Args:
+        shape: Each worker demographic symbol used by the Individual view.
+
+    Returns:
+        None; a real Qt paint contains the shared dark outline and unchanged risk fill.
+    """
+    item = PlotMarkerItem(
+        PlotPoint(0, 0), MarkerAppearance(shape, "#2eff00"), Mock(), Mock(), size=80
+    )
+    pixels = QImage(96, 96, QImage.Format.Format_ARGB32)
+    pixels.fill(QColor("white"))
+    painter = QPainter(pixels)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.translate(8, 8)
+    item.paint(painter, None)
+    painter.end()
+    edge = QColor("#162C3A").rgb()
+    assert sum(pixels.pixel(x, y) == edge for x in range(96) for y in range(96)) > 100
+    assert pixels.pixelColor(48, 48).name() == "#2eff00"
+    item.deleteLater()

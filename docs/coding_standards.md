@@ -57,7 +57,7 @@ Regeneration never writes the certification map and still fails for pending file
 Both checks are source-only and execute no inspected application code. Structural
 rules cannot infer every error from an injected adapter or judge semantic prose;
 that remains the reviewer's responsibility. Frozen source evidence/generated files
-are outside the maintained-code inventory; two developer shell entries are reviewed
+are outside the maintained-code inventory; the shell, Windows command and macOS command entries are reviewed
 for file purpose, arguments, exit behavior and effects.
 
 

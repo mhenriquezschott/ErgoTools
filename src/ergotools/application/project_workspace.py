@@ -34,6 +34,7 @@ from ergotools.application.history_access import (
     DeletableHistoryRepository,
     HistoryRepository,
     HistorySnapshot,
+    WorkplaceAssessmentRepository,
     WorkplaceAssociationRepository,
 )
 from ergotools.application.job_access import JobRepository, JobSnapshot
@@ -576,11 +577,15 @@ class ProjectWorkspace[State]:
             raise
         editing.record(label)
 
-    def stage_calculation(self, result: HistoricalAssessmentResult | None) -> None:
+    def stage_calculation(
+        self, result: HistoricalAssessmentResult | None, *, automatic: bool = False
+    ) -> None:
         """Accept a fresh calculated output without publishing the project file.
 
         Args:
             result: Exact current-source calculation, or None for unavailable results.
+            automatic: Fold derived output into the completed input action instead of
+                adding an explicit Calculate action. Caller has just committed input.
 
         Returns:
             None; unchanged outputs add no action. Accepted derived data makes the
@@ -592,7 +597,10 @@ class ProjectWorkspace[State]:
         self.stage_assessments()
         with editing.stage():
             self._persist_active(result)
-        editing.record("assessment.calculate")
+        if automatic:
+            editing.synchronize()
+        else:
+            editing.record("assessment.calculate")
 
     @property
     def has_unsaved_changes(self) -> bool:
@@ -789,7 +797,8 @@ class ProjectWorkspace[State]:
         """Save project display preferences through the owned adapter only.
 
         Args:
-            metadata: Current project metadata with requested units and decimal counts.
+            metadata: Current metadata with requested units, decimals or context
+                disclosure.
 
         Returns:
             None; source sessions and their undo histories are unchanged.
@@ -2092,13 +2101,32 @@ class ProjectWorkspace[State]:
                 transition is active.
             KeyError: The open source no longer exists in the issued history.
         """
-        self._check()
         active = self._active
         if active is None:
             raise RuntimeError("No assessment is open.")
+        return self.delete_assessment(snapshot, active.document.document_id)
+
+    def delete_assessment(
+        self, snapshot: HistorySnapshot, document_id: str
+    ) -> HistorySnapshot:
+        """Delete one explicitly confirmed saved source, retaining unrelated sessions.
+
+        Args:
+            snapshot: Latest workspace-issued history authority for this project.
+            document_id: Exact current/standalone/historical source chosen by the user.
+
+        Returns:
+            Fresh history authority after atomic removal of this source/results only.
+            The workplace assignment remains; shared Undo/Redo restores exact data.
+
+        Raises:
+            ValueError: Snapshot is stale/foreign or saved ownership changed.
+            RuntimeError: Deletion capability is absent or a transition is active.
+            KeyError: The exact source is absent from the supplied history.
+        """
+        self._check()
         if not self.history_is_current(snapshot):
             raise ValueError("History snapshot is stale or belongs to another owner.")
-        document_id = active.document.document_id
         if not any(e.document_id == document_id for e in snapshot.history.entries):
             raise KeyError(document_id)
         repository: object = self._project
@@ -2109,7 +2137,11 @@ class ProjectWorkspace[State]:
             result = repository.delete_historical_assessment(
                 snapshot.history, document_id
             )
-            self._active = None
+            if (
+                self._active is not None
+                and self._active.document.document_id == document_id
+            ):
+                self._active = None
             self._browse_sessions.pop(document_id, None)
             self._browse_pending.pop(document_id, None)
             self._browse_readonly.discard(document_id)
@@ -2140,7 +2172,7 @@ class ProjectWorkspace[State]:
             history: Latest exact workspace-issued saved assessment ownership
                 view.
             request: Explicit Copy/Move selection with exact source and destination
-                assignment ownership.
+                workplace or standalone ownership, with explicit replacement consent.
             document_ids: Fresh destination source identity per selected model; the
                 transfer planner validates uniqueness and completeness.
             choice: Explicit Save/Discard/Cancel disposition. None permits only a clean
@@ -2173,7 +2205,8 @@ class ProjectWorkspace[State]:
         )
         removes_active = (
             self._active is not None
-            and self._active.document.document_id in plan.removed_documents
+            and self._active.document.document_id
+            in (*plan.removed_documents, *plan.replaced_documents)
         )
         if removes_active and (
             choice is CloseChoice.CANCEL
@@ -2192,6 +2225,10 @@ class ProjectWorkspace[State]:
             )
             if removes_active:
                 self._active = None
+            for document_id in (*plan.removed_documents, *plan.replaced_documents):
+                self._browse_sessions.pop(document_id, None)
+                self._browse_pending.pop(document_id, None)
+                self._browse_readonly.discard(document_id)
             self._job_snapshot = None
             self._history_snapshot = None
             return TransitionOutcome(True)
@@ -2210,6 +2247,32 @@ class ProjectWorkspace[State]:
             capabilities; no I/O.
         """
         return self.supports_job_risk and isinstance(self._project, RotationRepository)
+
+    def saved_assessment_result(
+        self, document_id: str
+    ) -> HistoricalAssessmentResult | None:
+        """Read a saved source's result for assessment-browser display only.
+
+        Args:
+            document_id: Exact source identity in the current ownership history.
+
+        Returns:
+            Detached sole result, or None when unavailable; never evaluates inputs.
+
+        Raises:
+            KeyError: The source is absent from the current project.
+            RuntimeError: No project is open.
+        """
+        if not any(
+            e.document_id == document_id for e in self.read_history().history.entries
+        ):
+            raise KeyError(document_id)
+        project: object = self._project
+        if not isinstance(project, SavedResultRepository):
+            return None
+        metadata = self.project_metadata
+        assert metadata is not None
+        return project.load_saved_result(DocumentKey(metadata.project_id, document_id))
 
     def historical_result(self) -> HistoricalAssessmentResult | None:
         """Expose the active assessment's sole matching saved calculation.
@@ -2278,7 +2341,7 @@ class ProjectWorkspace[State]:
             None.
 
         Returns:
-            True when the active repository reports supported job-profile evidence; no
+            True when the active repository supports current Job risk values; no
             load or write.
         """
         project: object = self._project
@@ -2295,7 +2358,7 @@ class ProjectWorkspace[State]:
 
         Raises:
             RuntimeError: No project is open or its adapter lacks supported job risk
-                profiles.
+                risk values.
         """
         if self._project is None:
             raise RuntimeError("No project is open.")
@@ -2710,6 +2773,66 @@ class ProjectWorkspace[State]:
             raise RuntimeError("Assessment association is unavailable.")
         project.associate_assessment(document_id, assignment_id)
         self._history_snapshot = None
+
+    def add_workplace_assessment(
+        self,
+        worker_id: str,
+        workplace: WorkplaceContext,
+        placement_id: int | None,
+        document_id: str,
+        initial: State,
+        *,
+        effective_date: date,
+        expected_document_id: str | None = None,
+    ) -> AssignmentAssessment:
+        """Accept a new/confirmed replacement workplace assessment into private state.
+
+        Args:
+            worker_id: Saved worker whose standalone source stays independent.
+            workplace: Explicit station/shift selected in the shared hierarchy picker.
+            placement_id: Optional Job, unchanged for an existing active assignment.
+            document_id: Fresh identity used only for new sources.
+            initial: Blank tool source with caller's units and starter task grid.
+            effective_date: Start date if a workplace assignment must be created.
+            expected_document_id: Existing source whose replacement was confirmed;
+                None protects all existing destinations.
+
+        Returns:
+            Exact created/replaced owner. Retained target sessions reload the blank
+            source; shared Undo/Redo and main Save own history and publication.
+
+        Raises:
+            RuntimeError: Capability/project is absent or diagnostic edits remain.
+            ValueError: Destination ownership/Job or expected-source validation fails.
+            KeyError: Saved worker/workplace membership is missing.
+        """
+        self._check()
+        if self.editing is not None:
+            self.stage_assessments()
+        elif self.has_unsaved_changes:
+            raise RuntimeError("Save or discard edits before adding an assessment.")
+        project: object = self._project
+        if not isinstance(project, WorkplaceAssessmentRepository):
+            raise RuntimeError("Workplace assessment creation is unavailable.")
+        entry = project.add_workplace_assessment(
+            worker_id,
+            workplace,
+            placement_id,
+            document_id,
+            initial,
+            effective_date=effective_date,
+            expected_document_id=expected_document_id,
+        )
+        self._job_snapshot = None
+        self._history_snapshot = None
+        metadata = self.project_metadata
+        assert metadata is not None
+        key = DocumentKey(metadata.project_id, entry.document_id)
+        session = DocumentSession(key, initial, persisted=True)
+        self._browse_sessions[entry.document_id] = session
+        if self._active is not None and self._active.document == key:
+            self._active = session
+        return entry
 
     def associate_assessment_at_workplace(
         self,

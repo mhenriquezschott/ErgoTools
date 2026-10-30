@@ -97,7 +97,7 @@ def test_save_pending_accept_replay_publish(
     assert_save(window, False)
     assert window._assessment_menu.save_as.isEnabled()
     window.calculate()
-    assert_save(window, True)
+    assert_save(window, False)  # Already automatically calculated and saved.
     window.save_project()
     assert_save(window, False)
 

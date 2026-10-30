@@ -261,7 +261,7 @@ def test_version_two_camera_default_and_boolean_validation(tmp_path: Path) -> No
     assert path.read_bytes() == original
     store.save(loaded)
     payload = json.loads(path.read_text())
-    assert payload["version"] == 6
+    assert payload["version"] == 7
     for invalid in (0, "true", None):
         payload["animated_body_region_focus"] = invalid
         path.write_text(json.dumps(payload))

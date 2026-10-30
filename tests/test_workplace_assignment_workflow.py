@@ -9,7 +9,6 @@ import sqlite3
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from PyQt5.QtTest import QTest
@@ -27,7 +26,7 @@ from ergotools.application.job_assignment import change_worker_assignment
 from ergotools.application.project_workspace import ProjectWorkspace
 from ergotools.application.saved_results import calculate_saved_result
 from ergotools.application.session import DocumentKey
-from ergotools.bootstrap import create_window, load_icons
+from ergotools.bootstrap import load_icons
 from ergotools.domain.assessment_history import AssignmentAssessment
 from ergotools.domain.assessments.document import AssessmentDraft, AssessmentKind
 from ergotools.domain.job_catalog import (
@@ -291,68 +290,6 @@ def test_workplace_picker_filters_optional_jobs_and_locks_reused_owner(
         dialog.close()
 
 
-@pytest.mark.parametrize("language", list(Language))
-@pytest.mark.parametrize("kind", list(AssessmentKind))
-def test_main_associate_creates_workplace_without_worker_window(
-    tmp_path: Path, language: Language, kind: AssessmentKind
-) -> None:
-    """Cancel is inert; accepting association directly creates the missing assignment.
-
-    Args:
-        tmp_path: Disposable native project and desktop preferences directory.
-        language: Current English/Spanish application captions.
-        kind: Each ergonomic tool has the same standalone-to-workplace workflow.
-
-    Returns:
-        None. A single main action retains the source identity and calculated output.
-    """
-    path = seed_workplace_source(tmp_path, kind)
-    view = create_window(
-        tmp_path / "desktop.json", original_navigation=True, enable_vtk=False
-    )
-    try:
-        view.language = language
-        view.open_project_location(str(path))
-        workspace = view.presenter.workspace
-        view.assessment_tabs.setCurrentIndex(list(AssessmentKind).index(kind))
-        view.assessment_navigation.select(
-            "A", kind, lambda: view._blank_kind(kind), explicit=True
-        )
-        view.refresh()
-        source = workspace.active.document
-        with patch.object(
-            WorkplaceAssignmentDialog, "exec_", return_value=QDialog.Rejected
-        ):
-            view.main_navigation.associate_button.click()
-        assert not workspace.read_jobs().jobs.assignments
-        assert workspace.active.document == source
-
-        def choose(dialog: WorkplaceAssignmentDialog) -> int:
-            """Accept an actual station/shift with its valid No Job option.
-
-            Args:
-                dialog: Real picker opened by the main association action.
-
-            Returns:
-                Accepted native result after explicit workplace selection.
-            """
-            dialog.select_workplace(STATION.at_shift("1"))
-            dialog.accept_button.click()
-            return dialog.result()
-
-        with patch.object(WorkplaceAssignmentDialog, "exec_", choose):
-            view.main_navigation.associate_button.click()
-        assert len(workspace.read_jobs().jobs.assignments) == 1
-        assert workspace.active.document == source
-        assert view.assessment_navigation.view.workplace == STATION.at_shift("1")
-        assert workspace.read_history().history.standalone_for("A", kind) is None
-    finally:
-        view.presenter.workspace.close(choice=CloseChoice.DISCARD)
-        view.close()
-        view.deleteLater()
-        _APP.processEvents()
-
-
 @pytest.mark.parametrize("with_job", (False, True))
 def test_existing_assignment_is_reused_without_reclassification(
     tmp_path: Path, with_job: bool
@@ -440,58 +377,6 @@ def test_association_rejects_invalid_destinations_without_new_assignment(
             )
     finally:
         workspace.close(choice=CloseChoice.DISCARD)
-
-
-def test_main_association_departure_cancel_creates_no_assignment(
-    tmp_path: Path,
-) -> None:
-    """A departure cancellation after picker acceptance remains an inert operation.
-
-    Args:
-        tmp_path: Disposable source and desktop preferences directory.
-
-    Returns:
-        None. The standalone source and durable file are unchanged after cancellation.
-    """
-    path = seed_workplace_source(tmp_path, AssessmentKind.LIFFT)
-    before = path.read_bytes()
-    view = create_window(
-        tmp_path / "cancel.json", original_navigation=True, enable_vtk=False
-    )
-    try:
-        view.open_project_location(str(path))
-        workspace = view.presenter.workspace
-        source = workspace.active.document
-
-        def choose(dialog: WorkplaceAssignmentDialog) -> int:
-            """Select a valid workplace before the separate departure decision.
-
-            Args:
-                dialog: Real immutable-context picker opened by the main action.
-
-            Returns:
-                Accepted selection; this alone must never write a relationship.
-            """
-            dialog.select_workplace(STATION.at_shift("1"))
-            return QDialog.Accepted
-
-        with (
-            patch.object(WorkplaceAssignmentDialog, "exec_", choose),
-            patch.object(view, "browse_choice", return_value=CloseChoice.CANCEL),
-        ):
-            view.main_navigation.associate_button.click()
-        assert not workspace.read_jobs().jobs.assignments
-        assert workspace.active.document == source
-        assert (
-            workspace.read_history().history.standalone_for("A", AssessmentKind.LIFFT)
-            is not None
-        )
-        assert path.read_bytes() == before
-    finally:
-        view.presenter.workspace.close(choice=CloseChoice.DISCARD)
-        view.close()
-        view.deleteLater()
-        _APP.processEvents()
 
 
 @pytest.mark.parametrize("station_id", ("ST01", "ST02"))

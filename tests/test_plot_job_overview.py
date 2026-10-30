@@ -73,13 +73,15 @@ def test_job_overview_save_cancel_failure_and_selection(
         current_year=2026,
     )
     layer.set_results(result)
-    assert panel.combo.count() == 2 and panel.selected_id == 1
-    assert panel.values["workers"].text() == "3"
+    assert len(panel.selector.rows) == 3 and panel.selected_id == 1
+    assert panel.values["occurrences"].text() == "2"
     assert panel.values["risk"].text() == "0.0%"
     assert panel.values["damage"].text() == "0.0000"
     assert panel.x_input.text() == "100.0" and not panel.save_button.isEnabled()
     panel.navigate(99)
-    assert panel.selected_id == 2
+    assert panel.selected_id == panel.selector.rows[-1].assessment.assignment_id
+    panel.selector.select_id(5)
+    assert panel.selected_id == 5
     assert panel.values["risk"].text() in ("Not available", "No disponible")
     assert panel.x_input.text() == ""
     layer.select(layer.items["job", 1])
@@ -88,7 +90,7 @@ def test_job_overview_save_cancel_failure_and_selection(
     panel.x_input.selectAll()
     QTest.keyClicks(panel.x_input, "nan")
     assert panel.x_input.text() == "nan" and layer.pending
-    assert not panel.combo.isEnabled() and not panel.navigation[2].isEnabled()
+    assert not panel.selector.isEnabled() and not panel.navigation[2].isEnabled()
     panel.navigate(1)
     assert panel.selected_id == 1
     panel.save()
@@ -105,8 +107,8 @@ def test_job_overview_save_cancel_failure_and_selection(
     panel.save()
     assert not layer.pending and panel.selected_id == 1
     assert panel.x_input.text() == "0.0" and panel.y_input.text() == "-12.5"
-    assert panel.combo.isEnabled()
-    assert project.load_plot_positions().marker(1).point == PlotPoint(100, 100)
+    assert panel.selector.isEnabled()
+    assert project.load_plot_positions().marker(1).point == PlotPoint(0, -12.5)
     marker = layer.items["job", 1]
     marker.setPos(80, 95)
     layer.moved(marker)
@@ -122,7 +124,7 @@ def test_job_overview_save_cancel_failure_and_selection(
     layer.clear()
     QApplication.processEvents()
     assert not panel.timer.isActive() and not panel.save_button.isEnabled()
-    assert panel.combo.count() == 0
+    assert len(panel.selector.rows) == 0
     panel.locate()
     panel.close()
     assert not panel.timer.isActive()
@@ -153,7 +155,7 @@ def test_job_overview_empty_and_literal_values(
         current_year=2026,
     )
     panel = PlotJobOverview(layer, load_icons())
-    assert not panel.combo.isEnabled() and panel.values["risk"].text() == "\u2013"
+    assert not panel.selector.isEnabled() and panel.values["risk"].text() == "\u2013"
     panel.save()
     panel.cancel()
     panel.locate()
@@ -166,13 +168,98 @@ def test_job_overview_empty_and_literal_values(
         PlotFilterSelection(PlotScope((("P",),)), risk_view=PlotRiskView.JOB),
         current_year=2026,
     )
-    row = result.jobs[0]
+    row = result.workers[0]
     row = replace(row, job=replace(row.job, name="<b>Literal & name</b>"))
-    result = replace(result, jobs=(row,))
+    result = replace(result, workers=(row,))
     layer.set_results(result)
-    assert panel.values["job"].text() == "j - <b>Literal & name</b>"
+    assert panel.values["job"].text() == "j — <b>Literal & name</b>"
     assert panel.values["job"].textFormat() == Qt.TextFormat.PlainText
     panel.marker_selected(("worker", 1))
     assert panel.selected_id == 1
     panel.close()
     canvas.close()
+
+
+def test_job_chart_and_mapped_count_distinguish_jobs_from_placements(
+    project: AssessmentProjectFile, tmp_path: Path
+) -> None:
+    """Risk bars identify Jobs, while overview counts repeated visible map squares.
+
+    Args:
+        project: Disposable native source/risk repository.
+        tmp_path: Temporary plant-image directory.
+
+    Returns:
+        None; changing a row's placement does not merge or drop its mapped occurrence.
+    """
+    from tests.test_plot_window import host
+
+    window = host(project, tmp_path)
+    try:
+        window.filters.risk_buttons[PlotRiskView.JOB].click()
+        results = window.layer.results
+        rows = results.workers
+        selected = rows[0]
+        peers = tuple(row for row in rows if row.job == selected.job)
+        assert len(peers) == 2
+        changed = tuple(
+            replace(row, placement=None) if row is peers[-1] else row for row in rows
+        )
+        window.layer.set_results(replace(results, workers=changed))
+        window.jobs.selector.select_id(selected.assessment.assignment_id)
+        assert window.jobs.values["occurrences"].text() == "2"
+        labels = [
+            label.get_text()
+            for label in window.tools.canvas.figure.axes[0].get_yticklabels()
+        ]
+        assert selected.job.job_id in labels
+        assert all("(" not in text for text in labels)
+    finally:
+        window.confirm_close = Mock(return_value=True)
+        window.close()
+        window.deleteLater()
+
+
+@pytest.mark.parametrize("language", list(Language))
+def test_job_locate_is_labeled_visible_and_centers_selected_occurrence(
+    project: AssessmentProjectFile, tmp_path: Path, language: Language
+) -> None:
+    """Job Locate is discoverable below risk values and uses the shared zoomed locator.
+
+    Args:
+        project: Disposable native source repository.
+        tmp_path: Temporary image directory.
+        language: English/Spanish label and layout must remain readable.
+
+    Returns:
+        None; clicking the visible button centers/highlights the selected Job square.
+    """
+    from tests.test_plot_window import host
+
+    window = host(project, tmp_path, language=language)
+    try:
+        window.filters.risk_buttons[PlotRiskView.JOB].click()
+        window.tabs.setCurrentIndex(1)
+        QApplication.processEvents()
+        panel = window.jobs
+        button = panel.locate_button
+        assert button.text() == (
+            "Localizar" if language is Language.SPANISH else "Locate"
+        )
+        assert button.isVisible() and button.isEnabled()
+        assert button.parentWidget() is panel.values["risk"].parentWidget()
+        assert button.width() > 100
+        canvas = window.map_panel.canvas
+        canvas.apply_zoom(3, canvas.viewport().rect().center())
+        point = panel.selected_marker().sceneBoundingRect().center()
+        zoom = canvas.navigation_snapshot().zoom
+        saved = project.load_plot_positions()
+        QTest.mouseClick(button, Qt.MouseButton.LeftButton)
+        assert canvas.viewport().rect().contains(canvas.mapFromScene(point))
+        assert panel.timer.isActive()
+        assert canvas.navigation_snapshot().zoom == zoom
+        assert project.load_plot_positions() == saved
+    finally:
+        window.confirm_close = Mock(return_value=True)
+        window.close()
+        window.deleteLater()

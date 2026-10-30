@@ -283,20 +283,22 @@ class PlotToolsOverview(QGroupBox):
             self.description.setText(
                 self.text(
                     "<b>What this shows:</b> Current risk by Job in "
-                    "the selected scope; the number in parentheses is its "
-                    "active placement count.",
-                    "<b>Qué muestra:</b> Riesgo actual por trabajo; el número"
-                    " entre paréntesis indica sus ubicaciones activas.",
+                    "the selected scope. Each bar is one Job, regardless of how "
+                    "many squares represent it on the map.",
+                    "<b>Qué muestra:</b> Riesgo actual por trabajo. "
+                    "Cada barra representa "
+                    "un trabajo, sin contar sus cuadrados repetidos en el mapa.",
                 )
             )
             self.compare.setText(
                 self.text(
-                    "<b>Map:</b> Each labeled square is one active Job "
-                    "placement at its Station anchor; a dashed square has not "
-                    "yet been positioned.",
-                    "<b>Mapa:</b> Cada cuadrado es una ubicación activa del "
-                    "trabajo; el contorno discontinuo indica que aún no está "
-                    "ubicado.",
+                    "<b>Map:</b> Job-only squares use the same assignment positions as "
+                    "Comparison. Labels identify Jobs; gray dashed squares have no "
+                    "applicable Job risk. The chart covers Jobs in the "
+                    "workplace scope.",
+                    "<b>Mapa:</b> Los cuadrados usan las posiciones de Comparación. "
+                    "La etiqueta identifica el trabajo; gris discontinuo indica riesgo "
+                    "no disponible. El gráfico incluye los trabajos del ámbito.",
                 )
             )
         else:

@@ -73,6 +73,9 @@ from ergotools.domain.worker_details import (
     store_body_measurement,
 )
 from ergotools.presentation.desktop.project_history_actions import ProjectHistoryActions
+from ergotools.presentation.desktop.secondary_history_controls import (
+    add_history_buttons,
+)
 from ergotools.presentation.desktop.theme.worker_management import (
     WORKER_MANAGEMENT_STYLE,
 )
@@ -240,14 +243,11 @@ class WorkerManagementDialog(QDialog):
                 pending=self.pending_worker_action,
             )
             self.title_row.addStretch(1)
-            for button in (
+            add_history_buttons(
+                self.title_row,
                 self.project_history.undo_button,
                 self.project_history.redo_button,
-            ):
-                # Mouse replay completes the form edit; keyboard typing Undo stays
-                # with the focused field, as before.
-                button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-                self.title_row.addWidget(button)
+            )
             for field in (
                 self.first_name_input,
                 self.last_name_input,

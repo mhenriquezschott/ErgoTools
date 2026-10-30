@@ -1,61 +1,17 @@
-# F111 — original PLOT worker search and overview selection
+# PLOT worker and Job selection
 
-Source: `src/plant_layout.py`, `PlotWorkerPickerDialog` (lines 550–693) and
-`searchInfoWorkerClicked`. The reviewed constructor/layout is the starting point;
-the capture harness executes only that source class, without importing the legacy
-application, querying its database or modifying its files.
+`PlotResultSelector` provides a compact summary/selection control with a searchable
+hierarchy picker (`PlotResultPicker`). Worker Overview in Individual and Comparison and
+Job Overview in Job view use the corresponding applied result population. The picker
+supports text search, scope navigation and exact assignment identities; it is not a giant
+unstructured combo list. The former `PlotWorkerPicker` implementation is retired.
 
-`PlotWorkerPicker` retains the 820×500 window, 680×420 minimum, original margins,
-hierarchy/result splitter, four result columns, live search, processed icons,
-Select Worker/Cancel buttons and Cancel keyboard mnemonic. The result snapshot
-comes from the existing saved PLOT dataset. Search trims/casefolds a substring
-across ID, name, full workplace path and literal shift. Workplace selection applies
-an exact ancestry prefix; repeated station labels in different sections remain
-separate. First matching result is selected, and double-click accepts it.
+Selecting a result synchronizes the map/overview without creating markers or changing
+saved coordinates. Hidden or unplaced worker records remain distinct from visible points.
+Locate reveals a placed result in the zoomed viewport and centers it when possible.
+Cancel preserves the original selection and local pending controls. Names, repeated
+station IDs and shifts remain literal data, independent of translated labels.
 
-The owned Qt dialog returns a stable assignment ID rather than a dataset index.
-Worker Overview Search now opens it modally. Accept selects the existing marker
-when present, or the overview row for an unplaced/hidden worker. It reveals All
-when the selected assignment is outside the current alphabet filter. This corrects
-the source handler's dataset-index/combo-index mismatch under alphabet filtering.
-Cancel keeps the selected worker and partial visual-setting edits. Search performs
-no SQL queries, editor handoff, marker creation or persistence.
-
-Deliberate corrections: Select is disabled when no matching result exists; Search
-is disabled when the overview has no result rows. Literal full-column tooltips are
-escaped, and English/Spanish captions use the established language contract.
-The subtitle can wrap at narrow sizes. These changes preserve the original layout
-and workflow while making empty results and localization usable. No dependency,
-scientific model, unit conversion, storage format or VTK adapter changed.
-
-## Validation and limits
-
-Three focused cases (English/Spanish picker and real modal overview integration)
-cover duplicate worker assignments, repeated station labels, exact hierarchy,
-literal All/Day shifts, live case-insensitive search, empty acceptance, Cancel,
-double-click, escaped literal names, alphabet disclosure, partial drafts and no
-writes/fabricated marker. Full baseline checks pass: 860 tests, 96.40% coverage,
-Ruff/format, strict mypy on 180 source files, architecture, wheel and sdist.
-An isolated extracted-wheel check repeats the actual modal handoff and verifies
-saved positions remain unchanged after reopening the synthetic project.
-
-Twenty-five native captures cover source and new populated/expanded/selected/
-query/empty/minimum/enlarged states, localized no-data states, and the adjacent
-worker overview/map. All were visually inspected. English populated,
-scope-selected and enlarged captures match pixel-for-pixel. Other captures include
-cursor blink timing and the deliberate disabled empty Select difference; whole
-application parity is not claimed. Native minimum/enlarged states preserve headers,
-buttons and splitter containment. The runtime uses packaged copied assets only;
-source comparison assets are read solely by the evidence harness.
-
-Evidence: `f111_validation.json`, `artifacts/f111-check.log`,
-`artifacts/f111-wheel.log`, `artifacts/f111-native.log`, and
-`artifacts/plot-worker-picker`. Reproducible harnesses are archived in
-`reference/f111-capture.py.txt`, `reference/f111-overview-capture.py.txt` and
-`reference/f111-verify.py.txt`. All 500 reference hashes and approved lock match.
-
-Next: original marker context actions and Load Into Tool handoff, then summaries
-and full PLOT composition. Production PLOT remains disabled. Parent close consent,
-remaining map actions/deletion composition and final application acceptance remain.
-JROT follows PLOT with CBC single-tool, HiGHS multi-tool and no GLPK. Overall
-completion percentage and finish date remain unvalidated.
+Selection/view changes use the existing shared project session. Source/results and
+geometry persist only through their explicit accepted operations and main Save.
+See [Worker Overview](plot_worker_overview.md) and [Job Overview](plot_job_overview.md).

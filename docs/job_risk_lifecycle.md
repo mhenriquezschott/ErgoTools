@@ -1,7 +1,8 @@
 > Historical checkpoint: Job profile/version/evidence behavior below was explicitly
 > superseded on 2026-10-20. Current Job values, calculators, copying and JROT policy are
-> documented in the owner decision record
-> and [current database inventory](database_tables.md). Removed APIs are not supported.
+> documented in [Job Management](job_management.md), the
+> [shared editor](shared_assessment_editor.md) and [current database inventory](database_tables.md).
+> Removed APIs are not supported.
 
 # Job risk evidence and lifecycle — F61
 

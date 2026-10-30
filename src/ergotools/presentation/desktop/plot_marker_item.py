@@ -12,7 +12,16 @@ from dataclasses import dataclass
 from typing import Literal
 
 from PyQt5.QtCore import QPoint, QPointF, QRectF, Qt
-from PyQt5.QtGui import QBrush, QColor, QFont, QPainter, QPainterPath, QPen, QPolygonF
+from PyQt5.QtGui import (
+    QBrush,
+    QColor,
+    QFont,
+    QFontMetricsF,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QPolygonF,
+)
 from PyQt5.QtWidgets import (
     QGraphicsItem,
     QGraphicsObject,
@@ -77,10 +86,9 @@ class PlotMarkerItem(QGraphicsObject):
             moved: Live marker whose completed gesture is being recorded once.
             size: Base marker side in original source pixels before symbol/view-scale
                 projection.
-            scale: Positive finite dimensionless marker/view scale, as specified by the
-                owning method.
-            view_scale: Current positive view transform factor used for inverse-view
-                symbol sizing.
+            scale: Positive saved per-assignment symbol multiplier.
+            view_scale: Positive fitted baseline used for initial symbol normalization,
+                excluding interactive user zoom.
             offset: Display-only offset from the canonical original-image anchor; None
                 means zero.
             anchored: Whether this marker has an explicit/inherited source anchor rather
@@ -119,11 +127,10 @@ class PlotMarkerItem(QGraphicsObject):
         self.set_view_scale(view_scale)
 
     def set_view_scale(self, scale: float) -> None:
-        """Preserve reference inverse-view sizing without altering saved coordinates.
+        """Normalize initial size to image fit, without cancelling user magnification.
 
         Args:
-            scale: Positive finite dimensionless marker/view scale, as specified by the
-                owning method.
+            scale: Positive finite fitted baseline, excluding interactive user zoom.
 
         Returns:
             None.
@@ -138,14 +145,14 @@ class PlotMarkerItem(QGraphicsObject):
         self.update()
 
     def marker_rect(self) -> QRectF:
-        """Return source 38/50-pixel dimensions projected through inverse view scale.
+        """Return source dimensions normalized to the fitted image baseline.
 
         Args:
             None.
 
         Returns:
-            Local source symbol rectangle projected through marker and inverse view
-            scaling.
+            Local symbol rectangle with marker scale and fitted-baseline normalization.
+            User zoom scales this rectangle with the image, without renormalizing it.
         """
         side = self.size * self.internal_scale * self.marker_scale
         return QRectF(0, 0, side, side)
@@ -234,7 +241,7 @@ class PlotMarkerItem(QGraphicsObject):
                 if job
                 else max(1, math.ceil(1.2 * self.internal_scale)),
             )
-            if (job and not self.anchored) or (
+            if (job and (not self.anchored or appearance.job_probability is None)) or (
                 not job and appearance.job_probability is None
             ):
                 pen.setStyle(Qt.PenStyle.DashLine)
@@ -248,18 +255,28 @@ class PlotMarkerItem(QGraphicsObject):
         if job:
             color = QColor(appearance.color)
             painter.setPen(
-                QColor("#071B2D") if color.lightness() > 145 else QColor("white")
+                QColor("#071B2D")
+                if (color.red() * 0.299 + color.green() * 0.587 + color.blue() * 0.114)
+                > 145
+                else QColor("white")
             )
             font = QFont("Segoe UI")
             font.setBold(True)
             font.setPixelSize(max(8, round(11 * self.internal_scale)))
+            # Fit ordinary IDs inside the unchanged Comparison frame. Full literal
+            # identity remains in the tooltip when an unusually long ID needs elision.
+            width = max(1.0, rect.width() - 2 * self.internal_scale)
+            measured = QFontMetricsF(font).horizontalAdvance(appearance.label)
+            if measured > width:
+                font.setPixelSize(max(6, int(font.pixelSize() * width / measured)))
             painter.setFont(font)
-            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, appearance.label)
+            label = QFontMetricsF(font).elidedText(
+                appearance.label, Qt.TextElideMode.ElideMiddle, width
+            )
+            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, label)
         else:
             painter.setPen(
                 QPen(QColor("#162C3A"), max(1, round(1.5 * self.internal_scale)))
-                if appearance.comparison
-                else QPen(Qt.PenStyle.NoPen)
             )
             painter.setBrush(QBrush(QColor(appearance.color)))
             path = self.worker_path()

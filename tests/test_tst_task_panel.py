@@ -296,11 +296,11 @@ def test_header_rebuild_resize_and_programmatic_signals(panel: TstTaskPanel) -> 
         button.height() == 40
         for button in (
             panel.clear_button,
-            panel.context_button,
+            panel.add_task_button,
             panel.calculate_button,
         )
     )
-    assert not panel.context_button.isEnabled()
+    assert panel.add_task_button.isEnabled()
 
     panel.load_source(None)
     QTest.qWait(30)

@@ -19,7 +19,7 @@ class PlotRiskView(StrEnum):
 
     # Display selected-tool individual assessment evidence.
     INDIVIDUAL = "individual"
-    # Display selected-tool job profile evidence.
+    # Display selected-tool current Job risk values.
     JOB = "job"
     # Display individual/job evidence together.
     COMPARISON = "comparison"

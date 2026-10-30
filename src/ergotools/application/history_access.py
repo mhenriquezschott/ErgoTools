@@ -165,3 +165,37 @@ class WorkplaceAssociationRepository(AssociableAssessmentRepository, Protocol):
             Failure leaves both assignment catalog and assessment ownership unchanged.
         """
         ...
+
+
+@runtime_checkable
+class WorkplaceAssessmentRepository[State](Protocol):
+    """Atomically create/reuse a workplace owner and create/replace its tool source."""
+
+    def add_workplace_assessment(
+        self,
+        worker_id: str,
+        workplace: WorkplaceContext,
+        placement_id: int | None,
+        document_id: str,
+        initial: State,
+        *,
+        effective_date: date,
+        expected_document_id: str | None = None,
+    ) -> AssignmentAssessment:
+        """Create blank input at a station, guarding replacement with exact identity.
+
+        Args:
+            worker_id: Existing worker; standalone sources are never consumed.
+            workplace: Real saved station and project shift.
+            placement_id: Optional compatible Job; existing ownership stays unchanged.
+            document_id: Fresh source identity used only for creation.
+            initial: Blank typed source for the selected tool, with its units/task IDs.
+            effective_date: Start date only if a workplace assignment is needed.
+            expected_document_id: Confirmed existing source to replace; None forbids
+                overwriting any existing source.
+
+        Returns:
+            Exact created/replaced owner. Assignment/source/result updates are atomic;
+            replacement retains source identity and removes its calculated result.
+        """
+        ...

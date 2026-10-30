@@ -117,6 +117,11 @@ class JobWorkplaceDialog(QDialog):
         subtitle.setObjectName("supportingText")
         layout.addWidget(subtitle)
         self.filter_input = QLineEdit()
+        self.filter_input.setToolTip(
+            "Filter the workplace hierarchy without changing selections."
+            if language is Language.ENGLISH
+            else "Filtrar la jerarquía sin cambiar las selecciones."
+        )
         self.filter_input.setPlaceholderText(self.text("placements_filter"))
         layout.addWidget(self.filter_input)
         shifts = QHBoxLayout()
@@ -163,9 +168,19 @@ class JobWorkplaceDialog(QDialog):
         self.clear_button.setIcon(icons["filter_reset"])
         self.clear_button.setToolTip(self.text("placements_clear_tip"))
         self.save_button = QPushButton(self.text("placements_save"))
+        self.save_button.setToolTip(
+            "Accept these Job workplaces; the main project Save stores them."
+            if language is Language.ENGLISH
+            else "Aceptar estos lugares; Guardar en la ventana principal los almacena."
+        )
         self.save_button.setObjectName("primaryOutlineButton")
         self.save_button.setIcon(icons["save"])
         self.cancel_button = QPushButton(self.text("cancel"))
+        self.cancel_button.setToolTip(
+            "Close without accepting placement changes."
+            if language is Language.ENGLISH
+            else "Cerrar sin aceptar cambios de ubicación."
+        )
         self.cancel_button.setIcon(icons["close"])
         actions.addWidget(self.clear_button)
         actions.addStretch(1)

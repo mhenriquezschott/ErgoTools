@@ -1,6 +1,6 @@
 """Application-owned worker/tool/workplace browsing without implicit data creation.
 
-Resolve Follow worker and Keep context against direct worker ownership and optional real
+Resolve saved worker/tool locations against direct ownership and optional real
 workplace assignments. User preferences remember contexts; the workspace retains edited
 tool
 sessions and owns all persistence. No Qt, SQL, formulas or display units live here.
@@ -75,11 +75,10 @@ class AssessmentNavigation:
             settings: Per-user context preferences; None keeps memory only.
 
         Returns:
-            None; default to Follow worker with no selected view.
+            None; start with no selected view.
         """
         self.workspace = workspace
         self.settings = settings
-        self.follow_worker = True
         self.view: AssessmentView | None = None
         self._previews: dict[
             tuple[str, str, AssessmentKind, WorkplaceContext | None], str
@@ -186,6 +185,58 @@ class AssessmentNavigation:
             updated = (*rows, (*key, *values))
             if (*key, *values) not in settings.assessment_contexts:
                 self.settings.save(replace(settings, assessment_contexts=updated))
+
+    def select_worker_default(
+        self, worker_id: str, kind: AssessmentKind, blank: Callable[[], AssessmentDraft]
+    ) -> AssessmentView:
+        """Open standalone first, otherwise the alphabetically first saved workplace.
+
+        Args:
+            worker_id: Exact worker selected by the main navigation controls.
+            kind: Active tool; other tools never supply fallback locations.
+            blank: Deferred standalone factory used only if no saved source exists.
+
+        Returns:
+            Existing standalone or exact saved workplace source, otherwise an unsaved
+            standalone preview. Remembered contexts do not override this worker default.
+
+        Raises:
+            KeyError: The worker is absent from the project.
+            RuntimeError: No project is open or a transition is active.
+            ValueError: Ownership or preview validation fails.
+        """
+        history = self.workspace.read_history().history
+        if history.standalone_for(worker_id, kind) is not None:
+            return self.select(worker_id, kind, blank, explicit=True)
+        assignments = {
+            a.assignment_id: a for a in self.workspace.read_jobs().jobs.assignments
+        }
+        sources = sorted(
+            (
+                (e, assignments[e.assignment_id])
+                for e in history.entries
+                if e.worker_id == worker_id
+                and e.kind is kind
+                and e.assignment_id is not None
+            ),
+            key=lambda pair: (
+                tuple(v.casefold() for v in context_values(pair[1].worker.workplace)),
+                not pair[1].active,
+                pair[1].assignment_id,
+                pair[0].document_id,
+            ),
+        )
+        if not sources:
+            return self.select(worker_id, kind, blank, explicit=True)
+        entry, owner = sources[0]
+        return self.select(
+            worker_id,
+            kind,
+            blank,
+            workplace=owner.worker.workplace,
+            assignment_id=entry.assignment_id,
+            explicit=True,
+        )
 
     def select(
         self,
@@ -433,18 +484,49 @@ class AssessmentNavigation:
         owner = next(
             a for a in jobs.assignments if a.assignment_id == entry.assignment_id
         )
-        if owner.placement_id is None:
-            return ()
-        placement = next(
-            p for p in jobs.placements if p.placement_id == owner.placement_id
+        return self.duplicate_workplace_locations(
+            owner.worker.worker_id,
+            entry.kind,
+            owner.worker.workplace,
+            owner.placement_id,
         )
+
+    def duplicate_workplace_locations(
+        self,
+        worker_id: str,
+        kind: AssessmentKind,
+        workplace: WorkplaceContext,
+        placement_id: int | None,
+    ) -> tuple[WorkplaceContext, ...]:
+        """Find same-Job observations before a proposed assignment is inserted.
+
+        Args:
+            worker_id: Saved worker whose independent observations are being created.
+            kind: Current tool; other tools do not require duplicate-location consent.
+            workplace: Proposed exact station/shift, excluded from other observations.
+            placement_id: Optional saved Job placement; None needs no warning.
+
+        Returns:
+            Sorted existing locations for this worker/tool/Job, without writing data.
+
+        Raises:
+            KeyError: The proposed Job placement is absent from the saved catalog.
+        """
+        if placement_id is None:
+            return ()
+        jobs = self.workspace.read_jobs().jobs
+        placement = next(
+            (p for p in jobs.placements if p.placement_id == placement_id), None
+        )
+        if placement is None:
+            raise KeyError(placement_id)
         placements = {
             p.placement_id for p in jobs.placements if p.job_id == placement.job_id
         }
         saved = {
             e.assignment_id
             for e in self.workspace.read_history().history.entries
-            if e.kind is entry.kind
+            if e.kind is kind
         }
         return tuple(
             sorted(
@@ -453,8 +535,8 @@ class AssessmentNavigation:
                     for a in jobs.assignments
                     if a.assignment_id in saved
                     and a.placement_id in placements
-                    and a.worker.worker_id == owner.worker.worker_id
-                    and a.worker.workplace != owner.worker.workplace
+                    and a.worker.worker_id == worker_id
+                    and a.worker.workplace != workplace
                 },
                 key=context_values,
             )

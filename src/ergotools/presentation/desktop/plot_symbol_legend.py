@@ -188,16 +188,16 @@ class PlotSymbolLegend(QWidget):
                 33,
                 "square",
                 self.text(
-                    "Job placement (fill = Job risk)",
-                    "Trabajo ubicado (color = riesgo)",
+                    "Job at assignment (fill = Job risk)",
+                    "Trabajo por asignación (color = riesgo)",
                 ),
             )
             painter.setPen(QColor("#526777"))
             painter.drawText(
                 QPointF(22, 58),
                 self.text(
-                    "One square per placement, not per worker",
-                    "Un cuadrado por ubicación, no por trabajador",
+                    "Same positions as Comparison · labels = Job IDs",
+                    "Posiciones de Comparación · etiquetas = ID de trabajo",
                 ),
             )
             return

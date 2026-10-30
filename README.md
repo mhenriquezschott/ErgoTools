@@ -89,9 +89,17 @@ the overall summary describe the modeled exposure.
 </tr>
 <tr>
 <td valign="top"><strong>Worker records.</strong> Identity, demographic information and workplace assignments provide context for individual and population assessments.</td>
-<td valign="top"><strong>Organization structure.</strong> Plants, sections, lines, stations and shifts describe the workplace. A Station is a physical location; a Job is an activity performed there.</td>
+<td valign="top"><strong>Organization structure.</strong> Plants, sections, lines, stations and shifts describe the workplace and its assignments. A Station is a physical location; a Job is an activity performed there.</td>
 </tr>
 </table>
+
+A worker can have a standalone assessment and separate assessments at different
+workstations in the plant hierarchy. The expanded **Assessment** area identifies
+which saved assessment is in view: its Plant, Section, Line, Station, Shift and
+optional Job. The example below shows Ana’s assessment at ST01; the selectors
+contain her assessment locations for the active tool.
+
+[![Main worker and Assessment area with a saved workstation assessment selected](docs/images/assessment_workplace.png)](docs/images/main_assigned_assessment.png)
 
 ## PLOT
 
@@ -122,13 +130,13 @@ The Worker Overview panel describes the selected worker and assessment.
 
 ### Job risk
 
-The Job view displays activity-level risk at stations, independently of a particular
-worker's assessment. Job information and the Job summary provide an overview of the
+The Job view colors the same assignment squares used in Comparison by activity-level
+risk, with Job IDs and without individual assessment symbols. Job information and the Job summary provide an overview of the
 activities included in the analysis.
 
 <table>
 <tr>
-<td width="50%"><img src="docs/images/plot_job_detail.png" alt="Job risk squares on the plant layout"></td>
+<td width="50%"><a href="docs/images/plot_job_full.png"><img src="docs/images/plot_job_detail.png" alt="Job risk squares on the plant layout"></a></td>
 <td width="50%"><img src="docs/images/plot_job_gauge.png" alt="PLOT Job population risk gauge"></td>
 </tr>
 <tr><td>Job risk colors at workplace locations.</td><td>Summary of the applicable Job risks.</td></tr>
@@ -142,7 +150,7 @@ two sources visible together while preserving their different meanings.
 
 <table>
 <tr>
-<td width="38%"><img src="docs/images/plot_comparison_detail.png" alt="Worker markers overlaid on Job risk squares"></td>
+<td width="38%"><a href="docs/images/plot_comparison_full.png"><img src="docs/images/plot_comparison_detail.png" alt="Worker markers overlaid on Job risk squares"></a></td>
 <td width="62%"><img src="docs/images/plot_comparison_gauges.png" alt="Individual average and Job average comparison gauges"></td>
 </tr>
 </table>
@@ -184,7 +192,7 @@ or copied worker assessments.
 <table>
 <tr>
 <td width="52%"><a href="docs/images/jrot_scope.png"><img src="docs/images/jrot_scope.png" alt="JROT workplace scope selector with shift and plant, section, line and station hierarchy"></a></td>
-<td width="48%"><a href="docs/images/job_management.png"><img src="docs/images/job_management.png" alt="Job Management with LiFFT, DUET and ST measurements"></a></td>
+<td width="48%"><a href="docs/images/job_management.png"><img src="docs/images/job_management.png" alt="Job task tabs with the selected tool’s risk gauge"></a></td>
 </tr>
 <tr>
 <td valign="top"><strong>Workplace scope.</strong> The hierarchy identifies the locations included in the rotation analysis for a selected shift.</td>
@@ -235,7 +243,7 @@ results for exactly the same assignments.
 </tr>
 </table>
 
-Click any comparison image for full resolution. Rotation analysis complements Job
+Click a comparison image for full resolution. Rotation analysis complements Job
 redesign and other ergonomic controls; redistributing exposure does not eliminate a
 hazardous activity.
 
@@ -305,6 +313,8 @@ papers when reporting LiFFT, DUET or ST results. A versioned software DOI and pr
 software citation have not yet been published.
 
 ## Documentation
+
+[Documentation index](docs/README.md)
 
 | Users | Developers |
 | --- | --- |

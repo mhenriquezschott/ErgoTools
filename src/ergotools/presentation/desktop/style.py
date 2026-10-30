@@ -38,13 +38,3 @@ QHeaderView::section { background: #EDF7F8; color: #0B326C; padding: 9px 6px;
 QMessageBox, QInputDialog { background: #F4F7F9; }
 QToolTip { color: #1B2933; background: white; border: 1px solid #BCC9D3; }
 """
-
-
-# Shared title-row history buttons use the established navy/teal palette.
-# QAction remains the sole source of tooltips, shortcuts and enablement.
-HISTORY_BUTTON_STYLE = """
-QToolButton#historyButton { color: #003366; background: white;
-    border: 1px solid #CBD9E5; border-radius: 4px; padding: 4px; }
-QToolButton#historyButton:hover { background: #DCF3F5; border-color: #00B3C4; }
-QToolButton#historyButton:disabled { color: #8A9BA8; }
-"""
