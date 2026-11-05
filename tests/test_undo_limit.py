@@ -144,6 +144,8 @@ def test_previous_settings_formats_default_to_25(tmp_path: Path, version: int) -
     data = json.loads(path.read_text())
     data["version"] = version
     for field, introduced in (
+        ("assessment_columns", 9),
+        ("import_profiles", 8),
         ("animated_risk_gauge", 7),
         ("animated_cumulative_damage", 7),
         ("undo_limit", 6),
@@ -161,7 +163,7 @@ def test_previous_settings_formats_default_to_25(tmp_path: Path, version: int) -
     assert path.read_bytes() == before
     store.save(replace(loaded, undo_limit=1))
     assert store.load().undo_limit == 1
-    assert json.loads(path.read_text())["version"] == 7
+    assert json.loads(path.read_text())["version"] == 11
 
 
 @pytest.mark.parametrize("value", [0, 51, -1, True, 1.5, "25", None])

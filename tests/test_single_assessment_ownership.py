@@ -59,6 +59,9 @@ def previous_fixture(source: Path, destination: Path) -> Path:
                 "SELECT document_id,assignment_id,kind,position "
                 "FROM assessment_ownership ORDER BY position"
             ).fetchall()
+            # Reconstruct the earlier schema, not just its compatibility marker.
+            copy.execute("DROP TABLE IF EXISTS shift_timing_templates")
+            copy.execute("DROP TABLE task_definitions")
             copy.execute("DROP TABLE assessment_ownership")
             copy.execute(
                 "CREATE TABLE assessment_history(document_id TEXT PRIMARY KEY,"
@@ -172,7 +175,7 @@ def test_conversion_preserves_real_data_and_removes_version_schema(
             )
     destination = tmp_path / "converted.ergprj"
     with upgrade_previous_project(original, destination) as project:
-        assert project.format_version == 19
+        assert project.format_version == 24
         assert len(project.load_history().entries) == 194
         project.load_plot_positions().validate(
             project.load_hierarchy(), project.load_jobs()

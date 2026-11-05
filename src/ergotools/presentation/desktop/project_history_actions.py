@@ -41,6 +41,7 @@ _LABELS = {
         "Cambiar visualización del proyecto",
     ),
     "job.selection": ("Change Job selection", "Cambiar selección de trabajo"),
+    "jrot.view": ("Change rotation view", "Cambiar vista de rotación"),
     "job.tool": ("Change Job tool", "Cambiar herramienta de trabajo"),
     "replace_worker_catalogs": ("Edit worker", "Editar trabajador"),
     "replace_hierarchy": ("Edit organization", "Editar organización"),
@@ -62,6 +63,25 @@ _LABELS = {
     "delete_historical_assessment": ("Delete assessment", "Eliminar evaluación"),
     "create_historical_assessment": ("Create assessment", "Crear evaluación"),
     "assessment.edit": ("Edit assessment", "Editar evaluación"),
+    "assessment.task_name": ("Edit task name", "Editar nombre de tarea"),
+    "assessment.remove_tasks": ("Remove selected tasks", "Quitar tareas seleccionadas"),
+    "assessment.paste": ("Paste task inputs", "Pegar datos de tareas"),
+    "replace_rotation_scenario": (
+        "Edit rotation scenario",
+        "Editar escenario de rotación",
+    ),
+    "select_rotation_scenario": (
+        "Change rotation selection",
+        "Cambiar selección de rotación",
+    ),
+    "replace_shift_timing": (
+        "Edit Shift rotation timing",
+        "Editar tiempos de rotación del turno",
+    ),
+    "replace_task_definitions": (
+        "Edit reusable task names",
+        "Editar nombres reutilizables",
+    ),
     "assessment.clear": ("Clear assessment", "Limpiar evaluación"),
     "assessment.calculate": ("Calculate assessment", "Calcular evaluación"),
     "assessment.view": ("Change assessment selection", "Cambiar selección"),
@@ -74,6 +94,8 @@ _LABELS = {
 # Business kinds emitted by the repository, localized only for confirmation text.
 _KINDS = {
     "worker": ("Worker", "Trabajador"),
+    "task": ("Reusable task name", "Nombre de tarea reutilizable"),
+    "shift_timing": ("Shift timing", "Tiempos del turno"),
     "assessment": ("Assessment", "Evaluación"),
     "assignment": ("Assignment", "Asignación"),
     "job": ("Job", "Trabajo"),
@@ -316,20 +338,39 @@ class ProjectHistoryActions(QObject):
         if self.prepare is not None and not self.prepare():
             return
         removals = self.editing.removals(redo=redo)
-        if removals:
+        undo_paste = (
+            not redo and self.editing.history.undo_label_key == "assessment.paste"
+        )
+        if removals or undo_paste:
             details = "\n".join(
                 f"{self.text(*_KINDS.get(kind, ('Record', 'Registro')))}: {identity}"
                 for kind, identity in sorted(removals)
+                if kind != "task"
             )
+            task_count = sum(kind == "task" for kind, _ in removals)
+            if task_count:
+                details += "\n" + self.text(
+                    f"Reusable task names: {task_count}",
+                    f"Nombres de tareas reutilizables: {task_count}",
+                )
             question = (
                 self.text(
+                    "Undo this paste? It restores the previous task inputs and removes "
+                    "the pasted data and any reusable names created by this paste. "
+                    "Existing reusable names are kept. Redo restores the paste.\n\n",
+                    "¿Deshacer este pegado? Restaura las entradas anteriores y quita "
+                    "los datos pegados y nombres reutilizables creados por este "
+                    "pegado. "
+                    "Conserva los nombres existentes. Rehacer restaura el pegado.\n\n",
+                )
+                if undo_paste
+                else self.text(
                     "This operation removes these records from the open project. "
                     "You can restore them with the opposite history action.\n\n",
                     "Esta operación quita estos registros del proyecto abierto. "
                     "Puede restaurarlos con la acción de historial opuesta.\n\n",
                 )
-                + details
-            )
+            ) + details
             if (
                 QMessageBox.question(
                     self.window,

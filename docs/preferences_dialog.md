@@ -1,10 +1,33 @@
-# F88 — application preferences
+# Application preferences
 
-The owner allows improvement of the limited Settings window. Tools > Settings now
+The historical checkpoint below is retained for provenance. Current Settings uses
+section navigation, live task-column/gauge previews, animated avatar/gauge/damage
+examples, and current-launch report access. See
+[visual Settings and display diagnostics](settings_previews_and_diagnostics.md).
+
+## Optimization runtime
+
+All JROT optimization and feasibility generation use HiGHS directly. No solver-selection
+control exists in General or Compatibility/Legacy. Existing results remain unchanged
+until a new result is explicitly kept. See [HiGHS-only runtime](highs_only.md).
+
+## Assessment presentation
+
+Assessment shows the active tool and a tinted Current selection card with its tool
+icon and literal project, worker and workplace identity. Task rows is a separate group
+containing the explicit Apply opt-in, compact row count and data-retention explanation.
+The existing 1–100 range, confirmation, Apply/Cancel and scoped Undo behavior are
+unchanged. With no active assessment, these controls remain disabled.
+
+![Assessment settings with current selection and scoped task rows](images/settings_assessment.png)
+
+## Historical F88 checkpoint
+
+The owner allows improvement of the limited Settings window. Edit > Settings now
 opens a styled owned form for independent language and unit choices, with packaged
 Cancel/Settings icons and explicit Apply/Cancel. The existing toolbar Settings keeps
 its original task-count operation; no source-clearing operation is hidden in the
-preferences form. Tools/Herramientas and Settings/Configuración are localized.
+preferences form. Edit/Editar and Settings/Configuración are localized.
 
 The view collects typed enum selections; it does not access settings or project
 storage. `LifftWindow` receives the existing `SettingsStore` through composition.

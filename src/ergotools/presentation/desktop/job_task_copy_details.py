@@ -9,7 +9,7 @@ from dataclasses import replace
 from PyQt5.QtCore import QEvent, QObject, pyqtSignal
 from PyQt5.QtWidgets import QHBoxLayout, QLabel, QToolButton, QVBoxLayout, QWidget
 
-from ergotools.domain.assessments.document import AssessmentDraft, task_has_data
+from ergotools.domain.assessments.document import AssessmentDraft, task_has_content
 from ergotools.domain.assessments.duet_draft import DuetDraft, DuetTask
 from ergotools.domain.assessments.lifft_draft import LifftDraft, LifftTask
 from ergotools.domain.assessments.tst import TstTask
@@ -17,6 +17,7 @@ from ergotools.domain.assessments.tst_draft import TstDraft
 from ergotools.domain.decimal_convention import DecimalConvention
 from ergotools.domain.job_risk import JobRiskMeasurement
 from ergotools.domain.language import Language
+from ergotools.domain.task_catalog import TaskDefinition
 from ergotools.presentation.desktop.job_task_editor import JobTaskEditor
 
 
@@ -39,6 +40,7 @@ class JobTaskCopyDetails(QWidget):
         language: Language,
         convention: DecimalConvention,
         selected: tuple[str, ...],
+        task_definitions: tuple[TaskDefinition, ...] = (),
     ) -> None:
         """Build read-only controls for one source with independent copy checkboxes.
 
@@ -47,6 +49,7 @@ class JobTaskCopyDetails(QWidget):
             language: English/Spanish view captions.
             convention: Numeric display separator only.
             selected: Previously checked stable source-task identities.
+            task_definitions: Current names for explicit reusable source references.
 
         Returns:
             None; no calculator, workspace or repository is used.
@@ -58,20 +61,20 @@ class JobTaskCopyDetails(QWidget):
         layout.setSpacing(0)
         source = item.source
         tasks: tuple[LifftTask | DuetTask | TstTask, ...] = (
-            tuple(t for t in source.tasks if task_has_data(t)) if source else ()
+            tuple(t for t in source.tasks if task_has_content(t)) if source else ()
         )
         if isinstance(source, LifftDraft):
             preview: AssessmentDraft | None = replace(
-                source, tasks=tuple(t for t in source.tasks if task_has_data(t))
+                source, tasks=tuple(t for t in source.tasks if task_has_content(t))
             )
         elif isinstance(source, DuetDraft):
             preview = replace(
-                source, tasks=tuple(t for t in source.tasks if task_has_data(t))
+                source, tasks=tuple(t for t in source.tasks if task_has_content(t))
             )
         elif source is not None:
             assert isinstance(source, TstDraft)
             preview = replace(
-                source, tasks=tuple(t for t in source.tasks if task_has_data(t))
+                source, tasks=tuple(t for t in source.tasks if task_has_content(t))
             )
         else:
             preview = None
@@ -87,6 +90,7 @@ class JobTaskCopyDetails(QWidget):
         original_tasks: tuple[LifftTask | DuetTask | TstTask, ...] = (
             source.tasks if source else ()
         )
+        self.grid.task_definitions = task_definitions
         self.grid.load_source(
             preview,
             tuple(

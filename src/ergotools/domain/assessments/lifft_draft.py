@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from ergotools.domain.assessments.validation import DraftError as DraftError
 from ergotools.domain.assessments.validation import InputIssue as InputIssue
 from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.task_catalog import validate_task_label
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,12 +33,16 @@ class LifftTask:
             mass. None is unfinished.
         repetitions: Repetitions per work day; None means unfinished input and
             fractional values remain supported.
+        task_name: Optional descriptive activity label; not a calculator input.
+        task_definition_id: Optional reusable name reference, separate from row ID.
     """
 
     task_id: str
     lever_arm: float | None = None
     load: float | None = None
     repetitions: float | None = None
+    task_name: str | None = None
+    task_definition_id: str | None = None
 
     def __post_init__(self) -> None:
         """Reject blank identity and nonfinite values; preserve missing fields.
@@ -52,7 +57,9 @@ class LifftTask:
             DraftError: Source structure, completeness, numeric validity or task
                 identity violates the constraints described above; issue retains
                 field/task context.
+            ValueError: Optional task metadata is blank, untyped or lacks a fallback.
         """
+        validate_task_label(self.task_name, self.task_definition_id)
         if not self.task_id.strip():
             raise DraftError(InputIssue("validation.required", "task_id"))
         for field in ("lever_arm", "load", "repetitions"):

@@ -367,6 +367,1405 @@
       "sha256": "8059c6364ec00d1fdaea5691c24134b751b770f83314fb66a3429753bc0221ab",
       "previous_sha256": "eb613816e219f4a5b23f003560cea6e45c885f553b0bb67bb924d2b88a395727",
       "local_revision": "Artwork present in owner workspace at assignment-actions validation; PNG bytes preserved."
+    },
+    {
+      "path": "images/avatar_focus_preview.gif",
+      "sha256": "236eb66c6df108fa7878d291b7cf2ed561f86b27dfde1cf185ada5890708a325",
+      "source": "Recorded from packaged anatomical meshes and unchanged VtkBodyRenderer camera paths; 280x264 GIF, no runtime VTK in Settings."
+    },
+    {
+      "path": "icons/about.png",
+      "source_sha256": "5155ed9f124f86e9172399659e3c8da7ebde8eb546debc9c869103c70c83a73f",
+      "source_name": "about.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        156,
+        212,
+        1097,
+        1045
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "dcf22fd25e7d7cc63ebaa1af5f525c605116a0676cdc81e55a1b40605443550c"
+    },
+    {
+      "path": "icons/about_light.png",
+      "source_sha256": "5155ed9f124f86e9172399659e3c8da7ebde8eb546debc9c869103c70c83a73f",
+      "source_name": "about.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        156,
+        212,
+        1097,
+        1045
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "73cac7e204f6a719ea0e01a8a7566ebb98facdf702880e606de7787eecd0cf9e"
+    },
+    {
+      "path": "icons/add_break.png",
+      "source_sha256": "2ab28ec351d56bef4c150f303343853cfa7eff0ef26571ff79d54bf460fc1196",
+      "source_name": "add_break.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        80,
+        409,
+        1174,
+        1038
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "7ef8c3a848ed32c839a452712bcf197594a66d63d35e060d69ce54fc8fab2003"
+    },
+    {
+      "path": "icons/add_break_light.png",
+      "source_sha256": "2ab28ec351d56bef4c150f303343853cfa7eff0ef26571ff79d54bf460fc1196",
+      "source_name": "add_break.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        80,
+        409,
+        1174,
+        1038
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "2208afe0f91498c84c6ec2564613a20c70ad8d2b7f6d8882ff5c9ee0c83ae283"
+    },
+    {
+      "path": "icons/add_work_block.png",
+      "source_sha256": "67c66f0b74a76bacda44166cdd694cbf287165a511366080b06f644bfb77f1ee",
+      "source_name": "add_work_block.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        99,
+        456,
+        1156,
+        942
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "84ce6d1fb0c89bdb92ec5e345dee21b427e291b12360fa2d928997eb37610420"
+    },
+    {
+      "path": "icons/add_work_block_light.png",
+      "source_sha256": "67c66f0b74a76bacda44166cdd694cbf287165a511366080b06f644bfb77f1ee",
+      "source_name": "add_work_block.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        99,
+        456,
+        1156,
+        942
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "6fbed9671e17cbdda3210d7c2b079084165d3617d50fb180fca664a3f7b73286"
+    },
+    {
+      "path": "icons/apply_timing.png",
+      "source_sha256": "b10dff13ed076faf52f54bbbf236ba96e8f7661b45015832d60100754952df35",
+      "source_name": "apply_timing.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        73,
+        479,
+        1193,
+        989
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "5518b246087306dc94ab41f91550455248a63e044254730901c9d14cab5202a1"
+    },
+    {
+      "path": "icons/apply_timing_light.png",
+      "source_sha256": "b10dff13ed076faf52f54bbbf236ba96e8f7661b45015832d60100754952df35",
+      "source_name": "apply_timing.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        73,
+        479,
+        1193,
+        989
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "b921a9709c32f092b556550270f90a18f5090bb3731ab8fba7d7ece2aa6b8cd0"
+    },
+    {
+      "path": "icons/clear_assignments.png",
+      "source_sha256": "de0e9ffbea4b6d190dc3711667b09966777bcc410d326eba89cd4df3a8193669",
+      "source_name": "clear_assignments.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        159,
+        235,
+        1113,
+        1115
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "4eb21fd7e3a0a5a48d1ccfc72dcf21cbe965f2a95a366015e42bfe9aad18d4b1"
+    },
+    {
+      "path": "icons/clear_assignments_light.png",
+      "source_sha256": "de0e9ffbea4b6d190dc3711667b09966777bcc410d326eba89cd4df3a8193669",
+      "source_name": "clear_assignments.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        159,
+        235,
+        1113,
+        1115
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "f549dd3ed372d76dff2ecccd2068f3a6de5fd312ea5822b0e50316836aec7195"
+    },
+    {
+      "path": "icons/clear_result_link.png",
+      "source_sha256": "8e885ee26a92515d03f552914e0d674e00a8d42e2d3a8bda1d539e29494154a6",
+      "source_name": "clear_result_link.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        158,
+        139,
+        1101,
+        1173
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "8b2da0022438b98395f056ef8a48c33398ad906fac587251ed7130984fea9fcd"
+    },
+    {
+      "path": "icons/clear_result_link_light.png",
+      "source_sha256": "8e885ee26a92515d03f552914e0d674e00a8d42e2d3a8bda1d539e29494154a6",
+      "source_name": "clear_result_link.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        158,
+        139,
+        1101,
+        1173
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "e3ddc80707cfcf48ceb07838e6c468b3a2565f1cd9f65aa3f3ff93d00425c4e2"
+    },
+    {
+      "path": "icons/clear_timing.png",
+      "source_sha256": "32bb742dfe0694869067e52a7401baf80e4d4db7edda43107f63f4f1f36465f1",
+      "source_name": "clear_timing.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        62,
+        337,
+        1193,
+        900
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "0663ba2d7c23cc2a03af7d92de93d2ab0353a345b8815eec62df9c9fec2f313f"
+    },
+    {
+      "path": "icons/clear_timing_light.png",
+      "source_sha256": "32bb742dfe0694869067e52a7401baf80e4d4db7edda43107f63f4f1f36465f1",
+      "source_name": "clear_timing.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        62,
+        337,
+        1193,
+        900
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "6893f269bdc4cb71d5f536a089aa8e91bf6935c01ce890d0f4a622b5a3a0d832"
+    },
+    {
+      "path": "icons/column_mapping.png",
+      "source_sha256": "fff218375875c348fd036ea656be0a98d61e13e0aa5e2ec821c5dafaaa213041",
+      "source_name": "column_mapping.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        146,
+        323,
+        1109,
+        949
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "69c09daedc8e6408e55bd0652bd14d1a512d6355dfba813778359209a7a3aa5d"
+    },
+    {
+      "path": "icons/column_mapping_light.png",
+      "source_sha256": "fff218375875c348fd036ea656be0a98d61e13e0aa5e2ec821c5dafaaa213041",
+      "source_name": "column_mapping.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        146,
+        323,
+        1109,
+        949
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "a0c185918712adc4aaeddf8018dcbe08a4944f73fc680130bb44224f6c20961c"
+    },
+    {
+      "path": "icons/direct_result.png",
+      "source_sha256": "53a036c46dab1656c20c893934d1f2829262864eb9b35a9bc8502f7b5bce21fa",
+      "source_name": "direct_result.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        109,
+        359,
+        1166,
+        1076
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "37d93a03d7883d8c6abd7b13d196153f710ecece5467a79afae48e667f2f73d5"
+    },
+    {
+      "path": "icons/direct_result_light.png",
+      "source_sha256": "53a036c46dab1656c20c893934d1f2829262864eb9b35a9bc8502f7b5bce21fa",
+      "source_name": "direct_result.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        109,
+        359,
+        1166,
+        1076
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "332e4fbf29a33ac268b8a428ffcd8f8276a7c2a6674379f9c887a7f59d641120"
+    },
+    {
+      "path": "icons/discard_preview.png",
+      "source_sha256": "75903a4f36b5e64cf9149121ad0d323d246d56b79a6cfefb8b2afdaaecc112ea",
+      "source_name": "discard_preview.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        197,
+        178,
+        1072,
+        1112
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "26b6bebd3b32f12b9954ce71fe2b8251c03a12bbf624c9397b4c7bf95cc89467"
+    },
+    {
+      "path": "icons/discard_preview_light.png",
+      "source_sha256": "75903a4f36b5e64cf9149121ad0d323d246d56b79a6cfefb8b2afdaaecc112ea",
+      "source_name": "discard_preview.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        197,
+        178,
+        1072,
+        1112
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "006d8c704ad92ec54a63762ac6018e72c7b284e8ed2d15e9aae71d58a01c7e4a"
+    },
+    {
+      "path": "icons/duplicate_rotation.png",
+      "source_sha256": "ef1f5ae4292b85b44bc134a411dc9209b0eff61ec340d511c248050b081a6ec1",
+      "source_name": "duplicate_rotation.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        156,
+        182,
+        1097,
+        1112
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "4b7c1277ee2fb4248e6bb353403639fc63eb2fe4f7eb0477d2cd32a2813eb4d4"
+    },
+    {
+      "path": "icons/duplicate_rotation_light.png",
+      "source_sha256": "ef1f5ae4292b85b44bc134a411dc9209b0eff61ec340d511c248050b081a6ec1",
+      "source_name": "duplicate_rotation.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        156,
+        182,
+        1097,
+        1112
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "f6e49d68e7caf1734bb69c04ff88b6a069a8a28787027077834a7f7a8fa4561f"
+    },
+    {
+      "path": "icons/edit_timing.png",
+      "source_sha256": "3d0dfe2eb057cee10bad5d391d05127b994651c4d8e496aacf4587384b11bbd7",
+      "source_name": "edit_timing.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        106,
+        376,
+        1146,
+        1076
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "064a277ae1ab35d93621f0f3cbeecdc0e3b34c4318892bdcd427a065405a4ed7"
+    },
+    {
+      "path": "icons/edit_timing_light.png",
+      "source_sha256": "3d0dfe2eb057cee10bad5d391d05127b994651c4d8e496aacf4587384b11bbd7",
+      "source_name": "edit_timing.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        106,
+        376,
+        1146,
+        1076
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "7fcc351fd2422cc66c5f1d2934b68bf0d2a7cb94983fc6aafc281f8f2d0efe33"
+    },
+    {
+      "path": "icons/equal_breaks.png",
+      "source_sha256": "2dff363735c738af7e88df76c2ec63afe3e297df7f4099a7f0a1dd90c73749a8",
+      "source_name": "equal_breaks.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        65,
+        335,
+        1190,
+        996
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "3d713546ad10b69c201f321c60ca975b6fa078485be75d1196b42b7f048e237d"
+    },
+    {
+      "path": "icons/equal_breaks_light.png",
+      "source_sha256": "2dff363735c738af7e88df76c2ec63afe3e297df7f4099a7f0a1dd90c73749a8",
+      "source_name": "equal_breaks.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        65,
+        335,
+        1190,
+        996
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "4d89c7ecaaf23cef616c4549d2baa5e92183a9d0a76ec16ca548fb4aad0fe1e8"
+    },
+    {
+      "path": "icons/equal_work_blocks.png",
+      "source_sha256": "5898bc20747397eab226f38b294a17766771b53dc9cf31c4063f0f4db8860acc",
+      "source_name": "equal_work_blocks.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        78,
+        420,
+        1176,
+        947
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "452384de5466721d4b783977a9cd3dba37ab7427e1af077c6d9faa8493532dfe"
+    },
+    {
+      "path": "icons/equal_work_blocks_light.png",
+      "source_sha256": "5898bc20747397eab226f38b294a17766771b53dc9cf31c4063f0f4db8860acc",
+      "source_name": "equal_work_blocks.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        78,
+        420,
+        1176,
+        947
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "c09ba79b72801338db831a40bd35ba29bd3b3b3dc4bf19b7bbd55584e7e07817"
+    },
+    {
+      "path": "icons/excluded_jobs.png",
+      "source_sha256": "20561a0c456b9816c3ac9ddbec3aae43dcf15f49e0c2b323bad37bab0994cdfa",
+      "source_name": "excluded_jobs.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        222,
+        269,
+        1033,
+        1031
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "ed64e8086d460cff13b05ac093b5bce7c8da8eeb1a57d51cc3eae61cc2c4e560"
+    },
+    {
+      "path": "icons/excluded_jobs_light.png",
+      "source_sha256": "20561a0c456b9816c3ac9ddbec3aae43dcf15f49e0c2b323bad37bab0994cdfa",
+      "source_name": "excluded_jobs.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        222,
+        269,
+        1033,
+        1031
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "e57a6e2340b5ef3de7cb0c9ac48d973abc6e39f2c89c58f7ffcd719b20f0a9c4"
+    },
+    {
+      "path": "icons/fixed_job.png",
+      "source_sha256": "7b3003836243fce8ca425a2d970cca5e661fca8d26d4e37d76e170c2f5f39065",
+      "source_name": "fixed_job.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        127,
+        308,
+        1127,
+        972
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "06ff536a21540424e7587935fae9fc0ce0f461cd86cbe77e6dfdf4156d3f5b87"
+    },
+    {
+      "path": "icons/fixed_job_light.png",
+      "source_sha256": "7b3003836243fce8ca425a2d970cca5e661fca8d26d4e37d76e170c2f5f39065",
+      "source_name": "fixed_job.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        127,
+        308,
+        1127,
+        972
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "39a789ff47ee290cc0a35770dadb45df2cc8ebeed52e34739b92fa5e8481e743"
+    },
+    {
+      "path": "icons/following_rotation_result.png",
+      "source_sha256": "f4e456b142798b5fccd122b078ba938ba3bd62c21a5117b7c7421ba658b02281",
+      "source_name": "following_rotation_result.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        119,
+        185,
+        1179,
+        1126
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "71de34a89e904cd537e2b129f6503085a82b4aec47d2f451b2ccb61101814e41"
+    },
+    {
+      "path": "icons/following_rotation_result_light.png",
+      "source_sha256": "f4e456b142798b5fccd122b078ba938ba3bd62c21a5117b7c7421ba658b02281",
+      "source_name": "following_rotation_result.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        119,
+        185,
+        1179,
+        1126
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "bd44b3ccf97d24d0bfaa53ff46ea8b1824cd3f41272273c2fcb91b4c50155420"
+    },
+    {
+      "path": "icons/generate_proposal.png",
+      "source_sha256": "7a3f1ba8ff93432dc38fbe2470dfd063db0d8c907fbbff9826c7d83d8077de07",
+      "source_name": "generate_proposal.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        152,
+        85,
+        1141,
+        1207
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "dbf78676789dfad6dfefa3f54360bfdd844d5325f78b73965a62059a847a0c3b"
+    },
+    {
+      "path": "icons/generate_proposal_light.png",
+      "source_sha256": "7a3f1ba8ff93432dc38fbe2470dfd063db0d8c907fbbff9826c7d83d8077de07",
+      "source_name": "generate_proposal.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        152,
+        85,
+        1141,
+        1207
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "9a642d96172a087fe8ddcff7951441899c1bc439f6190a60e2b0524d2ffa0dc0"
+    },
+    {
+      "path": "icons/include_all_rows.png",
+      "source_sha256": "e28f7203f8294cd9aedb477d0c558c5d8cdaae4cfca54fcd23a104a41ce2de26",
+      "source_name": "include_all_rows.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        119,
+        269,
+        1254,
+        1254
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "3a79118e0607d4070227830f2b9177e5ca7cc0741c2076fca80bfc43b28f7854"
+    },
+    {
+      "path": "icons/include_all_rows_light.png",
+      "source_sha256": "e28f7203f8294cd9aedb477d0c558c5d8cdaae4cfca54fcd23a104a41ce2de26",
+      "source_name": "include_all_rows.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        119,
+        269,
+        1254,
+        1254
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "1c0f6206149db4aec021ee418f52719a7666eea4502067004b3c39b10c90b35c"
+    },
+    {
+      "path": "icons/include_rows.png",
+      "source_sha256": "30bf6406cac487204e5b67b9117432318890e9dcdc4b25bf147837de583aedf3",
+      "source_name": "include_rows.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        107,
+        276,
+        1173,
+        977
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "85e2e202d2c8df39ddf732f80fe5c811f5074af7e0f39a90f7af258f4b178ab6"
+    },
+    {
+      "path": "icons/include_rows_light.png",
+      "source_sha256": "30bf6406cac487204e5b67b9117432318890e9dcdc4b25bf147837de583aedf3",
+      "source_name": "include_rows.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        107,
+        276,
+        1173,
+        977
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "f12e3527e4cac062f74b37846697621adc4161ca26a3066f099dfb47137a9122"
+    },
+    {
+      "path": "icons/keep_optimization_result.png",
+      "source_sha256": "33c70fef9ddced96361c478a7d35f754b635fe44ab064ca39df8eefc39fddc22",
+      "source_name": "keep_optimization_result.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        198,
+        142,
+        1254,
+        1254
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "f5b9a77d0ba8832e99dcac2d2fa4d494203f62df49eeaf07ae602f2e50612d5d"
+    },
+    {
+      "path": "icons/keep_optimization_result_light.png",
+      "source_sha256": "33c70fef9ddced96361c478a7d35f754b635fe44ab064ca39df8eefc39fddc22",
+      "source_name": "keep_optimization_result.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        198,
+        142,
+        1254,
+        1254
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "82536286728e92a11657349bf8383d2fa4b3f5231f874c95857a90557c02f941"
+    },
+    {
+      "path": "icons/no_adjacent_high.png",
+      "source_sha256": "b013fce523f83817beafb02d91abf180fe44821d57d3616db0393e0d4bf4b026",
+      "source_name": "no_adjacent_high.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        100,
+        222,
+        1153,
+        1070
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "343054abe84be337de49fb7030d556483f5adc7e805c3691f723e74201473acc"
+    },
+    {
+      "path": "icons/no_adjacent_high_light.png",
+      "source_sha256": "b013fce523f83817beafb02d91abf180fe44821d57d3616db0393e0d4bf4b026",
+      "source_name": "no_adjacent_high.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        100,
+        222,
+        1153,
+        1070
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "fbc85674d138bd6ac3cbc148398c87ed28a94da38d925d1fc4e684953cd5c613"
+    },
+    {
+      "path": "icons/previous_rotation_result.png",
+      "source_sha256": "d3b82f5acf51410b8414cc21d8b6e3ba5e02ff639da2e2e39f9dc875d98f1402",
+      "source_name": "previous_rotation_result.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        105,
+        173,
+        1127,
+        1182
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "639aedc22f2ff7aef68203aed11f3603ea6a4bbbe9b28dcaec0995699c9c2b3b"
+    },
+    {
+      "path": "icons/previous_rotation_result_light.png",
+      "source_sha256": "d3b82f5acf51410b8414cc21d8b6e3ba5e02ff639da2e2e39f9dc875d98f1402",
+      "source_name": "previous_rotation_result.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        105,
+        173,
+        1127,
+        1182
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "84623d014ce9b9c13790a97e6aebc6cdc17a3531ed09235fe093fd9212615d5a"
+    },
+    {
+      "path": "icons/project_backup.png",
+      "source_sha256": "62f6b0b64579cb1a35596e2919d7e6cb21ef63372e9cabd59f26136dfa69c2c8",
+      "source_name": "project_backup.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        165,
+        194,
+        1090,
+        1092
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "de7f177b48c9342b44d27b8f960f0a507a4e548228e2bb12b9c63f5fb7ad018c"
+    },
+    {
+      "path": "icons/project_backup_light.png",
+      "source_sha256": "62f6b0b64579cb1a35596e2919d7e6cb21ef63372e9cabd59f26136dfa69c2c8",
+      "source_name": "project_backup.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        165,
+        194,
+        1090,
+        1092
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "17147668e3ae85fe1a5a61cb7429ce992c0deeee7f4c2f81795825e4a0094b92"
+    },
+    {
+      "path": "icons/project_properties.png",
+      "source_sha256": "e6ee19f61efebc9d549317b4adbfbb0b05d0bdebef6f936c4d8a2773c514fcdf",
+      "source_name": "project_properties.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        171,
+        230,
+        1087,
+        1028
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "6647ac13a22d09209c059494db6d9a8e215cb96081d5e050400b56fc5973a2ee"
+    },
+    {
+      "path": "icons/project_properties_light.png",
+      "source_sha256": "e6ee19f61efebc9d549317b4adbfbb0b05d0bdebef6f936c4d8a2773c514fcdf",
+      "source_name": "project_properties.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        171,
+        230,
+        1087,
+        1028
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "3ed11c24706897bce05e077e98fead1348e1871c882562f233462a7707b91765"
+    },
+    {
+      "path": "icons/remove_break.png",
+      "source_sha256": "6052b54ebceed0f662267027e70cb1d83d4b4ebc9f426377ea49facd98686573",
+      "source_name": "remove_break.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        51,
+        406,
+        1203,
+        989
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "2dfebf9856a088d7dd057feac34f10c536127a63ea5cda91e2c42f936da96352"
+    },
+    {
+      "path": "icons/remove_break_light.png",
+      "source_sha256": "6052b54ebceed0f662267027e70cb1d83d4b4ebc9f426377ea49facd98686573",
+      "source_name": "remove_break.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        51,
+        406,
+        1203,
+        989
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "3b77d6d7d8aac67f17bc66e085036f58791e614e78edd36c57eecaf644a55201"
+    },
+    {
+      "path": "icons/remove_empty_rows.png",
+      "source_sha256": "3791991fa20a8faac75e72c1171c907856796ce1e1a38d3a012d3f8bd4ca932f",
+      "source_name": "remove_empty_rows.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        161,
+        266,
+        1254,
+        1254
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "eb17a39bd41259606f2e848794ce54cc0d85da936240045ad374dc0d03c4d212"
+    },
+    {
+      "path": "icons/remove_empty_rows_light.png",
+      "source_sha256": "3791991fa20a8faac75e72c1171c907856796ce1e1a38d3a012d3f8bd4ca932f",
+      "source_name": "remove_empty_rows.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        161,
+        266,
+        1254,
+        1254
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "e1a4dc11d8e865385bc6cf991cf07165de8f65d16c0b707d4667305e1ab096ae"
+    },
+    {
+      "path": "icons/remove_work_block.png",
+      "source_sha256": "6cf4e90df7454f0e76dd6349ccfed9b963119cf28aea65b87f5f277a9e488043",
+      "source_name": "remove_work_block.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        110,
+        448,
+        1144,
+        930
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "7656ca1afb8a3f6038caac247e2d24868720ff1529641d380eda9eec166c9916"
+    },
+    {
+      "path": "icons/remove_work_block_light.png",
+      "source_sha256": "6cf4e90df7454f0e76dd6349ccfed9b963119cf28aea65b87f5f277a9e488043",
+      "source_name": "remove_work_block.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        110,
+        448,
+        1144,
+        930
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "89b04960073c2124be29c982a603ca8fa02387e2f498b083dc88c318e5a278f6"
+    },
+    {
+      "path": "icons/replace_baseline.png",
+      "source_sha256": "65253e92fc0a66644d11eca0b944ca2499cad62ad19dac93519a83609c3aa680",
+      "source_name": "replace_baseline.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        296,
+        126,
+        960,
+        1143
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "2c262ccfc161a21eb86ba7848e8107aadf0c1bcc6de60a7cd93265a5f2e5bf98"
+    },
+    {
+      "path": "icons/replace_baseline_light.png",
+      "source_sha256": "65253e92fc0a66644d11eca0b944ca2499cad62ad19dac93519a83609c3aa680",
+      "source_name": "replace_baseline.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        296,
+        126,
+        960,
+        1143
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "97937549ff2188c59a4924972254e9fb7b015473199ed3666e50b7628b3e0b33"
+    },
+    {
+      "path": "icons/rework_rotation.png",
+      "source_sha256": "6c6f8c8d5320c108bfcd124841a53b1f2e25966af0bd3ca50194c4171346707a",
+      "source_name": "rework_rotation.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        247,
+        127,
+        1033,
+        1121
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "4ddbe3dce456012cf24ab2fcd2659f51f9f6737ffced2a6cf7ab0c31fd0f82a9"
+    },
+    {
+      "path": "icons/rework_rotation_light.png",
+      "source_sha256": "6c6f8c8d5320c108bfcd124841a53b1f2e25966af0bd3ca50194c4171346707a",
+      "source_name": "rework_rotation.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        247,
+        127,
+        1033,
+        1121
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "31d731c9de991734beec79b6741bdaeb8c3b6d048265d7fa3411a76b2341f774"
+    },
+    {
+      "path": "icons/save_as.png",
+      "source_sha256": "537d99c086a181056cf713919dfff92e343daa5c200456c627652ce8a8ffd7b3",
+      "source_name": "save_as.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        202,
+        236,
+        1097,
+        1105
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "4df2c9d69c9685f3799eca66d6ee21ddd79cf5a8b51addc600d8f2a7ae02c909"
+    },
+    {
+      "path": "icons/save_as_light.png",
+      "source_sha256": "537d99c086a181056cf713919dfff92e343daa5c200456c627652ce8a8ffd7b3",
+      "source_name": "save_as.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        202,
+        236,
+        1097,
+        1105
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "8b161314d29c11d563c570cbc1f10441e8225889cad69af820b9939534402337"
+    },
+    {
+      "path": "icons/select_cell_range.png",
+      "source_sha256": "4cde73543f2ee8b0f6468b9f1465f6062f487ab92b20baf23334bc816fbaade8",
+      "source_name": "select_cell_range.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        166,
+        205,
+        1087,
+        1050
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "f0caa7d721251cf412685b92ef60e29f6acdb9840922c4a559258aa8fc904ef3"
+    },
+    {
+      "path": "icons/select_cell_range_light.png",
+      "source_sha256": "4cde73543f2ee8b0f6468b9f1465f6062f487ab92b20baf23334bc816fbaade8",
+      "source_name": "select_cell_range.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        166,
+        205,
+        1087,
+        1050
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "754e0ac717a26126b3da61d5afb971363e2efda8da5dfe72c987d0e687e7fb18"
+    },
+    {
+      "path": "icons/skip_rows.png",
+      "source_sha256": "9d8b25cbf0de7d134374764d455f06ccd53443e3374a79cd3e10b50c4738aa9e",
+      "source_name": "skip_rows.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        99,
+        266,
+        1161,
+        1014
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "3e3f997ccb5e3024d390e79c8a76a4579ec74a58f4052437ea8be9a06175c648"
+    },
+    {
+      "path": "icons/skip_rows_light.png",
+      "source_sha256": "9d8b25cbf0de7d134374764d455f06ccd53443e3374a79cd3e10b50c4738aa9e",
+      "source_name": "skip_rows.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        99,
+        266,
+        1161,
+        1014
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "9060ffa2e5f07c106f716c5906cb2fe837d34aa6ba61ec1d31fe2a850eb4ac75"
+    },
+    {
+      "path": "icons/task_columns.png",
+      "source_sha256": "698032c9df465594a9bdb2bf009282af9ecbee810355831c1c2a52e51d0c3c14",
+      "source_name": "task_columns.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        112,
+        279,
+        1151,
+        1106
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "5f9ba401fec2fcd374da48a506a7a0677ab381023f7a8332334adc73ab666399"
+    },
+    {
+      "path": "icons/task_columns_light.png",
+      "source_sha256": "698032c9df465594a9bdb2bf009282af9ecbee810355831c1c2a52e51d0c3c14",
+      "source_name": "task_columns.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        112,
+        279,
+        1151,
+        1106
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "a8121c2969891a1fd6eb05746d5b4a15f1d224196c26630181c2d06846ee512b"
+    },
+    {
+      "path": "icons/task_inputs.png",
+      "source_sha256": "c8393d26b588c6074f39c3901568a880c738e31b67a6804182444ccee20860cd",
+      "source_name": "task_inputs.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        168,
+        234,
+        1085,
+        1090
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "770db9f7ec03ac6e4d9d699644325c3ed5e9f4706735258d973cdff3bf6d7737"
+    },
+    {
+      "path": "icons/task_inputs_light.png",
+      "source_sha256": "c8393d26b588c6074f39c3901568a880c738e31b67a6804182444ccee20860cd",
+      "source_name": "task_inputs.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        168,
+        234,
+        1085,
+        1090
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "61b4ec7f8b4a6bc057b459f80047d5d729985c8318f6018f16c30f7ebfa95b29"
+    },
+    {
+      "path": "icons/task_names.png",
+      "source_sha256": "8ff1add2e21e90c5da48bc62a8ba60d73fa68aa8fc498c693a2872824dd7a9bb",
+      "source_name": "task_names.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        210,
+        181,
+        1254,
+        1254
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "1c8de3eb1afe4b32a6b91a2f48a2c4f1fc3782f06b70633cea25f4aaef4dc1f2"
+    },
+    {
+      "path": "icons/task_names_light.png",
+      "source_sha256": "8ff1add2e21e90c5da48bc62a8ba60d73fa68aa8fc498c693a2872824dd7a9bb",
+      "source_name": "task_names.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        210,
+        181,
+        1254,
+        1254
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "d73301723d309ca8da408803f0fa409bf78319683034774c7851e6385b08d7db"
+    },
+    {
+      "path": "icons/unequal_breaks.png",
+      "source_sha256": "fd1501dcd9c410f4a912dbb59d5738ba7384c12d018721d9204d0f94b8afb767",
+      "source_name": "unequal_breaks.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        58,
+        290,
+        1197,
+        1057
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "34a34c32552f50dccdfc4ac53cfe264ecd61262a46be57ed5218c9f7af00f268"
+    },
+    {
+      "path": "icons/unequal_breaks_light.png",
+      "source_sha256": "fd1501dcd9c410f4a912dbb59d5738ba7384c12d018721d9204d0f94b8afb767",
+      "source_name": "unequal_breaks.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        58,
+        290,
+        1197,
+        1057
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "862b92227b05865d18eb23294a705411192bf2536e0819d80804fb8f9b448b3a"
+    },
+    {
+      "path": "icons/unequal_work_blocks.png",
+      "source_sha256": "86ae289fc2767f8b6f0628a7bcd135ef4ce2ed3b92bc8432965422f78ae400a8",
+      "source_name": "unequal_work_blocks.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        54,
+        390,
+        1199,
+        1014
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "f244fb96dc0bfa53458506fd3ca449c150971029f6d5c2d0879fb1c9f77d25c2"
+    },
+    {
+      "path": "icons/unequal_work_blocks_light.png",
+      "source_sha256": "86ae289fc2767f8b6f0628a7bcd135ef4ce2ed3b92bc8432965422f78ae400a8",
+      "source_name": "unequal_work_blocks.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        54,
+        390,
+        1199,
+        1014
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "4f38ac6897075ca9cfe31d15ea6effc712609d47698b4a3ed218f4af284d4fad"
+    },
+    {
+      "path": "icons/validate_import.png",
+      "source_sha256": "9924959e599ac93461198ccd106a1fdbf5ae98feb6b2aa22ce31159073a233f6",
+      "source_name": "validate_import.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        94,
+        197,
+        1158,
+        1109
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "c896f5971e2e8be6f54b7d7021f72503e7befe7d8b74b66087af8609e0280ae3"
+    },
+    {
+      "path": "icons/validate_import_light.png",
+      "source_sha256": "9924959e599ac93461198ccd106a1fdbf5ae98feb6b2aa22ce31159073a233f6",
+      "source_name": "validate_import.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        94,
+        197,
+        1158,
+        1109
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "656b385e6d311ecc6daf2b10ae93dc0370ab960613f725be2a6f5e07f721b2c7"
+    },
+    {
+      "path": "icons/worker_restrictions.png",
+      "source_sha256": "aceb9bcb10878eb83c75afaf04603aad99704114ce347970b541164cc44f567f",
+      "source_name": "worker_restrictions.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        201,
+        185,
+        1053,
+        1102
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "c9aa0f55479a49eb546c687bea6d68ea89b428bceaedccbdf21b35368f3cf4b1"
+    },
+    {
+      "path": "icons/worker_restrictions_light.png",
+      "source_sha256": "aceb9bcb10878eb83c75afaf04603aad99704114ce347970b541164cc44f567f",
+      "source_name": "worker_restrictions.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        201,
+        185,
+        1053,
+        1102
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "c1ac046fb18a2458fa112c4b7bb3463b7a96b849e302733e0e2f675d2a933668"
+    },
+    {
+      "path": "icons/worksheet.png",
+      "source_sha256": "7a17bdab70d52bd9d784caa5d521d122f782c139bb0b02d0d89a6b6f5a4afed2",
+      "source_name": "worksheet.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        208,
+        141,
+        1045,
+        1122
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "dd62b8cad8dbf2ad140ba046084baa43f47e502fc2dbfd1fc7d9bb9ff7b490bf"
+    },
+    {
+      "path": "icons/worksheet_light.png",
+      "source_sha256": "7a17bdab70d52bd9d784caa5d521d122f782c139bb0b02d0d89a6b6f5a4afed2",
+      "source_name": "worksheet.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        208,
+        141,
+        1045,
+        1122
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "ac54f2e9d404be8a7b18c964797cc01da75214ddb03bea7903d7b34735f92038"
     }
   ]
 }

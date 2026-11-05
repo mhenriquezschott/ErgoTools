@@ -82,3 +82,12 @@ assets. File, color and font selectors use platform defaults, do not force non-n
 them. Use standard selector APIs and preserve existing filters/save policy rather
 than implementing a custom browser. Verify native responsiveness manually without
 claiming a mocked chooser-boundary test establishes platform UI acceptance.
+
+
+## Tool identity in interface controls
+
+Use the existing processed LiFFT/DUET/Shoulder icons beside tool names in roomy tabs,
+selectors and result headings. Reuse assessment_tool_icon rather than producing another
+icon set. Narrow table headers or compact data labels may remain text-only when an icon
+would reduce readability. Multi-tool inclusion must remain distinct from merely viewing
+a tool tab; use clear selected states without introducing exclusive-selection semantics.

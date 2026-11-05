@@ -8,6 +8,8 @@ concrete adapters own I/O and transaction enforcement.
 from dataclasses import dataclass, field, replace
 from typing import Protocol
 
+from ergotools.application.assessment_columns import AssessmentColumns
+from ergotools.application.assessment_import import ImportProfile
 from ergotools.application.gauge_preferences import GaugeMarkerSettings
 from ergotools.domain.decimal_convention import DecimalConvention
 from ergotools.domain.language import Language as Language
@@ -64,6 +66,8 @@ class UserSettings:
             independent of projects and calculator outputs.
         animated_risk_gauge: Animate risk displays; False immediately shows targets.
         animated_cumulative_damage: Animate damage bars; independent of calculated data.
+        import_profiles: Explicit per-tool personal column/number import defaults.
+        assessment_columns: Per-tool hidden optional columns, without data changes.
         animated_body_region_focus: Explicit avatar focus/animation preference; False
             uses the established full-body policy.
     """
@@ -79,6 +83,8 @@ class UserSettings:
     undo_limit: int = DEFAULT_UNDO_LIMIT
     animated_risk_gauge: bool = True
     animated_cumulative_damage: bool = True
+    import_profiles: tuple[ImportProfile, ...] = ()
+    assessment_columns: tuple[AssessmentColumns, ...] = ()
 
     def __post_init__(self) -> None:
         """Reject invalid preferences and ambiguous or unbounded recent history.
@@ -110,6 +116,21 @@ class UserSettings:
         if not isinstance(self.gauge_markers, GaugeMarkerSettings):
             raise ValueError("Unsupported gauge marker preferences.")
         validate_undo_limit(self.undo_limit)
+        if (
+            not isinstance(self.import_profiles, tuple)
+            or any(not isinstance(p, ImportProfile) for p in self.import_profiles)
+            or len({p.kind for p in self.import_profiles}) != len(self.import_profiles)
+        ):
+            raise ValueError("Import defaults must contain each tool at most once.")
+        if (
+            not isinstance(self.assessment_columns, tuple)
+            or any(
+                not isinstance(p, AssessmentColumns) for p in self.assessment_columns
+            )
+            or len({p.kind for p in self.assessment_columns})
+            != len(self.assessment_columns)
+        ):
+            raise ValueError("Column preferences must contain each tool at most once.")
         contexts = tuple(tuple(item) for item in self.assessment_contexts)
         if any(
             len(item) != 8 or any(not isinstance(v, str) or not v.strip() for v in item)

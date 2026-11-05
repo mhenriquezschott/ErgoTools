@@ -1,59 +1,51 @@
-# Current JROT meeting project — 2026-10-21
+# Test projects
 
-`jrot_workflow_demo.ergprj` (under `native/` from the parent directory) is the owner's
-explicitly requested clean format-19 example: six named/demographic workers, six Jobs,
-18 calculated source/result sets with 36 task rows, two plants, four sections, eight
-lines, 24 stations and two shifts. No worker assessments or saved rotations are seeded.
-Use it with Developer Menu → JROT workflow prototype…. See docs/jrot_meeting_demo.md
-for the walkthrough, shared placement meanings, fixture provenance and cleanup notes.
-It is one new demonstration project; existing fixtures are unchanged. Descriptions of
-older formats/profile storage below are historical, not the current schema contract.
+The four files under `native/` use current native format 24. Each is a self-contained
+SQLite `.ergprj`, including its available plant images, tasks and saved results. Use Save
+As or a private file copy for experiments. No original database/image folder or converter
+is needed to open these files.
 
----
+| Project | Workers | Jobs | Worker assessments | Saved JROT schemes | Purpose |
+|---|---:|---:|---:|---:|---|
+| native/workflow_4_workers.ergprj | 7 | 10 | 12 | 34 | Original workflow records plus known-answer restriction/timing cases |
+| native/jrot_workflow_demo.ergprj | 6 | 6 | 0 | 0 | Clean guided-JROT demonstration with calculated Job sources and realistic organization |
+| native/comparative_risk_test.ergprj | 28 | 12 | 194 | 7 | Broad PLOT and production JROT integration |
+| native/integrated_test.ergprj | 28 | 12 | 194 | 5 | Broad integrated workflows and project compatibility |
 
-# Self-contained test projects — M1R/M2
-
-These are format-18 single-file projects with all plant images embedded and one
-calculated result per assessment. No original folders or converter are
-needed to open them. They are reference test fixtures; use Save As for experiments.
-Cleanup M4/M5 are accepted; these fixtures are ready for owner acceptance testing.
-
-| Native project | Assessments/results | Plant images | JROT schemes |
-|---|---:|---:|---:|
-| native/comparative_risk_test.ergprj | 194 | 4 | 7 |
-| native/integrated_test.ergprj | 194 | 4 | 5 |
-
-From the project root:
+The guided-workflow example has six calculated Jobs with all three tool sources, two
+Plants, four Sections, eight Lines, 24 Stations and two Shifts. Use Tools → JROT for the current persistent guided workflow.
+The former disposable developer prototype has been retired.
 
 ```sh
-bash tools/run.sh "test_projects/native/comparative_risk_test.ergprj"
+bash tools/run.sh "test_projects/native/jrot_workflow_demo.ergprj"
 ```
 
-Original inputs remain read-only in the reference checkout's tests directory.
-Byte-identical descriptors/database/image folders are also preserved separately
-in `originals/`; keep their companion paths intact. They are reference evidence,
-not application runtime assets. Both originals and native fixtures ship in the
-source archive; only application resources ship in the wheel.
-Source/output hashes and conversion counts are recorded in
-`artifacts/cleanup-m1r-projects.json`; all values are checked in the package and
-original-calculator acceptance reports. Each file has 91 partial and 103 complete
-calculations: partial identifies unfinished grid inputs, not conversion failure.
+The comprehensive fixtures retain original calculation status, including incomplete
+sources; missing risk is never an invented zero. Current calculations ignore unused blank
+rows but require started rows to be complete. Source units and recorded ST conventions
+remain explicit. The original-to-native conversion recalculated obsolete original outputs
+using the established formulas rather than retaining a second cached result archive.
 
-Two additional original samples were checked but are not regenerated fixtures:
-`JROT_EpiSalmonTestStudy01.ergprj` uses an unsupported original schema;
-`test3.ergprj` has blank required metadata. Neither was previously a supported
-comprehensive converted fixture. No source repair or broader schema support is
-authorized by M1R. See the review register; M2 organization/guidance is accepted.
+Original descriptors/database/image folders are preserved separately under `originals/`;
+keep their companion paths intact. They are compatibility inputs, not runtime assets.
+The source archive includes fixtures; the application wheel contains application resources
+only. Unsupported original schemas or invalid required metadata are reported by conversion,
+not silently repaired.
 
-In each supported project, 29 original ST cached totals disagree with recalculation
-by more than four-place rounding. M1R stores the result recomputed from the saved
-inputs, verified against the original calculator code. No formula changes or hidden
-second original result is involved. Earlier artifacts are historical evidence;
-these native fixtures supersede them for subsequent workflow tests.
+The format-20 upgrade adds only an empty reusable task-name catalog to format-19 fixtures;
+existing values, results, images, relationships and rotation schemes remain exact.
 
-M2 relocation checks opened only each native file in an otherwise empty temporary
-folder and compared every source/result, hierarchy, worker/job ownership, authored
-risk profile, plant image/marker and rotation scheme with the fixture. No sidecars
-were copied. See `artifacts/cleanup-m2-fixtures.json` for all original copy hashes
-and native evidence. Main Open/CLI project launch uses native data directly; GUI
-conversion of an original instead opens an unsaved copy requiring first Save.
+The native 21 upgrade added an empty optional Shift timing catalog. No existing rotation is
+assigned times or breaks automatically; native 20 baseline backups are retained locally
+through owner review. Production JROT behavior is unchanged by this storage capability.
+
+The native21→23 scenario-capability upgrade changes only the marker; existing table values,
+legacy rotation payloads/timestamps and timing templates remain exact. Dates/times/run
+evidence are not invented for older schemes. New scenario composition follows separately.
+
+The workflow fixture retains its historical filename. Three additional reference workers
+and Jobs support [four-block restriction examples](../docs/jrot_four_block_examples.md).
+Twenty-four of its 34 rotations have kept results at this checkpoint. Three additional
+0/5/55% Jobs support the [six-block adjacency comparisons](../docs/jrot_adjacency_examples.md).
+
+Demo 15–20 provides [larger fixed/excluded/timing comparisons](../docs/jrot_rule_timing_examples.md).

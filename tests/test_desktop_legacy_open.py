@@ -95,7 +95,7 @@ def test_open_converts_temporarily_and_remembers_only_first_save(
         not in JsonSettingsStore(tmp_path / "settings.json").load().recent_documents
     )
     with AssessmentProjectFile.open(temporary) as project:
-        assert project.format_version == 19
+        assert project.format_version == 24
         assert len(project.list_assessments()) == 1
         assert (
             project.load_saved_result(project.list_assessments()[0].document)
@@ -296,7 +296,7 @@ def test_converted_desktop_edit_and_jrot_save_retain_archive(
     from dataclasses import replace
 
     from ergotools.bootstrap import load_icons
-    from ergotools.presentation.desktop.rotation_dialog import RotationDialog
+    from ergotools.presentation.desktop.legacy_jrot_dialog import LegacyJrotDialog
 
     assert mapped == old_source == rotated
     destination = tmp_path / "integrated.ergprj"
@@ -333,7 +333,7 @@ def test_converted_desktop_edit_and_jrot_save_retain_archive(
     active.redo()
     window.save_project()
     observations[active.document.document_id] = None
-    dialog = RotationDialog(repository, load_icons())
+    dialog = LegacyJrotDialog(repository, load_icons())
     try:
         previous = dialog.loaded
         assert previous is not None
@@ -344,7 +344,7 @@ def test_converted_desktop_edit_and_jrot_save_retain_archive(
     finally:
         dialog.close()
     with AssessmentProjectFile.open(destination) as project:
-        assert project.format_version == 19
+        assert project.format_version == 24
         assert project.load(active.document) == changed
         assert {
             identity: project.load_saved_result(
@@ -363,7 +363,7 @@ def test_converted_desktop_edit_and_jrot_save_retain_archive(
             } == observations
             assert backup.load_rotation_schemes() == (changed_scheme,)
     with AssessmentProjectFile.open(tmp_path / "backup.ergprj") as backup:
-        assert backup.format_version == 19
+        assert backup.format_version == 24
         assert backup.load(active.document) == changed
         assert {
             identity: backup.load_saved_result(

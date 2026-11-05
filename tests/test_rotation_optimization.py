@@ -9,9 +9,10 @@ modify the reference application or approved dependency baseline.
 from dataclasses import replace
 from itertools import permutations, product
 from math import inf, nan
+from types import SimpleNamespace
 from unittest.mock import patch
 
-import pulp
+import highspy
 import pytest
 
 from ergotools.application.rotation_optimization import RotationOptimizationError
@@ -23,7 +24,7 @@ from ergotools.domain.rotation import (
     RotationSolveStatus,
     WorkerRotation,
 )
-from ergotools.infrastructure.pulp_rotation_optimizer import PulpRotationOptimizer
+from ergotools.infrastructure.highs_rotation_optimizer import HighsRotationOptimizer
 
 
 @pytest.fixture
@@ -98,8 +99,8 @@ def feasible_schedules(problem: RotationProblem) -> list[tuple[WorkerRotation, .
     return results
 
 
-def test_cbc_single_tool_matches_exhaustive_minimax(problem: RotationProblem) -> None:
-    """Use CBC explicitly and attain the known min-max value without label merging.
+def test_highs_single_tool_matches_exhaustive_minimax(problem: RotationProblem) -> None:
+    """Use HiGHS directly and attain the known min-max value without label merging.
 
     Args:
         problem: Immutable validated tiny rotation problem; fixtures use exhaustive or
@@ -108,10 +109,9 @@ def test_cbc_single_tool_matches_exhaustive_minimax(problem: RotationProblem) ->
     Returns:
         None.
     """
-    optimizer = PulpRotationOptimizer()
-    with patch.object(pulp, "HiGHS", side_effect=AssertionError("Wrong backend")):
-        result = optimizer.optimize_single_tool(problem, AssessmentKind.LIFFT)
-    assert result.backend == RotationBackend.CBC
+    optimizer = HighsRotationOptimizer()
+    result = optimizer.optimize_single_tool(problem, AssessmentKind.LIFFT)
+    assert result.backend == RotationBackend.HIGHS
     assert result.stages == (RotationSolveStatus.OPTIMAL,)
     problem.validate_schedule(result.schedule)
     expected = min(
@@ -134,18 +134,32 @@ def test_highs_two_stages_match_exhaustive_objective(problem: RotationProblem) -
     Returns:
         None.
     """
-    with (
-        patch.object(pulp, "PULP_CBC_CMD", side_effect=AssertionError("Wrong backend")),
-        patch.object(pulp, "HiGHS", wraps=pulp.HiGHS) as highs,
-    ):
-        result = PulpRotationOptimizer().optimize_all_tools(problem)
+    options = []
+    set_option = highspy.Highs.setOptionValue
+
+    def observe_option(
+        model: highspy.Highs, name: str, value: bool | float
+    ) -> highspy.HighsStatus:
+        """Record actual per-pass options while calling the native setter.
+
+        Args:
+            model: Owned HiGHS model being configured.
+            name: Native option identifier.
+            value: Logging flag, seconds or relative gap.
+
+        Returns:
+            Native setter status, unchanged.
+        """
+        options.append((model, name, value))
+        return set_option(model, name, value)
+
+    with patch.object(highspy.Highs, "setOptionValue", observe_option):
+        result = HighsRotationOptimizer().optimize_all_tools(problem)
     assert result.backend == RotationBackend.HIGHS
     assert result.stages == (RotationSolveStatus.OPTIMAL,) * 2
-    assert highs.call_count == 2
-    assert all(
-        call.kwargs == {"msg": False, "timeLimit": 5, "gapRel": 0.01}
-        for call in highs.call_args_list
-    )
+    assert [v for _, n, v in options if n == "time_limit"] == [5, 5]
+    assert [v for _, n, v in options if n == "mip_rel_gap"] == [0.01, 0.01]
+    assert len({id(m) for m, n, _ in options if n == "time_limit"}) == 2
     schedules = feasible_schedules(problem)
     expected = min(
         sum(max(averages(problem, rows, kind)) for kind in AssessmentKind)
@@ -185,7 +199,7 @@ def test_zero_probability_remains_real_data(
         problem,
         risks=tuple(replace(risk, probability_percent=0) for risk in problem.risks),
     )
-    optimizer = PulpRotationOptimizer()
+    optimizer = HighsRotationOptimizer()
     result = (
         optimizer.optimize_all_tools(zero)
         if multitool
@@ -241,41 +255,42 @@ def test_problem_validation_and_required_tools(problem: RotationProblem) -> None
             replace(problem, time_limit_seconds=limit)
     missing = replace(problem, risks=problem.risks[:-1])
     with pytest.raises(ValueError, match="requires"):
-        PulpRotationOptimizer().optimize_all_tools(missing)
+        HighsRotationOptimizer().optimize_all_tools(missing)
     with pytest.raises(ValueError, match="requires"):
-        PulpRotationOptimizer().optimize_single_tool(missing, AssessmentKind.TST)
+        HighsRotationOptimizer().optimize_single_tool(missing, AssessmentKind.TST)
     with pytest.raises(ValueError, match="supported"):
         problem.risk_by_target("bad")
 
 
-@pytest.mark.parametrize("backend", ["PULP_CBC_CMD", "HiGHS"])
+@pytest.mark.parametrize("multitool", [False, True])
 def test_required_solver_failure_does_not_fallback(
-    problem: RotationProblem, backend: str
+    problem: RotationProblem, multitool: bool
 ) -> None:
-    """Report missing backend and backend execution errors without substitution.
+    """Normalize direct HiGHS execution failures without an alternate engine.
 
     Args:
-        problem: Immutable validated tiny rotation problem; fixtures use exhaustive or
-            controlled expected outcomes.
-        backend: Required explicit CBC/HiGHS backend selected by the scenario; no
-            fallback is accepted.
+        problem: Immutable tiny schedule with known feasible risks.
+        multitool: Exercise single-tool and all-tool execution paths.
 
     Returns:
-        None.
+        None; native error status and OS/runtime failures never publish a schedule.
     """
-    optimizer = PulpRotationOptimizer()
-    for failure in (None, pulp.PulpSolverError("failure"), OSError("failure")):
-        with patch.object(pulp, backend) as factory:
-            factory.return_value.available.return_value = failure is not None
-            with (
-                patch.object(pulp.LpProblem, "solve", side_effect=failure),
-                pytest.raises(RotationOptimizationError),
-            ):
-                if backend == "HiGHS":
-                    optimizer.optimize_all_tools(problem)
-                else:
-                    optimizer.optimize_single_tool(problem, AssessmentKind.LIFFT)
-            assert factory.call_count == 1
+    optimizer = HighsRotationOptimizer()
+    for failure in (RuntimeError("failure"), OSError("failure"), None):
+        with (
+            patch.object(
+                highspy.Highs,
+                "run",
+                side_effect=failure,
+                return_value=highspy.HighsStatus.kError,
+            ) as run,
+            pytest.raises(RotationOptimizationError),
+        ):
+            if multitool:
+                optimizer.optimize_all_tools(problem)
+            else:
+                optimizer.optimize_single_tool(problem, AssessmentKind.LIFFT)
+            assert run.call_count == 1
 
 
 def test_infeasible_counts_report_no_solution(problem: RotationProblem) -> None:
@@ -294,53 +309,35 @@ def test_infeasible_counts_report_no_solution(problem: RotationProblem) -> None:
     for multitool in (False, True):
         with pytest.raises(RotationOptimizationError, match="Infeasible"):
             if multitool:
-                PulpRotationOptimizer().optimize_all_tools(impossible)
+                HighsRotationOptimizer().optimize_all_tools(impossible)
             else:
-                PulpRotationOptimizer().optimize_single_tool(
+                HighsRotationOptimizer().optimize_single_tool(
                     impossible, AssessmentKind.LIFFT
                 )
 
 
-@pytest.mark.parametrize("model_status", [pulp.LpStatusOptimal, pulp.LpStatusNotSolved])
+@pytest.mark.parametrize(
+    "model_status",
+    [
+        highspy.HighsModelStatus.kTimeLimit,
+        highspy.HighsModelStatus.kIterationLimit,
+        highspy.HighsModelStatus.kInterrupt,
+    ],
+)
 def test_feasible_incumbent_is_not_mislabeled_optimal(
-    problem: RotationProblem, model_status: int
+    problem: RotationProblem, model_status: highspy.HighsModelStatus
 ) -> None:
-    """CBC/HiGHS may map a time-limited incumbent to Optimal problem status.
+    """A valid primal at a native limit is feasible rather than falsely optimal.
 
     Args:
-        problem: Immutable validated tiny rotation problem; fixtures use exhaustive or
-            controlled expected outcomes.
-        model_status: Injected PuLP problem status; incumbent validation remains
-            independent of this flag.
+        problem: Immutable tiny feasible rotation problem.
+        model_status: Native nonoptimal stopping reason after a real solve.
 
     Returns:
-        None.
+        None; independent assignment validation still accepts the valid incumbent.
     """
-    solve = pulp.LpProblem.solve
-
-    def stopped(model: pulp.LpProblem, solver: pulp.LpSolver) -> int:
-        """Run the actual solve then mark its incumbent merely feasible.
-
-        Run the actual solve then mark its incumbent merely feasible, proving problem
-        status cannot falsely certify optimality.
-
-        Args:
-            model: PuLP problem solved by the real backend, then observed or
-                deliberately corrupted by this callback.
-            solver: Explicit approved backend instance passed through to the original
-                solve method.
-
-        Returns:
-            Original solve status integer after downgrading incumbent optimality
-            evidence.
-        """
-        status = solve(model, solver)
-        model.status = model_status
-        model.sol_status = pulp.LpSolutionIntegerFeasible
-        return status
-
-    with patch.object(pulp.LpProblem, "solve", stopped):
-        result = PulpRotationOptimizer().optimize_single_tool(
+    with patch.object(highspy.Highs, "getModelStatus", return_value=model_status):
+        result = HighsRotationOptimizer().optimize_single_tool(
             problem, AssessmentKind.LIFFT
         )
     assert result.stages == (RotationSolveStatus.FEASIBLE,)
@@ -354,47 +351,37 @@ def test_feasible_incumbent_is_not_mislabeled_optimal(
 def test_solver_status_never_overrides_schedule_constraints(
     problem: RotationProblem, corruption: str
 ) -> None:
-    """Reject fractional/absent values and whole-schedule violations after solve.
+    """Reject corrupted real HiGHS primal values despite an optimal model status.
 
     Args:
-        problem: Immutable validated tiny rotation problem; fixtures use exhaustive or
-            controlled expected outcomes.
-        corruption: Named invalid incumbent/constraint mutation applied after the real
-            solve.
+        problem: Tiny independently enumerable feasible schedule.
+        corruption: Missing/nonfinite/fractional value, invalid staffing
+            or invalid primal validity flag.
 
     Returns:
-        None.
+        None; backend certification never overrides independent numeric/staffing checks.
     """
-    solve = pulp.LpProblem.solve
+    get_solution = highspy.Highs.getSolution
 
-    def corrupt(model: pulp.LpProblem, solver: pulp.LpSolver) -> int:
-        """Corrupt the real solver incumbent deliberately.
-
-        Run the actual solve then inject the selected
-        missing/fractional/nonfinite/collision/count-invalid incumbent.
+    def corrupt(model: highspy.Highs) -> SimpleNamespace:
+        """Return a controlled mutation of the real native primal snapshot.
 
         Args:
-            model: PuLP problem solved by the real backend, then observed or
-                deliberately corrupted by this callback.
-            solver: Explicit approved backend instance passed through to the original
-                solve method.
+            model: Owned model already solved by actual HiGHS.
 
         Returns:
-            Original solve status integer after applying the selected invalid incumbent
-            mutation.
+            Detached value/validity view; native model state itself is unchanged.
         """
-        status = solve(model, solver)
-        variables = {v.name: v for v in model.variables()}
-        if corruption == "no-incumbent":
-            model.status = pulp.LpStatusNotSolved
-            model.sol_status = pulp.LpSolutionNoSolutionFound
-        elif corruption in ("none", "fractional", "nan"):
-            variables["assign_0_0_0"].varValue = {
+        real = get_solution(model)
+        values = list(real.col_value)
+        variables = {v.name: v.index for v in model.getVariables()}
+        if corruption in ("none", "fractional", "nan"):
+            values[variables["assign_0_0_0"]] = {
                 "none": None,
                 "fractional": 0.5,
                 "nan": nan,
             }[corruption]
-        else:
+        elif corruption != "no-incumbent":
             for worker in range(2):
                 for block in range(2):
                     for target in range(2):
@@ -405,62 +392,72 @@ def test_solver_status_never_overrides_schedule_constraints(
                             if corruption == "totals"
                             else False
                         )
-                        variables[f"assign_{worker}_{block}_{target}"].varValue = int(
+                        values[variables[f"assign_{worker}_{block}_{target}"]] = int(
                             selected
                         )
-        return status
+        return SimpleNamespace(
+            col_value=values,
+            value_valid=real.value_valid and corruption != "no-incumbent",
+        )
 
     with (
-        patch.object(pulp.LpProblem, "solve", corrupt),
+        patch.object(highspy.Highs, "getSolution", corrupt),
         pytest.raises(RotationOptimizationError),
     ):
-        PulpRotationOptimizer().optimize_single_tool(problem, AssessmentKind.LIFFT)
+        HighsRotationOptimizer().optimize_single_tool(problem, AssessmentKind.LIFFT)
 
 
 def test_second_stage_cannot_exceed_frozen_ceilings(problem: RotationProblem) -> None:
-    """Even a complete feasible schedule must satisfy the first-stage ceilings.
+    """Reject a feasible second-stage arrangement exceeding first-stage ceilings.
 
     Args:
-        problem: Immutable validated tiny rotation problem; fixtures use exhaustive or
-            controlled expected outcomes.
+        problem: Tiny independently enumerable original schedule.
 
     Returns:
-        None.
+        None; real HiGHS runs twice but corrupted second-stage assignments are rejected.
     """
-    solve = pulp.LpProblem.solve
+    run = highspy.Highs.run
+    get_solution = highspy.Highs.getSolution
     calls = 0
 
-    def violate(model: pulp.LpProblem, solver: pulp.LpSolver) -> int:
-        """Corrupt only the second-stage assignments.
-
-        Corrupt only the second-stage assignments to exceed frozen first-stage ceilings
-        after a real solve.
+    def count(model: highspy.Highs) -> highspy.HighsStatus:
+        """Count native passes without changing their solve behavior.
 
         Args:
-            model: PuLP problem solved by the real backend, then observed or
-                deliberately corrupted by this callback.
-            solver: Explicit approved backend instance passed through to the original
-                solve method.
+            model: Owned actual HiGHS model.
 
         Returns:
-            Original solve status integer after deliberate second-stage ceiling
-            violation.
+            Native execution status after incrementing the observed pass count.
         """
         nonlocal calls
-        status = solve(model, solver)
         calls += 1
+        return run(model)
+
+    def violate(model: highspy.Highs) -> highspy.HighsSolution:
+        """Alter only second-stage assignments in a detached primal snapshot.
+
+        Args:
+            model: Actual solved model with opaque index-based names.
+
+        Returns:
+            Native validity and deliberately ceiling-violating assignment values.
+        """
+        real = get_solution(model)
+        values = list(real.col_value)
         if calls == 2:
-            for variable in model.variables():
+            for variable in model.getVariables():
                 if variable.name.startswith("assign_"):
                     _, worker, _, target = variable.name.split("_")
-                    variable.varValue = int(worker == target)
-        return status
+                    values[variable.index] = int(worker == target)
+        real.col_value = values
+        return real
 
     with (
-        patch.object(pulp.LpProblem, "solve", violate),
+        patch.object(highspy.Highs, "run", count),
+        patch.object(highspy.Highs, "getSolution", violate),
         pytest.raises(RotationOptimizationError, match="ceiling"),
     ):
-        PulpRotationOptimizer().optimize_all_tools(problem)
+        HighsRotationOptimizer().optimize_all_tools(problem)
     assert calls == 2
 
 
@@ -502,33 +499,31 @@ def test_three_worker_multitool_matches_conditional_exhaustive_oracle() -> None:
         except ValueError:
             continue
         candidates.append(rows)
-    solve = pulp.LpProblem.solve
+    solve = highspy.Highs.run
     bounds = {}
     first_schedule = None
 
-    def observe(model: pulp.LpProblem, solver: pulp.LpSolver) -> int:
+    def observe(model: highspy.Highs) -> highspy.HighsStatus:
         """Observe first-stage exact ceiling variables and opaque schedule.
 
         Observe first-stage exact ceiling variables and opaque schedule before comparing
         both real stages with independent enumeration.
 
         Args:
-            model: PuLP problem solved by the real backend, then observed or
+            model: HiGHS model solved by the real backend, then observed or
                 deliberately corrupted by this callback.
-            solver: Explicit approved backend instance passed through to the original
-                solve method.
 
         Returns:
             Original solve status integer after capturing the first-stage exact ceilings
             and schedule.
         """
         nonlocal first_schedule
-        status = solve(model, solver)
+        status = solve(model)
         if not bounds:
-            variables = {v.name: v for v in model.variables()}
+            variables = {v.name: v for v in model.getVariables()}
             bounds.update(
                 {
-                    kind: variables[f"ceiling_{kind.value}"].varValue
+                    kind: model.val(variables[f"ceiling_{kind.value}"])
                     for kind in AssessmentKind
                 }
             )
@@ -539,7 +534,7 @@ def test_three_worker_multitool_matches_conditional_exhaustive_oracle() -> None:
                         next(
                             key
                             for target, key in enumerate(keys)
-                            if variables[f"assign_{worker}_{block}_{target}"].varValue
+                            if model.val(variables[f"assign_{worker}_{block}_{target}"])
                             > 0.5
                         )
                         for block in range(2)
@@ -549,8 +544,8 @@ def test_three_worker_multitool_matches_conditional_exhaustive_oracle() -> None:
             )
         return status
 
-    with patch.object(pulp.LpProblem, "solve", observe):
-        result = PulpRotationOptimizer().optimize_all_tools(problem)
+    with patch.object(highspy.Highs, "run", observe):
+        result = HighsRotationOptimizer().optimize_all_tools(problem)
     optimum = min(
         sum(max(averages(problem, rows, kind)) for kind in AssessmentKind)
         for rows in candidates
@@ -586,45 +581,51 @@ def test_three_worker_multitool_matches_conditional_exhaustive_oracle() -> None:
 
 
 def test_multitool_second_stage_requires_incumbent(problem: RotationProblem) -> None:
-    """Do not publish stale first-stage variables when stage two has no solution.
+    """Reject stale first-stage values when the second pass has no valid incumbent.
 
     Args:
-        problem: Immutable validated tiny rotation problem; fixtures use exhaustive or
-            controlled expected outcomes.
+        problem: Tiny independently enumerable feasible original schedule.
 
     Returns:
-        None.
+        None; no first-pass schedule is silently substituted after second-pass failure.
     """
-    solve = pulp.LpProblem.solve
+    run = highspy.Highs.run
+    get_solution = highspy.Highs.getSolution
     calls = 0
 
-    def stop(model: pulp.LpProblem, solver: pulp.LpSolver) -> int:
-        """Clear only the second-stage solution status.
-
-        Clear only the second-stage solution status after a real solve so stale
-        first-stage variables cannot be published.
+    def count(model: highspy.Highs) -> highspy.HighsStatus:
+        """Count actual passes while preserving the native solver result.
 
         Args:
-            model: PuLP problem solved by the real backend, then observed or
-                deliberately corrupted by this callback.
-            solver: Explicit approved backend instance passed through to the original
-                solve method.
+            model: Owned HiGHS model.
 
         Returns:
-            Original solve status integer after deliberately removing second-stage
-            incumbent status.
+            Native run status, unchanged.
         """
         nonlocal calls
-        status = solve(model, solver)
         calls += 1
-        if calls == 2:
-            model.status = pulp.LpStatusNotSolved
-            model.sol_status = pulp.LpSolutionNoSolutionFound
-        return status
+        return run(model)
+
+    def invalidate(
+        model: highspy.Highs,
+    ) -> highspy.HighsSolution | SimpleNamespace:
+        """Invalidate only the second native primal snapshot.
+
+        Args:
+            model: Owned real solved model.
+
+        Returns:
+            Original values but no valid incumbent flag on the second pass.
+        """
+        real = get_solution(model)
+        if calls != 2:
+            return real
+        return SimpleNamespace(col_value=real.col_value, value_valid=False)
 
     with (
-        patch.object(pulp.LpProblem, "solve", stop),
+        patch.object(highspy.Highs, "run", count),
+        patch.object(highspy.Highs, "getSolution", invalidate),
         pytest.raises(RotationOptimizationError, match="No feasible"),
     ):
-        PulpRotationOptimizer().optimize_all_tools(problem)
+        HighsRotationOptimizer().optimize_all_tools(problem)
     assert calls == 2

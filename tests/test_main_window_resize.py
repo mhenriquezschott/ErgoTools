@@ -51,7 +51,7 @@ def test_enlargement_preserves_pending_input_and_column_alignment(
     window.show()
     _APP.processEvents()
     try:
-        assert window.minimumWidth() == 1550 and window.minimumHeight() == 1015
+        assert window.minimumWidth() == 1725 and window.minimumHeight() == 1015
         assert window.maximumWidth() > 2100 and window.maximumHeight() > 1600
         for duet in (False, True):
             if duet:
@@ -85,10 +85,10 @@ def test_enlargement_preserves_pending_input_and_column_alignment(
                 field.textEdited.emit("pending")
             widths = []
             for width, height in (
-                (1550, 1015),
+                (1770, 1015),
                 (1920, 1200),
                 (2100, 1300),
-                (1550, 1015),
+                (1770, 1015),
             ):
                 window.resize(width, height)
                 QTest.qWait(30)
@@ -157,17 +157,17 @@ def test_tall_viewport_fits_full_avatar_and_preserves_user_zoom(tmp_path: Path) 
         baseline = camera.GetParallelScale()
         engine.zoom_view()
         zoomed = camera.GetParallelScale()
-        for width, height in ((1920, 1200), (1550, 1300), (2100, 1300)):
+        for width, height in ((1920, 1200), (1770, 1300), (2100, 1300)):
             window.resize(width, height)
             _APP.processEvents()
             assert camera.GetPosition() == pose
             assert camera.GetParallelScale() == pytest.approx(
                 zoomed * engine._aspect_factor
             )
-        window.resize(1550, 1015)
+        window.resize(1770, 1015)
         _APP.processEvents()
         assert camera.GetParallelScale() == pytest.approx(baseline / 1.15)
-        window.resize(1550, 1300)
+        window.resize(1770, 1300)
         _APP.processEvents()
         engine.set_animation_enabled(False)
         engine.reset_view()

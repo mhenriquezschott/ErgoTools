@@ -1,4 +1,4 @@
-"""Strict version-one interchange format for source LiFFT drafts, not .ergprj.
+"""Strict versioned interchange format for source LiFFT drafts, not .ergprj.
 
 Infrastructure layer. Keep these representations and concrete I/O outside the
 domain/application core. Ownership, validation and transaction effects are documented at
@@ -16,11 +16,16 @@ from ergotools.infrastructure.draft_json import document_fields as _fields
 from ergotools.infrastructure.draft_json import document_number as _number
 from ergotools.infrastructure.draft_json import document_text as _text
 from ergotools.infrastructure.draft_json import unique_object as _object
+from ergotools.infrastructure.task_name_serialization import (
+    decode_task_name,
+    task_name_fields,
+)
 
 
 def decode_lifft(payload: str) -> LifftDraft:
     """Decode a complete draft or raise DocumentFormatError without partial data.
 
+    Named rows use version two; unnamed encodings retain version one.
     Reject unknown versions/fields, duplicate JSON members, booleans masquerading as
     numbers, nonfinite values, invalid units and duplicate task identities. No
     defaulting, calculation, migration or source-unit conversion occurs.
@@ -30,7 +35,7 @@ def decode_lifft(payload: str) -> LifftDraft:
             input, not zero.
 
     Returns:
-        Complete immutable version-one source draft with original cm/N or inch/lbf
+        Complete immutable source draft with original cm/N or inch/lbf
         metadata and explicit missing values.
 
     Raises:
@@ -44,20 +49,27 @@ def decode_lifft(payload: str) -> LifftDraft:
         )
         if data["format"] != "ergotools.lifft-draft":
             raise DocumentFormatError("Unsupported document format.")
-        if type(data["version"]) is not int or data["version"] != 1:
+        if type(data["version"]) is not int or data["version"] not in (1, 2):
             raise DocumentFormatError("Unsupported document version.")
         system = MeasurementSystem(_text(data["system"]))
         if not isinstance(data["tasks"], list):
             raise DocumentFormatError("Tasks must be an array.")
         tasks = []
         for entry in data["tasks"]:
-            task = _fields(entry, {"task_id", "lever_arm", "load", "repetitions"})
+            named = data["version"] == 2
+            fields = {"task_id", "lever_arm", "load", "repetitions"}
+            if named:
+                fields |= {"task_name", "task_definition_id"}
+            task = _fields(entry, fields)
+            name, definition_id = decode_task_name(task, named)
             tasks.append(
                 LifftTask(
                     _text(task["task_id"]),
                     _number(task["lever_arm"]),
                     _number(task["load"]),
                     _number(task["repetitions"]),
+                    task_name=name,
+                    task_definition_id=definition_id,
                 )
             )
         return LifftDraft(system, tuple(tasks))
@@ -80,6 +92,7 @@ def encode_lifft(draft: LifftDraft) -> str:
         DocumentFormatError: The generated source fails strict decoding.
         ValueError: JSON encoding rejects a nonfinite source number.
     """
+    named = task_name_fields(draft)
     data = {
         "format": "ergotools.lifft-draft",
         "version": 1,
@@ -87,6 +100,14 @@ def encode_lifft(draft: LifftDraft) -> str:
         "tasks": [
             {
                 "task_id": task.task_id,
+                **(
+                    {
+                        "task_name": task.task_name,
+                        "task_definition_id": task.task_definition_id,
+                    }
+                    if named
+                    else {}
+                ),
                 "lever_arm": task.lever_arm,
                 "load": task.load,
                 "repetitions": task.repetitions,
@@ -94,6 +115,8 @@ def encode_lifft(draft: LifftDraft) -> str:
             for task in draft.tasks
         ],
     }
+    if named:
+        data["version"] = 2
     payload = json.dumps(
         data, ensure_ascii=True, allow_nan=False, sort_keys=True, separators=(",", ":")
     )

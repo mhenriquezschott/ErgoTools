@@ -25,8 +25,10 @@ from ergotools.bootstrap import load_icons
 from ergotools.domain.assessments.document import AssessmentKind
 from ergotools.domain.language import Language
 from ergotools.domain.rotation_scheme import RotationMode
-from ergotools.presentation.desktop.rotation_dialog import RotationDialog
-from ergotools.presentation.desktop.rotation_scope_dialog import RotationScopeDialog
+from ergotools.presentation.desktop.legacy_jrot_dialog import LegacyJrotDialog
+from ergotools.presentation.desktop.legacy_jrot_scope_dialog import (
+    LegacyJrotScopeDialog,
+)
 from tests.test_history_persistence import OWNER
 from tests.test_rotation_persistence import scheme, seed
 
@@ -35,7 +37,7 @@ from tests.test_rotation_persistence import scheme, seed
 _APP = QApplication.instance() or QApplication([])
 
 
-def fill(dialog: RotationDialog, identity: str) -> None:
+def fill(dialog: LegacyJrotDialog, identity: str) -> None:
     """Enter one complete manual rotation through the migrated cell API.
 
     Args:
@@ -72,9 +74,9 @@ def test_actual_buttons_save_new_cancel_navigation_delete(
         None.
     """
     path = tmp_path / "scheme.ergprj"
-    with seed(path) as project, patch.object(RotationDialog, "_message") as message:
+    with seed(path) as project, patch.object(LegacyJrotDialog, "_message") as message:
         before = path.read_bytes()
-        dialog = RotationDialog(project, load_icons(), language=language)
+        dialog = LegacyJrotDialog(project, load_icons(), language=language)
         dialog.show()
         assert path.read_bytes() == before and project.format_version == 7
         assert not dialog.delete_button.isEnabled()
@@ -110,10 +112,10 @@ def test_actual_buttons_save_new_cancel_navigation_delete(
         assert dialog.loaded == saved
         QTest.mouseClick(dialog.navigation[0], Qt.MouseButton.LeftButton)
         assert dialog.loaded.scheme_id == "A"
-        with patch.object(RotationDialog, "_confirm_delete", return_value=False):
+        with patch.object(LegacyJrotDialog, "_confirm_delete", return_value=False):
             QTest.mouseClick(dialog.delete_button, Qt.MouseButton.LeftButton)
         assert len(project.load_rotation_schemes()) == 2
-        with patch.object(RotationDialog, "_confirm_delete", return_value=True):
+        with patch.object(LegacyJrotDialog, "_confirm_delete", return_value=True):
             QTest.mouseClick(dialog.delete_button, Qt.MouseButton.LeftButton)
             assert dialog.loaded == saved
             QTest.mouseClick(dialog.delete_button, Qt.MouseButton.LeftButton)
@@ -142,10 +144,10 @@ def test_scope_modal_pending_apply_counts_clear_and_cancel(tmp_path: Path) -> No
     """
     with (
         seed(tmp_path / "scope.ergprj") as project,
-        patch.object(RotationDialog, "_message"),
+        patch.object(LegacyJrotDialog, "_message"),
     ):
         project.save_rotation_scheme(scheme())
-        dialog = RotationDialog(project, load_icons())
+        dialog = LegacyJrotDialog(project, load_icons())
         dialog.show()
         original = dialog.loaded
         grid = dialog.grid
@@ -160,7 +162,7 @@ def test_scope_modal_pending_apply_counts_clear_and_cancel(tmp_path: Path) -> No
                 None.
             """
             child = _APP.activeModalWidget()
-            assert isinstance(child, RotationScopeDialog)
+            assert isinstance(child, LegacyJrotScopeDialog)
             child.reject()
 
         QTimer.singleShot(0, reject_scope)
@@ -180,7 +182,7 @@ def test_scope_modal_pending_apply_counts_clear_and_cancel(tmp_path: Path) -> No
                 None.
             """
             child = _APP.activeModalWidget()
-            assert isinstance(child, RotationScopeDialog)
+            assert isinstance(child, LegacyJrotScopeDialog)
             child.tree.topLevelItem(0).setCheckState(0, Qt.CheckState.Checked)
             child.accept()
 
@@ -224,11 +226,11 @@ def test_storage_failures_retain_edits_and_selected_record(tmp_path: Path) -> No
     """
     with (
         seed(tmp_path / "failure.ergprj") as project,
-        patch.object(RotationDialog, "_message") as message,
+        patch.object(LegacyJrotDialog, "_message") as message,
     ):
         project.save_rotation_scheme(scheme())
         repository = Mock(wraps=project)
-        dialog = RotationDialog(repository, load_icons())
+        dialog = LegacyJrotDialog(repository, load_icons())
         dialog.show()
         original = dialog.loaded
         grid = dialog.grid
@@ -243,7 +245,7 @@ def test_storage_failures_retain_edits_and_selected_record(tmp_path: Path) -> No
             original,
         )
         repository.delete_rotation_scheme.side_effect = OSError("blocked")
-        with patch.object(RotationDialog, "_confirm_delete", return_value=True):
+        with patch.object(LegacyJrotDialog, "_confirm_delete", return_value=True):
             QTest.mouseClick(dialog.delete_button, Qt.MouseButton.LeftButton)
         assert dialog.grid is grid and dialog.loaded == original
         repository.load_jobs.side_effect = OSError("read failed")
@@ -267,7 +269,7 @@ def test_search_and_unchanged_optimized_provenance(tmp_path: Path) -> None:
     """
     with (
         seed(tmp_path / "search.ergprj") as project,
-        patch.object(RotationDialog, "_message") as message,
+        patch.object(LegacyJrotDialog, "_message") as message,
     ):
         original = replace(
             scheme(), mode=RotationMode.SINGLE_TOOL, primary_kind=AssessmentKind.LIFFT
@@ -275,7 +277,7 @@ def test_search_and_unchanged_optimized_provenance(tmp_path: Path) -> None:
         project.save_rotation_scheme(original)
         other = replace(scheme(False), scheme_id="Other")
         project.save_rotation_scheme(other)
-        dialog = RotationDialog(project, load_icons())
+        dialog = LegacyJrotDialog(project, load_icons())
         dialog.show()
 
         def search(identity: str) -> None:
@@ -331,7 +333,7 @@ def test_native_messages_localize_buttons_and_use_packaged_icons(
     """
     with seed(tmp_path / "messages.ergprj") as project:
         before = (tmp_path / "messages.ergprj").read_bytes()
-        dialog = RotationDialog(project, load_icons(), language=language)
+        dialog = LegacyJrotDialog(project, load_icons(), language=language)
 
         def confirm() -> None:
             """Assert localized Yes/No, packaged icons and No-default consent.

@@ -13,8 +13,11 @@ import tempfile
 from dataclasses import asdict
 from pathlib import Path
 
+from ergotools.application.assessment_columns import AssessmentColumns
+from ergotools.application.assessment_import import ImportProfile
 from ergotools.application.gauge_preferences import GaugeMarkerSettings
 from ergotools.application.settings import DEFAULT_UNDO_LIMIT, Language, UserSettings
+from ergotools.domain.assessments.document import AssessmentKind
 from ergotools.domain.decimal_convention import DecimalConvention
 from ergotools.domain.model_units import MeasurementSystem
 
@@ -73,7 +76,9 @@ class JsonSettingsStore:
             Validated settings; defaults only for a missing file, decimal point for
             version 1, animation True before version 3, and default gauge markers
             before version 5, Undo limit 25 before version 6 and result animation True
-            before version 7.
+            before version 7; import profiles default empty before version 8,
+            visible columns before version9. Version10's obsolete solver-choice
+            field is discarded; version11 writes no solver preference.
 
         Raises:
             SettingsFormatError: Encoding, fields, duplicate members, version or
@@ -95,24 +100,70 @@ class JsonSettingsStore:
                 "default_units",
                 "recent_documents",
             }
-            if isinstance(data, dict) and data.get("version") in (2, 3, 4, 5, 6, 7):
+            if isinstance(data, dict) and data.get("version") in (
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+            ):
                 expected.add("decimal_convention")
-            if isinstance(data, dict) and data.get("version") in (3, 4, 5, 6, 7):
+            if isinstance(data, dict) and data.get("version") in (
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+            ):
                 expected.add("animated_body_region_focus")
-            if isinstance(data, dict) and data.get("version") in (4, 5, 6, 7):
+            if isinstance(data, dict) and data.get("version") in (
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+            ):
                 expected.add("assessment_contexts")
-            if isinstance(data, dict) and data.get("version") in (5, 6, 7):
+            if isinstance(data, dict) and data.get("version") in (
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+            ):
                 expected.add("gauge_markers")
-            if isinstance(data, dict) and data.get("version") in (6, 7):
+            if isinstance(data, dict) and data.get("version") in (6, 7, 8, 9, 10, 11):
                 expected.add("undo_limit")
-            if isinstance(data, dict) and data.get("version") == 7:
+            if isinstance(data, dict) and data.get("version") in (7, 8, 9, 10, 11):
                 expected.update(("animated_risk_gauge", "animated_cumulative_damage"))
+            if isinstance(data, dict) and data.get("version") in (8, 9, 10, 11):
+                expected.add("import_profiles")
+            if isinstance(data, dict) and data.get("version") in (9, 10, 11):
+                expected.add("assessment_columns")
+            if isinstance(data, dict) and data.get("version") == 10:
+                # Read the retired version10 field solely to discard it, never as
+                # a runtime/legacy option. Version11 saves no solver-choice key.
+                expected.add("highs_single_tool")
             if not isinstance(data, dict) or set(data) != expected:
                 raise SettingsFormatError("Invalid settings fields.")
             if (
                 data["format"] != "ergotools.user-settings"
                 or type(data["version"]) is not int
-                or data["version"] not in (1, 2, 3, 4, 5, 6, 7)
+                or data["version"] not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
             ):
                 raise SettingsFormatError("Unsupported settings version.")
             if not isinstance(data["recent_documents"], list):
@@ -143,6 +194,8 @@ class JsonSettingsStore:
                 data.get("undo_limit", DEFAULT_UNDO_LIMIT),
                 data.get("animated_risk_gauge", True),
                 data.get("animated_cumulative_damage", True),
+                decode_import_profiles(data.get("import_profiles", [])),
+                decode_column_preferences(data.get("assessment_columns", [])),
             )
         except (ValueError, TypeError, RecursionError) as error:
             raise SettingsFormatError("Invalid user settings.") from error
@@ -155,7 +208,7 @@ class JsonSettingsStore:
         are outside this initial contract. No project locations are read.
 
         Args:
-            settings: Validated immutable preferences to write as version 7; project
+            settings: Validated immutable preferences to write as version 10; project
                 contents are not opened.
 
         Returns:
@@ -171,7 +224,11 @@ class JsonSettingsStore:
             json.dumps(
                 {
                     "format": "ergotools.user-settings",
-                    "version": 7,
+                    "version": 11,
+                    "assessment_columns": [
+                        asdict(p) for p in settings.assessment_columns
+                    ],
+                    "import_profiles": [asdict(p) for p in settings.import_profiles],
                     "animated_risk_gauge": settings.animated_risk_gauge,
                     "animated_cumulative_damage": settings.animated_cumulative_damage,
                     "undo_limit": settings.undo_limit,
@@ -211,3 +268,83 @@ class JsonSettingsStore:
         finally:
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
+
+
+def decode_import_profiles(value: object) -> tuple[ImportProfile, ...]:
+    """Decode only explicit validated per-tool mapping preferences.
+
+    Args:
+        value: JSON list; no rows, paths, ranges or user assessment data are permitted.
+
+    Returns:
+        Immutable profiles; older settings supply an empty list.
+
+    Raises:
+        ValueError: A member, field, enum or profile choice is malformed.
+    """
+    if not isinstance(value, list):
+        raise ValueError("Import preferences must be an array.")
+    result = []
+    for item in value:
+        if (
+            not isinstance(item, dict)
+            or set(item)
+            != {
+                "kind",
+                "delimiter",
+                "encoding",
+                "decimal",
+                "thousands",
+                "units",
+                "header",
+                "fields",
+                "configured",
+                "headers",
+            }
+            or not isinstance(item["fields"], list)
+            or not isinstance(item["headers"], list)
+        ):
+            raise ValueError("Invalid import preference fields.")
+        result.append(
+            ImportProfile(
+                kind=AssessmentKind(item["kind"]),
+                delimiter=item["delimiter"],
+                encoding=item["encoding"],
+                decimal=DecimalConvention(item["decimal"]),
+                thousands=item["thousands"],
+                units=MeasurementSystem(item["units"]),
+                header=item["header"],
+                fields=tuple(item["fields"]),
+                configured=item["configured"],
+                headers=tuple(item["headers"]),
+            )
+        )
+    return tuple(result)
+
+
+def decode_column_preferences(value: object) -> tuple[AssessmentColumns, ...]:
+    """Decode strict personal presentation choices without dropping foreign fields.
+
+    Args:
+        value: JSON array of exact kind/hidden objects; no assessment data is present.
+
+    Returns:
+        Immutable validated per-tool optional column choices.
+
+    Raises:
+        ValueError: Payload shape, tool or optional-field choices are invalid.
+    """
+    if not isinstance(value, list):
+        raise ValueError("Column preferences must be an array.")
+    result = []
+    for item in value:
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"kind", "hidden"}
+            or not isinstance(item["hidden"], list)
+        ):
+            raise ValueError("Invalid column preference fields.")
+        result.append(
+            AssessmentColumns(AssessmentKind(item["kind"]), tuple(item["hidden"]))
+        )
+    return tuple(result)

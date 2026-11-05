@@ -115,3 +115,11 @@ project clears that transient history; Backup remains necessary for later recove
 Unsaved session data is held in private memory, so a process/system crash can lose it
 while the last saved project remains intact. No automatic backups are created.
 See [single project Save](single_project_save.md).
+
+## Guided versus Legacy JROT
+
+Normal JROT reads older schemes without inventing dates or timing. Accepting a guided edit
+promotes that record to guided storage; the optional Legacy window then omits it. Legacy
+cannot downgrade or overwrite guided records. Back up before promoting an older workflow;
+use the matching application/package for recovery. J08 changes entry/presentation only,
+not native24, and does not migrate the maintained project files.

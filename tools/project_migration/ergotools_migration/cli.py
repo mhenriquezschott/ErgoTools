@@ -48,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "source",
         type=Path,
-        help="Original XML or earlier full native format 8-18 project",
+        help="Original XML or earlier full native format 8-23 project",
     )
     parser.add_argument(
         "--output", required=True, type=Path, help="Nonexistent native destination"

@@ -3,7 +3,6 @@
 # Qt 5.15.2 (2026-10-22): Qt 5.15.17 has no Windows wheel. No application changes.
 # Install with --only-binary :all: on CPython 3.13; missing wheels must stop setup.
 # Native GUI/OpenGL/solver acceptance on Windows/macOS is still pending.
-pulp==3.2.2
 highspy==1.11.0
 PyQt5==5.15.11
 PyQt5-Qt5==5.15.2 ; sys_platform == 'win32'
@@ -21,3 +20,7 @@ pyparsing==3.2.3
 python-dateutil==2.9.0.post0
 six==1.17.0
 packaging==26.3
+
+# Owner-approved spreadsheet value imports (no formula evaluation).
+openpyxl==3.1.5
+et-xmlfile==2.0.0

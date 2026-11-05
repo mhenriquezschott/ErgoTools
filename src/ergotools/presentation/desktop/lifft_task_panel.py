@@ -18,7 +18,11 @@ from PyQt5.QtWidgets import (
 )
 
 from ergotools.application.settings import Language
-from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.application.task_catalog import (
+    ReplaceAssessmentSource,
+    label_assessment_task,
+)
+from ergotools.domain.assessments.document import AssessmentDraft, AssessmentKind
 from ergotools.domain.assessments.lifft import LifftTaskResult
 from ergotools.domain.assessments.lifft_draft import LifftDraft, LifftTask
 from ergotools.domain.assessments.lifft_summary import LifftSummary
@@ -29,6 +33,7 @@ from ergotools.presentation.desktop.assessment_editor_section import (
     AssessmentActionRow,
     AssessmentEditorSection,
 )
+from ergotools.presentation.desktop.assessment_task_actions import AssessmentTaskActions
 from ergotools.presentation.desktop.assessment_task_grid import (
     AssessmentCellEdit,
     AssessmentTaskGrid,
@@ -49,6 +54,8 @@ from ergotools.presentation.edit_context import EditContext
 # the bound context.
 _TEXT = {
     "Task #": ("Tarea #"),
+    "Task name": "Nombre de tarea",
+    "Descriptive activity name.": "Nombre descriptivo de la actividad.",
     "Lever Arm": ("Brazo de Palanca"),
     "Load": ("Carga"),
     "Moment": ("Momento"),
@@ -94,6 +101,7 @@ _TEXT = {
 # calculations.
 _HEADER_TIPS = (
     "Task row number.",
+    "Descriptive activity name.",
     "Horizontal distance between the load and the lower back.",
     "Load handled during this task.",
     "Calculated lower-back moment.",
@@ -161,6 +169,7 @@ class LifftTaskPanel(QWidget):
             self.presenter.convention,
             kind=AssessmentKind.LIFFT,
             worker_layout=True,
+            icons=icons,
         )
         self.header_widget = self.task_grid.header_widget
         self.header_grid = self.task_grid.header_grid
@@ -171,6 +180,17 @@ class LifftTaskPanel(QWidget):
         self.grid = self.task_grid.grid
         self.task_grid.input_edited.connect(self._mark_pending)
         self.task_grid.cell_finished.connect(self._complete_cell)
+        self.task_actions = AssessmentTaskActions(
+            self.task_grid,
+            source=self._task_source,
+            accept=self._accept_shared_source,
+            accept_paste=self.presenter.workspace.accept_task_paste,
+            definitions=self.presenter.workspace.load_task_definitions,
+            replace_definitions=self.presenter.workspace.replace_task_definitions,
+            before_action=self._before_task_action,
+            system=lambda: self.presenter.system,
+            convention=lambda: self.presenter.convention,
+        )
         self.task_grid.task_focused.connect(self._select_task)
         self.summary = ToolResultSummary()
         self.total_title = self.summary.total_title
@@ -216,6 +236,7 @@ class LifftTaskPanel(QWidget):
         Returns:
             None.
         """
+        self.task_actions.bind_catalog(self.presenter.workspace.editing)
         # Discard only projection-local completion signals before retiring fields;
         # callers resolve drafts before intentional navigation or bulk acceptance.
         self.pending = False
@@ -233,17 +254,33 @@ class LifftTaskPanel(QWidget):
         )
         self.task_grid.precision = precision
         self.task_grid.system = self.presenter.system
+        canonical = self.presenter.source()
+        names = (
+            {t.task_id: (t.task_name, t.task_definition_id) for t in canonical.tasks}
+            if canonical
+            else {}
+        )
         rows = context.view.tasks if context else ()
         projected = (
             LifftDraft(
                 context.view.system if context else self.presenter.system,
                 tuple(
-                    LifftTask(t.task_id, t.lever_arm, t.load, t.repetitions)
+                    LifftTask(
+                        t.task_id,
+                        t.lever_arm,
+                        t.load,
+                        t.repetitions,
+                        task_name=names.get(t.task_id, (None, None))[0],
+                        task_definition_id=names.get(t.task_id, (None, None))[1],
+                    )
                     for t in rows
                 ),
             )
             if context
             else None
+        )
+        self.task_grid.task_definitions = (
+            self.presenter.workspace.load_task_definitions()
         )
         self.task_grid.load_source(projected)
         self.headers = self.task_grid.headers
@@ -279,6 +316,7 @@ class LifftTaskPanel(QWidget):
         )
         titles = (
             "Task #",
+            "Task name",
             "Lever Arm",
             "Load",
             "Moment",
@@ -290,8 +328,8 @@ class LifftTaskPanel(QWidget):
             zip(self.headers, titles, _HEADER_TIPS, strict=True)
         ):
             text = self._text(title)
-            if 1 <= column <= 3:
-                text += f" ({moment_unit if column == 3 else units[column - 1]})"
+            if 2 <= column <= 4:
+                text += f" ({moment_unit if column == 4 else units[column - 2]})"
             label.setText(text)
             self.hidden_headers[column].setText(text)
             label.setToolTip(self._text(tip))
@@ -315,6 +353,80 @@ class LifftTaskPanel(QWidget):
         self.setEnabled(context is not None)
         self.show_result()
         self.task_grid.refresh_geometry()
+
+    def _task_source(self) -> AssessmentDraft | None:
+        """Read only the source owned by this exact displayed editor context.
+
+        Args:
+            None.
+
+        Returns:
+            Current canonical source, or None after navigation/rebinding retires the
+            projection. Focus departure during a tool switch cannot edit another tool.
+        """
+        active = self.presenter.workspace.active
+        if self.context is None or not self.context.view.preparation.is_current(active):
+            return None
+        return active.state if active is not None else None
+
+    def _accept_shared_source(
+        self,
+        expected: AssessmentDraft,
+        replacement: AssessmentDraft,
+        label: str,
+        rebuild: bool,
+    ) -> bool:
+        """Accept an exact metadata/bulk edit through the existing source session.
+
+        Args:
+            expected: Canonical source captured before preparation; stale edits fail.
+            replacement: Validated same-tool source preserving measurement units.
+            label: Stable history label for name editing or one clipboard batch.
+            rebuild: True when paste may change row count; False retains pending cells.
+
+        Returns:
+            True only when one current source was changed and observers notified.
+        """
+        active = self.presenter.workspace.active
+        if active is None or active.state != expected:
+            return False
+        changed = active.execute(
+            ReplaceAssessmentSource(active.document, expected, replacement, label)
+        )
+        if not changed:
+            return False
+        self.context = self.presenter.bind()
+        if rebuild:
+            self.load_source(self.presenter.bind(), self.language)
+        elif self.task_grid.source is not None:
+            projected = self.task_grid.source
+            for task in replacement.tasks:
+                projected = label_assessment_task(
+                    projected, task.task_id, task.task_name, task.task_definition_id
+                )
+            self.task_grid.source = projected
+        self.pending = self.pending_change() is not False
+        self.presenter.evaluator.clear()
+        self.show_result()
+        self._invalidate()
+        if not self.pending:
+            self.input_committed.emit()
+        return True
+
+    def _before_task_action(self) -> bool:
+        """Resolve valid pending cells before opening a clipboard/catalog operation.
+
+        Args:
+            None.
+
+        Returns:
+            False for invalid pending input, preserving its text and source history.
+        """
+        try:
+            self.commit_inputs()
+        except DraftError:
+            return False
+        return self.pending_change() is not None
 
     def _complete_cell(self, edit: AssessmentCellEdit) -> None:
         """Bind shared-grid completion to the existing presenter cell command.
@@ -388,6 +500,8 @@ class LifftTaskPanel(QWidget):
         """
         if not self.pending or self.context is None:
             return False
+        if self.task_actions.pending_names():
+            return True
         try:
             return (
                 self.presenter.parse_grid(self.context, self.input_rows())
@@ -439,12 +553,13 @@ class LifftTaskPanel(QWidget):
             True when pending input changed the source; False when there is nothing to
             commit or values are unchanged.
         """
+        names_changed = self.task_actions.finish_names()
         if not self.pending or self.context is None:
-            return False
+            return names_changed
         rows = self.input_rows()
         changed = self.presenter.commit_grid(self.context, rows)
         self.pending = False
-        return changed
+        return changed or names_changed
 
     def show_result(self) -> None:
         """Render only current complete results; clear stale row colors and totals.

@@ -13,7 +13,6 @@ from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QBrush, QColor, QIcon
 from PyQt5.QtWidgets import (
     QAbstractItemView,
-    QButtonGroup,
     QDialog,
     QDialogButtonBox,
     QFrame,
@@ -37,6 +36,7 @@ from ergotools.domain.job_catalog import JobCatalog
 from ergotools.domain.language import Language
 from ergotools.domain.risk import classify_probability
 from ergotools.domain.work_hierarchy import WorkHierarchy
+from ergotools.presentation.desktop.alphabet_navigation import AlphabetNavigation
 from ergotools.presentation.desktop.assessment_badges import AssessmentBadgeDelegate
 from ergotools.presentation.desktop.theme.main_workspace import MAIN_WORKSPACE_STYLE
 from ergotools.presentation.desktop.theme.risk import RISK_APPEARANCES
@@ -154,21 +154,10 @@ _SEARCH_STYLE = """
                 background: #EAF2F6; color: #0B326C; border: 0;
                 border-bottom: 1px solid #BCC9D3; padding: 8px 6px; font-weight: 700;
             }
-            QPushButton#alphabetButton {
-                min-width: 22px; max-width: 22px; min-height: 30px; max-height: 30px;
-                padding: 0; border: 0; background: transparent; color: #5F6F7A;
-                font-size: 11px; font-weight: 650;
-            }
-            QPushButton#alphabetButton:hover { background: #DDF3F5;
-                color: #0B326C;
-                font-size: 17px;
-                }
-            QPushButton#alphabetButton:checked { background: #0B326C;
-                color: white;
-                border-radius: 4px;
-                font-size: 12px;
-                }
-            QPushButton#alphabetButton:disabled { color: #C7D0D7; }
+            
+            
+            
+            
         
 """
 
@@ -359,10 +348,6 @@ class WorkerSearchDialog(QDialog):
         self.resize(1080, 650)
         self.setMinimumSize(900, 560)
         self.setStyleSheet(MAIN_WORKSPACE_STYLE + _SEARCH_STYLE)
-        if language is Language.SPANISH:
-            self.setStyleSheet(
-                self.styleSheet() + "QPushButton#alphabetButton { min-width: 12px; }"
-            )
         if probabilities is not None:
             self.resize(1380, 720)
             self.setMinimumSize(1120, 600)
@@ -516,27 +501,10 @@ class WorkerSearchDialog(QDialog):
             )
         alphabet_row.addWidget(alphabet_label)
         alphabet_row.addSpacing(5)
-        self.alphabet_group = QButtonGroup(self)
-        self.alphabet_group.setExclusive(True)
-        for value in ["All"] + [chr(code) for code in range(ord("A"), ord("Z") + 1)]:
-            button = QPushButton(self.text(value))
-            button.setObjectName("alphabetButton")
-            if self.language is Language.SPANISH and value == "All":
-                button.setStyleSheet("min-width: 40px; max-width: 40px;")
-            button.setCheckable(True)
-            button.setChecked(value == "All")
-            button.setToolTip(
-                self.text("Show every last name")
-                if value == "All"
-                else self.text("Show last names beginning with {letter}", letter=value)
-            )
-            button.clicked.connect(
-                lambda checked, letter=value: self.set_alphabet(letter)
-            )
-            self.alphabet_group.addButton(button)
-            self.alphabet_buttons[value] = button
-            alphabet_row.addWidget(button)
-        alphabet_row.addStretch(1)
+        self.alphabet = AlphabetNavigation(self.text("All"), self.set_alphabet)
+        self.alphabet_group = self.alphabet.group
+        self.alphabet_buttons = self.alphabet.buttons
+        alphabet_row.addWidget(self.alphabet, 1)
         directory_layout.addLayout(alphabet_row)
         self.table = QTableWidget(0, 8 if self.probabilities is not None else 7)
         self.table.setHorizontalHeaderLabels(

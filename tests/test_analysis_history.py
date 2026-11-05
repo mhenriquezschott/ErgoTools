@@ -21,8 +21,8 @@ from ergotools.domain.model_units import MeasurementSystem
 from ergotools.domain.plot_filters import PlotRiskView
 from ergotools.domain.plot_scope import PlotScope
 from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+from ergotools.presentation.desktop.legacy_jrot_dialog import LegacyJrotDialog
 from ergotools.presentation.desktop.lifft_window import LifftWindow
-from ergotools.presentation.desktop.rotation_dialog import RotationDialog
 from tests.test_plot_results import project as project
 from tests.test_plot_window import host
 from tests.test_rotation_dialog import seed
@@ -168,7 +168,7 @@ def test_jrot_tool_pending_scope_and_applied_grid_are_independent_revisions(
         None.
     """
     with seed(tmp_path / "scope.ergprj") as repository:
-        view = RotationDialog(repository, load_icons(), language=language)
+        view = LegacyJrotDialog(repository, load_icons(), language=language)
         view.show()
         initial = view.history.state
         saved = repository.load_rotation_schemes()
@@ -177,7 +177,7 @@ def test_jrot_tool_pending_scope_and_applied_grid_are_independent_revisions(
         assert selected_tool.display_kind is AssessmentKind.DUET
         scope = (repository.load_hierarchy().work.available_workplaces()[0],)
         with patch(
-            "ergotools.presentation.desktop.rotation_dialog.RotationScopeDialog"
+            "ergotools.presentation.desktop.legacy_jrot_dialog.LegacyJrotScopeDialog"
         ) as factory:
             factory.return_value.exec.return_value = QDialog.Accepted
             factory.return_value.selected_contexts.return_value = scope
@@ -204,7 +204,7 @@ def test_jrot_tool_pending_scope_and_applied_grid_are_independent_revisions(
         assert view.history.state == applied
         revision = view.history.revision
         with patch(
-            "ergotools.presentation.desktop.rotation_dialog.RotationScopeDialog"
+            "ergotools.presentation.desktop.legacy_jrot_dialog.LegacyJrotScopeDialog"
         ) as factory:
             factory.return_value.exec.return_value = QDialog.Rejected
             view.choose_scope_button.click()

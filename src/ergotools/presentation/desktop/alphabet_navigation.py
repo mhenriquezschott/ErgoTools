@@ -39,9 +39,22 @@ class AlphabetNavigation(QWidget):
         self.group = QButtonGroup(self)
         for token in ("All", *ascii_uppercase):
             button = QPushButton(all_caption if token == "All" else token)
-            button.setObjectName("copyAlphabetButton")
+            button.setObjectName("alphabetButton")
             button.setCheckable(True)
             button.setMinimumWidth(0)
+            button.setFixedHeight(28)
+            button.setToolTip(
+                ("Mostrar todos" if all_caption == "Todos" else "Show all")
+                if token == "All"
+                else (
+                    (
+                        "Mostrar nombres con "
+                        if all_caption == "Todos"
+                        else "Show names beginning with "
+                    )
+                    + token
+                )
+            )
             button.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
             self.group.addButton(button)
             button.clicked.connect(lambda _checked, value=token: selected(value))
@@ -49,11 +62,14 @@ class AlphabetNavigation(QWidget):
             self.buttons[token] = button
         self.buttons["All"].setChecked(True)
         self.setStyleSheet(
-            "QPushButton#copyAlphabetButton { padding: 0; min-width: 0; } "
-            "QPushButton#copyAlphabetButton:hover:enabled { font-size: 16px; "
-            "background: #DDF3F5; color: #0B326C; }"
-            "QPushButton#copyAlphabetButton:disabled { color: #C7D0D7; "
-            "background: transparent; font-size: 11px; }"
+            "QPushButton#alphabetButton { padding:0; min-width:0; border:0; "
+            "border-radius:3px; background:transparent; color:#5F6F7A; "
+            "font-size:11px; font-weight:600; } "
+            "QPushButton#alphabetButton:checked { background:#0B326C; color:white; } "
+            "QPushButton#alphabetButton:hover:enabled { font-size:16px; "
+            "background:#DDF3F5; color:#0B326C; } "
+            "QPushButton#alphabetButton:disabled { color:#C7D0D7; "
+            "background:transparent; font-size:11px; }"
         )
 
     def set_available(self, initials: frozenset[str], selected: str = "All") -> None:

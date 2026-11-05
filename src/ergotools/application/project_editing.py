@@ -160,6 +160,7 @@ class ProjectEditingSession:
         self.replay_revision: int | None = None
         self.repository = repository
         self._suspended = 0
+        self._action_depth = 0
         self._editors: dict[str, object] = {}
         self._listeners: list[Callable[[], None]] = []
         self._validators: dict[str, Callable[[object | None], None]] = {}
@@ -255,6 +256,44 @@ class ProjectEditingSession:
                 self.repository.restore_editing_checkpoint(before.data)
                 self._editors = dict(before.editors)
                 raise
+
+    @contextmanager
+    def action(self, label: str) -> Iterator[None]:
+        """Accept one compound project action, including its derived output and views.
+
+        Args:
+            label: Stable operation identity for the one final shared history entry.
+
+        Yields:
+            None; nested writes/automatic synchronization remain within this action.
+            Failure restores the checkpoint and broadcasts ordinary replay rebinding
+            without moving the history cursor or publishing a file.
+
+        Raises:
+            ValueError: The label is blank.
+            RuntimeError: Called during history replay.
+            Exception: A participant or rollback observer fails; acceptance is aborted.
+        """
+        if not label.strip():
+            raise ValueError("Project action label must not be blank.")
+        if self.replaying:
+            raise RuntimeError("Cannot accept an action during history replay.")
+        self._action_depth += 1
+        try:
+            with self.stage():
+                yield
+        except Exception:
+            if self._action_depth == 1:
+                self.replaying = True
+                try:
+                    with self.suspend():
+                        self.notify()
+                finally:
+                    self.replaying = False
+            raise
+        finally:
+            self._action_depth -= 1
+        self.record(label)
 
     def record(self, label: str) -> None:
         """Record an accepted outer operation, ignoring suspended calls and no-ops.
@@ -492,7 +531,10 @@ class ProjectEditingSession:
 
         Returns:
             None; Save adds no Undo step and cannot truncate an existing Redo branch.
+            Compound actions defer amendment until their final recorded checkpoint.
         """
+        if self._action_depth:
+            return
         self.history.amend_current(self._snapshot())
 
     def validate(self) -> None:

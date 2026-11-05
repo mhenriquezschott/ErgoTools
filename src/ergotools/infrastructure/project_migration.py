@@ -49,7 +49,7 @@ class ExternalProjectMigration:
             location: Existing file selected by the owner's Open workflow.
 
         Returns:
-            True for XML descriptors or earlier full native formats 8-17. Other files
+            True for XML descriptors or earlier full native formats 8-23. Other files
             are validated by native Open.
 
         Raises:
@@ -81,6 +81,11 @@ class ExternalProjectMigration:
                     16,
                     17,
                     18,
+                    19,
+                    20,
+                    21,
+                    22,
+                    23,
                 )
             finally:
                 connection.close()

@@ -19,7 +19,11 @@ from PyQt5.QtWidgets import (
 )
 
 from ergotools.application.settings import Language
-from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.application.task_catalog import (
+    ReplaceAssessmentSource,
+    label_assessment_task,
+)
+from ergotools.domain.assessments.document import AssessmentDraft, AssessmentKind
 from ergotools.domain.assessments.tst import TstDirection, TstTask
 from ergotools.domain.assessments.tst_draft import TstDraft
 from ergotools.domain.assessments.tst_summary import TstSummary
@@ -33,6 +37,7 @@ from ergotools.presentation.desktop.assessment_editor_section import (
     AssessmentActionRow,
     AssessmentEditorSection,
 )
+from ergotools.presentation.desktop.assessment_task_actions import AssessmentTaskActions
 from ergotools.presentation.desktop.assessment_task_grid import (
     AssessmentCellEdit,
     AssessmentTaskGrid,
@@ -53,6 +58,7 @@ from ergotools.presentation.edit_context import EditContext
 # separately.
 _HEADERS = (
     ("Task #", "Tarea #"),
+    ("Task name", "Nombre de tarea"),
     ("Type of Task", "Tipo de tarea"),
     ("Lever Arm", "Brazo de Palanca"),
     ("Load", "Carga"),
@@ -118,6 +124,7 @@ class TstTaskPanel(QWidget):
             self.presenter.convention,
             kind=AssessmentKind.TST,
             worker_layout=True,
+            icons=icons,
         )
         self.header_widget = self.task_grid.header_widget
         self.header_grid = self.task_grid.header_grid
@@ -128,6 +135,17 @@ class TstTaskPanel(QWidget):
         self.grid = self.task_grid.grid
         self.task_grid.input_edited.connect(self._mark_pending)
         self.task_grid.cell_finished.connect(self._complete_cell)
+        self.task_actions = AssessmentTaskActions(
+            self.task_grid,
+            source=self._task_source,
+            accept=self._accept_shared_source,
+            accept_paste=self.presenter.workspace.accept_task_paste,
+            definitions=self.presenter.workspace.load_task_definitions,
+            replace_definitions=self.presenter.workspace.replace_task_definitions,
+            before_action=self._before_task_action,
+            system=lambda: self.presenter.system,
+            convention=lambda: self.presenter.convention,
+        )
         self.summary = ToolResultSummary()
         self.action_row = AssessmentActionRow(icons, tasks=True)
         self.clear_button = self.action_row.clear_button
@@ -168,8 +186,8 @@ class TstTaskPanel(QWidget):
             zip(self.headers, _HEADERS, strict=True)
         ):
             text = texts[language]
-            if column in (2, 3, 4):
-                text += f" ({moment_unit if column == 4 else units[column - 2]})"
+            if column in (3, 4, 5):
+                text += f" ({moment_unit if column == 5 else units[column - 3]})"
             label.setText(text)
             label.setToolTip(text)
         for combo, arm, load, repetitions in self.inputs:
@@ -177,8 +195,8 @@ class TstTaskPanel(QWidget):
             for index, direction in enumerate(TASK_DIRECTIONS):
                 combo.setItemText(index, direction[1 + language])
             combo.blockSignals(False)
-            combo.setToolTip(_HEADERS[1][language])
-            for editor, column in ((arm, 2), (load, 3), (repetitions, 5)):
+            combo.setToolTip(_HEADERS[2][language])
+            for editor, column in ((arm, 3), (load, 4), (repetitions, 6)):
                 editor.setToolTip(self.headers[column].text())
         self.clear_button.setText(("Clear assessment", "Limpiar evaluación")[language])
         self.calculate_button.setText(("Calculate", "Calcular")[language])
@@ -206,6 +224,7 @@ class TstTaskPanel(QWidget):
         Returns:
             None.
         """
+        self.task_actions.bind_catalog(self.presenter.workspace.editing)
         # Discard only projection-local completion signals before retiring fields;
         # callers resolve drafts before intentional navigation or bulk acceptance.
         self.pending = False
@@ -222,17 +241,34 @@ class TstTaskPanel(QWidget):
         )
         self.task_grid.precision = precision
         self.task_grid.system = self.presenter.system
+        canonical = self.presenter.source()
+        names = (
+            {t.task_id: (t.task_name, t.task_definition_id) for t in canonical.tasks}
+            if canonical
+            else {}
+        )
         rows = context.view.tasks if context else ()
         projected = (
             TstDraft(
                 context.view.system if context else self.presenter.system,
                 tuple(
-                    TstTask(t.task_id, t.direction, t.lever_arm, t.load, t.repetitions)
+                    TstTask(
+                        t.task_id,
+                        t.direction,
+                        t.lever_arm,
+                        t.load,
+                        t.repetitions,
+                        task_name=names.get(t.task_id, (None, None))[0],
+                        task_definition_id=names.get(t.task_id, (None, None))[1],
+                    )
                     for t in rows
                 ),
             )
             if context
             else None
+        )
+        self.task_grid.task_definitions = (
+            self.presenter.workspace.load_task_definitions()
         )
         self.task_grid.load_source(projected)
         self.headers = self.task_grid.headers
@@ -252,6 +288,80 @@ class TstTaskPanel(QWidget):
         self.setEnabled(context is not None)
         self.translate()
         self.show_result()
+
+    def _task_source(self) -> AssessmentDraft | None:
+        """Read only the source owned by this exact displayed editor context.
+
+        Args:
+            None.
+
+        Returns:
+            Current canonical source, or None after navigation/rebinding retires the
+            projection. Focus departure during a tool switch cannot edit another tool.
+        """
+        active = self.presenter.workspace.active
+        if self.context is None or not self.context.view.preparation.is_current(active):
+            return None
+        return active.state if active is not None else None
+
+    def _accept_shared_source(
+        self,
+        expected: AssessmentDraft,
+        replacement: AssessmentDraft,
+        label: str,
+        rebuild: bool,
+    ) -> bool:
+        """Accept an exact metadata/bulk edit through the existing source session.
+
+        Args:
+            expected: Canonical source captured before preparation; stale edits fail.
+            replacement: Validated same-tool source preserving measurement units.
+            label: Stable history label for name editing or one clipboard batch.
+            rebuild: True when paste may change row count; False retains pending cells.
+
+        Returns:
+            True only when one current source was changed and observers notified.
+        """
+        active = self.presenter.workspace.active
+        if active is None or active.state != expected:
+            return False
+        changed = active.execute(
+            ReplaceAssessmentSource(active.document, expected, replacement, label)
+        )
+        if not changed:
+            return False
+        self.context = self.presenter.bind()
+        if rebuild:
+            self.load_source(self.presenter.bind())
+        elif self.task_grid.source is not None:
+            projected = self.task_grid.source
+            for task in replacement.tasks:
+                projected = label_assessment_task(
+                    projected, task.task_id, task.task_name, task.task_definition_id
+                )
+            self.task_grid.source = projected
+        self.pending = self.pending_change() is not False
+        self.presenter.evaluator.clear()
+        self.show_result()
+        self._changed()
+        if not self.pending:
+            self.input_committed.emit()
+        return True
+
+    def _before_task_action(self) -> bool:
+        """Resolve valid pending cells before opening a clipboard/catalog operation.
+
+        Args:
+            None.
+
+        Returns:
+            False for invalid pending input, preserving its text and source history.
+        """
+        try:
+            self.commit_inputs()
+        except DraftError:
+            return False
+        return self.pending_change() is not None
 
     def _complete_cell(self, edit: AssessmentCellEdit) -> None:
         """Bind shared-grid completion to the existing presenter cell command.
@@ -317,6 +427,8 @@ class TstTaskPanel(QWidget):
         """
         if not self.pending or self.context is None:
             return False
+        if self.task_actions.pending_names():
+            return True
         try:
             return (
                 self.presenter.parse_grid(self.context, self.input_rows())
@@ -368,12 +480,13 @@ class TstTaskPanel(QWidget):
             True when pending input changed the source; False when there is nothing to
             commit or values are unchanged.
         """
+        names_changed = self.task_actions.finish_names()
         if not self.pending or self.context is None:
-            return False
+            return names_changed
         rows = self.input_rows()
         changed = self.presenter.commit_grid(self.context, rows)
         self.pending = False
-        return changed
+        return changed or names_changed
 
     @staticmethod
     def _direction(combo: QComboBox) -> TstDirection | None:

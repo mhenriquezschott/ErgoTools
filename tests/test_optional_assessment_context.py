@@ -48,7 +48,7 @@ from ergotools.domain.rotation_scheme import RotationScheme
 from ergotools.domain.work_catalog import StationKey, WorkCatalog, WorkerEntry
 from ergotools.domain.work_hierarchy import LineKey, SectionKey, WorkHierarchy
 from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
-from ergotools.infrastructure.pulp_rotation_optimizer import PulpRotationOptimizer
+from ergotools.infrastructure.highs_rotation_optimizer import HighsRotationOptimizer
 from ergotools.presentation.desktop.assessment_context_dialog import (
     AssessmentContextDialog,
 )
@@ -378,7 +378,7 @@ def test_integrated_standalone_first_save_and_context_visibility(
 def test_jrot_job_only_without_organization_or_worker_assessments(
     tmp_path: Path,
 ) -> None:
-    """Real CBC/HiGHS and persisted schemes remain independent of worker assessments.
+    """Real HiGHS and persisted schemes remain independent of worker assessments.
 
     Args:
         tmp_path: Disposable native project directory; no operational fixtures are used.
@@ -424,7 +424,7 @@ def test_jrot_job_only_without_organization_or_worker_assessments(
         problem = prepare_rotation_problem(
             scheme, pool, tuple(AssessmentKind), time_limit_seconds=5
         )
-        optimizer = PulpRotationOptimizer()
+        optimizer = HighsRotationOptimizer()
         assert optimizer.optimize_single_tool(problem, AssessmentKind.LIFFT).schedule
         assert optimizer.optimize_all_tools(problem).schedule
         project.save_rotation_scheme(scheme)

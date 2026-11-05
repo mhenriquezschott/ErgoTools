@@ -9,6 +9,24 @@ from ergotools.presentation.desktop.worker_text import worker_text
 
 # Owned English/Spanish UI wording; keys/captions never replace saved record identities.
 _MESSAGES = {
+    "Rotation timing…": "Tiempos de rotación…",
+    (
+        "Edit shared breaks and equal/unequal work blocks. Existing templates "
+        "use accepted Shift clocks; clear the template before changing duration."
+    ): (
+        "Edite descansos y bloques iguales o distintos. Las plantillas usan las horas "
+        "aceptadas del turno; quite la plantilla antes de cambiar su duración."
+    ),
+    "Clear the rotation timing template before changing Shift duration.": (
+        "Quite la plantilla de rotación antes de cambiar la duración del turno."
+    ),
+    "Clear the rotation timing template before removing its Shift.": (
+        "Quite la plantilla de rotación antes de eliminar su turno."
+    ),
+    "Set Shift start and end times before defining rotation timing.": (
+        "Defina las horas de inicio y término del"
+        " turno antes de sus tiempos de rotación."
+    ),
     "Shifts in use": "Turnos en uso",
     (
         "Distinct shifts used by active Jobs or worker workplace "

@@ -1,12 +1,14 @@
 # ErgoTools User Guide
 
-Updated: 2026-10-29.
+Updated: 2026-11-05.
+
+Help → About shows the ErgoTools developer and original-tool credits. Help → About JROT lists the research contributors to Job Rotation Optimization.
 
 ## Start the integrated application
 
 On this Linux development installation, run bash tools/run.sh (installed / instalado: ergotools) from the new project folder. This opens the integrated LiFFT, DUET, Shoulder Tool (ST), PLOT and JROT application with the 3D avatar. --disable-vtk is for renderer-free diagnostics only.
 
-Use the window normally and enlarge it when needed. English and Spanish are available in Tools > Settings. Settings remains in the Tools menu; Help remains in the Help menu. Apply accepts project display decimals and units; main Save writes them to the project file; language, decimal separator and animation choices remain personal preferences. Task-count changes are local to the selected worker/tool/context and undoable.
+Use the window normally and enlarge it when needed. English and Spanish are available in Edit > Settings. Settings is in Edit, below Undo/Redo; Help remains in the Help menu. Apply accepts project display decimals and units; main Save writes them to the project file; language, decimal separator and animation choices remain personal preferences. Task-count changes are local to the selected worker/tool/context and undoable.
 
 ## Projects and original-project conversion
 
@@ -36,7 +38,7 @@ Choose the tool tab and enter its task inputs. LiFFT uses lever arm, load and re
 
 Wholly unused task rows are ignored and do not make an entered assessment incomplete. Started rows with missing required values remain incomplete; those results include completed rows only. Empty or unavailable values are not proof of zero risk. Imported results appear as Recorded; saved fresh calculations retain their own status. Editing an input clears obsolete displayed results. Saved inputs and calculated results retain calculator precision. Project display defaults are one decimal for inputs, moments and probability, four for task/cumulative damage, and one for contribution percentages. Repetition counts display no decimals. Formatting and unit switches never round unchanged stored values.
 
-Clear assessment replaces the former Reset and trash controls. After confirmation, it clears only the selected worker/tool/context inputs and calculated results, retaining task count, task identities, units and ownership. Undo restores the previous inputs/results in one step. Cancel preserves pending text; main Save writes the cleared assessment. Other workers and tools are unchanged. Use Search to find saved standalone or workplace assessments for the active tool; results include colored saved risk values. Tools > Settings > Assessment identifies the project, worker, tool and workplace (or standalone context). Select Change number of tasks on Apply and choose 1–100 (default 15). Increasing adds empty rows while keeping existing data; reducing keeps the first rows and confirms before removing entered trailing data. An unchanged count does nothing. Undo/Redo restores removed rows and their matching results; main Save writes accepted changes. Counts are independent per project/worker/tool/context. ST preserves the original selector meanings and Tab order; this migration does not change scientific formulas.
+Clear assessment replaces the former Reset and trash controls. After confirmation, it clears only the selected worker/tool/context inputs and calculated results, retaining task count, task identities, units and ownership. Undo restores the previous inputs/results in one step. Cancel preserves pending text; main Save writes the cleared assessment. Other workers and tools are unchanged. Use Search to find saved standalone or workplace assessments for the active tool; results include colored saved risk values. Edit > Settings > Assessment identifies the project, worker, tool and workplace (or standalone context). Select Change number of tasks on Apply and choose 1–100 (default 15). Increasing adds empty rows while keeping existing data; reducing keeps the first rows and confirms before removing entered trailing data. An unchanged count does nothing. Undo/Redo restores removed rows and their matching results; main Save writes accepted changes. Counts are independent per project/worker/tool/context. ST preserves the original selector meanings and Tab order; this migration does not change scientific formulas.
 
 ## Language, decimal marks and units
 
@@ -110,13 +112,37 @@ Job Overview includes a labeled Locate button beneath Current Job risk; it cente
 
 In integrated Job view, Cancel movement restores the selected square's most recent accepted move in the current view. The restoration itself can be undone/redone. Pending typed coordinates can be discarded without replacing the accepted point. The panel reports the result; broader Undo remains available after changing views or reopening the window. Main Save writes accepted geometry changes.
 
-## JROT: schedules and optimization
+## JROT: guided rotations and optimization
 
-Open JROT, select or create a rotation scheme, set organization/workplace scope and fill worker/job choices for each block. Define current Job risk values through Jobs. Saved schemes retain their worker/Job arrangements and use updated current values. Changing relevant numeric values clears old optimization provenance; rerun optimization explicitly when needed.
+Open JROT from the project toolbar or Tools menu. Create a named, dated rotation or select
+a saved one. Choose a Line and Shift, All Jobs or exact Workplace placements, participants
+and equal/unequal blocks. Copy Shift timing or edit the rotation's independent clock,
+breaks and averaging choice. Job means activity; Station means physical location.
 
-Optimize current uses CBC for the selected tool; Optimize all uses HiGHS for LiFFT, DUET and ST together. GLPK is not used. Enter a valid limit in minutes. Review the preview/comparison and use the explicit Apply/Use as current action before Save. A solver preview alone does not replace the persisted scheme. Cancel stops an in-progress optimization without applying it.
+Yes enters an existing baseline. No leaves the baseline absent: enter a proposal or generate
+a feasible initial proposal. Generation is not risk optimization. Review/edit shared Job
+tasks and risks, choose any one, two or all three tools, and optionally set worker restrictions
+and explicit neighboring runs. One worker occupies each selected position in each block.
 
-JROT shares the chronological project Undo/Redo history. Its accepted partial grid, identity, frozen pool and scope survive closing/reopening the window. Main Save/Save As require an entered rotation to be complete or explicitly cancelled; incomplete rows are never silently omitted. Complete schemes are written with the rest of the project. Solver previews still require explicit Apply/Use as current, and replay remains disabled while a solve is running.
+Run optimization produces a preview. Keep optimization result retains it explicitly,
+leaving the original baseline unchanged. Optimization first reduces the worst worker index, then balances the remaining
+worker distribution without increasing the first-pass maximum. Multiple tools use
+the documented combined ceiling/spread objective. Tool tabs show one
+shared schedule, not separate solves. Review the qualified solver status, then keep the result and use Main Save. Undo restores the prior result. Cancel prevents application and waits safely for owned solver completion.
+
+Comparison cards, statistics and optional matrices use frozen saved inputs and results. Worker indices are weighted
+Job-risk schedule measures, not individual assessments. Missing before schedules stay absent.
+Later Job edits mark older evidence stale rather than rewriting it. Reopen restores accepted
+results. Separate icon buttons provide rework commands. Creating a new rotation preserves the original;
+replacing the editable baseline requires confirmation. Keeping a rerun confirms replacement of the prior result as an undoable edit.
+Shared Undo/Redo handles accepted edits. Reports remain unavailable pending their specification.
+
+Settings → General → Compatibility → Show Legacy menu for this session exposes Legacy JROT
+for compatible older equal-block schemes. Guided scenarios cannot be edited/deleted there.
+Normal editing of an older scheme preserves unresolved date/timing until entered, then
+stores it as guided data. Legacy and Developer switches are independent, default off after
+restart, and are unnecessary for normal JROT. The temporary meeting prototype is retired.
+
 
 ## Copy/Move, exports and undo
 
@@ -296,19 +322,19 @@ Worker assignment Change and Remove retain historical assessment ownership. Add,
 
 Assessment version creation and current-version selection have been removed. The Project menu retains New assessment and Assessment context. Each worker Job assignment and ergonomic tool has at most one saved assessment; Save updates that assessment. There are no New blank version or Set current version actions. Reassignment to another Job is a different assignment, not a second assessment version. Existing real task inputs/results remain linked to their original assignment.
 
-Current format-19 test projects are test_projects/native/comparative_risk_test.ergprj and test_projects/native/integrated_test.ergprj. The standard test files have been updated in place to format 19 and open directly without conversion. Opening an earlier full native project offers the existing external migration workflow and creates a separate format-19 file. The converter removes only a verified empty duplicate LiFFT draft without entered task values or a result; conflicting populated duplicates stop conversion for a specific data decision. It never silently chooses which real assessment to discard.
+Current format-24 test projects are test_projects/native/comparative_risk_test.ergprj and test_projects/native/integrated_test.ergprj. The standard test files have been updated in place to format 24 and open directly without conversion. Opening an earlier full native project offers the existing external migration workflow and creates a separate format-24 file. The converter removes only a verified empty duplicate LiFFT draft without entered task values or a result; conflicting populated duplicates stop conversion for a specific data decision. It never silently chooses which real assessment to discard.
 
 Standalone worker assessments need no organization or Job. Use Transfer to choose Copy or Move for selected assessment tools. Both standalone sources and workplace sources are supported. Choose the destination worker, station and shift in the existing dialog. Copy retains the source and creates independently editable data; Move removes the selected source only after the destination is created successfully. Existing destination assessments are protected. Tasks, units and matching calculated results retain their exact values. The operation is atomic and uses shared Undo/Redo; main Save publishes accepted changes. There is no separate Copy to workplaces command.
 
 
 ## Assessment gauge markers
 
-The main assessment and all PLOT risk gauges share optional tick marks and risk-range labels (0, 25, 37.5, 50 and 100). Right-click any gauge to change their visibility or spacing immediately, or use Tools > Settings > Appearance > Risk gauges and Apply. Settings has a section tree for General, Appearance, Project and Assessment; switching sections retains pending choices. The default interval is 10 percentage points; presets include 5, 20 and 25, and custom intervals accept 1–100. Turn off both visibility options to restore the plain gauge. These personal preferences are saved across restarts and do not change calculations or project data. Cancel in Settings keeps the current appearance. ErgoTools forms and input prompts use the application theme; file, color and font selectors retain the platform default appearance.
+The main assessment and all PLOT risk gauges share optional tick marks and risk-range labels (0, 25, 37.5, 50 and 100). Right-click any gauge to change their visibility or spacing immediately, or use Edit > Settings > Appearance > Risk gauges and Apply. Settings has a section tree for General, Appearance, Project and Assessment; switching sections retains pending choices. The default interval is 10 percentage points; presets include 5, 20 and 25, and custom intervals accept 1–100. Turn off both visibility options to restore the plain gauge. These personal preferences are saved across restarts and do not change calculations or project data. Cancel in Settings keeps the current appearance. ErgoTools forms and input prompts use the application theme; file, color and font selectors retain the platform default appearance.
 
 
 ## One project Save — Guardado único
 
-One main Save writes the entire project: workers, organization, Jobs, assignments, assessments, PLOT and complete JROT schemes. Closing an editor retains accepted changes without writing the project file. Project close or switching offers Save/Discard/Cancel. Main and editor Undo/Redo buttons share one chronological history. Use Tools > Settings > General > Undo steps to choose the shared project Undo/Redo budget (default 25, minimum 1, maximum 50). This personal setting applies across projects and is remembered after restarting. Apply changes the open session immediately; Cancel keeps the previous limit. Lowering it discards older Undo steps and may shorten Redo, without changing current project data. Increasing the limit cannot recover discarded steps. Removing records through replay requires confirmation; restoring records, ordinary edits and navigation do not. Text fields keep native typing Undo. Save keeps Undo/Redo; retained history lasts until the project session ends.
+One main Save writes the entire project: workers, organization, Jobs, assignments, assessments, PLOT and complete JROT schemes. Closing an editor retains accepted changes without writing the project file. Project close or switching offers Save/Discard/Cancel. Main and editor Undo/Redo buttons share one chronological history. Use Edit > Settings > General > Undo steps to choose the shared project Undo/Redo budget (default 25, minimum 1, maximum 50). This personal setting applies across projects and is remembered after restarting. Apply changes the open session immediately; Cancel keeps the previous limit. Lowering it discards older Undo steps and may shorten Redo, without changing current project data. Increasing the limit cannot recover discarded steps. Removing records through replay requires confirmation; restoring records, ordinary edits and navigation do not. Text fields keep native typing Undo. Save keeps Undo/Redo; retained history lasts until the project session ends.
 
 Un único Guardar principal escribe todo el proyecto: trabajadores, organización, trabajos, asignaciones, evaluaciones, PLOT y rotaciones JROT completas. Cerrar un editor conserva los cambios aceptados sin escribir el archivo. Al cerrar o cambiar el proyecto se ofrece Guardar/Descartar/Cancelar. Deshacer/Rehacer comparte un historial cronológico entre ventanas. Quitar registros mediante el historial requiere confirmación; restaurar registros, editar valores y navegar no. Los campos conservan Deshacer de escritura. Guardar conserva el historial hasta finalizar la sesión del proyecto.
 
@@ -374,14 +400,23 @@ Cuando caben las columnas del lugar de trabajo, la columna de trabajo opcional u
 
 ## Job values, task calculators and worker copies
 
-Each Job has one independent current value set for LiFFT, DUET and ST. Direct damage entry derives probability. Expand Calculate or copy tool values, select a tool and choose Task calculation for a compact grid without the avatar. Start with one task; + adds a row up to 100 and - removes the selected row. Calculate retains exact task moments, damage, contributions and totals. Editing inputs clears stale outputs until Calculate; Clear tool affects only the selected tool and requires confirmation. Use worker assessment selects a standalone or assigned assessment of that tool and copies its exact task inputs and matching calculated outputs without recalculation, assignment or a live link. Later worker and Job changes are independent. Replacement or removal of stored tasks requires confirmation. Close accepts valid edits privately; the main Save writes the complete project. The Job window uses the same Undo/Redo history as the main window, with one accepted input change per step. Incomplete Job inputs survive Save/reopen and remain unavailable to PLOT/JROT until complete. Completed Job task edits calculate automatically using the same tools as worker assessments, without changing source units or task order. Calculate can verify the same values explicitly.
+Each Job has one current LiFFT, DUET and ST value set. Select a Job on the left; its
+recorded tasks appear in the central tool tabs, using the same controls as worker
+assessments. One starter row is shown for an empty tool; + Task and - Task adjust its
+size. Complete edits calculate automatically, and Calculate can verify the result.
+Direct result is an explicit alternative for entering damage without task inputs. The
+right panel follows the selected tool with its gauge, damage bar, metrics and risk ranges.
+Copy from worker or Copy from Job opens a source browser with expandable read-only tasks.
+Copy all tasks or a selected subset; copies remain independently editable. Workplaces
+manages physical placements separately. Shared Undo/Redo restores accepted edits; only
+main Save writes the project.
 
 
-All three maintained files—workflow_4_workers.ergprj, comparative_risk_test.ergprj and integrated_test.ergprj—remain at their established test_projects/native paths and use format 19. External conversion retains selected older Job values, removes obsolete profiles/evidence, and preserves worker inputs/results and schedule arrangements.
+The maintained workflow_4_workers.ergprj, comparative_risk_test.ergprj, integrated_test.ergprj and jrot_workflow_demo.ergprj files remain at their established test_projects/native paths and use format 24. External conversion retains selected older Job values, removes obsolete profiles/evidence, and preserves worker inputs/results and schedule arrangements.
 
 ## Display animations
 
-Tools > Settings > Appearance > Animations groups avatar focus, risk-gauge animation
+Edit > Settings > Appearance > Animations groups avatar focus, risk-gauge animation
 and cumulative-damage animation. The three personal choices persist across restarts;
 they do not belong to a project or change calculations. Disabling a result animation
 immediately shows its current target. Main, Job and PLOT result widgets use these
@@ -433,3 +468,153 @@ saved sources; Transfer creates or replaces independent data at another owner.
 
 [Find Assessment](images/find_assessment.png) · [Transfer Assessment](images/transfer_assessment.png)
 · [Worker workplace assignments](images/worker_assignments.png).
+
+## Task names and Excel data
+
+Each LiFFT, DUET and ST task can have an optional name. Type a name for that row, or select
+an existing reusable name from its list. To add a reusable name, choose Task names… → Add
+reusable name, then select it in the desired rows. Rename selected reusable name changes
+that name wherever it is used in this project. Typing over a selected name gives that row
+its own local name. Measurements remain independent even when rows share a name.
+
+Click an input cell, then Shift-click another to highlight a rectangular range. Copy cells or Ctrl+C copies that range with headers and full precision. Escape or an ordinary input click clears the range. With no range selected, Copy cells copies all editable values and unit headers without rounding; ordinary text copy stays native. Paste uses the
+last compatible mapping for this tool; the small import button beside it always opens
+**Import task data**. Stage spreadsheet cells or CSV/TSV text, or open a CSV, TSV, TXT or
+XLSX file. For Excel, choose a worksheet and A1 range. Review headers, mapped fields,
+starting task, units and number format. The preview is editable; Validate preview checks
+without importing. Update preview after changing source text or interpretation choices.
+
+Blank mapped cells clear values; unmapped fields stay unchanged. Loads are N or lbf,
+not kg. Invalid cells reject the whole paste; incomplete started rows are marked for
+completion. A successful paste is one Undo step and existing automatic calculation
+updates complete rows. Main Save stores assessment inputs. Settings → Import / paste
+uses the same controls to remember independent per-tool mappings and parsing choices,
+without saving sample body cells. No Excel formulas are evaluated and source files stay
+unchanged. See [import and paste](assessment_import.md) for encodings and limits.
+
+Existing project files are upgraded by the separate conversion workflow to native24.
+Keep a backup for use with older application versions, which cannot open the new format.
+
+## Shift rotation timing templates
+
+Open Organization → Shift → Rotation timing…, or edit a rotation’s independent copy in JROT. Opening alone creates no timing. Use this timing accepts the preview; completed edits share project Undo/Redo and Main Save. Existing interrupted timings remain compatible and are shown as a separated-block preview until explicit acceptance.
+
+Each numbered work block is uninterrupted. Navy means work and grey means a break. Work blocks and Breaks have matching +/−, Equal/Unequal and Count controls, plus 24-hour clocks and minutes. Labels sit beside their count controls. Manual inputs can be edited directly; invalid fields stay available for correction and cannot partially write.
+
+Move/resize works on both work and breaks. Drag an interior segment to slide it while its two neighbors adjust; dragging past neighboring segments reorders whole intervals. Edge segments can be reordered too. The selected segment keeps its duration during movement; borrowing time between differently typed neighbors can change the total work/break budget, which the totals show. Any interior boundary resizes its two neighbors. Shift endpoints remain fixed. Bodies show open/closed hand cursors and boundaries show horizontal resize. Split/Draw show a snapped vertical clock guide and hover highlights the target. Escape cancels the preview; arrows move a selected boundary and Delete removes the selected segment.
+
+Remove acts on either type. At the beginning/end, the only neighbor absorbs the removed interval. In the middle, each immediate neighbor receives half its minutes; an odd extra minute goes left. A neighbor may be work or a break. Names of retained breaks remain intact. If removing work extends breaks and reduces productive time, confirmation explains that change. The last remaining work block cannot be removed because a rotation requires productive time. Join remains a separate operation: it combines adjacent work blocks or touching breaks without silently deleting an intervening interval.
+
+Equal blocks redistributes the total productive budget; Equal breaks divides the existing total break time among the current pauses, keeping their names. One-minute remainders go to earlier entries. Each action preserves the other type’s total and honors its Equal choice. Changing a count uses the same coordinator and review warning. If no break budget exists, entering a positive count asks for total break minutes. Increasing a count requires at least one minute per interval; impossible budgets are explained instead of deleting data. Reducing break count names the removed definitions before confirmation. Zero breaks explicitly returns their time to work. When there are more breaks than work gaps, pauses may become adjacent; the warning states this instead of forcing extra work blocks. Unequal permits custom editing; accepted data determines the displayed break equality after reload.
+
+Redistribution may shift clocks and is confirmed before acceptance. Names/durations are retained except for the expressly selected break-count reduction or pause-budget change. Each accepted operation is one shared history step. Existing scenario consent also guards assignment cells affected by structural block changes. No Job assignments are inferred by moving time segments.
+
+Exclude breaks chooses productive minutes for averages; leaving it off uses the full shift interval. Neither choice implies recovery or changes intrinsic Job risk. Timings remain relative to Shift start; overnight clocks show (+1). Native24 stores existing durations and break intervals, with no extra break-mode field or schema migration. Both work and pause values persist; break equality is derived from the actual saved durations.
+
+
+## Task column visibility
+
+Settings → Appearance → Task columns controls optional columns independently for
+LiFFT, DUET and ST. Required inputs are checked and locked. Toggle task number, name,
+moment, task damage or percentage contribution and review the live sample grid. Hide task
+names preserves other visibility choices; Show all restores the current tool. Apply saves
+application preferences without changing assessment data or calculations. Copy/import still
+retain their full input schema. Overall result totals remain visible.
+
+The timing editor offers Select, Split block, Draw break, Move / resize, Join and Remove.
+Drag a break interval or click to propose 15 minutes; move a break by its body and resize
+its edges. Work blocks use one navy color with numbered boundaries; breaks are grey.
+Escape cancels the preview and returns to Select. Every accepted gesture is one Undo step.
+Both manual sections have +/− actions, 24-hour clocks and minutes. Equal/Unequal and Count controls are available for both types. Removal extends
+the immediate neighbors, sharing interior time or giving edge time to the sole neighbor. Join preserves working gaps between separate breaks. The Shift endpoints stay fixed. Main Save stores accepted changes.
+
+## Reusable task names
+
+Workplace → Task names… opens the project catalog. Search names/descriptions, use the shared alphabet to narrow task-name initials, choose a record to edit, or Add task name to start a new one. Enter a nonempty name and finish the field to accept it. Descriptions are optional. Renaming updates linked displays without changing their inputs/results. Delete name asks for confirmation; definitions referenced by worker or Job tasks are protected. Edits share project Undo/Redo and Main Save. Text entered directly in a task remains a local label unless a reusable definition is explicitly selected.
+
+
+## JROT results and comparisons / Resultados y comparación JROT
+
+Keep optimization result explicitly retains a successful preview as one shared Undo step
+without changing the original baseline. Main Save stores it; reopening the rotation displays steps 07 and 08 without solving again. Cancelled,
+failed or stale solves preserve the previous run. Generation is available only in step 04 and stays there. On the No path it creates
+only a starting proposal. On the Yes path, replacing baseline cells requires explicit
+confirmation. Step 07 only optimizes; keeping its result never changes the baseline.
+Step 05 identifies missing tool/task inputs below the Job list. Step 06 labels its input
+check above the review tabs. Step 08 shows before/after maximum-worker-index cards, summary
+statistics and a High-Job notice; expand schedule details for matrices and worker values.
+Separate icon buttons create a new rotation from the result or, after warning, replace
+the original baseline. Show/Hide schedule details expands directly below the statistics. Report export awaits team input.
+
+Conservar resultado guarda explícitamente una vista previa válida como un paso de
+Deshacer compartido, sin cambiar la referencia original.
+Guardar en la ventana principal la almacena; al reabrir se muestran los resultados en 07 y
+08 sin calcular otra vez. Cancelar, fallar o perder vigencia conserva el resultado anterior.
+Generar propuesta inicial permanece en 04 y cambia solo la propuesta; en 07 se usa
+Usar propuesta generada. No se inventa ni reemplaza la referencia observada. El paso 05 indica datos faltantes debajo de los trabajos;
+06 muestra la revisión de datos sobre las pestañas. En 08 hay tarjetas antes/después del
+índice máximo, estadísticas y aviso de trabajos de alto riesgo. Los detalles desplegables
+muestran matrices e índices por trabajador. Botones con iconos permiten crear otra rotación o reemplazar la referencia, con aviso.
+Mostrar/Ocultar detalles despliega las tablas justo debajo de las estadísticas.
+
+
+## Editing starting assignments and block clocks
+
+Step 04 permits manual cell edits, Clear assignments and Generate initial proposal for
+both a baseline (Yes path) and a proposal (No path). Clearing a baseline preserves Yes-path
+intent with unentered cells; it does not switch to No observation. Generation is a feasible
+starting example, not an observation or risk optimization. Explicit confirmation permits
+replacing baseline assignments; Undo restores them. The previous kept run and its frozen
+baseline remain recorded, becoming stale if current inputs differ. Step 04 stays open.
+Normal optimization and Keep never promote results to the baseline.
+
+Entered and solved matrices share clock headers: from/to ranges appear below block/duration
+when every column has room. Crowded views retain compact headings; header tooltips always
+retain complete known time ranges. Break pieces and overnight (+1) suffixes use the existing
+minute projection. Missing clock information stays absent. Header presentation changes no
+column minima, assignments, scientific results or project data. Step 08 arrows use the same
+packaged next icon as application navigation.
+
+
+## Tool selection and optional neighboring results
+
+Step 06 uses a compact joined strip of icon-bearing tool buttons, styled like PLOT.
+Teal pressed buttons
+identify included tools; unselected buttons stay neutral. Choose one, two or all three;
+at least one remains selected. Roomy guided review/optimization/comparison tabs and tool
+result headings use the same processed LiFFT/DUET/ST icons as the main UI. Narrow table
+headers remain text-only where icons would crowd the data.
+
+Step 03 Across-shift checks starts collapsed with a visible summary. Expand for preceding/
+following result buttons, literal linked rotation names and a prominent help area. Hover
+or keyboard focus explains chronology, activation and optimizer effects. Selection enables
+only when a worker has No adjacent High plus the corresponding boundary flag. Retained
+links are never removed when a rule is disabled; Clear link explicitly removes one. A
+requested missing/stale link still blocks solving; no constraint is silently ignored.
+
+Worker restrictions says Fixed Job and Excluded Jobs. A fixed Job is not offered for
+exclusion; excluded Jobs and Jobs already fixed to another worker are disabled as fixed
+choices. Other impossible static assignments revert immediately with visible guidance,
+using existing one-worker-per-Job matching validation. Exclusion proposals that cannot
+staff all Jobs keep the previous set. These are UI safeguards, not a relaxation of hard
+rules; the optimizer still validates temporal and other constraints independently.
+
+## Visual Settings and deployment reports
+
+Appearance pages preview optional task columns, gauge marks and animation choices.
+The avatar recording, risk gauge and damage bar demonstrate independent switches;
+Project decimal controls show formatting examples. Apply accepts choices, Cancel
+discards them, and examples never become assessment data.
+General > Display diagnostics copies the current report path or opens its folder.
+Reporting is automatic on Windows/macOS and optional on Linux; see
+[launch options and report locations](settings_previews_and_diagnostics.md).
+
+
+## Select task rows and import source rows
+
+Click a task number, then Shift-click for a range or Ctrl-click for separate rows. − Task removes all selected rows together, after confirmation if any contains data. One Undo restores the batch. In Import task data, choose Header row and its number, then untick unwanted source rows. Include selected rows, Skip selected rows, Skip empty rows and Include all change only the temporary preview. Source files and column mappings remain intact.
+
+
+## Optimization runtime
+
+All JROT optimizations use HiGHS directly, for one, two or all three tools. No solver-selection preference is needed. Existing kept results remain unchanged until you explicitly Keep a new result. Block minutes weight exposure; they do not prohibit a High Job in a long block. Every selected Job remains staffed in every block.

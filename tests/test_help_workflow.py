@@ -15,7 +15,10 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 
 from ergotools.application.settings import Language
 from ergotools.infrastructure.resources import read_asset
-from ergotools.presentation.desktop.authors_dialog import AuthorsDialog
+from ergotools.presentation.desktop.authors_dialog import (
+    AuthorsDialog,
+    JrotAuthorsDialog,
+)
 from ergotools.presentation.desktop.lifft_window import LifftWindow
 from ergotools.presentation.desktop.manual_launcher import open_user_guide
 from tests.test_saved_tool_data import window as window
@@ -108,6 +111,36 @@ def test_help_and_repeated_about_preserve_pending_inputs(
     for _ in range(2):
         QTimer.singleShot(0, close_authors)
         window._assessment_menu.about.trigger()
+
+    def close_jrot_authors() -> None:
+        """Inspect real historical JROT attribution through the main Help action.
+
+        Args:
+            None.
+
+        Returns:
+            None; rejecting the read-only modal never commits pending assessment data.
+        """
+        dialog = QApplication.activeModalWidget()
+        assert isinstance(dialog, JrotAuthorsDialog)
+        for name in (
+            "Henriquez-Schott, M.",
+            "Nail-Ulloa, I.",
+            "Kotowski, S.E.",
+            "Gallagher, S.",
+            "Jorgensen, M.",
+            "Davis, K.G.",
+        ):
+            assert name in dialog.credits.text()
+        assert dialog.windowTitle() == (
+            "Acerca de JROT" if language is Language.SPANISH else "About JROT"
+        )
+        dialog.reject()
+
+    assert not window._assessment_menu.about_jrot.icon().isNull()
+    for _ in range(2):
+        QTimer.singleShot(0, close_jrot_authors)
+        window._assessment_menu.about_jrot.trigger()
     assert workspace.active is active and active.state is before
     assert field.text() == "bad" and panel.pending
     assert window._settings_store.load() == settings
@@ -244,8 +277,6 @@ def test_authors_localization_preserves_attribution_and_link(
     for name in (
         "Mauricio Henriquez-Schott",
         "Ivan Nail-Ulloa",
-        "INES 52 R+D",
-        "ANID",
         "Auburn University",
         "Sean Gallagher",
         "Richard Sesek",
@@ -254,6 +285,8 @@ def test_authors_localization_preserves_attribution_and_link(
         "Rong Huangfu",
     ):
         assert name in text
+    assert "INES" not in text and "ANID" not in text
+    assert "funded" not in text and "financiado" not in text
     parser = Links()
     parser.feed(text)
     assert parser.targets == [
@@ -342,4 +375,4 @@ def test_current_guide_is_self_contained_and_linked(language: Language) -> None:
     assert parser.links and all(
         link.startswith("#") and link[1:] in parser.ids for link in parser.links
     )
-    assert "CBC" in data and "HiGHS" in data
+    assert "HiGHS" in data and "CBC" not in data

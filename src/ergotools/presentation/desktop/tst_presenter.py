@@ -203,7 +203,7 @@ class TstPresenter:
                         value, field, row[0], context.view.system, source.system
                     )
                 values[field] = value
-            tasks.append(TstTask(row[0], direction, **values))
+            tasks.append(replace(original, direction=direction, **values))
         return replace(source, tasks=tuple(tasks))
 
     def _replace(self, source: TstDraft, replacement: TstDraft) -> bool:

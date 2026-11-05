@@ -26,8 +26,8 @@ from ergotools.domain.rotation import (
 )
 from ergotools.domain.rotation_scheme import RotationMode
 from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
-from ergotools.infrastructure.pulp_rotation_optimizer import PulpRotationOptimizer
-from ergotools.presentation.desktop.rotation_dialog import RotationDialog
+from ergotools.infrastructure.highs_rotation_optimizer import HighsRotationOptimizer
+from ergotools.presentation.desktop.legacy_jrot_dialog import LegacyJrotDialog
 from tests.test_rotation_persistence import seed
 from tests.test_rotation_solve import (
     ControlledOptimizer,
@@ -89,10 +89,10 @@ def test_actual_highs_tabs_apply_save_reopen(
         None.
     """
     path = tmp_path / "all.ergprj"
-    with seed(path) as project, patch.object(RotationDialog, "_message"):
+    with seed(path) as project, patch.object(LegacyJrotDialog, "_message"):
         all_risks(project)
-        dialog = RotationDialog(
-            project, load_icons(), optimizer=PulpRotationOptimizer(), language=language
+        dialog = LegacyJrotDialog(
+            project, load_icons(), optimizer=HighsRotationOptimizer(), language=language
         )
         dialog.show()
         fill_rotation(dialog)
@@ -153,11 +153,11 @@ def test_single_comparison_and_real_parent_reset(tmp_path: Path, reset: str) -> 
     """
     with (
         seed(tmp_path / "single.ergprj") as project,
-        patch.object(RotationDialog, "_message"),
+        patch.object(LegacyJrotDialog, "_message"),
     ):
         all_risks(project)
-        dialog = RotationDialog(
-            project, load_icons(), optimizer=PulpRotationOptimizer()
+        dialog = LegacyJrotDialog(
+            project, load_icons(), optimizer=HighsRotationOptimizer()
         )
         dialog.show()
         fill_rotation(dialog)
@@ -245,11 +245,11 @@ def test_all_worker_cancellation_and_failure(tmp_path: Path, outcome: str) -> No
     """
     with (
         seed(tmp_path / "worker.ergprj") as project,
-        patch.object(RotationDialog, "_message") as message,
+        patch.object(LegacyJrotDialog, "_message") as message,
     ):
         all_risks(project)
         solver = ControlledAllOptimizer(outcome)
-        dialog = RotationDialog(project, load_icons(), optimizer=solver)
+        dialog = LegacyJrotDialog(project, load_icons(), optimizer=solver)
         dialog.show()
         fill_rotation(dialog)
         controller = dialog.optimization
@@ -291,11 +291,11 @@ def test_missing_other_tool_risk_blocks_all_and_compare(tmp_path: Path) -> None:
     """
     with (
         seed(tmp_path / "missing.ergprj") as project,
-        patch.object(RotationDialog, "_message") as message,
+        patch.object(LegacyJrotDialog, "_message") as message,
     ):
         two_jobs(project)
         solver = ControlledAllOptimizer()
-        dialog = RotationDialog(project, load_icons(), optimizer=solver)
+        dialog = LegacyJrotDialog(project, load_icons(), optimizer=solver)
         fill_rotation(dialog)
         controller = dialog.optimization
         assert (

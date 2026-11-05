@@ -191,7 +191,7 @@ def test_units_decimal_and_pending_rejection(window: LifftWindow) -> None:
     panel = window.task_panel
     assert panel is not None
     assert panel.inputs[0][0].text() == "30.5"
-    assert "ft.lb" in panel.headers[3].text()
+    assert "ft.lb" in panel.headers[4].text()
     assert window.presenter.source() == original
     window.decimal.setCurrentIndex(
         list(DecimalConvention).index(DecimalConvention.COMMA)

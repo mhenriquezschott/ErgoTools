@@ -117,6 +117,7 @@ class JobAssessmentDialog(JobValuePicker):
             if workspace.project_metadata
             else MeasurementSystem.METRIC,
             parent=parent,
+            task_definitions=workspace.load_task_definitions(),
         )
 
 
@@ -185,6 +186,7 @@ class JobCopyDialog(JobValuePicker):
             if workspace.project_metadata
             else MeasurementSystem.METRIC,
             parent=parent,
+            task_definitions=workspace.load_task_definitions(),
         )
 
     def _resolve_job(self, identity: str) -> JobRiskMeasurement:

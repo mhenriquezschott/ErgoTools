@@ -334,7 +334,7 @@ class LifftPresenter:
                         value, field, task.task_id, context.view.system, source.system
                     )
                 values[field] = value
-            tasks.append(LifftTask(task.task_id, **values))
+            tasks.append(replace(task, **values))
         return replace(source, tasks=tuple(tasks))
 
     def reset_grid(self) -> bool:

@@ -1,6 +1,6 @@
 # Guía de usuario de ErgoTools
 
-Linux · 2026-10-29
+Linux · 2026-11-05
 
 Un único Guardar principal escribe todo el proyecto: trabajadores, organización, trabajos,
 asignaciones, evaluaciones, PLOT y rotaciones JROT completas. Cerrar un editor conserva los
@@ -17,6 +17,8 @@ originales conservan el flujo de conversión; no se guarda automáticamente. Pro
 Proyectos recientes recuerda hasta diez aperturas correctas. Borrar historial no elimina
 archivos de proyectos.
 
+Ayuda → Acerca de muestra los créditos de desarrollo de ErgoTools y de las herramientas originales. Ayuda → Acerca de JROT enumera los colaboradores de la investigación sobre optimización de rotación laboral.
+
 ## Iniciar la aplicación integrada
 
 En esta instalación de desarrollo para Linux, ejecute bash tools/run.sh (instalado: ergotools)
@@ -25,7 +27,7 @@ Tool (ST), PLOT, JROT y el avatar 3D. --disable-vtk se utiliza solo para diagnó
 renderizado.
 
 Use la ventana normalmente y amplíela cuando sea necesario. Inglés y español están en
-Herramientas > Configuración. Aplicar acepta los ajustes; las preferencias personales son
+Editar > Configuración. Aplicar acepta los ajustes; las preferencias personales son
 compartidas inmediatamente. La precisión y las unidades predeterminadas del proyecto se
 escriben con Guardar principal. La visualización nunca redondea los datos científicos
 guardados. El número de tareas pertenece al trabajador/herramienta/contexto seleccionado y es
@@ -188,7 +190,7 @@ número de tareas, las unidades y la asociación. Deshacer restaura los datos y 
 anteriores; Cancelar conserva el texto pendiente. Guardar principal escribe la evaluación
 vacía. Los demás trabajadores y herramientas no cambian. Buscar encuentra evaluaciones
 independientes y de lugares de trabajo para la herramienta activa, con valores de riesgo en
-colores. Herramientas > Configuración > Evaluación identifica proyecto, trabajador,
+colores. Editar > Configuración > Evaluación identifica proyecto, trabajador,
 herramienta y lugar de trabajo o contexto independiente. Marque Cambiar número de tareas al
 aplicar: cada evaluación admite de 1 a 100 filas, inicialmente 15. Aumentar añade filas
 vacías; reducir conserva las primeras y pide confirmación antes de eliminar datos de las
@@ -274,26 +276,38 @@ coordenadas pendientes se descartan conservando la posición aceptada. El panel 
 resultado; el historial general sigue disponible al cambiar de vista o reabrir la ventana.
 Guardar principal escribe los cambios de geometría aceptados.
 
-## JROT: rotaciones y optimización
+## JROT: rotaciones guiadas y optimización
 
-Abra JROT, seleccione o cree una rotación, defina su ámbito organizacional/lugar y complete
-trabajadores y trabajos de cada bloque. Defina los valores actuales de riesgo en Trabajos. Las
-rotaciones guardadas conservan sus asignaciones de trabajadores/trabajos y usan los valores
-actuales. Cambiar valores numéricos relevantes invalida la optimización anterior; vuelva a
-optimizar explícitamente cuando corresponda.
+Abra JROT desde la barra del proyecto o Herramientas. Cree una rotación con nombre y fecha
+o seleccione una guardada. Elija línea, turno, Todos los trabajos o puestos del lugar,
+participantes y bloques iguales o distintos. Copie tiempos del turno o edite su copia
+independiente de horas, descansos y criterio de promedio. Trabajo es la actividad; estación
+es el lugar físico.
 
-Optimizar actual usa CBC para la herramienta elegida; Optimizar todas usa HiGHS para LiFFT,
-DUET y ST en conjunto. No se usa GLPK. Ingrese un límite válido en minutos. Revise la vista
-previa/comparación y aplique explícitamente Usar como actual/Aplicar antes de Guardar. La
-vista previa no reemplaza la rotación guardada. Cancelar detiene una optimización sin
-aplicarla.
+Sí ingresa una referencia existente. No deja la referencia ausente: ingrese una propuesta
+o genere una factible. Generar no optimiza riesgos. Revise tareas y riesgos de trabajos,
+elija una, dos o tres herramientas y, opcionalmente, restricciones y rotaciones vecinas
+explícitas. Cada puesto seleccionado recibe exactamente un trabajador por bloque.
 
-JROT comparte el historial cronológico de Deshacer/Rehacer del proyecto. La cuadrícula
-parcial, el ID, los asignaciones de trabajadores/trabajos y el ámbito aceptado sobreviven al
-cerrar y reabrir la ventana. Guardar principal o Guardar como requiere completar o cancelar
-explícitamente una rotación ingresada; nunca se omiten filas incompletas. Los esquemas
-completos se escriben junto con el proyecto. Las vistas previas del optimizador requieren
-Aplicar/Usar como actual, y el historial permanece bloqueado mientras el solver trabaja.
+Optimizar crea una vista previa; Conservar resultado la acepta explícitamente sin
+cambiar la referencia original. La optimización reduce primero el mayor índice y luego equilibra la distribución
+sin aumentar ese máximo. Con varias herramientas usa el objetivo combinado documentado. Las pestañas muestran la misma solución.
+Revise el estado y sus tolerancias, conserve el resultado y use Guardar principal. Deshacer restaura el resultado anterior.
+Cancelar impide aplicar y espera la finalización segura del solver.
+
+Las tarjetas, estadísticas y matrices opcionales comparan datos y resultados congelados. Los índices son medidas
+ponderadas del horario, no evaluaciones individuales. Una referencia ausente no se inventa.
+Cambiar trabajos marca la evidencia anterior como desactualizada sin reescribirla. Reabrir
+restaura resultados aceptados. Botones separados permiten rehacer como nueva conservando el
+original, o reemplazar la base con confirmación. Conservar otra optimización confirma
+el reemplazo del resultado; Deshacer restaura el anterior. Deshacer/Rehacer comparte el historial. Los informes esperan su especificación.
+
+Configuración → General → Compatibilidad permite mostrar el menú anterior en esta sesión.
+JROT anterior edita solo esquemas antiguos compatibles; no cambia ni elimina planes guiados.
+Editar un esquema antiguo en JROT normal conserva fecha/tiempos desconocidos hasta ingresarlos
+y lo guarda como plan guiado. Los menús Anterior y Desarrollador son independientes y vuelven
+a estar desactivados al reiniciar. No se necesitan para JROT normal. El prototipo fue retirado.
+
 
 ## Copiar/Mover, exportar y deshacer
 
@@ -388,11 +402,11 @@ evaluación. No existen acciones Nueva versión vacía ni Definir versión vigen
 trabajador a otro trabajo crea otra asignación, no otra versión de la evaluación. Los datos y
 resultados reales conservan su asignación original.
 
-Los proyectos de prueba actuales en formato 19 están en
+Los proyectos de prueba actuales en formato 21 están en
 test_projects/native/comparative_risk_test.ergprj y
 test_projects/native/integrated_test.ergprj. Los archivos de prueba habituales se han
-actualizado al formato 19 y se abren directamente sin conversión. Abrir un proyecto nativo
-anterior ofrece la migración externa existente y crea otro archivo en formato 19. El conversor
+actualizado al formato 21 y se abren directamente sin conversión. Abrir un proyecto nativo
+anterior ofrece la migración externa existente y crea otro archivo en formato 21. El conversor
 elimina únicamente un borrador LiFFT duplicado comprobado como vacío, sin valores ingresados
 ni resultado; si hay evaluaciones duplicadas con datos, detiene la conversión y solicita una
 decisión específica. Nunca elige silenciosamente qué evaluación real descartar.
@@ -534,3 +548,145 @@ idéntico al origen. Deshacer restaura tanto el destino previo como los datos mo
 principal escribe la transferencia. Tras Mover la evaluación visible se abre su destino;
 Copiar conserva el origen en vista. Buscar muestra primero las evaluaciones independientes y
 luego todos los lugares.
+
+## Nombres de tareas y datos de Excel
+
+Cada tarea de LiFFT, DUET y ST puede tener un nombre opcional. Escriba un nombre local o
+seleccione uno reutilizable. En Nombres de tareas… agregue un nombre reutilizable y luego
+selecciónelo en las filas deseadas. Renombrar el nombre seleccionado actualiza su texto
+en todo este proyecto; las mediciones de cada fila siguen siendo independientes. Escribir
+otro nombre sobre una selección convierte esa fila en un nombre local.
+
+Haga clic en una entrada y Mayús+clic en otra para resaltar un rango rectangular. Copiar celdas o Ctrl+C copia ese rango con encabezados y precisión completa. Escape o un clic normal borra el rango. Sin rango seleccionado, Copiar celdas copia todas las entradas y encabezados sin redondear; la copia de texto normal sigue siendo nativa. Pegar usa
+la última configuración compatible de esta herramienta; el pequeño botón de importación
+contiguo siempre abre **Importar tareas**. Prepare celdas copiadas, texto CSV/TSV o abra
+un archivo CSV, TSV, TXT o XLSX. En Excel elija hoja y rango A1. Revise encabezados,
+columnas de destino, tarea inicial, unidades y formato numérico. La vista es editable;
+Validar vista comprueba sin importar. Actualice la vista al cambiar el origen u opciones.
+
+Las celdas vacías asignadas borran valores; los campos no asignados se conservan. La
+carga es fuerza en N o lbf, no kg. Un dato inválido rechaza todo el pegado; las tareas
+iniciadas incompletas se señalan para completarlas. Pegar es un paso de Deshacer y el
+cálculo automático actualiza filas completas. Guardar principal almacena la evaluación.
+Configuración → Importar / pegar reutiliza los mismos controles para guardar preferencias
+independientes por herramienta, sin guardar celdas de muestra. No se evalúan fórmulas ni
+se modifican archivos de origen. Consulte [importación](assessment_import.md).
+
+La conversión externa actualiza proyectos anteriores al formato nativo24. Conserve un
+respaldo para versiones anteriores de la aplicación, que no abren el formato nuevo.
+
+## Plantillas de tiempos de rotación por turno
+
+Abra Organización → Turno → Tiempos de rotación…, o edite la copia independiente de una rotación en JROT. Abrir no crea tiempos. Usar estos tiempos acepta la vista previa; los cambios válidos usan Deshacer/Rehacer del proyecto y Guardar principal. Los tiempos anteriores interrumpidos siguen compatibles y aparecen como vista previa separada hasta aceptarla.
+
+Cada bloque numerado de trabajo es continuo. Azul indica trabajo y gris descanso. Bloques de trabajo y Descansos tienen +/−, Iguales/Distintos y Cantidad, además de horas de 24 h y minutos. La etiqueta queda junto al contador. Las entradas manuales se editan directamente; datos inválidos permanecen corregibles y nunca se aceptan parcialmente.
+
+Mover/ajustar sirve para trabajo y descansos. Arrastre un tramo interior para desplazarlo mientras sus dos vecinos se ajustan; al pasar sobre otros tramos los reordena completos. También puede reordenar tramos de los extremos. Mover conserva la duración del tramo seleccionado; ajustar vecinos de tipos distintos puede cambiar el total de trabajo y descanso, visible en el resumen. Cualquier límite interior ajusta sus dos vecinos. Los extremos del turno son fijos. El cuerpo usa mano abierta/cerrada y los límites un cursor horizontal. Dividir/Dibujar muestran una guía con hora; el tramo bajo el puntero se resalta. Escape cancela, las flechas mueven un límite y Suprimir quita la selección.
+
+Quitar sirve para ambos tipos. Al principio o final, el único vecino absorbe el intervalo; en medio, cada vecino recibe la mitad y el minuto impar va a la izquierda. El vecino puede ser trabajo o descanso. Los nombres conservados permanecen intactos. Si quitar trabajo amplía descansos y reduce tiempo productivo, se explica y confirma. No se puede quitar el último bloque de trabajo porque una rotación requiere tiempo productivo. Unir es distinto: combina trabajo contiguo o descansos que se tocan sin eliminar otro tramo intermedio.
+
+Bloques iguales reparte el total productivo; Descansos iguales reparte el tiempo total existente de pausa conservando nombres. Los minutos sobrantes van a los primeros. Cada acción conserva el total del otro tipo y respeta su opción de igualdad. Cantidad usa el mismo coordinador con revisión. Si no existe presupuesto de pausas, pide minutos totales. Cada intervalo necesita al menos un minuto; los casos imposibles se explican sin eliminar datos. Reducir descansos identifica los nombres eliminados antes de confirmar. Cero descansos devuelve su tiempo al trabajo. Si hay más pausas que espacios entre trabajos, pueden quedar juntas y la advertencia lo indica sin forzar bloques nuevos. Distintos permite edición personalizada; al abrir de nuevo, la igualdad de descansos se deriva de sus duraciones guardadas.
+
+La redistribución puede mover horas y requiere confirmación. Se conservan nombres y duraciones salvo el cambio explícito de cantidad o presupuesto. Cada operación es un paso de historial. La confirmación de JROT protege celdas afectadas por cambios estructurales. Mover tiempos no infiere asignaciones de trabajos.
+
+Excluir descansos usa minutos productivos para promedios; desactivarlo usa el intervalo completo. No supone recuperación ni modifica riesgo intrínseco del trabajo. Las horas son relativas al inicio, con (+1) al día siguiente. El formato nativo24 conserva duraciones e intervalos existentes, sin otro campo de modo ni migración. Los valores de ambos tipos se guardan.
+
+
+## Columnas visibles de tareas
+
+Configuración → Apariencia → Columnas de tareas permite elegir columnas opcionales por
+herramienta. Las entradas obligatorias están marcadas y bloqueadas. Muestre u oculte número,
+nombre, momento, daño por tarea o contribución porcentual y revise la vista de ejemplo.
+Ocultar nombres conserva las demás opciones; Mostrar todas restaura la herramienta actual.
+Aplicar guarda preferencias personales sin cambiar datos ni cálculos. Copiar/importar
+conserva todas las entradas. Los resultados totales siguen visibles.
+
+El editor de tiempos ofrece Seleccionar, Dividir bloque, Dibujar descanso, Mover / ajustar,
+Unir y Quitar. Arrastre un intervalo para crear un descanso o haga clic para proponer 15
+minutos; mueva el descanso por su interior y ajuste sus extremos. Los bloques usan el mismo
+azul, separados por límites numerados; los descansos son grises. Escape cancela la vista y
+vuelve a Seleccionar. Cada gesto aceptado es un paso de Deshacer. Ambas secciones manuales
+usan +/−, horas de 24 h y minutos. Ambos tipos tienen Iguales/Distintos y Cantidad. Quitar un tramo extiende
+sus vecinos: reparte el tiempo interior o lo entrega al único vecino en un extremo. Unir no
+elimina trabajo entre descansos separados. Los extremos del turno son fijos. Guardar en la
+ventana principal almacena cambios aceptados.
+
+## Nombres reutilizables de tareas
+
+Lugar de trabajo → Nombres de tareas… abre el catálogo del proyecto. Busque nombres o descripciones y seleccione uno para editarlo, o Añadir nombre para crear otro. Ingrese un nombre no vacío y termine el campo para aceptarlo. La descripción es opcional. Renombrar actualiza referencias sin cambiar entradas ni resultados. Eliminar pide confirmación; los nombres utilizados por tareas de trabajadores o trabajos están protegidos. Se usa Deshacer/Rehacer del proyecto y Guardar principal. Un texto escrito directamente en una tarea es local salvo que se seleccione un nombre reutilizable.
+
+
+## JROT results and comparisons / Resultados y comparación JROT
+
+Keep optimization result explicitly retains a successful preview as one shared Undo step
+without changing the original baseline. Main Save stores it; reopening the rotation displays steps 07 and 08 without solving again. Cancelled,
+failed or stale solves preserve the previous run. Generation is available only in step 04 and stays there. On the No path it creates
+only a starting proposal. On the Yes path, replacing baseline cells requires explicit
+confirmation. Step 07 only optimizes; keeping its result never changes the baseline.
+Step 05 identifies missing tool/task inputs below the Job list. Step 06 labels its input
+check above the review tabs. Step 08 shows before/after maximum-worker-index cards, summary
+statistics and a High-Job notice; expand schedule details for matrices and worker values.
+Separate icon buttons create a new rotation from the result or, after warning, replace
+the original baseline. Show/Hide schedule details expands directly below the statistics. Report export awaits team input.
+
+Conservar resultado guarda explícitamente una vista previa válida como un paso de
+Deshacer compartido, sin cambiar la referencia original.
+Guardar en la ventana principal la almacena; al reabrir se muestran los resultados en 07 y
+08 sin calcular otra vez. Cancelar, fallar o perder vigencia conserva el resultado anterior.
+Generar propuesta inicial permanece en 04 y cambia solo la propuesta; en 07 se usa
+Usar propuesta generada. No se inventa ni reemplaza la referencia observada. El paso 05 indica datos faltantes debajo de los trabajos;
+06 muestra la revisión de datos sobre las pestañas. En 08 hay tarjetas antes/después del
+índice máximo, estadísticas y aviso de trabajos de alto riesgo. Los detalles desplegables
+muestran matrices e índices por trabajador. Botones con iconos permiten crear otra rotación o reemplazar la referencia, con aviso.
+Mostrar/Ocultar detalles despliega las tablas justo debajo de las estadísticas.
+
+
+## Asignaciones iniciales y horas de los bloques
+
+En 04 puede editar, Quitar asignaciones o Generar propuesta inicial tanto para una base
+como para una propuesta. Quitar la base deja celdas sin ingresar, conservando la opción Sí.
+Generar crea un ejemplo factible, no una observación ni una optimización de riesgos.
+Reemplazar la base requiere confirmación; Deshacer la restaura. El resultado conservado y
+su base congelada permanecen como evidencia y pueden perder vigencia. La página sigue en 04.
+Los encabezados muestran desde/hasta cuando hay espacio; en tablas llenas conservan el
+formato compacto y las horas completas están en la ayuda del encabezado. Los descansos y
+el sufijo (+1) se respetan sin cambiar los datos. Las flechas usan el icono de navegación.
+
+
+## Herramientas y resultados vecinos
+
+En 06 seleccione una, dos o tres herramientas en una tira compacta de botones con iconos,
+con estilo PLOT. El color turquesa identifica las seleccionadas; al menos una permanece activa.
+Las pestañas y encabezados amplios muestran los mismos iconos de LiFFT/DUET/ST.
+En 03 Comprobaciones entre turnos empieza contraído con un resumen visible. Despliegue
+para seleccionar resultados anterior/siguiente y leer la explicación destacada al pasar
+el puntero o enfocar los controles. Cada selección se activa solo si algún trabajador
+solicita ese límite junto a Sin alto consecutivo. Los vínculos existentes se conservan
+hasta Quitar vínculo; un límite solicitado sin datos vigentes sigue bloqueando el cálculo.
+Trabajo fijo y Trabajos excluidos evitan selecciones contradictorias. El trabajo fijo
+no se ofrece para excluir; los excluidos y fijados a otros no se ofrecen como fijos.
+Las combinaciones sin asignación factible conservan el estado anterior con explicación.
+La validación y las restricciones del optimizador permanecen sin cambios.
+
+
+Al abrir JROT se restaura la rotación recordada, o la primera por nombre si no existe. Con un resultado conservado se abre 08 con el panel contraído; sin resultado, 01 con el panel expandido. La selección de otra rotación sigue la misma regla. Generar una propuesta inicial corresponde solo a 04; 07 solo optimiza.
+
+## Configuración visual e informes de pantalla
+
+Apariencia presenta vistas previas de columnas, marcadores y animaciones. El avatar
+grabado, indicador y barra de daño muestran opciones independientes. Proyecto muestra
+ejemplos del formato decimal. Aplicar acepta las preferencias; Cancelar descarta los
+cambios. Los ejemplos no son datos de evaluaciones.
+General > Diagnóstico de pantalla permite copiar la ruta del informe o abrir su carpeta.
+Se activa automáticamente en Windows/macOS y opcionalmente en Linux; consulte
+[las opciones de inicio y ubicaciones](settings_previews_and_diagnostics.md).
+
+
+## Seleccionar filas de tareas e importar filas de origen
+
+Haga clic en un número de tarea; Mayús+clic selecciona un rango y Ctrl+clic filas separadas. − Tarea quita las filas seleccionadas juntas, con confirmación si contienen datos. Deshacer restaura el grupo. En Importar datos de tareas elija la Fila de encabezados y su número y desmarque las filas no deseadas. Incluir filas seleccionadas, Omitir filas seleccionadas, Omitir filas vacías e Incluir todas solo cambian la vista temporal. El archivo de origen y las asignaciones de columnas se conservan.
+
+
+## Comparación del motor de una herramienta
+
+Todas las optimizaciones JROT usan HiGHS directamente, para una, dos o las tres herramientas. No existe una preferencia para elegir el motor. Los resultados conservados solo cambian al conservar explícitamente otro. Los minutos ponderan la exposición; no prohíben un trabajo Alto en un bloque largo. Cada trabajo seleccionado sigue cubierto en cada bloque.

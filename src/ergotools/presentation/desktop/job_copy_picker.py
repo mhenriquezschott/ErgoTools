@@ -31,10 +31,11 @@ from PyQt5.QtWidgets import (
 
 from ergotools.application.job_calculation import copy_job_tasks
 from ergotools.application.settings import Language
-from ergotools.domain.assessments.document import AssessmentKind, task_has_data
+from ergotools.domain.assessments.document import AssessmentKind, task_has_content
 from ergotools.domain.decimal_convention import DecimalConvention
 from ergotools.domain.job_risk import JobRiskMeasurement
 from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.task_catalog import TaskDefinition
 from ergotools.presentation.desktop.alphabet_navigation import AlphabetNavigation
 from ergotools.presentation.desktop.job_result_panel import result_value_style
 from ergotools.presentation.desktop.job_task_copy_details import JobTaskCopyDetails
@@ -93,6 +94,7 @@ class JobValuePicker(QDialog):
         project_id: str,
         units: MeasurementSystem,
         parent: QWidget | None = None,
+        task_definitions: tuple[TaskDefinition, ...] = (),
     ) -> None:
         """Build one source navigator and its context/result tree.
 
@@ -107,12 +109,14 @@ class JobValuePicker(QDialog):
             project_id: Exact open project identity for detached subset evaluation.
             units: Project default units, without reinterpreting source quantities.
             parent: Job window retaining ownership of replacement consent/history.
+            task_definitions: Read-only current names for explicit source references.
 
         Returns:
             None; opening or browsing creates no record or project history action.
         """
         super().__init__(parent)
         self.kind = kind
+        self._task_definitions = task_definitions
         self._project_id = project_id
         self._units = units
         self.task_details: dict[str, JobTaskCopyDetails] = {}
@@ -128,8 +132,8 @@ class JobValuePicker(QDialog):
         self.setObjectName("jobWindow")
         self.setStyleSheet(JOB_MANAGEMENT_STYLE)
         apply_dialog_theme(self)
-        self.resize(1120, 740)
-        self.setMinimumSize(960, 640)
+        self.resize(1300, 740)
+        self.setMinimumSize(1140, 640)
         tool = {
             AssessmentKind.LIFFT: "LiFFT",
             AssessmentKind.DUET: "DUET",
@@ -484,7 +488,7 @@ class JobValuePicker(QDialog):
         item = candidate.measurement if candidate is not None else None
         selected = self._task_ids(candidate) if candidate is not None else ()
         count = (
-            sum(task_has_data(t) for t in item.source.tasks)
+            sum(task_has_content(t) for t in item.source.tasks)
             if item and item.source
             else 0
         )
@@ -556,7 +560,7 @@ class JobValuePicker(QDialog):
         source = candidate.measurement.source if candidate.measurement else None
         return self._selected_tasks.get(
             candidate.identity,
-            tuple(t.task_id for t in source.tasks if task_has_data(t))
+            tuple(t.task_id for t in source.tasks if task_has_content(t))
             if source
             else (),
         )
@@ -581,7 +585,11 @@ class JobValuePicker(QDialog):
         if candidate.identity in self.task_details:
             return
         details = JobTaskCopyDetails(
-            item, self.language, self.convention, self._task_ids(candidate)
+            item,
+            self.language,
+            self.convention,
+            self._task_ids(candidate),
+            self._task_definitions,
         )
         self.task_details[candidate.identity] = details
         details.activated.connect(lambda: self._activate_source(candidate.identity))

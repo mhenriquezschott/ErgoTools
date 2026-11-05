@@ -13,6 +13,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import date
 from typing import Protocol, runtime_checkable
+from uuid import uuid4
 
 from ergotools.application.assessment_binding import (
     AssessmentBinding,
@@ -49,6 +50,11 @@ from ergotools.application.project_editing import (
 )
 from ergotools.application.project_preferences import ProjectPreferencesRepository
 from ergotools.application.rotation_access import RotationRepository
+from ergotools.application.rotation_scenarios import RotationScenarioRepository
+from ergotools.application.rotation_timing import (
+    RotationTimingRepository,
+    ShiftTimingTemplate,
+)
 from ergotools.application.saved_results import (
     ResultSave,
     SavedResultRepository,
@@ -56,11 +62,16 @@ from ergotools.application.saved_results import (
 )
 from ergotools.application.session import DocumentKey, DocumentSession
 from ergotools.application.settings import SettingsStore
+from ergotools.application.task_catalog import (
+    TaskCatalogRepository,
+    TaskSourceAcceptor,
+    reusable_pasted_names,
+)
 from ergotools.application.transfer_access import TransferRepository
 from ergotools.domain.assessment_history import AssignmentAssessment
 from ergotools.domain.assessment_transfer import TransferRequest, plan_transfer
 from ergotools.domain.assessments.context import AssessmentContext, WorkplaceContext
-from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.domain.assessments.document import AssessmentDraft, AssessmentKind
 from ergotools.domain.assessments.duet_draft import DuetDraft
 from ergotools.domain.assessments.lifft_draft import LifftDraft
 from ergotools.domain.assessments.tst_draft import TstDraft
@@ -68,6 +79,8 @@ from ergotools.domain.job_catalog import Job, JobCatalog
 from ergotools.domain.job_management import delete_job, save_job_details
 from ergotools.domain.job_risk import JobRiskMeasurement, JobRiskValues
 from ergotools.domain.project import ProjectMetadata
+from ergotools.domain.rotation_timing import RotationTiming
+from ergotools.domain.task_catalog import TaskDefinition
 from ergotools.domain.work_hierarchy import WorkHierarchy
 
 
@@ -102,6 +115,25 @@ class OwnedProject[State](DocumentRepository[State], Protocol):
                 violates its thread guard.
         """
         ...
+
+
+@runtime_checkable
+class TaskCatalogProject[State](OwnedProject[State], TaskCatalogRepository, Protocol):
+    """Optional project capability for guarded reusable descriptive task names."""
+
+
+@runtime_checkable
+class RotationTimingProject[State](
+    OwnedProject[State], RotationTimingRepository, Protocol
+):
+    """Optional owned-project capability for reusable relative Shift timing."""
+
+
+@runtime_checkable
+class RotationScenarioProject[State](
+    OwnedProject[State], RotationScenarioRepository, Protocol
+):
+    """Optional named-scenario capability borrowing the active project lifetime."""
 
 
 @runtime_checkable
@@ -443,6 +475,142 @@ class ProjectWorkspace[State]:
         self._hierarchy_snapshot: (
             tuple[OwnedProject[State], HierarchySnapshot] | None
         ) = None
+
+    def rotation_scenarios(self) -> RotationScenarioRepository:
+        """Borrow the current scenario repository without opening another database.
+
+        Args:
+            None.
+
+        Returns:
+            Current project capability; shared history and publication ownership remain.
+
+        Raises:
+            RuntimeError: No capable project is currently open.
+        """
+        if not isinstance(self._project, RotationScenarioProject):
+            raise RuntimeError("Project has no rotation scenario capability.")
+        self.stage_assessments()
+        return self._project
+
+    def load_shift_timings(self) -> tuple[ShiftTimingTemplate, ...]:
+        """Read saved timing templates without manufacturing defaults.
+
+        Args:
+            None.
+
+        Returns:
+            Current catalog, or empty without a capable active project.
+        """
+        return (
+            self._project.load_shift_timings()
+            if isinstance(self._project, RotationTimingProject)
+            else ()
+        )
+
+    def replace_shift_timing(
+        self,
+        shift_id: str,
+        expected: RotationTiming | None,
+        replacement: RotationTiming | None,
+    ) -> None:
+        """Accept a guarded template edit using the existing shared project cursor.
+
+        Args:
+            shift_id: Exact saved Shift owner.
+            expected: Latest exact saved timing, or absence.
+            replacement: Desired complete timing, or explicit removal.
+
+        Returns:
+            None; Main Save alone publishes the private change.
+
+        Raises:
+            RuntimeError: No timing-capable project is open.
+            ValueError: Owner, expected state or new template is invalid.
+        """
+        if not isinstance(self._project, RotationTimingProject):
+            raise RuntimeError("Project has no Shift timing capability.")
+        self.stage_assessments()
+        self._project.replace_shift_timing(shift_id, expected, replacement)
+
+    def load_task_definitions(self) -> tuple[TaskDefinition, ...]:
+        """Read reusable project names without manufacturing catalog records.
+
+        Args:
+            None.
+
+        Returns:
+            Current definitions, or empty for a diagnostic/no-project context.
+        """
+        if isinstance(self._project, TaskCatalogProject):
+            return self._project.load_task_definitions()
+        return ()
+
+    def replace_task_definitions(
+        self,
+        expected: tuple[TaskDefinition, ...],
+        replacement: tuple[TaskDefinition, ...],
+    ) -> None:
+        """Accept a guarded catalog edit through the existing project history owner.
+
+        Args:
+            expected: Exact current definitions shown to the caller.
+            replacement: Complete desired reusable names; referenced IDs are protected.
+
+        Returns:
+            None after accepting the private edit; Main Save publishes it.
+
+        Raises:
+            RuntimeError: No task-catalog-capable project is open.
+            ValueError: Catalog is stale or a referenced definition would disappear.
+        """
+        if not isinstance(self._project, TaskCatalogProject):
+            raise RuntimeError("Project has no reusable task catalog.")
+        self.stage_assessments()
+        self._project.replace_task_definitions(expected, replacement)
+
+    def accept_task_paste(
+        self,
+        expected: AssessmentDraft,
+        replacement: AssessmentDraft,
+        named_tasks: frozenset[str],
+        accept: TaskSourceAcceptor,
+    ) -> bool:
+        """Accept pasted inputs and newly reusable task names as one project action.
+
+        Args:
+            expected: Exact source captured by the worker or Job editor.
+            replacement: Validated same-tool pasted source, not yet accepted.
+            named_tasks: Destination task IDs whose name cells were actually pasted.
+            accept: Guarded host source acceptance; False rejects an obsolete target.
+
+        Returns:
+            True after one atomic input/catalog/calculation history action. Identical
+            already-linked input is a no-op. Existing names are reused; only newly
+            created definitions disappear with Undo. Main Save publishes both.
+
+        Raises:
+            RuntimeError: No shared editable project/catalog is available.
+            ValueError: Planning or the exact source acceptance fails.
+            Exception: A storage/host failure rolls back all participants and views.
+        """
+        editing = self.editing
+        if editing is None or not isinstance(self._project, TaskCatalogProject):
+            raise RuntimeError("Open an editable project before pasting task data.")
+        self.stage_assessments()
+        definitions = self.load_task_definitions()
+        linked, catalog = reusable_pasted_names(
+            replacement, named_tasks, definitions, lambda: uuid4().hex
+        )
+        if linked == expected and catalog == definitions:
+            return False
+        with editing.action("assessment.paste"):
+            if catalog != definitions:
+                self.replace_task_definitions(definitions, catalog)
+            if not accept(expected, linked, "assessment.paste", True):
+                raise ValueError("Task paste was not accepted; no data was changed.")
+            self.stage_assessments(label="assessment.paste")
+        return True
 
     @property
     def editing(self) -> ProjectEditingSession | None:

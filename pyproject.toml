@@ -9,14 +9,13 @@ description = "Incremental modernization of the integrated ErgoTools application
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 license = "Apache-2.0"
-dependencies = []
+dependencies = ["openpyxl==3.1.5", "et-xmlfile==2.0.0"]
 
 [project.scripts]
 ergotools = "ergotools.launcher:main"
 
 [project.optional-dependencies]
 desktop = [
-  "pulp==3.2.2; sys_platform == 'linux'",
   "highspy==1.11.0; sys_platform == 'linux'",
   "PyQt5==5.15.11; sys_platform == 'linux'",
   "PyQt5-Qt5==5.15.17; sys_platform == 'linux'",
@@ -46,6 +45,8 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ergotools"]
+# Explicit source path keeps editable installs within the approved build dependencies.
+dev-mode-dirs = ["src"]
 
 [tool.hatch.build.targets.sdist]
 include = ["/src", "/tests", "/tools", "/docs", "/README.md", "/LICENSE.txt", "/pyproject.toml", "/uv.lock", "/.python-version", "/typings", "/test_projects"]
@@ -82,5 +83,5 @@ fail_under = 90
 exclude_also = ["if __name__ == .__main__.:", "if TYPE_CHECKING:", "class .*\\(Protocol\\):"]
 
 [tool.ruff.lint.per-file-ignores]
-# External PuLP spellings in the reviewed minimal third-party API declaration.
-"typings/pulp/__init__.pyi" = ["N801", "N802", "N803"]
+# Exact upstream HiGHS public names in the reviewed external typing boundary.
+"typings/highspy/*.pyi" = ["N801", "N802", "N803", "N815"]

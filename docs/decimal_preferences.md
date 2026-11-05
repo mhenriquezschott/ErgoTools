@@ -1,6 +1,6 @@
 # F94 — persisted decimal convention, 2026-10-06
 
-Tools > Settings now includes an explicit decimal separator choice: 1.25 or 1,25.
+Edit > Settings now includes an explicit decimal separator choice: 1.25 or 1,25.
 Apply persists it independently of language and metric/imperial display units.
 A fresh application restores the choice before binding assessment controls.
 Language never selects a decimal mark implicitly. Cancel changes nothing.

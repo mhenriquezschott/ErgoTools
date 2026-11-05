@@ -2,7 +2,7 @@
 
 The production Main and Jobs windows now reuse one task-grid implementation for
 LiFFT, DUET and ST. Compact worker/Job task-copy previews use the same grid in read-only
-selection mode. The experimental JROT workflow is unchanged and can adopt this API later.
+selection mode. Production guided JROT also uses this shared editor and the same import actions.
 
 ## Components and ownership
 
@@ -18,8 +18,9 @@ selection mode. The experimental JROT workflow is unchanged and can adopt this A
 
 No grid/section opens a project, calls SQL, performs scientific calculations, saves a
 file or creates an Undo stack. Existing presenters/application services retain those
-responsibilities. The refactor changes no native format, settings format, formulas,
-optimizer, worker defaults or one-starter-task Job policy.
+responsibilities. Task names use the existing native task fields (current format 24).
+The import refinement changes no project format, scientific formulas, optimizer, worker
+defaults or one-starter-task Job policy.
 
 ## Reuse contract
 
@@ -66,3 +67,64 @@ Shared-grid and host regressions cover exact cell identity, stale-control comple
 read-only previews, task-count/history behavior, unit/precision preservation and scroll/
 header alignment. The required development check includes structural documentation and
 explicit reviewed-source hashes. See [development](development.md) for current checks.
+
+
+## Names and spreadsheet extension
+
+`task_names` is a separate row-aligned array of editable name selectors (read-only labels
+in copy previews). `inputs` and `input_fields` continue to contain only established numeric
+or choice fields. `task_name_finished` carries exact row ID/name/optional definition ID.
+`Task names…` explicitly adds a reusable definition or renames the selected definition;
+typing a name alone never creates a shared identity. Creating a definition and choosing
+it are separate reversible edits. Names are optional and do not count as numeric input.
+
+`AssessmentTaskActions` receives canonical-source read/accept, atomic Paste acceptance,
+catalog read/replace,
+before-action validation, units and decimal callbacks. It owns no history or calculations.
+Hosts commit pending names before Save/navigation, preserve per-cell chronology and reject
+obsolete previews. A completed local name is one history action; pasted inputs and newly
+registered reusable names share one atomic project action. Only mapped name cells in
+included destination rows participate. Existing names are reused with NFC/case/outer-space
+matching; explicit existing references remain intact. Undo confirms removal and restores
+prior sources/results/catalog; Redo restores the same IDs. New names are not created
+during preview or Cancel. Weak project subscriptions refresh other open grids only
+when catalog definitions change; unfinished name typing defers that refresh until
+completion. Project switches and Qt destruction detach those listeners; callbacks
+already copied into a notification batch explicitly ignore destroyed Qt objects.
+
+`Copy cells` writes headers and full-precision editable values as TSV. `Paste` uses a
+compatible saved per-tool mapping; the adjacent import button always opens the shared
+editable preview. Workers, Jobs and guided JROT use the same panel, also embedded in
+Settings. See [import and paste](assessment_import.md) for file/sheet/range selection,
+encoding, mapping, strict validation and preference ownership. Single-cell text paste
+remains native. One accepted rectangle is one existing host history action; the grid
+never owns a calculator, project writer or separate Undo stack.
+
+
+## Personal optional columns
+
+`assessment_column_keys` owns semantic display order; the grid derives header/input/output
+positions from those keys. `AssessmentColumns` permits only optional fields to be hidden.
+`set_column_preferences` changes visibility/minima/stretch without rebuilding controls or
+accepting a source. Signal guards preserve pending text; required fields stay visible.
+Header alignment follows visible columns, and overall result totals fall back to available
+panel space when Damage is hidden. Personal settings use a read-only instance of this
+same grid for live sample previews. See [column visibility](task_column_visibility.md).
+
+
+## Selected-row deletion
+
+Click a task number to select its whole row. Shift-click extends a consecutive range;
+Ctrl-click adds/removes separate rows. Input cells and task numbers highlight the exact
+selection, and Copy describes/copies those input values. An ordinary input click or
+Escape clears the selection; existing Shift-click rectangular cell selection also
+selects its affected rows for deletion. Read-only copy-preview checkboxes are separate.
+
+`− Task` removes all selected rows in one acceptance/history transaction. If any row
+contains entered data or a name, confirmation covers the complete batch; Cancel changes
+nothing. Without a range, worker editors preserve their existing last-row fallback,
+while Job editors use the focused row. Retained task IDs, names, units, source precision
+and order are unchanged. One shared Undo restores the entire source/result state.
+Worker assessments retain one blank starter if every row is removed; Jobs retain their
+existing empty-source/starter projection. The same behavior applies to all tools in
+Main, Job Management and JROT. No new history engine or database format is introduced.

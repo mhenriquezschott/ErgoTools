@@ -99,7 +99,7 @@ def test_selected_values_survive_and_old_schedule_uses_current_values(
     earlier_job_project(path)
     before = path.read_bytes()
     with upgrade_previous_project(path, output) as project:
-        assert project.format_version == 19
+        assert project.format_version == 24
         values = project.load_job_risk().for_job("j").measurements
         assert len(values) == 1
         assert values[0].cumulative_damage == 0.123456789

@@ -10,7 +10,7 @@ from dataclasses import dataclass, replace
 from typing import ClassVar
 
 from ergotools.application.session import DocumentKey
-from ergotools.domain.assessments.document import task_has_data
+from ergotools.domain.assessments.document import task_has_content
 from ergotools.domain.assessments.lifft_draft import (
     DraftError,
     InputIssue,
@@ -250,7 +250,7 @@ class SetLifftTaskCount:
         if (
             not 1 <= len(self.tasks) <= 100
             or self.tasks[:retained] != state.tasks[:retained]
-            or any(task_has_data(task) for task in self.tasks[retained:])
+            or any(task_has_content(task) for task in self.tasks[retained:])
         ):
             raise DraftError(InputIssue("validation.position", "tasks"))
         return replace(state, tasks=self.tasks)

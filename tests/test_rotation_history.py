@@ -23,8 +23,8 @@ from ergotools.domain.language import Language
 from ergotools.domain.rotation import WorkerRotation
 from ergotools.domain.rotation_scheme import RotationMode
 from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
-from ergotools.infrastructure.pulp_rotation_optimizer import PulpRotationOptimizer
-from ergotools.presentation.desktop.rotation_dialog import RotationDialog
+from ergotools.infrastructure.highs_rotation_optimizer import HighsRotationOptimizer
+from ergotools.presentation.desktop.legacy_jrot_dialog import LegacyJrotDialog
 from tests.test_rotation_comparison import all_risks
 from tests.test_rotation_dialog import fill
 from tests.test_rotation_persistence import seed
@@ -51,8 +51,8 @@ def test_partial_grid_delete_batch_branch_and_save_failure(
         None.
     """
     path = tmp_path / "partial.ergprj"
-    with seed(path) as project, patch.object(RotationDialog, "_message"):
-        dialog = RotationDialog(project, load_icons(), language=language)
+    with seed(path) as project, patch.object(LegacyJrotDialog, "_message"):
+        dialog = LegacyJrotDialog(project, load_icons(), language=language)
         dialog.new_scheme()
         initial = dialog.history.state
         fill(dialog, "history")
@@ -101,12 +101,13 @@ def test_partial_grid_delete_batch_branch_and_save_failure(
 def test_actual_apply_one_command_undo_redo_save_reopen(
     tmp_path: Path, all_tools: bool, language: Language
 ) -> None:
-    """CBC/HiGHS application restores exact schedules, metadata and frozen links.
+    """HiGHS application restores exact schedules, metadata and frozen links.
 
     Args:
         tmp_path: Pytest-owned temporary directory; all created projects, images and
             settings stay inside it.
-        all_tools: True exercises HiGHS multi-tool routing; False exercises CBC
+        all_tools: True exercises multi-tool routing; False exercises one tool.
+            Both use direct HiGHS.
             single-tool routing.
         language: Parametrized English/Spanish UI language; source values and unit
             interpretation stay unchanged.
@@ -115,10 +116,10 @@ def test_actual_apply_one_command_undo_redo_save_reopen(
         None.
     """
     path = tmp_path / "apply.ergprj"
-    with seed(path) as project, patch.object(RotationDialog, "_message"):
+    with seed(path) as project, patch.object(LegacyJrotDialog, "_message"):
         all_risks(project)
-        dialog = RotationDialog(
-            project, load_icons(), optimizer=PulpRotationOptimizer(), language=language
+        dialog = LegacyJrotDialog(
+            project, load_icons(), optimizer=HighsRotationOptimizer(), language=language
         )
         fill_rotation(dialog)
         before = path.read_bytes()
@@ -182,9 +183,9 @@ def test_history_rejects_foreign_stale_and_native_typing_ownership(
     """
     with (
         seed(tmp_path / "keys.ergprj") as project,
-        patch.object(RotationDialog, "_message"),
+        patch.object(LegacyJrotDialog, "_message"),
     ):
-        dialog = RotationDialog(project, load_icons())
+        dialog = LegacyJrotDialog(project, load_icons())
         dialog.show()
         fill(dialog, "keys")
         session = dialog.history
@@ -229,9 +230,9 @@ def test_scope_undo_restores_frozen_pool_and_pending_selection(tmp_path: Path) -
     """
     with (
         seed(tmp_path / "scope-history.ergprj") as project,
-        patch.object(RotationDialog, "_message"),
+        patch.object(LegacyJrotDialog, "_message"),
     ):
-        dialog = RotationDialog(project, load_icons(), language=Language.SPANISH)
+        dialog = LegacyJrotDialog(project, load_icons(), language=Language.SPANISH)
         fill(dialog, "scope-history")
         dialog.save_scheme()
         original = dialog.history.state
@@ -267,7 +268,7 @@ def test_undo_manual_save_restores_loaded_optimization_provenance(
     """
     with (
         seed(tmp_path / "saved-provenance.ergprj") as project,
-        patch.object(RotationDialog, "_message"),
+        patch.object(LegacyJrotDialog, "_message"),
     ):
         from tests.test_rotation_persistence import scheme
 
@@ -275,7 +276,7 @@ def test_undo_manual_save_restores_loaded_optimization_provenance(
             scheme(), mode=RotationMode.SINGLE_TOOL, primary_kind=AssessmentKind.LIFFT
         )
         project.save_rotation_scheme(optimized)
-        dialog = RotationDialog(project, load_icons())
+        dialog = LegacyJrotDialog(project, load_icons())
         initial = dialog.history.state
         dialog.grid.set_choice(0, 1, None)
         dialog.grid.set_choice(0, 1, initial.cells[0][1])
@@ -303,11 +304,11 @@ def test_cancel_empty_delete_and_owned_solve_history_boundaries(tmp_path: Path) 
 
     with (
         seed(tmp_path / "boundaries.ergprj") as project,
-        patch.object(RotationDialog, "_message"),
+        patch.object(LegacyJrotDialog, "_message"),
     ):
         all_risks(project)
         solver = ControlledOptimizer()
-        dialog = RotationDialog(project, load_icons(), optimizer=solver)
+        dialog = LegacyJrotDialog(project, load_icons(), optimizer=solver)
         fill(dialog, "discard")
         dialog.cancel_scheme()
         assert dialog.history.undo_label_key is None

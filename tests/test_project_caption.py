@@ -73,7 +73,7 @@ def test_caption_fits_two_lines_and_keeps_full_value(width: int, title: str) -> 
         label.close()
 
 
-@pytest.mark.parametrize("width", (1550, 1660))
+@pytest.mark.parametrize("width", (1770, 1880))
 def test_modified_caption_never_hides_jobs_or_moves_brand(
     header_window: LifftWindow, width: int
 ) -> None:

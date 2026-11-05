@@ -3,7 +3,9 @@
 Infrastructure repository implementing application storage ports for assessments,
 ownership, organization, PLOT geometry/images and JROT schemes. It owns connection
 lifetime and transaction boundaries; desktop policy belongs to the workspace.
-Native format 19 stores one source-bound calculated result per assessment.
+Native format 24 adds strict duration-aware runs, typed rules and explicit neighbors.
+Format 23 retains unfinished Yes-path observation before participant selection.
+Format 22 introduced named scenarios; timing/source-bound results remain unchanged.
 Integrated editing stages transactions privately until one complete project Save;
 direct adapter clients retain their explicit durable-write behavior.
 Original XML/SQLite decoding belongs exclusively to the removable tool.
@@ -29,6 +31,7 @@ from ergotools.application.assessment_catalog import AssessmentEntry
 from ergotools.application.historical_results import HistoricalAssessmentResult
 from ergotools.application.job_assignment import assign_worker
 from ergotools.application.project_workspace import OwnedProject
+from ergotools.application.rotation_timing import ShiftTimingTemplate
 from ergotools.application.session import DocumentKey
 from ergotools.domain.assessment_history import AssessmentHistory, AssignmentAssessment
 from ergotools.domain.assessment_transfer import TransferRequest, plan_transfer
@@ -46,7 +49,10 @@ from ergotools.domain.model_units import MeasurementSystem
 from ergotools.domain.plant_layout_image import PlantLayoutImage
 from ergotools.domain.plot_positions import PlotPositions
 from ergotools.domain.project import ProjectMetadata
+from ergotools.domain.rotation_scenario import RotationScenario
 from ergotools.domain.rotation_scheme import RotationMode, RotationScheme
+from ergotools.domain.rotation_timing import RotationTiming
+from ergotools.domain.task_catalog import TaskDefinition
 from ergotools.domain.work_hierarchy import WorkHierarchy
 from ergotools.infrastructure.assessment_binding_store import (
     AssessmentBindingStore,
@@ -79,15 +85,33 @@ from ergotools.infrastructure.plot_position_store import (
 )
 from ergotools.infrastructure.project_preferences_store import (
     read_context_expanded,
+    read_last_rotation,
     read_precision,
     write_display_settings,
+    write_last_rotation,
 )
 from ergotools.infrastructure.project_snapshot import ProjectSnapshot
+from ergotools.infrastructure.rotation_scenario_serialization import (
+    is_scenario_payload,
+    scenario_payload_version,
+)
+from ergotools.infrastructure.rotation_scenario_store import (
+    RotationScenarioStore,
+    validate_scenario_job_change,
+)
 from ergotools.infrastructure.rotation_scheme_store import (
     RotationSchemeStore,
     create_rotation_schema,
 )
+from ergotools.infrastructure.rotation_timing_store import (
+    RotationTimingStore,
+    create_rotation_timing_schema,
+)
 from ergotools.infrastructure.saved_result_store import SavedResultStore
+from ergotools.infrastructure.task_catalog_store import (
+    TaskCatalogStore,
+    create_task_schema,
+)
 from ergotools.infrastructure.work_hierarchy_store import (
     WorkHierarchyStore,
     create_hierarchy_schema,
@@ -172,7 +196,8 @@ class AssessmentProjectFile:
         if (
             len(rows) != 1
             or rows[0][0] != "ergotools.project"
-            or rows[0][1] not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 19)
+            or rows[0][1]
+            not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 19, 20, 21, 22, 23, 24)
         ):
             raise StoreFormatError("Unsupported project metadata format.")
         _, version, project_id, title, units = rows[0]
@@ -180,7 +205,9 @@ class AssessmentProjectFile:
         self._store = (
             LifftSqliteStore(connection)
             if version == 1
-            else AssessmentSqliteStore(connection)
+            else AssessmentSqliteStore(
+                connection, validate_source=self._validate_task_references
+            )
         )
         self._format_version: int = version
         description = None
@@ -285,10 +312,49 @@ class AssessmentProjectFile:
         self._closed = False
 
         if version >= 11:
+            if version < 22 and any(
+                is_scenario_payload(row[0])
+                for row in connection.execute("SELECT payload FROM rotation_schemes")
+            ):
+                raise StoreFormatError(
+                    "Guided rotation data requires native format 22."
+                )
+            if version in (22, 23):
+                for row in connection.execute("SELECT payload FROM rotation_schemes"):
+                    if (
+                        is_scenario_payload(row[0])
+                        and scenario_payload_version(row[0]) != 1
+                    ):
+                        raise StoreFormatError(
+                            "Guided rules and weighted runs require native format 24."
+                        )
+            if version == 22:
+                for scenario in RotationScenarioStore(connection, project_id).read(
+                    guided_only=True
+                ):
+                    if any(
+                        rows == ()
+                        for rows in (scenario.inputs.baseline, scenario.inputs.proposed)
+                    ):
+                        raise StoreFormatError(
+                            "Empty entered rotation drafts require native format 23."
+                        )
             try:
                 self._validate_rotations()
             except (ValueError, KeyError) as error:
                 raise StoreFormatError("Invalid saved rotation ownership.") from error
+        if version >= 20:
+            self.load_task_definitions()
+            for _, source in self._store.list_documents(project_id):
+                self._validate_task_references(source)
+            if self._risk is not None:
+                for values in self._risk.read().values:
+                    for item in values.measurements:
+                        if item.source is not None:
+                            self._validate_task_references(item.source)
+
+        for template in self.load_shift_timings():
+            template.validate(self.load_hierarchy())
 
     def begin_editing(self, changed: Callable[[str], None]) -> None:
         """Move editor writes to private memory, retaining the durable connection.
@@ -396,8 +462,10 @@ class AssessmentProjectFile:
         )
         if self._format_version >= 11:
             records.update(
-                ("rotation", s.scheme_id) for s in self.load_rotation_schemes()
+                ("rotation", s.scenario_id) for s in self.load_rotation_scenarios()
             )
+        records.update(("task", d.definition_id) for d in self.load_task_definitions())
+        records.update(("shift_timing", t.shift_id) for t in self.load_shift_timings())
         return frozenset(records)
 
     def snapshot_saved(self, location: str) -> AssessmentProjectFile:
@@ -504,7 +572,7 @@ class AssessmentProjectFile:
             metadata: Validated project identity and display defaults.
 
         Returns:
-            Owned format-19 repository with empty functional catalogs. The caller closes
+            Owned format-24 repository with empty functional catalogs. The caller closes
             it; assessments are created only after an explicit worker selection/Save.
 
         Raises:
@@ -513,7 +581,7 @@ class AssessmentProjectFile:
             sqlite3.Error: Schema initialization fails and rolls back.
             ValueError: Metadata or ownership validation fails.
         """
-        return cls._create(path, metadata, version=19)
+        return cls._create(path, metadata, version=24)
 
     @classmethod
     def create_contextual(
@@ -825,6 +893,10 @@ class AssessmentProjectFile:
                             else None,
                         ),
                     )
+                if version >= 20:
+                    create_task_schema(connection)
+                if version >= 21:
+                    create_rotation_timing_schema(connection)
                 if version >= 9:
                     create_layout_schema(connection)
                 if 3 <= version < 6:
@@ -859,7 +931,7 @@ class AssessmentProjectFile:
             snapshot: Fully typed catalogs, sources, maps, schemes and native results.
 
         Returns:
-            Open format-19 repository owned by the caller; close it after use.
+            Open format-24 repository owned by the caller; close it after use.
 
         Raises:
             ValueError: Input relationships, model payloads or image data are invalid.
@@ -890,7 +962,7 @@ class AssessmentProjectFile:
             # _create exclusively reserves its own file; remove only our empty
             # mkstemp reservation, never the user's destination.
             temporary.unlink()
-            with cls._create(temporary, snapshot.metadata, version=19) as project:
+            with cls._create(temporary, snapshot.metadata, version=24) as project:
                 project._initialize_snapshot(snapshot)
             with cls.open(temporary) as candidate:
                 candidate._verify_snapshot(snapshot)
@@ -929,6 +1001,13 @@ class AssessmentProjectFile:
             JobCatalogStore(connection, self.metadata.project_id).write_in_transaction(
                 snapshot.jobs, snapshot.hierarchy
             )
+            TaskCatalogStore(connection).replace_in_transaction(
+                (), snapshot.task_definitions
+            )
+            for template in snapshot.shift_timings:
+                RotationTimingStore(connection).replace_in_transaction(
+                    template.shift_id, None, template.timing, snapshot.hierarchy
+                )
             self._risk_store().initialize_in_transaction(snapshot.risks)
             assert isinstance(self._store, AssessmentSqliteStore)
             for item in snapshot.assessments:
@@ -953,6 +1032,13 @@ class AssessmentProjectFile:
             rotations = RotationSchemeStore(connection, self.metadata.project_id)
             for scheme in snapshot.rotations:
                 rotations.write_in_transaction(scheme)
+            scenarios = RotationScenarioStore(connection, self.metadata.project_id)
+            for scenario in snapshot.rotation_scenarios:
+                scenarios.replace_in_transaction(
+                    None, scenario, snapshot.hierarchy, snapshot.jobs
+                )
+            if snapshot.rotation_scenarios or snapshot.last_rotation_id is not None:
+                write_last_rotation(connection, snapshot.last_rotation_id)
             if snapshot.saved_results:
                 SavedResultStore.create_schema(connection)
                 for identity, result in snapshot.saved_results:
@@ -982,6 +1068,24 @@ class AssessmentProjectFile:
         """
         if (
             self.metadata != snapshot.metadata
+            or self.load_task_definitions()
+            != tuple(sorted(snapshot.task_definitions, key=lambda d: d.definition_id))
+            or RotationScenarioStore(self._connection, self.metadata.project_id).read(
+                guided_only=True
+            )
+            != tuple(
+                sorted(
+                    snapshot.rotation_scenarios,
+                    key=lambda s: (
+                        s.name.casefold(),
+                        s.scenario_id.casefold(),
+                        s.scenario_id,
+                    ),
+                )
+            )
+            or self.last_rotation_selection() != snapshot.last_rotation_id
+            or self.load_shift_timings()
+            != tuple(sorted(snapshot.shift_timings, key=lambda t: t.shift_id))
             or self.load_hierarchy() != snapshot.hierarchy
             or self.load_jobs() != snapshot.jobs
             or self.load_job_risk() != snapshot.risks
@@ -1126,6 +1230,11 @@ class AssessmentProjectFile:
             10,
             11,
             19,
+            20,
+            21,
+            22,
+            23,
+            24,
         ):
             raise ValueError("Unsupported initial project format.")
         project = cls._create(path, metadata, version=format_version)
@@ -1191,6 +1300,161 @@ class AssessmentProjectFile:
         if document.project_id != self.metadata.project_id:
             raise ValueError("Document belongs to another project.")
 
+    def load_shift_timings(self) -> tuple[ShiftTimingTemplate, ...]:
+        """Read optional timing templates without creating defaults on older formats.
+
+        Args:
+            None.
+
+        Returns:
+            Complete stable Shift-ordered templates, or empty without the capability.
+
+        Raises:
+            sqlite3.Error: Current timing storage is unreadable.
+            StoreFormatError: Saved timing fields are malformed.
+        """
+        return (
+            RotationTimingStore(self._connection).read()
+            if self._format_version >= 21
+            else ()
+        )
+
+    @_project_edit
+    def replace_shift_timing(
+        self,
+        shift_id: str,
+        expected: RotationTiming | None,
+        replacement: RotationTiming | None,
+    ) -> None:
+        """Accept one guarded relative timing edit through shared project history.
+
+        Args:
+            shift_id: Existing project-wide Shift owner.
+            expected: Exact prior timing; None requires absence.
+            replacement: Complete desired timing or None to explicitly clear it.
+
+        Returns:
+            None after one private transactional edit; Main Save owns publication.
+
+        Raises:
+            RuntimeError: Older project has no current timing capability.
+            ValueError: Timing is stale or incompatible with Shift clocks.
+            sqlite3.Error: Write fails and rolls back.
+            StoreFormatError: Current timing storage is malformed.
+        """
+        if self._format_version < 21:
+            raise RuntimeError("Rotation timing requires the current project format.")
+        _idle(self._connection)
+        with self._connection:
+            self._connection.execute("BEGIN IMMEDIATE")
+            RotationTimingStore(self._connection).replace_in_transaction(
+                shift_id, expected, replacement, self._hierarchy_store().read()
+            )
+
+    def load_task_definitions(self) -> tuple[TaskDefinition, ...]:
+        """Read reusable names; earlier diagnostic formats have no task catalog.
+
+        Args:
+            None.
+
+        Returns:
+            Stable identity-ordered current definitions without lazy schema writes.
+
+        Raises:
+            sqlite3.Error: The current-format catalog is missing or unreadable.
+            StoreFormatError: A definition is malformed.
+        """
+        return (
+            TaskCatalogStore(self._connection).read()
+            if self._format_version >= 20
+            else ()
+        )
+
+    def _validate_task_references(self, source: AssessmentDraft) -> None:
+        """Check source definition references against the same project's catalog.
+
+        Args:
+            source: Canonical source about to be persisted or read for verification.
+
+        Returns:
+            None when all optional references resolve; names alone require no entry.
+
+        Raises:
+            ValueError: A source references an absent/foreign definition.
+            sqlite3.Error: Current task catalog cannot be read.
+            StoreFormatError: Named sources target an earlier full project format.
+        """
+        if 8 <= self._format_version < 20 and any(
+            t.task_name is not None for t in source.tasks
+        ):
+            raise StoreFormatError("Named tasks require the current project format.")
+        identities = {d.definition_id for d in self.load_task_definitions()}
+        if any(
+            t.task_definition_id is not None and t.task_definition_id not in identities
+            for t in source.tasks
+        ):
+            raise ValueError("Assessment references an unknown reusable task.")
+
+    @_project_edit
+    def replace_task_definitions(
+        self,
+        expected: tuple[TaskDefinition, ...],
+        replacement: tuple[TaskDefinition, ...],
+    ) -> None:
+        """Accept one catalog edit while protecting worker and Job source references.
+
+        Args:
+            expected: Exact previous catalog from the current private project.
+            replacement: Desired definitions; renaming does not rewrite results.
+
+        Returns:
+            None after a transactional private edit; shared history/Main Save own replay
+            and durable publication.
+
+        Raises:
+            RuntimeError: The current project has no task catalog capability.
+            ValueError: Catalog is stale/invalid or removes a referenced identity.
+            sqlite3.Error: Read/write fails; transaction rolls back.
+        """
+        if self._format_version < 20:
+            raise RuntimeError(
+                "Reusable task names require the current project format."
+            )
+        _idle(self._connection)
+        with self._connection:
+            self._connection.execute("BEGIN IMMEDIATE")
+            if not isinstance(replacement, tuple) or any(
+                not isinstance(d, TaskDefinition) for d in replacement
+            ):
+                raise ValueError("Task catalog is stale or has invalid definitions.")
+            available = {d.definition_id for d in replacement}
+            sources = [
+                decode_assessment(payload)
+                for (payload,) in self._connection.execute(
+                    "SELECT payload FROM draft_documents WHERE project_id=?",
+                    (self.metadata.project_id,),
+                )
+            ]
+            if self._risk is not None:
+                sources.extend(
+                    decode_assessment(payload)
+                    for (payload,) in self._connection.execute(
+                        "SELECT source FROM risk_measurements WHERE source IS NOT NULL"
+                    )
+                )
+            if any(
+                t.task_definition_id is not None
+                and t.task_definition_id not in available
+                for source in sources
+                for t in source.tasks
+            ):
+                raise ValueError(
+                    "A reusable task is still referenced by an assessment."
+                )
+            TaskCatalogStore(self._connection).replace_in_transaction(
+                expected, replacement
+            )
+
     def load(self, document: DocumentKey) -> AssessmentDraft:
         """Load only this project's document through the validated draft adapter.
 
@@ -1215,7 +1479,9 @@ class AssessmentProjectFile:
                 absent.
         """
         self._check(document)
-        return self._store.load(document)
+        source = self._store.load(document)
+        self._validate_task_references(source)
+        return source
 
     @_project_edit
     def save(self, document: DocumentKey, state: AssessmentDraft) -> None:
@@ -1798,7 +2064,8 @@ class AssessmentProjectFile:
 
         Returns:
             None when saved jobs, maps, geometry and rotations remain valid under the
-            proposed hierarchy.
+            proposed hierarchy. The current Job catalog is shared by all guided
+            rotation guards within this validation pass.
 
         Raises:
             sqlite3.Error: A native schema/source/catalog read or write fails; owned
@@ -1810,6 +2077,8 @@ class AssessmentProjectFile:
             ValueError: Requested project/source/catalog identity, expected-state
                 comparison or domain/reference validation fails.
         """
+        for template in self.load_shift_timings():
+            template.validate(hierarchy)
         if self._jobs is not None:
             self._jobs.validate_hierarchy(hierarchy)
         if self._format_version >= 9:
@@ -1824,6 +2093,12 @@ class AssessmentProjectFile:
                 self._connection, self.metadata.project_id
             ).read():
                 scheme.validate_hierarchy(hierarchy)
+        if self._format_version >= 22 and self._jobs is not None:
+            current_jobs = self._jobs.read()
+            for scenario in RotationScenarioStore(
+                self._connection, self.metadata.project_id
+            ).read(guided_only=True):
+                scenario.inputs.validate_references(hierarchy, current_jobs)
 
     def load_plant_image(self, plant: str) -> PlantLayoutImage | None:
         """Load an exact saved plant; older projects have no embedded image records.
@@ -2131,6 +2406,8 @@ class AssessmentProjectFile:
             self._connection.execute("BEGIN IMMEDIATE")
             if hierarchy.read() != expected_hierarchy:
                 raise ValueError("Worker catalog changed since the expected snapshot.")
+            for template in self.load_shift_timings():
+                template.validate(replacement_hierarchy)
             if self._format_version >= 10:
                 PlotPositionStore(
                     self._connection, self.metadata.project_id
@@ -2607,7 +2884,8 @@ class AssessmentProjectFile:
 
         Returns:
             None when every saved scheme retains exact valid hierarchy/Job/placement
-            references.
+            references. One transaction-local hierarchy snapshot serves all plans;
+            no validation result is cached across operations or history replay.
 
         Raises:
             sqlite3.Error: A native schema/source/catalog read or write fails; owned
@@ -2623,16 +2901,39 @@ class AssessmentProjectFile:
         # Borrowed transaction: read() would demand an idle connection and start
         # another transaction. _read validates the catalog on this exact handle.
         risks = self._risk_store()._read(current_jobs)
-        for scheme in RotationSchemeStore(
-            self._connection, self.metadata.project_id
-        ).read():
+        schemes = RotationSchemeStore(self._connection, self.metadata.project_id).read()
+        scenarios = (
+            RotationScenarioStore(self._connection, self.metadata.project_id).read(
+                guided_only=True
+            )
+            if self._format_version >= 22
+            else ()
+        )
+        # Reading the hierarchy validates its saved feature references, including
+        # the complete rotation catalog. Reuse that one transaction-local snapshot;
+        # rereading it for each rotation repeats the entire catalog validation.
+        current_hierarchy = hierarchy
+        if current_hierarchy is None and (schemes or scenarios):
+            current_hierarchy = self._hierarchy_store().read()
+        for scheme in schemes:
             if jobs is not None:
                 scheme.validate_job_change(current_jobs, jobs)
+            assert current_hierarchy is not None
             scheme.validate_references(
-                hierarchy if hierarchy is not None else self._hierarchy_store().read(),
+                current_hierarchy,
                 jobs if jobs is not None else current_jobs,
                 risks,
             )
+
+        for scenario in scenarios:
+            if jobs is not None:
+                validate_scenario_job_change(scenario, current_jobs, jobs)
+            assert current_hierarchy is not None
+            scenario.inputs.validate_references(
+                current_hierarchy, jobs if jobs is not None else current_jobs
+            )
+        if self._format_version >= 22:
+            read_last_rotation(self._connection)
 
     def _invalidate_job_optimization(self, job_ids: frozenset[str]) -> None:
         """Keep saved arrangements but remove obsolete optimization provenance.
@@ -2658,6 +2959,110 @@ class AssessmentProjectFile:
                 store.write_in_transaction(
                     replace(scheme, mode=RotationMode.MANUAL, primary_kind=None)
                 )
+
+    def load_rotation_scenarios(self) -> tuple[RotationScenario, ...]:
+        """Read named plans and unresolved older schemes without creating defaults.
+
+        Args:
+            None.
+
+        Returns:
+            Name/ID ordered scenarios, or empty for formats without rotation storage.
+
+        Raises:
+            StoreFormatError: Saved scenario context is invalid.
+            ValueError: Current draft references no longer match project catalogs.
+            sqlite3.Error: Current storage cannot be read.
+        """
+        if self._format_version < 11:
+            return ()
+        _idle(self._connection)
+        with self._connection:
+            self._connection.execute("BEGIN")
+            self._validate_rotations()
+            return RotationScenarioStore(
+                self._connection, self.metadata.project_id
+            ).read()
+
+    @_project_edit
+    def replace_rotation_scenario(
+        self, expected: RotationScenario | None, replacement: RotationScenario | None
+    ) -> None:
+        """Accept one guarded plan edit under shared history and main Save.
+
+        Args:
+            expected: Exact last state; None requires a new unused identity.
+            replacement: Desired complete draft/run state; None explicitly deletes it.
+
+        Returns:
+            None; selection changes with creation/deletion in the same transaction.
+
+        Raises:
+            RuntimeError: Earlier file has no current scenario write capability.
+            ValueError: State is stale, identity changes, or references are invalid.
+            sqlite3.Error: Write fails and rolls back.
+            StoreFormatError: Existing records are malformed.
+        """
+        if self._format_version < 24:
+            raise RuntimeError("Named scenarios require the current project format.")
+        _idle(self._connection)
+        with self._connection:
+            self._connection.execute("BEGIN IMMEDIATE")
+            RotationScenarioStore(
+                self._connection, self.metadata.project_id
+            ).replace_in_transaction(
+                expected,
+                replacement,
+                self._hierarchy_store().read(),
+                self._job_store().read(),
+            )
+
+    def last_rotation_selection(self) -> str | None:
+        """Read independent view identity without repairing a stale saved choice.
+
+        Args:
+            None.
+
+        Returns:
+            Exact saved identity or None; opening policy chooses a fallback separately.
+
+        Raises:
+            StoreFormatError: Stored optional selection has an invalid count/type.
+            sqlite3.Error: View settings cannot be read.
+        """
+        return read_last_rotation(self._connection)
+
+    @_project_edit
+    def select_rotation_scenario(self, scenario_id: str | None) -> None:
+        """Accept a view-only selection without changing plan inputs or run freshness.
+
+        Args:
+            scenario_id: Existing exact rotation identity, or None to clear selection.
+
+        Returns:
+            None; Main Save retains this view choice independently of scientific data.
+
+        Raises:
+            RuntimeError: Earlier file has no current selection-write capability.
+            ValueError: Requested identity is not a saved scenario.
+            sqlite3.Error: Settings write fails and rolls back.
+        """
+        if self._format_version < 22:
+            raise RuntimeError(
+                "Rotation selection requires the current project format."
+            )
+        _idle(self._connection)
+        with self._connection:
+            self._connection.execute("BEGIN IMMEDIATE")
+            if scenario_id is not None and scenario_id not in {
+                r.scenario_id
+                for r in RotationScenarioStore(
+                    self._connection, self.metadata.project_id
+                ).read()
+            }:
+                raise ValueError("Select an existing rotation scenario.")
+            if read_last_rotation(self._connection) != scenario_id:
+                write_last_rotation(self._connection, scenario_id)
 
     def load_rotation_schemes(self) -> tuple[RotationScheme, ...]:
         """Read exact saved links; older full formats return empty without upgrade.
@@ -2956,6 +3361,10 @@ class AssessmentProjectFile:
             ValueError: Requested project/source/catalog identity, expected-state
                 comparison or domain/reference validation fails.
         """
+        if values is not None:
+            for item in values.measurements:
+                if item.source is not None:
+                    self._validate_task_references(item.source)
         return self._risk_store().save_job(
             expected_jobs,
             expected_risk,

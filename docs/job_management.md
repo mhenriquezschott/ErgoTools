@@ -32,3 +32,13 @@ provenance while preserving saved JROT worker/Job arrangements.
 
 See [shared editor](shared_assessment_editor.md), [database tables](database_tables.md),
 [Worker Management](worker_management.md) and [API contracts](api_contracts.md).
+
+
+Optional task names, reusable-name choices and spreadsheet Copy/Paste use the same shared
+actions as the Main assessment editor. Read-only source previews show names alongside the
+measurements; full and subset copies retain those labels and their project references.
+See [task names and spreadsheet entry](user_guide.md#task-names-and-excel-data).
+
+The adjacent import button also opens CSV/TSV/XLSX files with editable sheet/range and
+column mapping. [Import / paste](assessment_import.md) documents the shared worker/Job/
+guided-JROT controls and independent personal defaults.

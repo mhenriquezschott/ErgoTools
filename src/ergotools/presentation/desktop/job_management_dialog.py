@@ -9,6 +9,7 @@ scientific formulas, ownership linking or nested calculator window occurs here.
 import logging
 from collections.abc import Callable, Mapping
 from dataclasses import replace
+from functools import partial
 
 from PyQt5 import sip
 from PyQt5.QtCore import QEvent, QLocale, QSignalBlocker, QSize, Qt, QTimer
@@ -27,12 +28,12 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
-    QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
+from ergotools.application.assessment_task_rows import remove_assessment_rows
 from ergotools.application.gauge_preferences import GaugeMarkerSettings
 from ergotools.application.job_calculation import (
     auto_calculate_job_measurement,
@@ -45,7 +46,7 @@ from ergotools.application.settings import Language
 from ergotools.domain.assessments.document import (
     AssessmentDraft,
     AssessmentKind,
-    task_has_data,
+    task_has_content,
 )
 from ergotools.domain.assessments.duet_draft import DuetDraft
 from ergotools.domain.assessments.lifft_draft import LifftDraft
@@ -54,10 +55,14 @@ from ergotools.domain.decimal_convention import DecimalConvention
 from ergotools.domain.job_catalog import Job
 from ergotools.domain.job_risk import JobRiskMeasurement, JobRiskValues
 from ergotools.domain.model_units import MeasurementSystem
+from ergotools.presentation.desktop.assessment_action_icons import (
+    assessment_action_icon,
+)
 from ergotools.presentation.desktop.assessment_editor_section import (
     AssessmentActionRow,
     AssessmentEditorSection,
 )
+from ergotools.presentation.desktop.assessment_tool_tabs import AssessmentToolTabs
 from ergotools.presentation.desktop.job_assessment_dialog import (
     JobAssessmentDialog,
     JobCopyDialog,
@@ -146,8 +151,8 @@ class JobManagementDialog(QDialog):
         self.setWindowTitle(self._text("Job Management"))
         self.setWindowIcon(icons["job_management"])
         self.setStyleSheet(JOB_MANAGEMENT_STYLE)
-        self.setMinimumSize(1260, 830)
-        self.resize(1620, 940)
+        self.setMinimumSize(1480, 830)
+        self.resize(1840, 940)
         self._setup_ui()
         self._translate_controls()
         self._install_tooltips()
@@ -412,7 +417,7 @@ class JobManagementDialog(QDialog):
         if not self.job_id_combo.currentText().strip():
             has_tasks = any(
                 item.source is not None
-                and any(task_has_data(task) for task in item.source.tasks)
+                and any(task_has_content(task) for task in item.source.tasks)
                 for item in self._values.measurements
             )
             if self._job_values() != self._job_baseline or has_tasks:
@@ -677,6 +682,7 @@ class JobManagementDialog(QDialog):
         """
         item = self._measurement(kind)
         editor = self.editors[kind]
+        editor.task_definitions = self._workspace.load_task_definitions()
         if item.source is not None:
             editor.load_source(item.source, item.task_results)
         else:
@@ -782,18 +788,53 @@ class JobManagementDialog(QDialog):
             self._save_form()
 
     def _source_changed(self, kind: AssessmentKind, source: object) -> None:
+        """Receive a Qt source edit while the guarded callback reports acceptance.
+
+        Args:
+            kind: Exact tool associated with the emitting editor.
+            source: Proposed source; non-assessment objects are rejected by the host.
+
+        Returns:
+            None; native signal dispatch keeps its standard void contract.
+        """
+        self._accept_source_change(kind, source)
+
+    def _accept_source_change(
+        self, kind: AssessmentKind, source: object, label: str = ""
+    ) -> bool:
         """Accept task input and its automatic result as one shared history action.
 
         Args:
             kind: Explicit edited tool identity.
             source: Immutable source emitted by the owned numeric/selector grid.
+            label: Shared operation; Paste owns its outer atomic error boundary.
 
         Returns:
-            None; other tools and unrelated unfinished inputs are not swept into it.
+            True on accepted persistence; False retains other tools and pending data.
+
+        Raises:
+            Exception: Paste failures propagate to its atomic owner for rollback.
         """
         if isinstance(source, (LifftDraft, DuetDraft, TstDraft)):
-            self._run(
-                lambda: self._set_measurement(
+
+            def accept_values() -> None:
+                """Refresh catalog-issued authorities while guarding exact Job data.
+
+                Args:
+                    None.
+
+                Returns:
+                    None after unchanged persisted snapshots are freshly issued.
+
+                Raises:
+                    ValueError: Another edit changed the displayed Jobs/risk values.
+                """
+                jobs = self._workspace.read_jobs()
+                risk = self._workspace.read_job_risk()
+                if jobs.jobs != self._jobs.jobs or risk.risk != self._risk.risk:
+                    raise ValueError("Job data changed; reload before editing.")
+                self._jobs, self._risk = jobs, risk
+                self._set_measurement(
                     auto_calculate_job_measurement(
                         self._jobs.jobs.project_id,
                         self.job_id_combo.currentText().strip() or "draft",
@@ -802,7 +843,13 @@ class JobManagementDialog(QDialog):
                     ),
                     rebind=False,
                 )
-            )
+
+            if label == "assessment.paste":
+                accept_values()
+                return True
+            return self._run(accept_values)
+
+        return False
 
     def _preview_direct_result(self, kind: object, value: object) -> None:
         """Project current direct typing into the single summary without accepting it.
@@ -930,7 +977,7 @@ class JobManagementDialog(QDialog):
         )
 
     def remove_task(self) -> None:
-        """Remove the selected task after warning when it contains entered values.
+        """Remove selected tasks atomically, confirming once for entered data.
 
         Args:
             None.
@@ -942,18 +989,20 @@ class JobManagementDialog(QDialog):
             return
         item = self._measurement(self._kind())
         source = item.source
-        row = self.editors[item.kind].selected_task_index
-        if source is None or row < 0:
+        rows = self.editors[item.kind].selected_task_rows()
+        if source is None or not rows:
             return
         if (
-            task_has_data(source.tasks[row])
+            any(task_has_content(source.tasks[row]) for row in rows)
             and self._question(
                 self._text("Confirm Deletion"),
                 self.tr_text(
-                    "Remove the selected task and its inputs? Undo can restore it.",
+                    f"Remove {len(rows)} selected task(s) and their inputs? "
+                    "Undo restores them.",
                     (
-                        "¿Quitar la tarea seleccionada y sus datos? Deshacer permite "
-                        "restaurarla."
+                        f"¿Quitar {len(rows)} tareas seleccionadas y sus datos? "
+                        "Deshacer permite "
+                        "restaurarlas."
                     ),
                 ),
             )
@@ -964,8 +1013,8 @@ class JobManagementDialog(QDialog):
             lambda: self._set_measurement(
                 replace(
                     item,
-                    source=resize_job_source(source, remove=row)
-                    if len(source.tasks) > 1
+                    source=remove_assessment_rows(source, rows)
+                    if len(rows) < len(source.tasks)
                     else None,
                     cumulative_damage=None,
                     probability_percent=None,
@@ -1117,7 +1166,7 @@ class JobManagementDialog(QDialog):
                 previous.complete
                 or (
                     previous.source is not None
-                    and any(task_has_data(t) for t in previous.source.tasks)
+                    and any(task_has_content(t) for t in previous.source.tasks)
                 )
             ) and self._question(
                 self._text("Confirm Deletion"),
@@ -1354,8 +1403,12 @@ class JobManagementDialog(QDialog):
             button = QPushButton(self.tr_text(english, spanish))
             button.setObjectName("jobInputModeButton")
             button.setStyleSheet(JOB_INPUT_MODE_STYLE)
+            button.setIcon(
+                self._icons["task_inputs"] if identity else self._icons["direct_result"]
+            )
+            button.setIconSize(QSize(24, 24))
             button.setMinimumWidth(
-                button.fontMetrics().horizontalAdvance(button.text()) + 36
+                button.fontMetrics().horizontalAdvance(button.text()) + 64
             )
             button.setToolTip(
                 self.tr_text(
@@ -1372,7 +1425,7 @@ class JobManagementDialog(QDialog):
             method_buttons.addWidget(button)
         method_row.addLayout(method_buttons)
         details_layout.addLayout(method_row)
-        self.tool_tabs = QTabWidget()
+        self.tool_tabs = AssessmentToolTabs()
         self.tool_tabs.setObjectName("assessmentTabs")
         self.editors: dict[AssessmentKind, JobTaskEditor] = {}
         for kind, label in (
@@ -1383,6 +1436,7 @@ class JobManagementDialog(QDialog):
             editor = JobTaskEditor(
                 self._language,
                 self._convention,
+                icons=self._icons,
                 kind=kind,
                 system=self._system,
                 precision=(
@@ -1394,6 +1448,10 @@ class JobManagementDialog(QDialog):
             editor.geometry_changed.connect(self._align_results)
             editor.source_edited.connect(
                 lambda source, k=kind: self._source_changed(k, source)
+            )
+            editor.configure_task_actions(
+                self._workspace,
+                accept=partial(self._accept_source_change, kind),
             )
             self.editors[kind] = editor
             icon = "shoulder" if kind is AssessmentKind.TST else kind.value
@@ -1410,7 +1468,7 @@ class JobManagementDialog(QDialog):
                     "Herramienta de hombro (ST)" if label == "ST" else label,
                 ),
             )
-        self.tool_tabs.setIconSize(QSize(36, 36))
+        self.tool_tabs.setIconSize(QSize(32, 32))
         tab_bar = self.tool_tabs.tabBar()
         assert tab_bar is not None
         tab_bar.setElideMode(Qt.TextElideMode.ElideNone)
@@ -1427,8 +1485,12 @@ class JobManagementDialog(QDialog):
             self.tr_text("Add a task (maximum 100)", "Agregar tarea (máximo 100)")
         )
         self.remove_task_button = QPushButton(self.tr_text("- Task", "- Tarea"))
+        self.add_task_button.setIcon(assessment_action_icon("add_task"))
+        self.remove_task_button.setIcon(assessment_action_icon("remove_task"))
         self.remove_task_button.setToolTip(
-            self.tr_text("Remove selected task", "Quitar tarea seleccionada")
+            self.tr_text(
+                "Remove selected task rows", "Quitar filas de tareas seleccionadas"
+            )
         )
         self.calculation_summary = JobCalculationSummary(
             self._language,
@@ -1573,7 +1635,7 @@ class JobManagementDialog(QDialog):
         if not previous and editing is not None and self._loaded_job_id is not None:
             editing.set_editor(_JOB_EDITOR_KEY, self._loaded_job_id, "job.selection")
 
-    def _run(self, action: Callable[[], None]) -> None:
+    def _run(self, action: Callable[[], None]) -> bool:
         """Invoke one explicit operation and display expected failures.
 
         Invoke one explicit operation and display expected failures while retaining the
@@ -1584,13 +1646,14 @@ class JobManagementDialog(QDialog):
                 boundary.
 
         Returns:
-            None.
+            True after successful acceptance; False when busy or an action fails.
         """
         if self._busy:
-            return
+            return False
         self._busy = True
         try:
             action()
+            return True
         except ValueError as error:
             self._warning(
                 self._text("Validation Error"),
@@ -1610,6 +1673,7 @@ class JobManagementDialog(QDialog):
             )
         finally:
             self._busy = False
+        return False
 
     def _navigation(self, enabled: bool) -> None:
         """Update job-navigation and deletion availability.

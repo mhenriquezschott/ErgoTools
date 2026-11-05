@@ -21,6 +21,7 @@ from ergotools.domain.rotation_scheme import (
     RotationWorkerLink,
 )
 from ergotools.infrastructure.lifft_store import StoreFormatError
+from ergotools.infrastructure.rotation_scenario_serialization import is_scenario_payload
 
 
 def create_rotation_schema(connection: sqlite3.Connection) -> None:
@@ -67,14 +68,15 @@ class RotationSchemeStore:
         self._project_id = project_id
 
     def read(self) -> tuple[RotationScheme, ...]:
-        """Read ordered schemes; malformed or foreign records are format errors.
+        """Read compatible older schemes; the project separately validates guided rows.
 
         Args:
             None.
 
         Returns:
-            Validated same-project schemes ordered by case-insensitive identity then
-            binary tie-breaker.
+            Compatible same-project schemes ordered by case-insensitive identity then
+            binary tie-breaker. Guided records are omitted and cannot be overwritten
+            through this adapter; their own project codec validates them.
 
         Raises:
             sqlite3.DatabaseError: A schema, catalog or source query/write fails; the
@@ -88,6 +90,8 @@ class RotationSchemeStore:
                 "SELECT scheme_id,payload FROM rotation_schemes "
                 "ORDER BY scheme_id COLLATE NOCASE,scheme_id"
             ):
+                if is_scenario_payload(payload):
+                    continue
                 scheme = _decode(payload)
                 if (
                     scheme.scheme_id != identity
@@ -120,6 +124,7 @@ class RotationSchemeStore:
         """
         if not self._connection.in_transaction:
             raise RuntimeError("Rotation writes require a project transaction.")
+        self._require_compatible(scheme.scheme_id)
         if scheme.project_id != self._project_id:
             raise ValueError("Rotation belongs to a different project.")
         self._connection.execute(
@@ -148,11 +153,31 @@ class RotationSchemeStore:
         """
         if not self._connection.in_transaction:
             raise RuntimeError("Rotation deletion requires a project transaction.")
+        self._require_compatible(scheme_id)
         cursor = self._connection.execute(
             "DELETE FROM rotation_schemes WHERE scheme_id=?", (scheme_id,)
         )
         if cursor.rowcount != 1:
             raise KeyError(scheme_id)
+
+    def _require_compatible(self, scheme_id: str) -> None:
+        """Prevent an older editor from overwriting/deleting unsupported guided data.
+
+        Args:
+            scheme_id: Exact row identity targeted by a legacy-compatible command.
+
+        Returns:
+            None for absent or compatible records; no table values change.
+
+        Raises:
+            ValueError: A guided scenario requires its lossless scenario editor.
+            sqlite3.Error: The current row cannot be read.
+        """
+        row = self._connection.execute(
+            "SELECT payload FROM rotation_schemes WHERE scheme_id=?", (scheme_id,)
+        ).fetchone()
+        if row is not None and is_scenario_payload(row[0]):
+            raise ValueError("This rotation requires the guided scenario editor.")
 
 
 def _encode(scheme: RotationScheme) -> str:

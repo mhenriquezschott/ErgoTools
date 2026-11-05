@@ -32,6 +32,9 @@ from ergotools.infrastructure.project_snapshot import (
     ProjectSnapshot,
     SnapshotAssessment,
 )
+from ergotools.infrastructure.rotation_scenario_serialization import is_scenario_payload
+from ergotools.infrastructure.rotation_timing_store import create_rotation_timing_schema
+from ergotools.infrastructure.task_catalog_store import create_task_schema
 from ergotools.infrastructure.work_hierarchy_store import decode_hierarchy
 
 from .job_risk_upgrade import upgrade_job_risks
@@ -53,19 +56,19 @@ _REMOVED_ORGANIZATION_FIELDS: dict[str, tuple[str, ...]] = {
 
 
 def upgrade_previous_project(source: Path, destination: Path) -> AssessmentProjectFile:
-    """Publish a recalculated format-19 copy of an earlier full native project.
+    """Upgrade an earlier native project to a separate current-format copy.
 
-    Old rounded outputs, duplicate observations and archives are dropped only in memory.
-    Calculator formulas, intrinsic rounding, units and direction conventions remain
-    unchanged. Older rounded results are recalculated; format-14 through format-18
-    native results are retained exactly.
+    Formats 8-13 remove obsolete duplicate results in private memory and recalculate
+    older rounded outputs using unchanged formulas, units and direction conventions.
+    Formats 14-23 retain authoritative native results exactly. Modern marker upgrades
+    preserve supported payload bytes, fingerprints and timestamps.
 
     Args:
-        source: Existing full native format 8-18 project, opened read-only.
+        source: Existing full native format 8-23 project, opened read-only.
         destination: Nonexistent output path; never replaces an original project.
 
     Returns:
-        Owned open format-19 repository containing current catalogs, every plant
+        Owned open format-24 repository containing current catalogs, every plant
         image/scheme/source and one complete/partial calculation per evaluable
         assessment.
         Invalid calculations have no fabricated output. Caller must close it.
@@ -86,9 +89,43 @@ def upgrade_previous_project(source: Path, destination: Path) -> AssessmentProje
     ):
         original.backup(working)
         row = working.execute("SELECT version FROM project_metadata").fetchone()
-        if row is None or row[0] not in (8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18):
-            raise ValueError("Only earlier full native formats 8-18 need this upgrade.")
+        if row is None or row[0] not in (
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+        ):
+            raise ValueError("Only earlier full native formats 8-23 need this upgrade.")
         version = row[0]
+        if 11 <= version < 22 and any(
+            is_scenario_payload(record[0])
+            for record in working.execute("SELECT payload FROM rotation_schemes")
+        ):
+            raise ValueError(
+                "Guided rotation payloads require the current native marker."
+            )
+        if version in (22, 23):
+            # Validate the source capability marker before advancing it; never hide
+            # unsupported drafts or malformed current ownership behind a newer marker.
+            probe = sqlite3.connect(":memory:")
+            try:
+                working.backup(probe)
+                with AssessmentProjectFile(probe):
+                    pass
+            finally:
+                probe.close()
         with working:
             working.execute("BEGIN IMMEDIATE")
             remove_obsolete_organization_fields(working)
@@ -101,13 +138,17 @@ def upgrade_previous_project(source: Path, destination: Path) -> AssessmentProje
             ):
                 # Constant allow-list, not user-supplied SQL identifiers.
                 working.execute(f"DROP TABLE IF EXISTS {table}")
-            if version not in (14, 15, 16, 17, 18):
+            if version not in (14, 15, 16, 17, 18, 19, 20, 21, 22, 23):
                 working.execute("DROP TABLE IF EXISTS saved_assessment_results")
             if version in (12, 13):
                 working.execute("UPDATE project_metadata SET version=11")
-            elif version in (14, 15, 16, 17, 18):
-                working.execute("UPDATE project_metadata SET version=19")
-        if version in (14, 15, 16, 17, 18):
+            elif version in (14, 15, 16, 17, 18, 19, 20, 21, 22, 23):
+                if version < 20:
+                    create_task_schema(working)
+                if version < 21:
+                    create_rotation_timing_schema(working)
+                working.execute("UPDATE project_metadata SET version=24")
+        if version in (14, 15, 16, 17, 18, 19, 20, 21, 22, 23):
             return _publish_native_upgrade(working, destination)
         with AssessmentProjectFile(working) as native:
             metadata = native.metadata
@@ -127,7 +168,7 @@ def upgrade_previous_project(source: Path, destination: Path) -> AssessmentProje
                         native.load_saved_result(
                             DocumentKey(metadata.project_id, item.ownership.document_id)
                         )
-                        if version in (14, 15, 16, 17, 18)
+                        if version in (14, 15, 16, 17, 18, 19, 20, 21, 22, 23)
                         else calculate_saved_result(
                             DocumentKey(
                                 metadata.project_id, item.ownership.document_id
@@ -165,7 +206,7 @@ def _publish_native_upgrade(
     """Validate and publish the private native upgrade without rewriting other data.
 
     Args:
-        connection: Idle private in-memory conversion copy with format-19 metadata.
+        connection: Idle private in-memory conversion copy with format-24 metadata.
         destination: Nonexistent owner-selected output path; never replaces the source.
 
     Returns:

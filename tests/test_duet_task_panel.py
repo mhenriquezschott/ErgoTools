@@ -196,7 +196,7 @@ def test_language_decimal_and_units_preserve_inputs(panel: DuetTaskPanel) -> Non
     panel.load_source(panel.presenter.bind())
     assert panel.presenter.source() is before
     assert panel.inputs[0][1].text() == "12"
-    assert panel.headers[1].text() == "Escala OMNI-Res"
+    assert panel.headers[2].text() == "Escala OMNI-Res"
 
 
 def test_clear_colors_invalid_values_and_stale_context(panel: DuetTaskPanel) -> None:
@@ -247,8 +247,8 @@ def test_zero_scale_missing_scale_and_grid_geometry(panel: DuetTaskPanel) -> Non
         is EvaluationStatus.PARTIAL
     )
     _APP.processEvents()
-    assert panel.grid.columnMinimumWidth(1) == 250
-    assert panel.grid.columnMinimumWidth(2) == 220
+    assert panel.grid.columnMinimumWidth(2) == 250
+    assert panel.grid.columnMinimumWidth(3) == 220
     assert all(
         b.height() == 40
         for b in (

@@ -194,13 +194,13 @@ def test_unit_projection_language_and_comma_edit(panel: TstTaskPanel) -> None:
     panel.load_source(panel.presenter.bind())
     assert panel.presenter.source() is before
     assert panel.inputs[0][1].text() == "30,5"
-    assert panel.headers[2].text() == "Lever Arm (cm)"
+    assert panel.headers[3].text() == "Lever Arm (cm)"
     enter(panel, 0, 1, "25,4")
     panel.language = Language.SPANISH
     panel.translate()
     assert panel.pending and panel.inputs[0][1].text() == "25,4"
     assert panel.inputs[1][0].currentData() == TstDirection.DOWNWARD.value
-    assert panel.headers[3].text() == "Carga (N)"
+    assert panel.headers[4].text() == "Carga (N)"
     assert panel.commit_inputs()
     after = panel.presenter.source()
     assert after.system is MeasurementSystem.IMPERIAL
@@ -275,8 +275,9 @@ def test_header_rebuild_resize_and_programmatic_signals(panel: TstTaskPanel) -> 
     panel.translate()
     panel.load_source(panel.presenter.bind())
     assert not changes and not panel.pending and panel.presenter.source() is before
-    assert tuple(panel.grid.columnMinimumWidth(c) for c in range(8)) == (
+    assert tuple(panel.grid.columnMinimumWidth(c) for c in range(9)) == (
         55,
+        135,
         190,
         95,
         58,

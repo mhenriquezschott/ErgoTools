@@ -7,6 +7,9 @@ transaction boundaries are specified by each operation; I/O failures propagate u
 wrapped as a format error.
 """
 
+import sqlite3
+from collections.abc import Callable
+
 from ergotools.domain.assessments.document import AssessmentDraft
 from ergotools.infrastructure.assessment_serialization import (
     decode_assessment,
@@ -19,6 +22,25 @@ class AssessmentSqliteStore(SqliteDraftStore[AssessmentDraft]):
     """Store tagged assessments; a document ID cannot be reassigned to another tool."""
 
     format_id = "ergotools.assessment-drafts"
+
+    def __init__(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        validate_source: Callable[[AssessmentDraft], None] | None = None,
+    ) -> None:
+        """Retain optional full-project reference validation for locked source writes.
+
+        Args:
+            connection: Borrowed native connection, validated by the base store.
+            validate_source: Owning project's reference validator, or None for
+                standalone diagnostics. Called inside source write transactions.
+
+        Returns:
+            None; no source is changed during construction.
+        """
+        super().__init__(connection)
+        self._validate_source = validate_source
 
     def encode(self, state: AssessmentDraft) -> str:
         """Validate source and tag before the transaction starts.
@@ -70,5 +92,7 @@ class AssessmentSqliteStore(SqliteDraftStore[AssessmentDraft]):
             StoreFormatError: Replacement changes the existing source model.
             ValueError: The prior saved payload is corrupt.
         """
+        if self._validate_source is not None:
+            self._validate_source(state)
         if existing is not None and type(self.decode(existing)) is not type(state):
             raise StoreFormatError("An existing assessment cannot change model type.")

@@ -231,16 +231,9 @@ class MainNavigation(QWidget):
         self.alphabet = AlphabetNavigation("All", self.filter_workers)
         self.alphabet.setStyleSheet(
             self.alphabet.styleSheet()
-            + "QPushButton#copyAlphabetButton { border: 0; border-radius: 3px; "
-            "background: transparent; color: #416487; font-size: 11px; height: 27px; } "
-            "QPushButton#copyAlphabetButton:checked { "
-            "background: #0B326C; color: white; } "
-            'QPushButton#copyAlphabetButton[currentInitial="true"] { '
-            "font-weight: 900; font-size: 13px; color: #001C2B; } "
-            "QPushButton#copyAlphabetButton:checked { color: white; } "
-            "QPushButton#copyAlphabetButton:hover:enabled { font-size: 16px; "
-            "background: #DDF3F5; color: #0B326C; } "
-            "QPushButton#copyAlphabetButton:disabled { color: #C7D0D7; }"
+            + 'QPushButton#alphabetButton[currentInitial="true"] { '
+            "font-weight:900; font-size:13px; color:#001C2B; } "
+            "QPushButton#alphabetButton:checked { color:white; }"
         )
         self.alphabet.setFixedHeight(28)
         for letter in self.alphabet.buttons.values():

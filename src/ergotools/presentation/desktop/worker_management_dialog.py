@@ -72,6 +72,7 @@ from ergotools.domain.worker_details import (
     display_body_measurement,
     store_body_measurement,
 )
+from ergotools.presentation.desktop.alphabet_navigation import AlphabetNavigation
 from ergotools.presentation.desktop.project_history_actions import ProjectHistoryActions
 from ergotools.presentation.desktop.secondary_history_controls import (
     add_history_buttons,
@@ -216,7 +217,6 @@ class WorkerManagementDialog(QDialog):
         )
         self._translate_controls()
         if language is Language.SPANISH:
-            self.alphabet_buttons["All"].setFixedWidth(44)
             directory = self.worker_table.parentWidget()
             assert directory is not None
             directory.setMinimumWidth(565)
@@ -683,6 +683,23 @@ class WorkerManagementDialog(QDialog):
             None.
         """
         query = text.strip().casefold()
+        self.alphabet.set_available(
+            frozenset(
+                name[:1].upper()
+                for worker in self._hierarchy.hierarchy.work.workers
+                if query
+                in (
+                    worker.worker_id
+                    + " "
+                    + (worker.last_name or "")
+                    + ", "
+                    + (worker.first_name or "")
+                ).casefold()
+                for name in (worker.first_name or "", worker.last_name or "")
+                if name
+            ),
+            self.active_alphabet_letter or "All",
+        )
         self._filtered = sorted(
             (
                 w
@@ -1888,22 +1905,11 @@ class WorkerManagementDialog(QDialog):
         alphabet_layout.addWidget(alphabet_label)
 
         self.active_alphabet_letter = None
-        for letter in ["All"] + [chr(code) for code in range(ord("A"), ord("Z") + 1)]:
-            button = QPushButton(letter)
-            button.setObjectName("alphabetButton")
-            button.setCheckable(True)
-            button.setFixedSize(32 if letter == "All" else 17, 32)
-            button.setToolTip(
-                "Show all workers."
-                if letter == "All"
-                else f"Show workers whose first or last name begins with {letter}."
-            )
-            button.clicked.connect(
-                lambda checked, value=letter: self.set_alphabet_filter(value)
-            )
-            self.alphabet_buttons[letter] = button
-            alphabet_layout.addWidget(button)
-        self.alphabet_buttons["All"].setChecked(True)
+        self.alphabet: AlphabetNavigation = AlphabetNavigation(
+            self._text("All"), self.set_alphabet_filter
+        )
+        self.alphabet_buttons = self.alphabet.buttons
+        alphabet_layout.addWidget(self.alphabet, 1)
         directory_layout.addLayout(alphabet_layout)
         list_footer = QHBoxLayout()
         self.worker_count_label = QLabel("0 workers")

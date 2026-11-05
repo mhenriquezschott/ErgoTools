@@ -23,7 +23,9 @@ from ergotools.bootstrap import load_icons
 from ergotools.domain.job_catalog import Job, JobCatalog, JobPlacement
 from ergotools.domain.language import Language
 from ergotools.domain.work_catalog import StationKey
-from ergotools.presentation.desktop.rotation_scope_dialog import RotationScopeDialog
+from ergotools.presentation.desktop.legacy_jrot_scope_dialog import (
+    LegacyJrotScopeDialog,
+)
 from tests.test_history_persistence import HIERARCHY, JOBS, OWNER, STATION
 from tests.test_rotation_persistence import seed
 
@@ -109,7 +111,7 @@ def test_initial_mixed_parents_batched_group_click_and_shift_accept(
     Returns:
         None.
     """
-    dialog = RotationScopeDialog(
+    dialog = LegacyJrotScopeDialog(
         options(), load_icons(), selected=(OWNER.workplace,), language=language
     )
     dialog.show()
@@ -154,7 +156,7 @@ def test_scope_cancel_escape_and_empty_shift_preserve_input() -> None:
     """
     selected = (OWNER.workplace,)
     for escape in (False, True):
-        dialog = RotationScopeDialog(options(), load_icons(), selected=selected)
+        dialog = LegacyJrotScopeDialog(options(), load_icons(), selected=selected)
         dialog.show()
         dialog.shift_combo.setCurrentText("Late")
         assert dialog.tree.topLevelItemCount() == 0
@@ -178,7 +180,7 @@ def test_empty_scope_minimum_resize_and_no_modal_accept() -> None:
     Returns:
         None.
     """
-    dialog = RotationScopeDialog(
+    dialog = LegacyJrotScopeDialog(
         RotationScopeOptions((), ()), load_icons(), language=Language.SPANISH
     )
     dialog.show()

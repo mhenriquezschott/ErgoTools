@@ -71,7 +71,7 @@ def test_external_process_handles_spaces_and_native_open(
     assert mapped.read_bytes() == original
     assert not adapter.requires_conversion(str(destination))
     with AssessmentProjectFile.open(destination) as project:
-        assert project.format_version == 19
+        assert project.format_version == 24
         assert project.load_plant_image("P") is not None
         assert any(
             project.load_saved_result(

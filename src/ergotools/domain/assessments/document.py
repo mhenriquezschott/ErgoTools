@@ -67,3 +67,19 @@ def task_has_data(task: LifftTask | DuetTask | TstTask) -> bool:
     ) or any(
         value is not None for value in (task.lever_arm, task.load, task.repetitions)
     )
+
+
+def task_has_content(task: LifftTask | DuetTask | TstTask) -> bool:
+    """Detect descriptive or numeric content before truncation, clearing or copy.
+
+    Args:
+        task: Exact source row; names alone are not complete calculator inputs.
+
+    Returns:
+        True for any measurement/changed selector or descriptive name/reference.
+    """
+    return (
+        task_has_data(task)
+        or task.task_name is not None
+        or task.task_definition_id is not None
+    )

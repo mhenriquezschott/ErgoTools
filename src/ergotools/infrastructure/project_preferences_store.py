@@ -69,6 +69,7 @@ def write_display_settings(
         "probability INTEGER NOT NULL, damage INTEGER NOT NULL, "
         "contribution INTEGER NOT NULL)"
     )
+    last_rotation = read_last_rotation(connection)
     connection.execute("DELETE FROM project_display_settings")
     connection.execute(
         "INSERT INTO project_display_settings "
@@ -91,6 +92,10 @@ def write_display_settings(
             "CHECK(context_expanded IS NULL OR context_expanded IN (0, 1))"
         )
         columns.add("context_expanded")
+    if "last_rotation_id" in columns:
+        connection.execute(
+            "UPDATE project_display_settings SET last_rotation_id=?", (last_rotation,)
+        )
     if "context_expanded" in columns:
         connection.execute(
             "UPDATE project_display_settings SET context_expanded = ?",
@@ -126,3 +131,65 @@ def read_context_expanded(connection: sqlite3.Connection) -> bool | None:
     ):
         raise StoreFormatError("Invalid project context disclosure setting.")
     return None if rows[0][0] is None else bool(rows[0][0])
+
+
+def read_last_rotation(connection: sqlite3.Connection) -> str | None:
+    """Read optional last-viewed rotation identity without repairing stale selection.
+
+    Args:
+        connection: Borrowed current project connection.
+
+    Returns:
+        Exact ID or None when absent/unset; membership is a caller selection policy.
+
+    Raises:
+        StoreFormatError: Existing view state has invalid row count/type.
+        sqlite3.Error: Reading optional settings fails.
+    """
+    columns = {
+        r[1] for r in connection.execute("PRAGMA table_info(project_display_settings)")
+    }
+    if "last_rotation_id" not in columns:
+        return None
+    rows = connection.execute(
+        "SELECT last_rotation_id FROM project_display_settings"
+    ).fetchall()
+    if len(rows) != 1 or (
+        rows[0][0] is not None
+        and (not isinstance(rows[0][0], str) or not rows[0][0].strip())
+    ):
+        raise StoreFormatError("Invalid last-viewed rotation identity.")
+    return rows[0][0]
+
+
+def write_last_rotation(connection: sqlite3.Connection, identity: str | None) -> None:
+    """Write independent view state inside the caller's existing project transaction.
+
+    Args:
+        connection: Borrowed owner-thread connection with an active transaction.
+        identity: Explicit saved ID or None; caller validates current membership.
+
+    Returns:
+        None; decimals/context disclosure remain unchanged and no scenario is created.
+
+    Raises:
+        RuntimeError: Caller has no project transaction.
+        ValueError: Identity is not nonblank text or None.
+        sqlite3.Error: Optional settings creation/write fails; caller must roll back.
+    """
+    if not connection.in_transaction:
+        raise RuntimeError("Rotation selection requires a project transaction.")
+    if identity is not None and (not isinstance(identity, str) or not identity.strip()):
+        raise ValueError("Invalid rotation selection identity.")
+    columns = {
+        r[1] for r in connection.execute("PRAGMA table_info(project_display_settings)")
+    }
+    if not columns:
+        write_display_settings(connection, DisplayPrecision())
+    if "last_rotation_id" not in columns:
+        connection.execute(
+            "ALTER TABLE project_display_settings ADD COLUMN last_rotation_id TEXT"
+        )
+    connection.execute(
+        "UPDATE project_display_settings SET last_rotation_id=?", (identity,)
+    )

@@ -9,6 +9,7 @@ scientific calculations remain in the domain/application layers.
 
 import argparse
 import sys
+import traceback
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import date
@@ -23,10 +24,6 @@ from ergotools.application.assessment_export import SummaryExportRow, saved_summ
 from ergotools.application.contracts.body_renderer import BodyRenderer
 from ergotools.application.document_lifecycle import CloseChoice
 from ergotools.application.gauge_preferences import GaugeMarkerSettings
-from ergotools.application.jrot_prototype import (
-    PrototypeCatalog,
-    read_prototype_catalog,
-)
 from ergotools.application.plot_access import PlotRepository
 from ergotools.application.project_editing import ProjectEditingSession
 from ergotools.application.project_workspace import ProjectWorkspace
@@ -39,15 +36,30 @@ from ergotools.domain.decimal_convention import DecimalConvention
 from ergotools.domain.model_units import MeasurementSystem
 from ergotools.domain.project import ProjectMetadata
 from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+from ergotools.infrastructure.highs_rotation_optimizer import (
+    HighsRotationOptimizer,
+    HighsRotationPlanner,
+)
 from ergotools.infrastructure.plant_image_import import import_plant_image
 from ergotools.infrastructure.plot_csv_file import write_plot_csv
 from ergotools.infrastructure.project_migration import ExternalProjectMigration
-from ergotools.infrastructure.pulp_rotation_optimizer import PulpRotationOptimizer
 from ergotools.infrastructure.resources import read_asset
 from ergotools.infrastructure.settings_store import JsonSettingsStore
+from ergotools.infrastructure.startup_report import (
+    StartupReport,
+    diagnostics_default,
+    diagnostics_directory,
+    windows_display_context,
+)
 from ergotools.infrastructure.summary_export import load_summary_rows, write_summary_csv
+from ergotools.infrastructure.tabular_file_reader import SpreadsheetValueReader
+from ergotools.presentation.desktop.assessment_editor_preferences import (
+    AssessmentEditorPreferences,
+)
+from ergotools.presentation.desktop.display_diagnostics import DisplayDiagnostics
 from ergotools.presentation.desktop.job_management_dialog import JobManagementDialog
-from ergotools.presentation.desktop.jrot_prototype_dialog import JrotPrototypeDialog
+from ergotools.presentation.desktop.jrot_dialog import JrotDialog
+from ergotools.presentation.desktop.legacy_jrot_dialog import LegacyJrotDialog
 from ergotools.presentation.desktop.lifft_presenter import LifftPresenter
 from ergotools.presentation.desktop.lifft_window import LifftWindow
 from ergotools.presentation.desktop.menu_icon_style import install_menu_icon_style
@@ -55,7 +67,6 @@ from ergotools.presentation.desktop.plot_window import PlotWindow
 from ergotools.presentation.desktop.result_animation_preferences import (
     apply_result_animations,
 )
-from ergotools.presentation.desktop.rotation_dialog import RotationDialog
 from ergotools.presentation.desktop.theme.dialogs import install_dialog_theme
 
 
@@ -200,6 +211,7 @@ def create_window(
     original_controls: bool = False,
     original_navigation: bool = False,
     enable_vtk: bool = False,
+    diagnostics_report: str | None = None,
 ) -> LifftWindow:
     """Compose a window after QApplication exists; caller chooses preferences path.
 
@@ -212,6 +224,7 @@ def create_window(
             optional external conversion.
         enable_vtk: Construct the native VTK body renderer; False supports isolated
             nonnative UI checks.
+        diagnostics_report: Optional current report path, displayed in Settings only.
 
     Returns:
         Composed, translated and initially refreshed integrated/diagnostic window;
@@ -239,7 +252,7 @@ def create_window(
         result_provider=lambda: window.current_result_snapshot(),
         creator=lambda location, metadata, document_id, source: (
             AssessmentProjectFile.create_with_document(
-                Path(location), metadata, document_id, source, format_version=19
+                Path(location), metadata, document_id, source, format_version=24
             )
         ),
         empty_creator=lambda location, metadata: AssessmentProjectFile.create_empty(
@@ -307,6 +320,8 @@ def create_window(
             for language in Language
         },
         authors_logo=read_asset("images/ergotools_main_logo.png"),
+        settings_avatar_preview=read_asset("images/avatar_focus_preview.gif"),
+        diagnostics_report=diagnostics_report,
         summary_loader=open_project_summary,
         csv_writer=write_summary_csv,
         plot_opener=partial(
@@ -315,13 +330,22 @@ def create_window(
             editing_provider=lambda: workspace.editing,
         ),
         rotation_opener=partial(
-            open_rotation, editing_provider=lambda: workspace.editing
+            open_legacy_rotation,
+            settings_store=settings_store,
+            editing_provider=lambda: workspace.editing,
         ),
-        developer_opener=partial(open_jrot_prototype, workspace=workspace),
+        assessment_editor_preferences=AssessmentEditorPreferences(
+            settings_store, SpreadsheetValueReader()
+        ),
+        guided_rotation_opener=partial(
+            open_guided_jrot, workspace=workspace, settings_store=settings_store
+        ),
         original_controls=original_controls,
         original_navigation=original_navigation,
         renderer_factory=renderer_factory,
     )
+    assert window._assessment_editor_preferences is not None
+    window._assessment_editor_preferences.bind(window)
     window.presenter.system = preferences.default_units
     window.language = preferences.language
     window.presenter.convention = preferences.decimal_convention
@@ -341,48 +365,84 @@ def create_window(
     return window
 
 
-def open_jrot_prototype(
-    parent: QWidget, *, workspace: ProjectWorkspace[AssessmentDraft]
+def open_guided_jrot(
+    language: Language,
+    convention: DecimalConvention,
+    parent: QWidget,
+    *,
+    workspace: ProjectWorkspace[AssessmentDraft],
+    settings_store: SettingsStore | None = None,
 ) -> None:
-    """Compose a disposable developer preview from detached read-only catalogs.
+    """Compose production guided JROT over the shared project/history owner.
 
     Args:
-        parent: Main GUI owner; no production editor or mutation port enters the view.
-        workspace: Composition-owned project session, read only to obtain a snapshot.
+        language: Current Main interface language.
+        convention: Current personal numeric convention.
+        parent: Main owner that already resolved pending assessment text.
+        workspace: Borrowed private project/history and sole publication owner.
+        settings_store: Shared personal gauge/animation and solver-comparison defaults.
 
     Returns:
-        None after modal closure and safe solver/widget cleanup. No project/settings
-        write occurs; an empty workspace uses clearly labeled sample data.
+        None after pending entry is accepted and the modal lifetime ends.
     """
-    metadata = workspace.project_metadata
-    catalog = (
-        read_prototype_catalog(
-            workspace.rotation_repository(), metadata.title if metadata else "Project"
+
+    def save_markers(markers: GaugeMarkerSettings) -> None:
+        """Persist shared gauge appearance independently of project data/history.
+
+        Args:
+            markers: Validated current personal gauge options.
+
+        Returns:
+            None; no project or scenario edit is introduced.
+        """
+        if settings_store is not None:
+            settings_store.save(replace(settings_store.load(), gauge_markers=markers))
+
+    preferences = settings_store.load() if settings_store else None
+    dialog = JrotDialog(
+        workspace,
+        load_icons(),
+        language=language,
+        convention=convention,
+        parent=parent,
+        optimizer=HighsRotationPlanner(),
+        editor_preferences=AssessmentEditorPreferences(
+            settings_store, SpreadsheetValueReader()
         )
-        if workspace.supports_rotations
-        else PrototypeCatalog("Sample workspace · no project loaded")
+        if settings_store
+        else None,
+        markers=preferences.gauge_markers if preferences else None,
+        change_markers=save_markers,
     )
-    dialog = JrotPrototypeDialog(catalog, PulpRotationOptimizer(), load_icons(), parent)
+    if dialog.editor_preferences is not None:
+        dialog.editor_preferences.bind(dialog)
+    if preferences is not None:
+        apply_result_animations(
+            dialog,
+            preferences.animated_risk_gauge,
+            preferences.animated_cumulative_damage,
+        )
     try:
         dialog.exec()
     finally:
-        dialog.close()
         dialog.deleteLater()
 
 
-def open_rotation(
+def open_legacy_rotation(
     repository: RotationRepository,
     language: Language,
     parent: QWidget,
     *,
+    settings_store: SettingsStore | None = None,
     editing_provider: Callable[[], ProjectEditingSession | None] | None = None,
 ) -> None:
-    """Compose original modal JROT over a borrowed workspace project handle.
+    """Compose optional Legacy JROT over compatible older scheme records only.
 
     The dialog owns solver workers/comparison children until actual completion. Closing
     does not close the borrowed repository or implicitly save assessments.
 
     Args:
+        settings_store: Personal solver choice; no model/project changes.
         editing_provider: Optional shared private editing owner for the open project.
         repository: Borrowed workspace rotation project handle; closing the modal never
             closes this repository.
@@ -398,11 +458,11 @@ def open_rotation(
         OSError: Required packaged assets cannot be loaded.
         ValueError: A packaged icon is not decodable.
     """
-    dialog = RotationDialog(
+    dialog = LegacyJrotDialog(
         repository,
         load_icons(),
         language=language,
-        optimizer=PulpRotationOptimizer(),
+        optimizer=HighsRotationOptimizer(),
         parent=parent,
         editing=editing_provider() if editing_provider else None,
     )
@@ -508,6 +568,88 @@ def load_icons() -> dict[str, QIcon]:
     """
     icons: dict[str, QIcon] = {}
     for name in (
+        "include_rows",
+        "include_rows_light",
+        "skip_rows",
+        "skip_rows_light",
+        "include_all_rows",
+        "include_all_rows_light",
+        "task_inputs",
+        "task_inputs_light",
+        "direct_result",
+        "direct_result_light",
+        "clear_assignments",
+        "clear_assignments_light",
+        "discard_preview",
+        "discard_preview_light",
+        "clear_timing",
+        "clear_timing_light",
+        "edit_timing",
+        "edit_timing_light",
+        "about",
+        "about_light",
+        "add_break",
+        "add_break_light",
+        "add_work_block",
+        "add_work_block_light",
+        "apply_timing",
+        "apply_timing_light",
+        "clear_result_link",
+        "clear_result_link_light",
+        "column_mapping",
+        "column_mapping_light",
+        "duplicate_rotation",
+        "duplicate_rotation_light",
+        "equal_breaks",
+        "equal_breaks_light",
+        "equal_work_blocks",
+        "equal_work_blocks_light",
+        "excluded_jobs",
+        "excluded_jobs_light",
+        "fixed_job",
+        "fixed_job_light",
+        "following_rotation_result",
+        "following_rotation_result_light",
+        "generate_proposal",
+        "generate_proposal_light",
+        "keep_optimization_result",
+        "keep_optimization_result_light",
+        "no_adjacent_high",
+        "no_adjacent_high_light",
+        "previous_rotation_result",
+        "previous_rotation_result_light",
+        "project_backup",
+        "project_backup_light",
+        "project_properties",
+        "project_properties_light",
+        "remove_break",
+        "remove_break_light",
+        "remove_empty_rows",
+        "remove_empty_rows_light",
+        "remove_work_block",
+        "remove_work_block_light",
+        "replace_baseline",
+        "replace_baseline_light",
+        "rework_rotation",
+        "rework_rotation_light",
+        "save_as",
+        "save_as_light",
+        "select_cell_range",
+        "select_cell_range_light",
+        "task_columns",
+        "task_columns_light",
+        "task_names",
+        "task_names_light",
+        "unequal_breaks",
+        "unequal_breaks_light",
+        "unequal_work_blocks",
+        "unequal_work_blocks_light",
+        "validate_import",
+        "validate_import_light",
+        "worker_restrictions",
+        "worker_restrictions_light",
+        "worksheet",
+        "worksheet_light",
         "ergotools_logo",
         "new",
         "open",
@@ -640,6 +782,9 @@ def run_job_management(
         dialog = JobManagementDialog(
             workspace, load_icons(), system, language=selected_language
         )
+        AssessmentEditorPreferences(
+            JsonSettingsStore(settings_path), SpreadsheetValueReader()
+        ).bind(dialog)
         try:
             dialog.exec()
         finally:
@@ -656,7 +801,10 @@ def main(argv: list[str] | None = None) -> int:
     A positional project path follows the original command-line convention. Opening
     occurs after show, through the same conversion, selection, failure reporting and
     recent-history workflow as the Project menu. No startup Save is performed.
-    Diagnostic bootstrap settings remain project-local by default.
+    Diagnostic bootstrap settings remain project-local by default. Startup display
+    reporting defaults on for Windows/macOS and off elsewhere; explicit flags override
+    this launch-local policy. Reports use personal state/log storage, never projects.
+    Reporting failures do not replace normal startup error handling.
 
     Args:
         argv: Arguments without program name; None reads the current process command
@@ -710,7 +858,30 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Disable native 3D rendering for isolated UI review",
     )
+    diagnostics = parser.add_mutually_exclusive_group()
+    diagnostics.add_argument(
+        "--startup-diagnostics",
+        action="store_true",
+        default=None,
+        help="Record bounded startup/display diagnostics (default on Windows/macOS)",
+    )
+    diagnostics.add_argument(
+        "--no-startup-diagnostics",
+        dest="startup_diagnostics",
+        action="store_false",
+        help="Disable startup/display diagnostics for this launch",
+    )
+    parser.add_argument(
+        "--diagnostics-dir",
+        type=Path,
+        help="Store startup reports in this folder; "
+        "enables capture unless explicitly disabled",
+    )
     args = parser.parse_args(argv)
+    if args.diagnostics_dir is not None and args.startup_diagnostics is False:
+        parser.error(
+            "--diagnostics-dir cannot be combined with --no-startup-diagnostics"
+        )
     if args.job_language and not (args.job_management_demo or args.job_management):
         parser.error("--job-language requires a Job Management preview option")
     if args.project_file is not None and (
@@ -718,33 +889,73 @@ def main(argv: list[str] | None = None) -> int:
     ):
         parser.error("project_file cannot be combined with Job Management diagnostics")
     job_language = Language(args.job_language) if args.job_language else None
-    app = QApplication(sys.argv[:1])
-    install_menu_icon_style(app)
-    install_dialog_theme(app)
-    app.setApplicationName("ErgoTools")
-    args.settings.parent.mkdir(parents=True, exist_ok=True)
-    if args.job_management_demo:
-        demo_path = args.settings.parent / "job-management-demo.ergprj"
-        if not demo_path.exists():
-            create_job_management_demo(demo_path)
-        return run_job_management(demo_path, args.settings, language=job_language)
-    if args.job_management is not None:
-        return run_job_management(
-            args.job_management, args.settings, language=job_language
-        )
-    window = create_window(
-        args.settings,
-        original_controls=args.original_lifft_controls,
-        original_navigation=args.integrated_preview,
-        enable_vtk=args.integrated_preview and not args.disable_vtk,
+    report: StartupReport | None = None
+    observer: DisplayDiagnostics | None = None
+    enabled = (
+        args.startup_diagnostics
+        if args.startup_diagnostics is not None
+        else (args.diagnostics_dir is not None or diagnostics_default(sys.platform))
     )
-    window.show()
-    if args.project_file is not None:
-        location = str(args.project_file.absolute())
-        QTimer.singleShot(
-            0, lambda: window.run(lambda: window.open_project_location(location))
+    if enabled:
+        try:
+            report = StartupReport(
+                args.diagnostics_dir or diagnostics_directory(sys.platform)
+            )
+            report.install()
+            observer = DisplayDiagnostics(report.record, windows_display_context)
+            print(f"ErgoTools startup report: {report.path}", file=sys.stderr)
+        except OSError as error:
+            if report is not None:
+                report.close()
+                report = None
+            print(f"ErgoTools diagnostics unavailable: {error}", file=sys.stderr)
+    try:
+        app = QApplication(sys.argv[:1])
+        if observer is not None:
+            try:
+                observer.attach(app)
+            except (AttributeError, RuntimeError, ValueError) as error:
+                if report is not None:
+                    report.record("qt_probe_unavailable", {"error": str(error)})
+                observer.close()
+                observer = None
+        install_menu_icon_style(app)
+        install_dialog_theme(app)
+        app.setApplicationName("ErgoTools")
+        args.settings.parent.mkdir(parents=True, exist_ok=True)
+        if args.job_management_demo:
+            demo_path = args.settings.parent / "job-management-demo.ergprj"
+            if not demo_path.exists():
+                create_job_management_demo(demo_path)
+            return run_job_management(demo_path, args.settings, language=job_language)
+        if args.job_management is not None:
+            return run_job_management(
+                args.job_management, args.settings, language=job_language
+            )
+        window = create_window(
+            args.settings,
+            original_controls=args.original_lifft_controls,
+            original_navigation=args.integrated_preview,
+            enable_vtk=args.integrated_preview and not args.disable_vtk,
+            diagnostics_report=str(report.path) if report else None,
         )
-    return app.exec()
+        window.show()
+        if args.project_file is not None:
+            location = str(args.project_file.absolute())
+            QTimer.singleShot(
+                0, lambda: window.run(lambda: window.open_project_location(location))
+            )
+        return app.exec()
+    except Exception:
+        if report is not None:
+            report.record("startup_exception", {"traceback": traceback.format_exc()})
+        raise
+    finally:
+        if observer is not None:
+            observer.close()
+        if report is not None:
+            report.record("process_end", {})
+            report.close()
 
 
 if __name__ == "__main__":

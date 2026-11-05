@@ -78,7 +78,7 @@ class SerializationTests(unittest.TestCase):
         cases = [[], None, {}, {**base, "extra": 1}]
         for field, values in {
             "format": ["other", None],
-            "version": [2, True, 1.0, "1"],
+            "version": [99, True, 1.0, "1"],
             "system": ["unknown", None, " "],
             "tasks": [{}, None],
         }.items():

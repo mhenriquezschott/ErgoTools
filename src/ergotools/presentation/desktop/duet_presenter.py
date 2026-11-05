@@ -6,7 +6,7 @@ source state and repository lifetime remain with the named application/domain po
 host owners.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from uuid import uuid4
 
 from ergotools.application.assessments.duet_commands import (
@@ -190,12 +190,14 @@ class DuetPresenter:
         ):
             raise DraftError(InputIssue("validation.identity", "source"))
         tasks = tuple(
-            DuetTask(
-                identity,
-                scale
+            replace(
+                original,
+                omni_res_scale=scale
                 if cell is None or cell == (identity, 1)
                 else original.omni_res_scale,
-                parse_input_number(text, context.convention, "repetitions", identity)
+                repetitions=parse_input_number(
+                    text, context.convention, "repetitions", identity
+                )
                 if cell is None or cell == (identity, 2)
                 else original.repetitions,
             )

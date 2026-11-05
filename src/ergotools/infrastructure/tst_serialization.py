@@ -21,11 +21,16 @@ from ergotools.infrastructure.draft_json import document_fields as _fields
 from ergotools.infrastructure.draft_json import document_number as _number
 from ergotools.infrastructure.draft_json import document_text as _text
 from ergotools.infrastructure.draft_json import unique_object as _object
+from ergotools.infrastructure.task_name_serialization import (
+    decode_task_name,
+    task_name_fields,
+)
 
 
 def decode_tst(payload: str) -> TstDraft:
     """Decode a complete draft or raise DocumentFormatError without partial data.
 
+    Named rows use version three with an explicit direction convention.
     Reject unknown versions/fields, duplicate JSON members, booleans masquerading as
     numbers, nonfinite values, invalid units and duplicate task identities. Version one
     retains model IDs; version two explicitly records their source convention. Missing
@@ -49,10 +54,10 @@ def decode_tst(payload: str) -> TstDraft:
         if not isinstance(envelope, dict):
             raise DocumentFormatError("Expected a TST draft object.")
         version = envelope.get("version")
-        if type(version) is not int or version not in (1, 2):
+        if type(version) is not int or version not in (1, 2, 3):
             raise DocumentFormatError("Unsupported document version.")
         expected = {"format", "version", "system", "tasks"}
-        if version == 2:
+        if version >= 2:
             expected.add("direction_convention")
         data = _fields(envelope, expected)
         if data["format"] != "ergotools.tst-draft":
@@ -62,9 +67,11 @@ def decode_tst(payload: str) -> TstDraft:
             raise DocumentFormatError("Tasks must be an array.")
         tasks = []
         for entry in data["tasks"]:
-            task = _fields(
-                entry, {"task_id", "direction", "lever_arm", "load", "repetitions"}
-            )
+            fields = {"task_id", "direction", "lever_arm", "load", "repetitions"}
+            if version == 3:
+                fields |= {"task_name", "task_definition_id"}
+            task = _fields(entry, fields)
+            name, definition_id = decode_task_name(task, version == 3)
             tasks.append(
                 TstTask(
                     _text(task["task_id"]),
@@ -74,6 +81,8 @@ def decode_tst(payload: str) -> TstDraft:
                     _number(task["lever_arm"]),
                     _number(task["load"]),
                     _number(task["repetitions"]),
+                    task_name=name,
+                    task_definition_id=definition_id,
                 )
             )
         convention = (
@@ -95,7 +104,7 @@ def encode_tst(draft: TstDraft) -> str:
 
     Returns:
         Validated compact ASCII source JSON; emit version two only when an explicit
-        nonmodel direction convention is required.
+        nonmodel direction convention is required; named rows use version three.
 
     Raises:
         DocumentFormatError: A direction is not typed/absent or the generated source
@@ -107,6 +116,7 @@ def encode_tst(draft: TstDraft) -> str:
         for task in draft.tasks
     ):
         raise DocumentFormatError("Direction must be a model enum or absent.")
+    named = task_name_fields(draft)
     data = {
         "format": "ergotools.tst-draft",
         "version": 1,
@@ -114,6 +124,14 @@ def encode_tst(draft: TstDraft) -> str:
         "tasks": [
             {
                 "task_id": task.task_id,
+                **(
+                    {
+                        "task_name": task.task_name,
+                        "task_definition_id": task.task_definition_id,
+                    }
+                    if named
+                    else {}
+                ),
                 "direction": task.direction,
                 "lever_arm": task.lever_arm,
                 "load": task.load,
@@ -124,6 +142,9 @@ def encode_tst(draft: TstDraft) -> str:
     }
     if draft.direction_convention is not TstDirectionConvention.MODEL_CODES:
         data["version"] = 2
+        data["direction_convention"] = draft.direction_convention.value
+    if named:
+        data["version"] = 3
         data["direction_convention"] = draft.direction_convention.value
     payload = json.dumps(
         data, ensure_ascii=True, allow_nan=False, sort_keys=True, separators=(",", ":")

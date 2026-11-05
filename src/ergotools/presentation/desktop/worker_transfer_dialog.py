@@ -47,6 +47,7 @@ from ergotools.domain.assessment_transfer import (
 from ergotools.domain.assessments.context import WorkerContext, WorkplaceContext
 from ergotools.domain.assessments.document import AssessmentDraft, AssessmentKind
 from ergotools.domain.risk import classify_probability
+from ergotools.presentation.desktop.alphabet_navigation import AlphabetNavigation
 from ergotools.presentation.desktop.assessment_badges import AssessmentBadgeDelegate
 from ergotools.presentation.desktop.theme.risk import RISK_APPEARANCES
 from ergotools.presentation.desktop.theme.worker_transfer import WORKER_TRANSFER_STYLE
@@ -358,29 +359,10 @@ class WorkerTransferDialog(QDialog):
         alphabet.setSpacing(0)
         alphabet.addWidget(QLabel(self.text("Last name")))
         alphabet.addSpacing(5)
-        self.alphabet_group = QButtonGroup(self)
-        self.alphabet_group.setExclusive(True)
-        for value in ["All"] + [chr(code) for code in range(ord("A"), ord("Z") + 1)]:
-            button = QPushButton(self.text(value))
-            if value == "All" and self.language is Language.SPANISH:
-                button.setStyleSheet("min-width: 34px; max-width: 34px;")
-            button.setObjectName("alphabetButton")
-            button.setCheckable(True)
-            button.setChecked(value == "All")
-            button.setToolTip(
-                self.text("Show all workers")
-                if value == "All"
-                else self.text("Show last names beginning with {letter}").format(
-                    letter=value
-                )
-            )
-            button.clicked.connect(
-                lambda checked, letter=value: self.set_alphabet(letter)
-            )
-            self.alphabet_group.addButton(button)
-            self.alphabet_buttons[value] = button
-            alphabet.addWidget(button)
-        alphabet.addStretch(1)
+        self.alphabet = AlphabetNavigation(self.text("All"), self.set_alphabet)
+        self.alphabet_group = self.alphabet.group
+        self.alphabet_buttons = self.alphabet.buttons
+        alphabet.addWidget(self.alphabet, 1)
         destination_layout.addLayout(alphabet)
 
         destination_split = QHBoxLayout()

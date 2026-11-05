@@ -6,12 +6,14 @@ the host still owns calculation, project history and saving. Read-only copy prev
 use the same grid without accepting edits. No SQL, calculator or separate history here.
 """
 
+from collections.abc import Callable
 from dataclasses import replace
 
 from PyQt5.QtCore import QLocale, pyqtSignal
 from PyQt5.QtGui import QDoubleValidator
 from PyQt5.QtWidgets import QComboBox
 
+from ergotools.application.project_workspace import ProjectWorkspace
 from ergotools.domain.assessments.document import AssessmentDraft
 from ergotools.domain.assessments.duet_draft import DuetDraft
 from ergotools.domain.assessments.lifft_draft import LifftDraft
@@ -19,6 +21,8 @@ from ergotools.domain.assessments.tst import TstDirection
 from ergotools.domain.assessments.tst_draft import TstDraft
 from ergotools.domain.decimal_convention import DecimalConvention
 from ergotools.domain.job_risk import JobTaskResult
+from ergotools.domain.model_units import MeasurementSystem
+from ergotools.presentation.desktop.assessment_task_actions import AssessmentTaskActions
 from ergotools.presentation.desktop.assessment_task_grid import (
     AssessmentCellEdit,
     AssessmentTaskGrid,
@@ -31,10 +35,87 @@ class JobTaskEditor(AssessmentTaskGrid):
     """Accept Job edits while reusing all assessment-grid presentation.
 
     Attributes:
-        source_edited: Emits one independent immutable Job source after a valid edit.
+        source_edited: Numeric/selector source edits; shared actions use the guarded
+            callback to report actual persistence acceptance.
     """
 
     source_edited = pyqtSignal(object)
+    # Optional explicit binding; standalone read-only grids have no project callbacks.
+    task_actions: AssessmentTaskActions | None = None
+    # Guarded host acceptance for shared actions; ordinary numeric signals remain.
+    _accept_edit: Callable[[AssessmentDraft, str], bool] | None = None
+
+    def configure_task_actions(
+        self,
+        workspace: ProjectWorkspace[AssessmentDraft],
+        *,
+        accept: Callable[[AssessmentDraft, str], bool],
+    ) -> None:
+        """Attach source/catalog acceptance without introducing another history stack.
+
+        Args:
+            workspace: Borrowed active project owner used by the Job Management host.
+            accept: Source/operation acceptance reporting host persistence success.
+
+        Returns:
+            None; configuration creates no task definitions or project data.
+        """
+        self._accept_edit = accept
+        self.task_actions = AssessmentTaskActions(
+            self,
+            source=lambda: self.source,
+            accept=self._accept_shared_source,
+            accept_paste=workspace.accept_task_paste,
+            definitions=workspace.load_task_definitions,
+            replace_definitions=workspace.replace_task_definitions,
+            before_action=self.accept_pending,
+            system=self._input_system,
+            convention=lambda: self.convention,
+        )
+        self.task_actions.bind_catalog(workspace.editing)
+
+    def _input_system(self) -> MeasurementSystem:
+        """Return actual visible Job arm/load units for clipboard confirmation.
+
+        Args:
+            None.
+
+        Returns:
+            Recorded dimensional source units, otherwise the empty-grid unit choice.
+        """
+        return (
+            self.source.system
+            if isinstance(self.source, (LifftDraft, TstDraft))
+            else self.system
+        )
+
+    def _accept_shared_source(
+        self,
+        expected: AssessmentDraft,
+        replacement: AssessmentDraft,
+        label: str,
+        rebuild: bool,
+    ) -> bool:
+        """Accept a prepared source through the guarded calculation/history host.
+
+        Args:
+            expected: Exact canonical source captured before preparation.
+            replacement: Complete validated same-tool source in recorded units.
+            label: Operation identity; the Job host owns its shared edit boundary.
+            rebuild: True when a clipboard batch may add rows.
+
+        Returns:
+            True only when a current source changed; stale previews do nothing.
+        """
+        if self.source != expected or replacement == expected:
+            return False
+        if self._accept_edit is None or not self._accept_edit(replacement, label):
+            return False
+        if rebuild:
+            self.load_source(replacement, self.result_rows)
+        else:
+            self.source = replacement
+        return True
 
     def load_source(
         self,
@@ -50,6 +131,8 @@ class JobTaskEditor(AssessmentTaskGrid):
         Returns:
             None; input construction never accepts edits or creates history.
         """
+        if self.task_actions is not None:
+            self.task_definitions = self.task_actions.definitions()
         super().load_source(source, results)
         for row in self.inputs:
             for control in row:
@@ -189,6 +272,8 @@ class JobTaskEditor(AssessmentTaskGrid):
             False when any numeric editor is invalid, retaining its text for correction.
             Each valid changed cell remains its own shared history action.
         """
+        if self.task_actions is not None:
+            self.task_actions.finish_names()
         for row, controls in enumerate(self.inputs):
             fields = self.input_fields
             for field, control in zip(fields, controls, strict=True):
@@ -209,6 +294,8 @@ class JobTaskEditor(AssessmentTaskGrid):
             True when an editor differs from the current source, including invalid text
             that must be corrected before shared history can replay.
         """
+        if self.task_actions is not None and self.task_actions.pending_names():
+            return True
         source = self.source
         if source is None:
             return False

@@ -111,7 +111,10 @@ class ToolResultSummary(QGridLayout):
         width = max(title.sizeHint().width() for title, _ in self.rows)
         for title, _ in self.rows:
             title.setFixedWidth(width)
-        if target is None:
+        if target is None or target.isHidden():
+            self.setContentsMargins(0, 5, 0, 5)
+            for _, value in self.rows:
+                value.setFixedWidth(144)
             return
         outer = panel.layout()
         assert outer is not None

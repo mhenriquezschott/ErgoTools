@@ -92,6 +92,9 @@ def test_previous_shift_event_removal_preserves_other_data(
     ):
         original.backup(copy)
         with copy:
+            # Reconstruct the earlier schema, not just its compatibility marker.
+            copy.execute("DROP TABLE IF EXISTS shift_timing_templates")
+            copy.execute("DROP TABLE task_definitions")
             copy.execute("UPDATE project_metadata SET version=?", (version,))
             payload = json.loads(
                 copy.execute("SELECT payload FROM work_catalog").fetchone()[0]
@@ -120,7 +123,7 @@ def test_previous_shift_event_removal_preserves_other_data(
     migration = ExternalProjectMigration()
     assert migration.requires_conversion(str(source))
     with upgrade_previous_project(source, destination) as project:
-        assert project.format_version == 19
+        assert project.format_version == 24
         assert all(
             not set(REMOVED_FIELDS).intersection(dict(record.attributes))
             for record in project.load_hierarchy().organization

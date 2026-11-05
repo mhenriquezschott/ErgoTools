@@ -92,6 +92,9 @@ def test_version_six_defaults_and_strict_new_boolean_validation(tmp_path: Path) 
     )
     payload = json.loads(path.read_text())
     payload["version"] = 6
+    payload.pop("import_profiles")
+    payload.pop("assessment_columns")
+    payload.pop("highs_single_tool", None)
     payload.pop("animated_risk_gauge")
     payload.pop("animated_cumulative_damage")
     path.write_text(json.dumps(payload))
@@ -134,15 +137,13 @@ def test_preferences_group_and_main_job_composition(
         animated_risk_gauge=False,
         animated_cumulative_damage=False,
     )
-    assert isinstance(preferences.animated_focus.parentWidget(), QGroupBox)
-    assert (
-        preferences.animated_focus.parentWidget()
-        is preferences.animated_gauge.parentWidget()
-    )
-    assert (
-        preferences.animated_focus.parentWidget()
-        is preferences.animated_damage.parentWidget()
-    )
+    for control in (
+        preferences.animated_focus,
+        preferences.animated_gauge,
+        preferences.animated_damage,
+    ):
+        assert isinstance(control.parentWidget(), QGroupBox)
+        assert preferences.animation_previews.isAncestorOf(control)
     preferences.close()
     workspace = editing_workspace(tmp_path)
     location = workspace.location

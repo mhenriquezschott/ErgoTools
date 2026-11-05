@@ -22,6 +22,21 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 # Application source-package root inspected by default; no imports are executed.
 PACKAGE_ROOT = PROJECT_ROOT / "src" / "ergotools"
+# Explicit UI-only compatibility adapters approved for J08; never schema readers.
+LEGACY_JROT_PRESENTATION_FILES = {
+    "presentation/desktop/legacy_jrot_" + suffix + ".py"
+    for suffix in (
+        "dialog",
+        "comparison",
+        "display",
+        "form",
+        "history",
+        "solve",
+        "scope_dialog",
+        "result_table",
+        "table",
+    )
+} | {"presentation/desktop/theme/legacy_jrot.py"}
 # Approved dependency directions; the composition root is handled separately.
 ALLOWED_LAYERS = {
     "domain": {"domain"},
@@ -227,7 +242,12 @@ def inspect_package(package_root: Path = PACKAGE_ROOT) -> list[Violation]:
     """
     violations = []
     for path in sorted(package_root.rglob("*.py")):
-        if path.name.startswith("legacy_") or path.name == "archived_results.py":
+        compatibility_view = (
+            path.relative_to(package_root).as_posix() in LEGACY_JROT_PRESENTATION_FILES
+        )
+        if (
+            path.name.startswith("legacy_") and not compatibility_view
+        ) or path.name == "archived_results.py":
             violations.append(
                 Violation(
                     str(path), 1, "Converter files belong outside the application"

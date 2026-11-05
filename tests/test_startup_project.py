@@ -102,7 +102,16 @@ def test_startup_project_uses_real_open_and_recent_history(
         patch("ergotools.bootstrap.QTimer.singleShot", side_effect=schedule),
         patch.object(window, "choose_item", return_value=(label, case == "open")),
     ):
-        assert main(["--integrated-preview", str(target.relative_to(tmp_path))]) == 0
+        assert (
+            main(
+                [
+                    "--integrated-preview",
+                    "--no-startup-diagnostics",
+                    str(target.relative_to(tmp_path)),
+                ]
+            )
+            == 0
+        )
     menu_style.assert_called_once_with(app)
     dialog_theme.assert_called_once_with(app)
     if case == "open":

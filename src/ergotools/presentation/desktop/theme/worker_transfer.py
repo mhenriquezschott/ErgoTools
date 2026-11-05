@@ -3,12 +3,13 @@
 Presentation theme layer. Worker Transfer source/destination selection, saved-tool
 tables, preview, mode segments and disabled actions.
 
-This data-only module retains the original application palette, font declarations, pixel
-spacing and object-name/dynamic-property selectors. Desktop hosts set stable widget
-object names and apply the stylesheet; translated captions and literal user data do not
-participate in selector identity. It constructs no widgets and owns no event/signal,
-persistence, solver or scientific behavior. Preserve exact stylesheet bytes during
-documentation changes.
+This data-only module retains the original application palette, font declarations,
+pixel spacing and object-name/dynamic-property selectors. AlphabetNavigation owns the
+shared letter-strip appearance, including availability and hover styling. Desktop
+hosts set stable widget object names and apply the stylesheet; translated captions
+and literal user data do not participate in selector identity. It constructs no
+widgets and owns no event/signal, persistence, solver or scientific behavior.
+Preserve exact stylesheet bytes during documentation changes.
 """
 
 # Original Qt stylesheet for worker Transfer source/destination selection, saved-tool
@@ -108,27 +109,10 @@ WORKER_TRANSFER_STYLE = """
  color: #8796A0;
  border-color: #C7D1D8;
  }
-            QPushButton#alphabetButton { min-width: 20px;
- max-width: 20px;
- min-height: 29px;
- max-height: 29px;
- padding: 0;
- border: 0;
- background: transparent;
- color: #5F6F7A;
- font-size: 10px;
- }
-            QPushButton#alphabetButton:hover { background: #DDF3F5;
- color: #0B326C;
- font-size: 15px;
- }
-            QPushButton#alphabetButton:checked { background: #0B326C;
- color: white;
- border-radius: 4px;
- font-weight: 700;
- }
-            QPushButton#alphabetButton:disabled { color: #CBD4DA;
- }
+            
+            
+            
+            
             QRadioButton { min-height: 38px;
  padding: 0 10px;
  color: #0B326C;

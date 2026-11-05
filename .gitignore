@@ -63,3 +63,6 @@ artifacts/
 # Local document drafts and temporary image exports.
 /output/
 /tmp/
+
+/docs/jrot_owner_walkthrough_notes.md
+/docs/images/settings_single_tool_solver.png

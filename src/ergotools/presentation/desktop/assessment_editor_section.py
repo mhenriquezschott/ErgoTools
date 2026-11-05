@@ -19,6 +19,9 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+from ergotools.presentation.desktop.assessment_action_icons import (
+    assessment_action_icon,
+)
 from ergotools.presentation.desktop.assessment_task_grid import AssessmentTaskGrid
 from ergotools.presentation.desktop.tool_result_summary import ToolResultSummary
 
@@ -58,6 +61,8 @@ class AssessmentActionRow(QHBoxLayout):
         if tasks:
             self.add_task_button = QPushButton("+ Task")
             self.remove_task_button = QPushButton("- Task")
+            self.add_task_button.setIcon(assessment_action_icon("add_task"))
+            self.remove_task_button.setIcon(assessment_action_icon("remove_task"))
             for button in (self.add_task_button, self.remove_task_button):
                 button.setFixedHeight(40)
                 self.addWidget(button)

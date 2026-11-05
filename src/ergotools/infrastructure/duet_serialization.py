@@ -1,4 +1,4 @@
-"""Strict version-one DUET source format, independent of legacy project schemas.
+"""Strict versioned DUET source format, independent of legacy project schemas.
 
 Infrastructure layer. Keep these representations and concrete I/O outside the
 domain/application core. Ownership, validation and transaction effects are documented at
@@ -15,6 +15,10 @@ from ergotools.infrastructure.draft_json import (
     document_text,
     unique_object,
 )
+from ergotools.infrastructure.task_name_serialization import (
+    decode_task_name,
+    task_name_fields,
+)
 
 
 def decode_duet(payload: str) -> DuetDraft:
@@ -29,7 +33,7 @@ def decode_duet(payload: str) -> DuetDraft:
             input, not zero.
 
     Returns:
-        Complete immutable version-one unit-independent source with integer-or-null OMNI
+        Complete immutable unit-independent source with integer-or-null OMNI
         indices and signed finite repetitions.
 
     Raises:
@@ -43,13 +47,18 @@ def decode_duet(payload: str) -> DuetDraft:
         )
         if data["format"] != "ergotools.duet-draft":
             raise DocumentFormatError("Unsupported document format.")
-        if type(data["version"]) is not int or data["version"] != 1:
+        if type(data["version"]) is not int or data["version"] not in (1, 2):
             raise DocumentFormatError("Unsupported document version.")
         if not isinstance(data["tasks"], list):
             raise DocumentFormatError("Tasks must be an array.")
         tasks = []
         for entry in data["tasks"]:
-            task = document_fields(entry, {"task_id", "omni_res_scale", "repetitions"})
+            named = data["version"] == 2
+            fields = {"task_id", "omni_res_scale", "repetitions"}
+            if named:
+                fields |= {"task_name", "task_definition_id"}
+            task = document_fields(entry, fields)
+            name, definition_id = decode_task_name(task, named)
             scale = task["omni_res_scale"]
             if scale is not None and type(scale) is not int:
                 raise DocumentFormatError("Scale must be an integer or null.")
@@ -58,6 +67,8 @@ def decode_duet(payload: str) -> DuetDraft:
                     document_text(task["task_id"]),
                     scale,
                     document_number(task["repetitions"]),
+                    task_name=name,
+                    task_definition_id=definition_id,
                 )
             )
         return DuetDraft(tuple(tasks))
@@ -80,18 +91,29 @@ def encode_duet(draft: DuetDraft) -> str:
         DocumentFormatError: The generated source fails strict decoding.
         ValueError: JSON encoding rejects a nonfinite source number.
     """
+    named = task_name_fields(draft)
     data = {
         "format": "ergotools.duet-draft",
         "version": 1,
         "tasks": [
             {
                 "task_id": task.task_id,
+                **(
+                    {
+                        "task_name": task.task_name,
+                        "task_definition_id": task.task_definition_id,
+                    }
+                    if named
+                    else {}
+                ),
                 "omni_res_scale": task.omni_res_scale,
                 "repetitions": task.repetitions,
             }
             for task in draft.tasks
         ],
     }
+    if named:
+        data["version"] = 2
     payload = json.dumps(
         data, ensure_ascii=True, allow_nan=False, sort_keys=True, separators=(",", ":")
     )

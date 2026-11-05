@@ -132,7 +132,7 @@ def test_format13_upgrade_discards_duplicate_and_rounded_outputs(
     assert ExternalProjectMigration().requires_conversion(str(source))
     destination = tmp_path / "single.ergprj"
     with upgrade_previous_project(source, destination) as project:
-        assert project.format_version == 19
+        assert project.format_version == 24
         for item in archived.assessments:
             key = DocumentKey(project.metadata.project_id, item.ownership.document_id)
             assert project.load_saved_result(key) == calculate_saved_result(

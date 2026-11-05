@@ -71,7 +71,8 @@ def test_settings_pages_retain_all_drafts_and_footer_actions(
     try:
         dialog.show()
         _APP.processEvents()
-        assert dialog.pages.count() == 5
+        assert dialog.pages.count() == 7
+        assert "imports" in dialog.section_items
         dialog.gauge_interval.setValue(10)
         dialog.decimal_fields["probability"].setValue(3)
         for item in dialog.section_items.values():

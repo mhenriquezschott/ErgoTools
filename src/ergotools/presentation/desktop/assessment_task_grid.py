@@ -7,9 +7,12 @@ persistence and shared history.
 A read-only instance previews copied sources without emitting edits.
 """
 
+from collections.abc import Mapping
+from contextlib import ExitStack
 from dataclasses import dataclass
 from functools import partial
 from itertools import pairwise
+from typing import TYPE_CHECKING
 from weakref import ReferenceType, ref
 
 from PyQt5 import sip
@@ -18,24 +21,32 @@ from PyQt5.QtCore import (
     QObject,
     QPoint,
     QSignalBlocker,
+    QSize,
     Qt,
     QTimer,
     pyqtSignal,
 )
+from PyQt5.QtGui import QIcon, QKeyEvent, QKeySequence, QMouseEvent
 from PyQt5.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
     QFrame,
     QGridLayout,
+    QHBoxLayout,
     QLabel,
     QLayout,
+    QPushButton,
     QScrollArea,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
+from ergotools.application.assessment_columns import (
+    AssessmentColumns,
+    assessment_column_keys,
+)
 from ergotools.application.settings import Language
 from ergotools.domain.assessments.document import (
     AssessmentDraft,
@@ -50,6 +61,10 @@ from ergotools.domain.decimal_convention import DecimalConvention
 from ergotools.domain.display_precision import DisplayPrecision
 from ergotools.domain.job_risk import JobTaskResult
 from ergotools.domain.model_units import MeasurementSystem
+from ergotools.domain.task_catalog import TaskDefinition
+from ergotools.presentation.desktop.assessment_action_icons import (
+    assessment_action_icon,
+)
 from ergotools.presentation.desktop.assessment_controls import (
     assessment_number,
     assessment_selector,
@@ -57,6 +72,11 @@ from ergotools.presentation.desktop.assessment_controls import (
 from ergotools.presentation.desktop.precision_editor import PrecisionLineEdit
 from ergotools.presentation.desktop.theme.job_results import job_damage_color
 from ergotools.presentation.desktop.theme.main_workspace import MAIN_WORKSPACE_STYLE
+
+if TYPE_CHECKING:
+    from ergotools.presentation.desktop.assessment_editor_preferences import (
+        AssessmentEditorPreferences,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,6 +111,7 @@ class AssessmentTaskGrid(QWidget):
     task_focused = pyqtSignal(str)
     geometry_changed = pyqtSignal()
     task_selection_changed = pyqtSignal(object)
+    task_name_finished = pyqtSignal(str, object, object)
 
     def __init__(
         self,
@@ -98,6 +119,7 @@ class AssessmentTaskGrid(QWidget):
         convention: DecimalConvention,
         parent: QWidget | None = None,
         *,
+        icons: Mapping[str, QIcon] | None = None,
         kind: AssessmentKind = AssessmentKind.LIFFT,
         precision: DisplayPrecision | None = None,
         system: MeasurementSystem = MeasurementSystem.METRIC,
@@ -109,6 +131,7 @@ class AssessmentTaskGrid(QWidget):
         """Construct an empty main-style grid with no manufactured task rows.
 
         Args:
+            icons: Injected packaged action glyphs; no asset lookup or source writes.
             language: Static label/selector language.
             convention: Explicit display/input decimal mark.
             parent: Qt owner of the grid.
@@ -124,6 +147,7 @@ class AssessmentTaskGrid(QWidget):
             None; no source, task, calculation or history action is created.
         """
         super().__init__(parent)
+        self.icons = icons or {}
         self.language = language
         self.convention = convention
         self.kind = kind
@@ -133,16 +157,28 @@ class AssessmentTaskGrid(QWidget):
         self.compact = compact
         self.worker_layout = worker_layout
         self.task_checks: dict[str, QCheckBox] = {}
+        self.task_definitions: tuple[TaskDefinition, ...] = ()
+        self.task_names: list[QComboBox | QLabel] = []
         self.system = system
         self.source: AssessmentDraft | None = None
         self._focus_task_id: str | None = None
         self.inputs: list[list[PrecisionLineEdit | QComboBox]] = []
         self.outputs: list[tuple[QLabel, ...]] = []
+        self.editor_preferences: AssessmentEditorPreferences | None = None
         self.selected_task_index = -1
+        self.selected_input_field = "task_name"
+        self._cell_anchor: tuple[int, str] | None = None
+        self._cell_end: tuple[int, str] | None = None
+        self._selected_rows: set[int] = set()
+        self._row_anchor: int | None = None
         self._sync_pending = False
+        self._column_profiles: tuple[AssessmentColumns, ...] = ()
+        self._column_dimensions: list[tuple[int, int]] = []
         self._generation = 0
         self.setStyleSheet(
-            MAIN_WORKSPACE_STYLE
+            MAIN_WORKSPACE_STYLE + ' QLineEdit[taskRangeSelected="true"], '
+            'QComboBox[taskRangeSelected="true"] '
+            "{ background:#DDF3F5; border:1px solid #00AEBE; } "
             + (
                 "QWidget { font-size: 11px; } "
                 "QLineEdit, QComboBox { min-height: 20px; max-height: 20px; "
@@ -154,6 +190,29 @@ class AssessmentTaskGrid(QWidget):
         )
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        self.actions_widget = QWidget()
+        task_actions = QHBoxLayout(self.actions_widget)
+        task_actions.setContentsMargins(0, 0 if compact else 8, 0, 0)
+        self.task_names_button = QPushButton()
+        self.task_names_button.setIcon(self.icons.get("task_names", QIcon()))
+        self.task_names_button.setIconSize(QSize(26, 26))
+        self.copy_cells_button = QPushButton()
+        self.paste_cells_button = QPushButton()
+        self.copy_cells_button.setIcon(assessment_action_icon("copy"))
+        self.paste_cells_button.setIcon(assessment_action_icon("paste"))
+        self.import_settings_button = QPushButton()
+        self.import_settings_button.setIcon(assessment_action_icon("import"))
+        self.import_settings_button.setFixedWidth(34)
+        self.import_settings_button.setToolTip(
+            "Import CSV/TSV/Excel and configure paste settings."
+        )
+        task_actions.addWidget(self.task_names_button)
+        task_actions.addStretch(1)
+        task_actions.addWidget(self.copy_cells_button)
+        task_actions.addWidget(self.paste_cells_button)
+        task_actions.addWidget(self.import_settings_button)
+        self.actions_widget.setVisible(not read_only)
+        layout.addWidget(self.actions_widget)
         self.header_widget = QWidget()
         self.header_widget.setObjectName("stickyHeader")
         self.header_grid = QGridLayout(self.header_widget)
@@ -279,10 +338,20 @@ class AssessmentTaskGrid(QWidget):
         if focus is not None and self.frame.isAncestorOf(focus):
             focus.clearFocus()
         self._focus_task_id = None
+        if (tuple(t.task_id for t in self.source.tasks) if self.source else ()) != (
+            tuple(t.task_id for t in source.tasks) if source else ()
+        ):
+            self._cell_anchor, self._cell_end = None, None
+            self._selected_rows.clear()
+            self._row_anchor = None
         self.source = source
+        self.copy_cells_button.setEnabled(source is not None)
+        self.paste_cells_button.setEnabled(source is not None)
+        self.import_settings_button.setEnabled(source is not None)
         self.inputs = []
         self.outputs = []
         self.task_checks = {}
+        self.task_names = []
         for grid in (self.grid, self.header_grid):
             while grid.count():
                 item = grid.takeAt(0)
@@ -291,31 +360,53 @@ class AssessmentTaskGrid(QWidget):
                     widget.hide()
                     widget.deleteLater()
         spanish = self.language is Language.SPANISH
+        self.task_names_button.setText(
+            "Nombres de tareas…" if spanish else "Task names…"
+        )
+        self.copy_cells_button.setText("Copiar celdas" if spanish else "Copy cells")
+        self.import_settings_button.setToolTip(
+            "Importar CSV/TSV/Excel y configurar el pegado."
+            if self.language is Language.SPANISH
+            else "Import CSV/TSV/Excel and configure paste settings."
+        )
+        self.paste_cells_button.setText("Pegar" if spanish else "Paste")
+        self.task_names_button.setToolTip(
+            "Agregar o renombrar nombres reutilizables."
+            if spanish
+            else "Add or rename reusable project task names."
+        )
+        self.copy_cells_button.setToolTip(
+            "Mayús+clic selecciona un rango de entradas. Copiar celdas copia ese "
+            "rango, o todas las entradas si no hay un rango seleccionado."
+            if spanish
+            else "Shift+click another input to select a range; Copy cells copies that "
+            "range, or all inputs when no range is selected."
+        )
+        self.paste_cells_button.setToolTip(
+            "Pegar con las preferencias guardadas; revisar datos incompatibles."
+            if spanish
+            else "Paste with saved defaults; review incompatible data."
+        )
         imperial = (
             source.system if isinstance(source, (LifftDraft, TstDraft)) else self.system
         ) is MeasurementSystem.IMPERIAL
-        titles = (
-            [
-                "Task #",
-                "OMNI-Res Scale",
-                "Repetitions (per work day)",
-                "Damage (cumulative)",
-                "% Total (damage)",
-            ]
-            if self.kind is AssessmentKind.DUET
-            else [
-                "Task #",
-                *(["Type of Task"] if self.kind is AssessmentKind.TST else []),
-                "Lever Arm",
-                "Load",
-                "Moment",
-                "Repetitions (per work day)",
-                "Damage (cumulative)",
-                "% Total (damage)",
-            ]
-        )
+        captions = {
+            "task_number": "Task #",
+            "task_name": "Task name",
+            "omni_res_scale": "OMNI-Res Scale",
+            "direction": "Type of Task",
+            "lever_arm": "Lever Arm",
+            "load": "Load",
+            "moment": "Moment",
+            "repetitions": "Repetitions (per work day)",
+            "damage": "Damage (cumulative)",
+            "share": "% Total (damage)",
+        }
+        keys = assessment_column_keys(self.kind)
+        titles = [captions[key] for key in keys]
         translated = {
             "Task #": "Tarea #",
+            "Task name": "Nombre de tarea",
             "OMNI-Res Scale": "Escala OMNI-Res",
             "Type of Task": "Tipo de tarea",
             "Lever Arm": "Brazo de Palanca",
@@ -325,6 +416,7 @@ class AssessmentTaskGrid(QWidget):
             "Damage (cumulative)": "Daño (acumulado)",
             "% Total (damage)": "% Total (daño)",
         }
+        self._column_dimensions = []
         self.headers: list[QLabel] = []
         self.hidden_headers: list[QLabel] = []
         for column, title in enumerate(titles):
@@ -353,7 +445,7 @@ class AssessmentTaskGrid(QWidget):
                 if column == 0
                 else 250
                 if title == "OMNI-Res Scale"
-                else 170
+                else (205 if spanish else 170)
                 if title == "Type of Task"
                 else 130
                 if title == "Repetitions (per work day)"
@@ -363,15 +455,18 @@ class AssessmentTaskGrid(QWidget):
                 width = 80 if column == 0 else min(width, 135)
             if self.worker_layout:
                 if self.kind is AssessmentKind.DUET:
-                    width = (48, 250, 220, 150, 105)[column]
-                    stretch = (0, 4, 3, 2, 1)[column]
+                    width = (48, 180, 250, 220, 150, 105)[column]
+                    stretch = (0, 2, 4, 3, 2, 1)[column]
                 elif self.kind is AssessmentKind.TST:
-                    width = (55, 190, 95, 58, 80, 145, 115, 85)[column]
-                    stretch = (0, 3, 2, 1, 0, 3, 2, 0)[column]
+                    width = (55, 180, 190, 95, 58, 80, 145, 115, 85)[column]
+                    stretch = (0, 2, 3, 2, 1, 0, 3, 2, 0)[column]
                 else:
-                    width, stretch = 0, 0
+                    width, stretch = 0, (0 if column == 0 else 1)
             else:
                 stretch = 0 if column == 0 else 1
+            if title == "Task name":
+                width, stretch = (105 if self.compact else 135), 0
+            self._column_dimensions.append((width, stretch))
             self.grid.setColumnMinimumWidth(column, width)
             self.grid.setColumnStretch(column, stretch)
             hidden = QLabel()
@@ -379,20 +474,13 @@ class AssessmentTaskGrid(QWidget):
             hidden.setFixedHeight(0)
             self.grid.addWidget(hidden, 0, column)
         fields = self.input_fields
-        input_columns = (
-            (1, 2)
+        input_columns = tuple(keys.index(field) for field in fields)
+        output_keys = (
+            ("damage", "share")
             if self.kind is AssessmentKind.DUET
-            else (1, 2, 3, 5)
-            if self.kind is AssessmentKind.TST
-            else (1, 2, 4)
+            else ("moment", "damage", "share")
         )
-        output_columns = (
-            (3, 4)
-            if self.kind is AssessmentKind.DUET
-            else (4, 6, 7)
-            if self.kind is AssessmentKind.TST
-            else (3, 5, 6)
-        )
+        output_columns = tuple(keys.index(key) for key in output_keys)
         for row, task in enumerate(source.tasks if source else ()):
             assert isinstance(task, (LifftTask, DuetTask, TstTask))
             number: QLabel | QCheckBox
@@ -409,8 +497,77 @@ class AssessmentTaskGrid(QWidget):
                 number = QLabel(str(row + 1))
                 number.setAlignment(Qt.AlignmentFlag.AlignCenter)
             number.setProperty("jobTaskRow", row)
+            number.setProperty("taskRowHeader", not self.selectable)
+            if not self.read_only:
+                number.setToolTip(
+                    "Click: select row · Shift: range · Ctrl: add/remove row"
+                    if not spanish
+                    else "Clic: fila · Mayús: rango · Ctrl: añadir/quitar fila"
+                )
             number.installEventFilter(self)
             self.grid.addWidget(number, row + 1, 0)
+            current_name = next(
+                (
+                    d.name
+                    for d in self.task_definitions
+                    if d.definition_id == task.task_definition_id
+                ),
+                task.task_name or "",
+            )
+            name_control: QComboBox | QLabel
+            if self.read_only:
+                name_control = QLabel(current_name)
+                name_control.setWordWrap(True)
+            else:
+                name_control = QComboBox()
+                name_control.setEditable(True)
+                name_control.setInsertPolicy(QComboBox.NoInsert)
+                name_control.setSizeAdjustPolicy(
+                    QComboBox.AdjustToMinimumContentsLengthWithIcon
+                )
+                name_control.setMinimumContentsLength(9)
+                name_control.addItem("", None)
+                for definition in sorted(
+                    self.task_definitions,
+                    key=lambda d: (d.name.casefold(), d.definition_id),
+                ):
+                    name_control.addItem(definition.name, definition.definition_id)
+                    name_control.setItemData(
+                        name_control.count() - 1,
+                        definition.description or definition.definition_id,
+                        Qt.ItemDataRole.ToolTipRole,
+                    )
+                index = name_control.findData(task.task_definition_id)
+                name_control.setCurrentIndex(max(0, index))
+                name_control.setEditText(current_name)
+                line = name_control.lineEdit()
+                assert line is not None
+                callback = partial(
+                    _complete_task_name,
+                    ref(self),
+                    ref(name_control),
+                    generation,
+                    task.task_id,
+                )
+                name_control.activated.connect(callback)
+                line.editingFinished.connect(callback)
+                line.setProperty("jobTaskRow", row)
+                line.setProperty("jobTaskField", "task_name")
+                line.installEventFilter(self)
+                line.textEdited.connect(self.input_edited)
+            name_control.setToolTip(
+                current_name
+                or (
+                    "Type a task name or select a reusable name."
+                    if not spanish
+                    else "Escriba o seleccione un nombre de tarea."
+                )
+            )
+            name_control.setProperty("jobTaskRow", row)
+            name_control.setProperty("jobTaskField", "task_name")
+            name_control.installEventFilter(self)
+            self.grid.addWidget(name_control, row + 1, 1)
+            self.task_names.append(name_control)
             controls: list[PrecisionLineEdit | QComboBox] = []
             for field, column in zip(fields, input_columns, strict=True):
                 value = getattr(task, field)
@@ -449,6 +606,7 @@ class AssessmentTaskGrid(QWidget):
                     )
                 control.setToolTip(self.headers[column].text())
                 control.setProperty("jobTaskRow", row)
+                control.setProperty("jobTaskField", field)
                 control.installEventFilter(self)
                 controls.append(control)
                 self.grid.addWidget(control, row + 1, column)
@@ -466,7 +624,63 @@ class AssessmentTaskGrid(QWidget):
                 QWidget.setTabOrder(first, second)
         self.select_task(min(max(0, self.selected_task_index), self.task_count - 1))
         self.show_results(results)
+        self._apply_column_visibility()
+        self._paint_cell_selection()
         self.refresh_geometry()
+
+    def set_column_preferences(self, profiles: tuple[AssessmentColumns, ...]) -> None:
+        """Apply personal optional-column visibility without rebinding any source.
+
+        Args:
+            profiles: Validated independent per-tool visibility preferences.
+
+        Returns:
+            None; hidden controls retain values, precision, identities and pending text.
+        """
+        self._column_profiles = profiles
+        self._apply_column_visibility()
+        self._paint_cell_selection()
+        self.refresh_geometry()
+
+    def _apply_column_visibility(self) -> None:
+        """Collapse optional columns, retaining required inputs and copy selectors.
+
+        Args:
+            None.
+
+        Returns:
+            None; visibility emits no completed-cell intent or project-history command.
+        """
+        if not self._column_dimensions:
+            return
+        profile = next(
+            (p for p in self._column_profiles if p.kind is self.kind),
+            AssessmentColumns(self.kind),
+        )
+        hidden = set(profile.hidden)
+        with ExitStack() as signals:
+            for index, key in enumerate(assessment_column_keys(self.kind)):
+                visible = key not in hidden or (self.selectable and index == 0)
+                width, stretch = self._column_dimensions[index]
+                self.grid.setColumnMinimumWidth(index, width if visible else 0)
+                self.grid.setColumnStretch(index, stretch if visible else 0)
+                self.headers[index].setVisible(visible)
+                for item_index in range(self.grid.count()):
+                    _row, column, _rows, _columns = self.grid.getItemPosition(
+                        item_index
+                    )
+                    if column != index:
+                        continue
+                    item = self.grid.itemAt(item_index)
+                    control = item.widget() if item is not None else None
+                    if control is not None:
+                        signals.enter_context(QSignalBlocker(control))
+                        if isinstance(control, QComboBox) and control.lineEdit():
+                            signals.enter_context(QSignalBlocker(control.lineEdit()))
+                        control.setVisible(visible)
+            self.task_names_button.setVisible(
+                not self.read_only and "task_name" not in hidden
+            )
 
     def show_results(self, results: tuple[JobTaskResult, ...]) -> None:
         """Project the matching outputs with main-panel precision and damage colors.
@@ -477,6 +691,7 @@ class AssessmentTaskGrid(QWidget):
         Returns:
             None; labels clear immediately without rebuilding input controls/history.
         """
+        self.result_rows = results
         for row, outputs in enumerate(self.outputs):
             item = results[row] if row < len(results) else None
             values = (
@@ -555,7 +770,7 @@ class AssessmentTaskGrid(QWidget):
             for column, label in enumerate(self.headers):
                 item = self.grid.itemAtPosition(1 if self.inputs else 0, column)
                 widget = item.widget() if item is not None else None
-                if widget is not None:
+                if widget is not None and not label.isHidden():
                     label.setFixedWidth(widget.width())
             margins = self.grid.contentsMargins()
             self.header_grid.setContentsMargins(
@@ -571,7 +786,8 @@ class AssessmentTaskGrid(QWidget):
             inset = 2 if self.compact else 9
             self.header_grid.setContentsMargins(inset, 0, inset, 0)
             for column, label in enumerate(self.headers):
-                label.setFixedWidth(self.grid.cellRect(0, column).width())
+                if not label.isHidden():
+                    label.setFixedWidth(self.grid.cellRect(0, column).width())
             self.header_widget.setFixedSize(
                 self.frame.width(), 44 if self.compact else 42
             )
@@ -614,16 +830,203 @@ class AssessmentTaskGrid(QWidget):
                     self._focus_task_id = None
                 break
 
+    def selected_task_rows(self, fallback: int | None = None) -> tuple[int, ...]:
+        """Read selected row headers or the rows touched by a cell-range selection.
+
+        Args:
+            fallback: Host's established single-row policy when nothing is selected;
+                None uses the focused row. Main may retain its last-row default.
+
+        Returns:
+            Ordered distinct zero-based rows, or empty without a valid source row.
+        """
+        if self._selected_rows:
+            return tuple(sorted(r for r in self._selected_rows if r < self.task_count))
+        area = self.selected_cell_range()
+        if area is not None:
+            return area[0]
+        row = self.selected_task_index if fallback is None else fallback
+        return (row,) if 0 <= row < self.task_count else ()
+
+    def selected_cell_range(self) -> tuple[tuple[int, ...], tuple[str, ...]] | None:
+        """Read the explicit rectangular copy range among visible editable columns.
+
+        Args:
+            None.
+
+        Returns:
+            Row indices and canonical input fields, or None for ordinary editing.
+            Derived outputs and hidden optional columns never enter the range.
+        """
+        if not self.inputs:
+            return None
+        fields = tuple(
+            field
+            for field, control in zip(
+                ("task_name", *self.input_fields),
+                (self.task_names[0], *self.inputs[0]),
+                strict=True,
+            )
+            if not control.isHidden()
+        )
+        if self._selected_rows:
+            return tuple(sorted(self._selected_rows)), fields
+        if self._cell_anchor is None or self._cell_end is None:
+            return None
+        (first, left), (last, right) = self._cell_anchor, self._cell_end
+        if (
+            left not in fields
+            or right not in fields
+            or max(first, last) >= self.task_count
+        ):
+            return None
+        low, high = sorted((fields.index(left), fields.index(right)))
+        return tuple(range(min(first, last), max(first, last) + 1)), fields[
+            low : high + 1
+        ]
+
+    def _paint_cell_selection(self) -> None:
+        """Highlight the exact copy range without altering native values or focus.
+
+        Args:
+            None.
+
+        Returns:
+            None; the Copy caption describes selected cells, or ordinary full-grid copy.
+        """
+        selection = self.selected_cell_range()
+        rows, fields = selection if selection is not None else ((), ())
+        for index, inputs in enumerate(self.inputs):
+            number_item = self.grid.itemAtPosition(index + 1, 0)
+            number = number_item.widget() if number_item is not None else None
+            if number is not None and not self.read_only:
+                number.setStyleSheet(
+                    "background:#DDF2F4;color:#087E91;font-weight:bold;"
+                    "border:1px solid #08A9B5;border-radius:3px;"
+                    if index in rows
+                    else ""
+                )
+            for field, control in zip(
+                ("task_name", *self.input_fields),
+                (self.task_names[index], *inputs),
+                strict=True,
+            ):
+                selected = index in self._selected_rows or (
+                    index in rows and field in fields
+                )
+                widgets = [control]
+                if isinstance(control, QComboBox) and control.isEditable():
+                    line = control.lineEdit()
+                    if line is not None:
+                        widgets.append(line)
+                for widget in widgets:
+                    if bool(widget.property("taskRangeSelected")) == selected:
+                        continue
+                    widget.setProperty("taskRangeSelected", selected)
+                    style = widget.style()
+                    if style is not None:
+                        style.unpolish(widget)
+                        style.polish(widget)
+                    widget.update()
+        count = len(rows) * len(fields)
+        self.copy_cells_button.setText(
+            (
+                f"Copiar {count} celdas"
+                if self.language is Language.SPANISH
+                else f"Copy {count} cells"
+            )
+            if count
+            else (
+                "Copiar celdas" if self.language is Language.SPANISH else "Copy cells"
+            )
+        )
+
     def eventFilter(self, watched: QObject | None, event: QEvent | None) -> bool:  # noqa: N802 - Qt override
-        """Track selected tasks and header geometry without intercepting native input.
+        """Track geometry/focus and handle explicit copy-range gestures.
 
         Args:
             watched: Native child input, task label, frame or viewport.
             event: Focus/mouse/resize notification; never rewritten.
 
         Returns:
-            False; keyboard editing, text Undo and popup operation stay native.
+            True only for explicit range selection/copy/cancellation or structured
+            paste; ordinary editing, text Undo and popup operation stay native.
         """
+        if isinstance(event, QKeyEvent) and event.type() == QEvent.Type.KeyPress:
+            if self.selected_cell_range() is not None and event.matches(
+                QKeySequence.Copy
+            ):
+                self.copy_cells_button.click()
+                return True
+            if event.key() == Qt.Key.Key_Escape and (
+                self._cell_end is not None or self._selected_rows
+            ):
+                self._cell_end = None
+                self._selected_rows.clear()
+                self._paint_cell_selection()
+                return True
+        if (
+            isinstance(watched, QWidget)
+            and isinstance(event, QMouseEvent)
+            and event.type() == QEvent.Type.MouseButtonPress
+            and event.button() == Qt.MouseButton.LeftButton
+            and not self.read_only
+        ):
+            row, field = (
+                watched.property("jobTaskRow"),
+                watched.property("jobTaskField"),
+            )
+            if isinstance(row, int) and watched.property("taskRowHeader"):
+                if (
+                    event.modifiers() & Qt.KeyboardModifier.ShiftModifier
+                    and self._row_anchor is not None
+                ):
+                    self._selected_rows = set(
+                        range(
+                            min(row, self._row_anchor), max(row, self._row_anchor) + 1
+                        )
+                    )
+                elif event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+                    self._selected_rows.symmetric_difference_update({row})
+                    self._row_anchor = row
+                else:
+                    self._selected_rows = {row}
+                    self._row_anchor = row
+                self._cell_anchor = self._cell_end = None
+                self.select_task(row)
+                self._paint_cell_selection()
+                return True
+            if isinstance(row, int) and isinstance(field, str):
+                self._selected_rows.clear()
+                if (
+                    event.modifiers() & Qt.KeyboardModifier.ShiftModifier
+                    and self._cell_anchor is not None
+                ):
+                    self._cell_end = row, field
+                    self._paint_cell_selection()
+                    return True
+                self._cell_anchor, self._cell_end = (row, field), None
+                self._paint_cell_selection()
+        if (
+            isinstance(event, QKeyEvent)
+            and event.type() == QEvent.Type.KeyPress
+            and event.matches(QKeySequence.Paste)
+            and not self.read_only
+        ):
+            clipboard = QApplication.clipboard()
+            if clipboard is not None and (
+                any(mark in clipboard.text() for mark in ("\t", "\n", "\r"))
+                or (
+                    self.selected_input_field != "task_name"
+                    and (
+                        ";" in clipboard.text()
+                        or "|" in clipboard.text()
+                        or clipboard.text().count(",") > 1
+                    )
+                )
+            ):
+                self.paste_cells_button.click()
+                return True
         if event is not None:
             if event.type() == QEvent.Type.Resize:
                 self.refresh_geometry()
@@ -631,6 +1034,9 @@ class AssessmentTaskGrid(QWidget):
                 QEvent.Type.FocusIn,
                 QEvent.Type.MouseButtonPress,
             ):
+                field = watched.property("jobTaskField")
+                if isinstance(field, str):
+                    self.selected_input_field = field
                 row = watched.property("jobTaskRow")
                 if isinstance(row, int):
                     self.select_task(row)
@@ -735,3 +1141,42 @@ def _complete_grid_cell(
         and not sip.isdeleted(control)
     ):
         grid._finish_cell(generation, task_id, field, control)
+
+
+def _complete_task_name(
+    grid_ref: ReferenceType[AssessmentTaskGrid],
+    control_ref: ReferenceType[QComboBox],
+    generation: int,
+    task_id: str,
+    _index: int | None = None,
+) -> None:
+    """Emit one literal/local or explicitly selected reusable name for a live row.
+
+    Args:
+        grid_ref: Weak shared-grid owner; never retains a closed editor.
+        control_ref: Weak editable name selector from that projection.
+        generation: Projection identity preventing retired focus events from editing.
+        task_id: Stable source row, never the reusable definition identity.
+        _index: Ignored native activation index; current typed item data is inspected.
+
+    Returns:
+        None; source acceptance, references and history remain with the host adapter.
+    """
+    grid, control = grid_ref(), control_ref()
+    if (
+        grid is None
+        or control is None
+        or sip.isdeleted(grid)
+        or sip.isdeleted(control)
+        or grid.read_only
+        or generation != grid._generation
+    ):
+        return
+    name = control.currentText() if control.currentText().strip() else None
+    identity = control.currentData()
+    definition = next(
+        (d for d in grid.task_definitions if d.definition_id == identity), None
+    )
+    if definition is None or definition.name != name:
+        identity = None
+    grid.task_name_finished.emit(task_id, name, identity)

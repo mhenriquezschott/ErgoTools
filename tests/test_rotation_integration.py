@@ -1,4 +1,4 @@
-"""Real main-toolbar JROT composition, saved provenance and editor isolation.
+"""Explicit Legacy-menu JROT composition, saved provenance and editor isolation.
 
 Test layer. Characterize the contracts named below using immutable inputs, controlled
 adapters or disposable projects. Native Qt cases drive owned real controls; scheduled
@@ -19,8 +19,8 @@ from ergotools.bootstrap import create_window
 from ergotools.domain.language import Language
 from ergotools.domain.rotation_scheme import RotationMode
 from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
+from ergotools.presentation.desktop.legacy_jrot_dialog import LegacyJrotDialog
 from ergotools.presentation.desktop.lifft_window import LifftWindow
-from ergotools.presentation.desktop.rotation_dialog import RotationDialog
 from tests.test_rotation_comparison import all_risks
 from tests.test_rotation_persistence import seed
 from tests.test_rotation_solve import ControlledOptimizer, fill_rotation, wait_for
@@ -57,7 +57,7 @@ def main(tmp_path: Path) -> Iterator[LifftWindow]:
     _APP.processEvents()
 
 
-def visit(main: LifftWindow, interact: Callable[[RotationDialog], None]) -> None:
+def visit(main: LifftWindow, interact: Callable[[LegacyJrotDialog], None]) -> None:
     """Drive the actual modal toolbar path; surface callback failures in pytest.
 
     Args:
@@ -88,18 +88,21 @@ def visit(main: LifftWindow, interact: Callable[[RotationDialog], None]) -> None
         """
         dialog = QApplication.activeModalWidget()
         try:
-            assert isinstance(dialog, RotationDialog)
+            assert isinstance(dialog, LegacyJrotDialog)
             visited.append(dialog)
             interact(dialog)
         except BaseException as error:
             failures.append(error)
         finally:
-            if isinstance(dialog, RotationDialog):
+            if isinstance(dialog, LegacyJrotDialog):
                 dialog.reject()
 
     timer.timeout.connect(callback)
     timer.start(0)
-    action = main.main_navigation.toolbar_actions["jrot"]
+    main.set_legacy_mode(True)
+    main.refresh_navigation()
+    action = main._legacy_action
+    assert action is not None
     assert action.isEnabled()
     action.trigger()
     timer.stop()
@@ -111,14 +114,15 @@ def visit(main: LifftWindow, interact: Callable[[RotationDialog], None]) -> None
 def test_main_actual_solver_save_upgrade_and_reopen(
     main: LifftWindow, language: Language, all_tools: bool
 ) -> None:
-    """Real CBC/HiGHS retain exact links privately until the sole main Save.
+    """Real HiGHS retain exact links privately until the sole main Save.
 
     Args:
         main: Live synthetic integrated assessment window owning the actual modal JROT
             workflow.
         language: Parametrized English/Spanish UI language; source values and unit
             interpretation stay unchanged.
-        all_tools: True exercises HiGHS multi-tool routing; False exercises CBC
+        all_tools: True exercises multi-tool routing; False exercises one tool.
+            Both use direct HiGHS.
             single-tool routing.
 
     Returns:
@@ -137,10 +141,10 @@ def test_main_actual_solver_save_upgrade_and_reopen(
     mode = RotationMode.ALL_TOOLS if all_tools else RotationMode.SINGLE_TOOL
     saved = []
 
-    def solve(dialog: RotationDialog) -> None:
-        """Run actual CBC/HiGHS from the modal.
+    def solve(dialog: LegacyJrotDialog) -> None:
+        """Run actual HiGHS from the modal.
 
-        Run actual CBC/HiGHS from the modal, accept its exact preview, verify
+        Run actual HiGHS from the modal, accept its exact preview, verify
         solve/apply caused no durable write, then retain frozen links/provenance.
 
         Args:
@@ -169,14 +173,14 @@ def test_main_actual_solver_save_upgrade_and_reopen(
         assert scheme.mode is mode and {t.job_id for t in scheme.targets} == {"j", "k"}
         saved.append(scheme)
 
-    with patch.object(RotationDialog, "_message"):
+    with patch.object(LegacyJrotDialog, "_message"):
         visit(main, solve)
     assert workspace.active.state == original and workspace.read_job_risk() == risks
     assert workspace.rotation_repository() is repository
     assert workspace.plot_repository() is repository
     assert repository.load_rotation_schemes() == tuple(saved)
 
-    def inspect(dialog: RotationDialog) -> None:
+    def inspect(dialog: LegacyJrotDialog) -> None:
         """Reopen the actual JROT modal.
 
         Reopen the actual JROT modal and verify its saved exact schedule/identity
@@ -250,7 +254,7 @@ def test_main_capability_and_missing_opener(main: LifftWindow) -> None:
         None.
     """
     workspace = main.presenter.workspace
-    main._rotation_opener = None
+    main._guided_rotation_opener = None
     main.refresh_navigation()
     assert not main.main_navigation.toolbar_actions["jrot"].isEnabled()
     main.open_rotation()
@@ -274,7 +278,7 @@ def test_main_modal_close_waits_for_owned_solver(main: LifftWindow) -> None:
     """
     optimizer = ControlledOptimizer()
 
-    def cancel(dialog: RotationDialog) -> None:
+    def cancel(dialog: LegacyJrotDialog) -> None:
         """Request close during a controlled solve.
 
         Request close during a controlled solve, assert the modal retains its live
@@ -303,7 +307,9 @@ def test_main_modal_close_waits_for_owned_solver(main: LifftWindow) -> None:
             assert saved.load_rotation_schemes() == ()
 
     try:
-        with patch("ergotools.bootstrap.PulpRotationOptimizer", return_value=optimizer):
+        with patch(
+            "ergotools.bootstrap.HighsRotationOptimizer", return_value=optimizer
+        ):
             visit(main, cancel)
     finally:
         optimizer.release.set()
@@ -364,8 +370,9 @@ def test_main_opener_error_keeps_pending_text(window: LifftWindow) -> None:
     field.setText("bad")
     field.textEdited.emit("bad")
     before = Path(workspace.location).read_bytes()
+    main.set_legacy_mode(True)
     with patch.object(main, "_rotation_opener", side_effect=OSError("fixture failure")):
-        main.main_navigation.toolbar_actions["jrot"].trigger()
+        main.run(main.open_legacy_rotation)
     assert main.message.text() == main.text("error")
     assert field.text() == "bad" and workspace.active.state == state
     assert Path(workspace.location).read_bytes() == before
@@ -392,7 +399,7 @@ def test_incomplete_rotation_explains_main_save_failure_in_both_languages(
     workspace = main.presenter.workspace
     before = Path(workspace.location).read_bytes()
 
-    def enter_partial(dialog: RotationDialog) -> None:
+    def enter_partial(dialog: LegacyJrotDialog) -> None:
         """Accept an incomplete manual row into the shared project session.
 
         Args:

@@ -15,7 +15,7 @@ external scientific validity or replace behavioral/native verification.
 | SQLite/JSON | Versioned strict fields and typed finite values; project/document keys | DocumentFormatError/StoreFormatError/ValueError reject malformed data; sqlite3/OSError propagate to owned UI boundary; caller-owned transaction in stores | infrastructure/*_store.py, assessment_project_file.py; M04/M10 |
 | External conversion | Original files unchanged; recalculate saved inputs using established formulas/units/ST convention | One authoritative result per assessment; discard old caches/archive in output; unsupported/conflicting sources fail | tools/project_migration; cleanup M1R/M2 |
 | PLOT | Scene coordinates in original-image pixels; risks retain saved worker/assignment/tool and current Job identity | Missing demographic/result observations explicit; typed reversible geometry; accepted edits remain private until main Save; images/exports owned by adapters | application/plot_*.py, domain/plot_positions.py; M05/M06 |
-| Rotation | Probability percent, ordered blocks/targets and stable Job/placement IDs | Pure validation raises ValueError; optimizer has explicit outcome/cancel state; no solver-thread UI/source mutation | application/rotation_*.py; domain/rotation.py; infrastructure/pulp_rotation_optimizer.py; M07/M08 |
+| Rotation | Probability percent, ordered blocks/targets and stable Job/placement IDs | Pure validation raises ValueError; optimizer has explicit outcome/cancel state; no solver-thread UI/source mutation | application/rotation_*.py; domain/rotation.py; infrastructure/highs_rotation_optimizer.py; M07/M08 |
 | Settings/localization/parsing | Stable language/decimal/unit IDs; user names/notes literal | JSON atomic replacement; malformed numbers/locale grouping rejected; failed settings write reported separately from project commit | application/settings.py; infrastructure/settings_store.py; M09 |
 | Renderer and Qt views | BodyRenderer immutable states; native VTK resources remain adapter-owned | Dispose timers/interactors explicitly; no Qt/SQL/VTK in portable core; failed owned commands report and retain input | application/contracts/body_renderer.py; presentation/desktop/rendering/vtk_body_renderer.py; M09 |
 | Assets/Help | Package-relative resource bytes; fixed local cached guide filenames | Reject resource traversal/missing assets; QSaveFile complete commit before QDesktopServices launch; Help never saves project input | infrastructure/resources.py; presentation/desktop/manual_launcher.py; M11 |
@@ -300,3 +300,210 @@ list, then checks it again after pending-source acceptance; changed targets requ
 reopening instead of silently expanding consent. Snapshot checks repeat under the lock.
 Main host opens the destination after moving the displayed source; shared Undo restores
 the old selection and data together. No schema/version/formula change or project upgrade.
+
+
+## Task metadata and clipboard
+
+TaskDefinition uses a nonblank project-local ID/name and optional text description.
+Task rows keep optional fallback name/reference independent of their numeric identity.
+Constructors reject invalid metadata with ValueError. Current project adapters validate
+reference membership and protect used definitions from deletion. Catalog writes use
+expected-state checks and shared project history; rename never rewrites source/result
+bytes. Format 20 is the current integrated contract.
+
+`prepare_assessment_paste` returns one immutable replacement or raises ValueError for
+mapping/size/capacity problems. `ClipboardRowError` retains the failed target row and its
+DraftError/ValueError detail for localized field feedback. Scientific calculation is not
+performed by parsing. The complete batch validates before acceptance; stale expected source
+rejects, Cancel is a no-op, and one accepted batch is one shared Undo step. Full-precision
+copy and unchanged projected values preserve source precision under unit changes.
+
+
+## Rotation timing contracts
+
+Relative intervals and productive budgets are exact whole minutes, with a daily span of
+1–1440. Breaks are nonoverlapping half-open intervals; adjacent pauses are permitted.
+Every block has at least one productive minute. Equal blocks differ by at most one minute,
+with earlier blocks receiving remainders. Projection covers working minutes exactly once.
+`averaging_minutes` is productive time when subtracting breaks and full span otherwise;
+work is never assigned to breaks. This is a planning-index policy, not a recovery/dose model.
+
+Shift clocks require canonical 24-hour text. End at/before start follows the existing next-
+day convention; equal clocks mean an explicitly accepted 24-hour recurring Shift. Missing
+clocks are not zero. Templates use relative offsets, so same-span clock moves retain them;
+duration changes or owner removal are rejected until explicit clear. All normal and combined
+hierarchy writes validate those references. `replace_shift_timing` requires the exact prior
+value and existing owner under a transaction. Runtime errors, invalid/stale values and
+SQLite failures preserve the accepted project checkpoint. Corrupt codecs raise StoreFormatError.
+
+Timeline gestures emit complete proposals without storage/history ownership. The host
+rejects foreign/retired project ownership, validates pending cells and uses shared history.
+Unfinished data is never partially written. Opening is read-only; snap size is session-only.
+Saved current JROT schemes, coefficients and optimizer routing remain unchanged.
+
+
+## Named scenarios
+
+RotationScenarioRepository exposes read-only name/ID ordered catalogs, one exact expected-state
+replace and independent last-view selection. Creation/deletion updates selection atomically;
+unknown/stale IDs use pure opening fallback, never an automatic record. New accepted plans
+require local dates; legacy unknowns stay None. Partial entered schedule cells remain None and
+cannot be solver-ready. RotationRun validates complete staffing/context and retains exact
+source-bound coefficients, labels, timing, settings and ordered stage statuses. It is not an
+optimality certificate. apply_rotation_run accepts a rename but rejects changed input/risk
+ownership before a guarded write. No solver or GUI is invoked by these lifecycle functions.
+
+Store errors distinguish corrupt payloads (StoreFormatError), stale/invalid commands
+(ValueError), missing current write capability (RuntimeError) and SQLite failures. Transactions
+roll back data, selection and history together. Main Save alone publishes. See
+[complete scenario contracts](rotation_scenarios.md).
+
+### Guided entry (development)
+
+rotation_entry helpers prepare whole immutable replacements without persistence. Reshaping
+retains surviving cells by exact worker/position identity and reports every lost entered
+cell for No-default consent. set_rotation_cell changes one baseline slot when observation
+exists, otherwise one proposal slot. Catalog/readiness helpers never infer participants,
+Job coefficients, a baseline or a solved result.
+
+JrotDialog/JrotJobPanel borrow the active workspace/editor owner. Accepted edits use existing
+scenario/Job APIs, clean view navigation uses immutable project editor state, and Main Save
+alone publishes. RotationTimingDialog paired read_target/write_target callbacks distinguish
+scenario timing from its original Shift template; stale expected timing and session ownership
+are guarded. Production entry never imports prototype sample data or its session mutation.
+Native23 admits empty entered drafts before participant selection; older native22 drafts are
+validated before a marker-only external upgrade. See jrot_guided_entry.md.
+
+## Duration-aware planning
+
+RotationInputs.rules stores closed typed FixedPosition, ExcludedPosition and NoAdjacentHigh
+values. Optional RotationBoundary snapshots use exact run signatures and local minute clocks.
+RotationPlanningProblem validates dates/timing, complete required coefficients, perfect
+staffing and every hard rule independently of backend status. RotationPlanningOptimizer.solve
+returns only a detached proposal; accepted_rotation_run rejects feasibility-only generation.
+apply_rotation_run rechecks numerical sources and validates the schedule before replacement.
+run_is_current requires the current catalog for explicit neighboring-source checks.
+The GUI retains a fresh successful optimization only after explicit Keep optimization
+result, as one undoable edit with the original baseline unchanged. Replacing a retained
+run requires consent; an unkept preview is not published by Main Save. Step 04 feasibility
+generation accepts only the requested proposal, with replacement consent, and stays in 04;
+step 07 only optimizes. Main Save stores runs;
+worker cancellation cannot write or terminate
+native solver threads. See jrot_planning.md for units, stages and failure behavior.
+
+## Guided comparison boundary
+
+See jrot_comparisons.md. Pure rotation_comparison projects frozen run distributions and
+same-context deltas; it has no live catalog or solver dependency. JrotResultTable is shared
+by proposal, retained and compact comparison matrices. JrotComparisonPanel projects exact
+retained evidence with cards, tool statistics and optional details, retaining stale/unsupported
+status. Rework uses existing
+scenario lifecycle/history ports; no schema/codec or alternate Job profile is introduced.
+Main Save remains the only project publisher. Normal/Legacy promotion remains J08.
+
+
+## Assessment import and personal profiles
+
+`ImportProfile` is immutable and validates one allowed mapping per field; version-8
+personal settings store one profile per tool. `ImportTable` contains detached strings.
+`TabularFileReader.read(location, profile, sheet, cell_range)` returns bounded values or
+raises policy `ValueError` / filesystem `OSError`, without saving a source file.
+`prepare_import` normalizes explicit number formatting and delegates to the existing
+atomic assessment clipboard mapper. It returns a replacement source, never accepts it.
+Hosts own stale-source checks, automatic calculations, history and Main Save.
+
+File/preview limits and blank/unmapped semantics are documented in
+[import and paste](assessment_import.md). Settings sample rows are never assessments.
+Workbook formulas are not evaluated; mapped numeric formulas are invalid input.
+
+
+## Optional columns and graphical timing
+
+`AssessmentColumns(kind, hidden)` accepts unique optional semantic keys only; required
+inputs cannot be hidden. User settings format9 adds a per-tool tuple, defaulting to all
+columns visible for old personal files. `AssessmentEditorPreferences.bind` connects owned
+editable grids to import/visibility ports; `refresh_columns` publishes accepted app choices.
+No project data or sample values are serialized by the Settings preview.
+
+`split_work_block`, `join_work_blocks`, `remove_work_block`, `change_timing_break`,
+`draw_timing_break` and `join_timing_breaks` return complete immutable timings or raise
+ValueError without accepting a change. Removing either kind extends its immediate neighbors; work removal can extend pauses
+and therefore requires review when productive time decreases. Joining pauses
+requires touching intervals. Existing ownership/expected-state/scenario-consent/history
+ports remain authoritative.
+
+Structural timing edits preserve assignments only for unchanged clock-span blocks. Split
+or joined blocks receive empty cells, with explicit consent for every affected entered
+cell. Untouched later blocks retain their original assignments instead of shifting by
+array index. No assignment is inferred; Undo restores timing and cells together.
+
+`separate_work_blocks` normalizes compatible interrupted budgets for an explicit editor proposal. `edit_contiguous_breaks` preserves independent clock cuts. `equalize_contiguous_timing` preserves pause lengths/names while moving them to block boundaries; impossible positive budgets are rejected. The UI confirms coordinated count and clock changes before accepting. TaskNameDialog uses existing load/replace_task_definitions ports and shared project history; referenced IDs cannot be deleted.
+
+## Uniform segment editor update — 2026-11-01
+
+The current editor uses application.rotation_segments for both work and pauses. Removal extends immediate neighbors (sole neighbor at an edge, half to each inside). It may extend breaks; the host confirms reduced work time. Move applies to both types with local translation or whole-segment reordering; all interior boundaries resize neighbors. Coordinated equal/count edits preserve type totals and honor both equality choices; Equal breaks shares the existing pause budget. Positive-budget impossibilities reject without implicit deletion or extra work blocks. Break equality is inferred from saved durations, not a new stored field. Both tables have matching controls and keep full shift coverage. This supersedes earlier editor statements requiring removal of a break before removing adjacent work; explicit Join still preserves intervening intervals. Existing expected-state/scenario consent/history and native24 remain unchanged.
+
+Guided single-tool optimization now records two passes, preserving minimax ceilings
+before range minimization. Historical single-pass runs remain supported by RotationRun.
+The unchanged settings field records objective policy; no schema/model version change.
+See jrot_secondary_balance_review.md for compatibility and acceptance.
+
+
+## Ordered assessment-row removal
+
+`application.assessment_task_rows.remove_assessment_rows(source, rows)` accepts a
+nonempty tuple of zero-based integer positions. Duplicates are harmless; invalid,
+negative, boolean and out-of-range positions raise ValueError. The returned same-tool
+immutable source retains exact unselected tasks in source order. Removing all tasks
+creates one blank starter. Job hosts retain their own existing empty-source projection
+when all selected rows are removed. Confirmation, pending input acceptance, calculation,
+history and persistence remain host responsibilities.
+
+`AssessmentTaskGrid.selected_task_rows(fallback)` returns explicit header rows, then
+cell-range rows, then the host default. `AssessmentTaskActions.remove_selected` validates
+pending input, confirms entered data once, rejects a changed source after a modal, and
+accepts one source replacement. ImportRowHeader emits inclusion intent only; the shared
+import panel stages reversible exclusions and maps diagnostics back to visible source
+rows before invoking the unchanged immutable prepare_import contract.
+
+
+## HiGHS-only optimization
+
+`HighsRotationOptimizer` and `HighsRotationPlanner` use highspy1.11.0 directly.
+No engine-selection constructor, capability protocol, preference or alternate runtime
+exists. Guided planning retains minimax then spread objectives for all seven tool subsets;
+the original single-tool workflow retains its original one-pass minimax. Each pass loads
+the exact model into a fresh native HiGHS instance with its own full time budget and
+0.01 relative gap. Returned primal validity, feasibility, binary values, staffing/rules
+and first-pass ceilings are checked independently. A failed later pass never publishes
+stale first-pass values. Application/domain remain independent of native solver types.
+
+Native solver provenance in previously kept runs remains truthful and readable, including
+historical one-pass results. Such metadata cannot select a solver or enable an old engine.
+Settings version11 discards the obsolete version10 comparison field on reading and never
+serializes a solver preference. Other settings, project schema, coefficients, objectives
+and calculator formulas remain unchanged. PuLP and its bundled CBC are removed from the
+lockfile, runtime, trial requirements and typing boundary. See highs_only.md.
+
+
+## Atomic pasted task names
+
+`application.task_catalog.reusable_pasted_names` plans source references/catalog records
+for an exact set of destination task IDs and an injected identity factory. It preserves
+measurements, row IDs and literal fallback names, reuses NFC/trim/casefold matches without
+merging existing IDs, and rejects invalid rows/references/duplicate generated identities.
+`ProjectWorkspace.accept_task_paste` stages prior edits, accepts catalog/source/calculation
+through guarded host ports, and records one `assessment.paste` action. Failed/rejected
+acceptance rolls back both participants and live views without losing the Redo branch.
+
+`ProjectEditingSession.action` composes existing checkpoints/history: nested records
+and automatic `synchronize` calls defer to the final action checkpoint. Rollback notifies
+ordinary replay observers without moving the history cursor. Existing `stage` semantics
+remain unchanged. Source/catalog writes retain their existing validated transactional
+ports and native schema. Main Save alone publishes durable data.
+
+Shared-grid Paste computes the exact mapped/included destination name rows for both
+quick paste and reviewed imports. Undo Paste always requests removal consent, including
+pastes that only reuse existing names or contain numeric columns. Redo uses the exact
+checkpoint identities. Catalog subscriptions are weak, detached at project switch/Qt
+destruction, and never overwrite pending literal name typing.

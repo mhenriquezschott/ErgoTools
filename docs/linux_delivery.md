@@ -27,3 +27,12 @@ external utility; see its [guide](../tools/project_migration/README.md).
 
 Recreate a virtual environment if its installation directory changes. For project
 backups and recovery, see [recovery](recovery.md).
+
+## Current JROT entry and compatibility
+
+The main JROT button and Tools menu open the saved guided workflow. See
+[jrot_guided_entry.md](jrot_guided_entry.md) for named rotations, timing, restrictions,
+real planning, comparisons and rework. Settings offers a separate session-only Legacy
+menu for compatible older schemes. Developer mode is not required. The disposable
+meeting prototype is not packaged. Native24 and the approved runtime pins are unchanged.
+Report export remains disabled pending the team's specification.

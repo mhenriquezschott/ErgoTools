@@ -344,6 +344,9 @@ def test_previous_organization_cleanup_changes_only_retired_metadata(
                     ("number_of_shifts", 88 if populated else None)
                 )
         with working:
+            # Reconstruct the earlier schema, not just its compatibility marker.
+            working.execute("DROP TABLE IF EXISTS shift_timing_templates")
+            working.execute("DROP TABLE task_definitions")
             working.execute("UPDATE project_metadata SET version=17")
             working.execute("UPDATE work_catalog SET payload=?", (json.dumps(payload),))
         tables = [
@@ -359,7 +362,7 @@ def test_previous_organization_cleanup_changes_only_retired_metadata(
         }
     source_bytes = source.read_bytes()
     with upgrade_previous_project(source, output) as native:
-        assert native.format_version == 19
+        assert native.format_version == 24
         for record in native.load_hierarchy().organization:
             if record.kind is OrganizationKind.STATION:
                 assert not set(REMOVED_STATION_FIELDS).intersection(

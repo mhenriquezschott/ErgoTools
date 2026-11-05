@@ -27,8 +27,8 @@ from ergotools.domain.job_risk import (
 from ergotools.domain.language import Language
 from ergotools.domain.work_catalog import StationKey
 from ergotools.domain.work_hierarchy import LineKey
-from ergotools.presentation.desktop.rotation_display import rotation_recommendation
-from ergotools.presentation.desktop.rotation_table import RotationTable
+from ergotools.presentation.desktop.legacy_jrot_display import rotation_recommendation
+from ergotools.presentation.desktop.legacy_jrot_table import LegacyJrotTable
 from tests.test_history_persistence import HIERARCHY, JOBS, OWNER
 from tests.test_rotation_persistence import scheme, seed
 
@@ -149,7 +149,7 @@ def test_edit_average_zero_missing_clear_and_notifications(language: Language) -
         None.
     """
     pool = rotation_pool(catalog_reader())
-    table = RotationTable(pool, workers=2, blocks=2, language=language)
+    table = LegacyJrotTable(pool, workers=2, blocks=2, language=language)
     changed = QSignalSpy(table.changed)
     qt_changed = QSignalSpy(table.cellChanged)
     low, high, missing = (item.target.key for item in pool.targets)
@@ -209,7 +209,7 @@ def test_real_delegate_commit_colliding_captions_and_multiline_identity() -> Non
         dict.fromkeys(place.workplace for place in reader.load_jobs().placements)
     )
     pool = rotation_pool(reader, scope)
-    table = RotationTable(pool, blocks=2)
+    table = LegacyJrotTable(pool, blocks=2)
     labels = dict(table.choice_options(0, 1))
     assert len(set(labels.values())) == 3
     assert all(" @ " in label for key, label in labels.items() if key.startswith("1:j"))
@@ -227,7 +227,7 @@ def test_real_delegate_commit_colliding_captions_and_multiline_identity() -> Non
     # Arbitrary caption changes cannot redirect the stored job/profile identity.
     table.item(0, 1).setText("different\ncaption")
     assert table.choice_key(0, 1) == key
-    org = RotationTable(rotation_pool(reader), blocks=2, kind=AssessmentKind.DUET)
+    org = LegacyJrotTable(rotation_pool(reader), blocks=2, kind=AssessmentKind.DUET)
     multiline = next(
         item.target.key for item in org.pool.targets if "\n" in item.target.job_id
     )
@@ -253,7 +253,7 @@ def test_grid_save_reopen_edit_delete_and_failed_load_preserves_edits(
     """
     path = tmp_path / "rotation.ergprj"
     with seed(path) as project:
-        table = RotationTable(rotation_pool(project, (OWNER.workplace,)), blocks=2)
+        table = LegacyJrotTable(rotation_pool(project, (OWNER.workplace,)), blocks=2)
         with pytest.raises(ValueError, match="worker"):
             table.current_scheme("R")
         table.set_choice(0, 0, "w")
@@ -269,7 +269,7 @@ def test_grid_save_reopen_edit_delete_and_failed_load_preserves_edits(
         table.close()
     with type(project).open(path) as reopened:
         (loaded,) = reopened.load_rotation_schemes()
-        table = RotationTable(rotation_pool(reopened, loaded.scope, saved=loaded))
+        table = LegacyJrotTable(rotation_pool(reopened, loaded.scope, saved=loaded))
         changes = QSignalSpy(table.changed)
         table.load_scheme(loaded)
         assert (

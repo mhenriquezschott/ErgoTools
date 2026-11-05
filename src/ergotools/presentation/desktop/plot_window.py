@@ -259,6 +259,11 @@ class PlotWindow(QDialog):
         root.setContentsMargins(10, 10, 10, 10)
         root.setSpacing(8)
         self.title_row = QHBoxLayout()
+        self.title_icon = QLabel()
+        self.title_icon.setFixedSize(40, 40)
+        self.title_icon.setPixmap(icons["plot"].pixmap(QSize(40, 40)))
+        self.title_icon.setToolTip(self.text("Plant layout", "Distribución de planta"))
+        self.title_row.addWidget(self.title_icon, 0, Qt.AlignmentFlag.AlignVCenter)
         self.title = QLabel(
             self.text(
                 "Plant-Layout Organizational Tool (PLOT)",

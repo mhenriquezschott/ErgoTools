@@ -22,6 +22,7 @@ from PyQt5.QtCore import QSize, Qt, QUrl
 from PyQt5.QtGui import QCloseEvent, QColor, QDesktopServices, QIcon
 from PyQt5.QtWidgets import (
     QAbstractItemView,
+    QAction,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -80,7 +81,7 @@ from ergotools.domain.assessments.document import (
     AssessmentDraft,
     AssessmentKind,
     assessment_kind,
-    task_has_data,
+    task_has_content,
 )
 from ergotools.domain.assessments.duet_draft import DuetDraft, DuetTask
 from ergotools.domain.assessments.duet_summary import DuetSummary
@@ -97,6 +98,9 @@ from ergotools.presentation.assignment_selection import AssignmentSelector
 from ergotools.presentation.desktop.assessment_context_dialog import (
     AssessmentContextDialog,
 )
+from ergotools.presentation.desktop.assessment_editor_preferences import (
+    AssessmentEditorPreferences,
+)
 from ergotools.presentation.desktop.assessment_history_actions import (
     AssessmentHistoryActions,
 )
@@ -105,7 +109,10 @@ from ergotools.presentation.desktop.assessment_location_browser import (
 )
 from ergotools.presentation.desktop.assessment_menu import AssessmentMenu
 from ergotools.presentation.desktop.assignment_dialog_host import AssignmentDialogHost
-from ergotools.presentation.desktop.authors_dialog import AuthorsDialog
+from ergotools.presentation.desktop.authors_dialog import (
+    AuthorsDialog,
+    JrotAuthorsDialog,
+)
 from ergotools.presentation.desktop.body_region_panel import BodyRegionPanel
 from ergotools.presentation.desktop.duet_presenter import DuetPresenter
 from ergotools.presentation.desktop.duet_task_panel import DuetTaskPanel
@@ -194,7 +201,9 @@ class LifftWindow(QMainWindow):
         | None = None,
         rotation_opener: Callable[[RotationRepository, Language, QWidget], None]
         | None = None,
-        developer_opener: Callable[[QWidget], None] | None = None,
+        assessment_editor_preferences: AssessmentEditorPreferences | None = None,
+        guided_rotation_opener: Callable[[Language, DecimalConvention, QWidget], None]
+        | None = None,
         settings_store: SettingsStore | None = None,
         document_options: Callable[[str, Language], tuple[tuple[str, str], ...]]
         | None = None,
@@ -202,6 +211,8 @@ class LifftWindow(QMainWindow):
         user_guide: bytes | None = None,
         user_guides: Mapping[Language, bytes] | None = None,
         authors_logo: bytes | None = None,
+        settings_avatar_preview: bytes = b"",
+        diagnostics_report: str | None = None,
         original_controls: bool = False,
         original_navigation: bool = False,
         renderer_factory: Callable[[QWidget], tuple[QWidget, BodyRenderer]]
@@ -221,10 +232,10 @@ class LifftWindow(QMainWindow):
                 cells.
             plot_opener: Optional owned PLOT launcher borrowing repository, language,
                 units and handoff callback.
-            rotation_opener: Optional owned JROT launcher borrowing the active rotation
-                repository.
-            developer_opener: Optional isolated session-only preview launcher; receives
-                only its GUI parent, never a save/history callback.
+            rotation_opener: Optional Legacy launcher borrowing compatible schemes.
+            assessment_editor_preferences: Shared personal column/import preferences and
+                read-only file capabilities.
+            guided_rotation_opener: Normal JROT launcher over shared project history.
             settings_store: Optional user-settings port; preferences/recent paths are
                 separate from project data.
             document_options: Optional native assessment picker reader returning stable
@@ -235,6 +246,8 @@ class LifftWindow(QMainWindow):
                 single-guide API.
             user_guides: Optional packaged guides keyed by supported language.
             authors_logo: Optional packaged logo used only by the Authors modal.
+            settings_avatar_preview: Packaged camera-animation recording for Settings.
+            diagnostics_report: Optional current launch report path for troubleshooting.
             original_controls: Whether to compose the original integrated task controls
                 rather than the diagnostic editor.
             original_navigation: Whether to compose the original shared navigation and
@@ -249,12 +262,18 @@ class LifftWindow(QMainWindow):
         self._user_guide = user_guide
         self._user_guides = dict(user_guides) if user_guides is not None else None
         self._authors_logo = authors_logo
+        self._settings_avatar_preview = settings_avatar_preview
+        self._diagnostics_report = diagnostics_report
         self._summary_loader = summary_loader
         self._csv_writer = csv_writer
         self._plot_opener = plot_opener
         self._rotation_opener = rotation_opener
-        self._developer_opener = developer_opener
+        self._guided_rotation_opener = guided_rotation_opener
+        self._assessment_editor_preferences = assessment_editor_preferences
         self._developer_enabled = False
+        self._legacy_enabled = False
+        self._legacy_menu: QMenu | None = None
+        self._legacy_action: QAction | None = None
         self._developer_menu: QMenu | None = None
         self._settings_store = settings_store
         self.assessment_navigation = AssessmentNavigation(
@@ -558,6 +577,8 @@ class LifftWindow(QMainWindow):
             convention=self.presenter.convention,
             parent=self,
         )
+        if self._assessment_editor_preferences is not None:
+            self._assessment_editor_preferences.bind(dialog)
         if self._settings_store is not None:
             preferences = self._settings_store.load()
             apply_result_animations(
@@ -632,9 +653,11 @@ class LifftWindow(QMainWindow):
                     self.export_summary_csv,
                     self.open_plot,
                     self.open_rotation,
+                    self.open_legacy_rotation,
                     self.open_worker_transfer,
                     self.open_help,
                     self.open_authors,
+                    self.open_jrot_authors,
                     self.new_project,
                 )
                 and secondary.commit_inputs()
@@ -662,9 +685,11 @@ class LifftWindow(QMainWindow):
                     self.export_summary_csv,
                     self.open_plot,
                     self.open_rotation,
+                    self.open_legacy_rotation,
                     self.open_worker_transfer,
                     self.open_help,
                     self.open_authors,
+                    self.open_jrot_authors,
                     self.new_project,
                 )
                 and self.task_panel.commit_inputs()
@@ -716,6 +741,32 @@ class LifftWindow(QMainWindow):
         self.entry.setToolTip(self.text("ready"))
         if self._assessment_menu is not None:
             self._assessment_menu.translate(self.language)
+        if self._developer_menu is not None:
+            self._developer_menu.setTitle(
+                "Desarrollador"
+                if self.language is Language.SPANISH
+                else "Developer Menu"
+            )
+            self._developer_menu.actions()[0].setText(
+                "Sin herramientas experimentales instaladas"
+                if self.language is Language.SPANISH
+                else "No experimental tools installed"
+            )
+        if self._legacy_menu is not None:
+            self._legacy_menu.setTitle(
+                "Anterior" if self.language is Language.SPANISH else "Legacy"
+            )
+        if self._legacy_action is not None:
+            self._legacy_action.setText(
+                "JROT anterior…"
+                if self.language is Language.SPANISH
+                else "Legacy JROT…"
+            )
+            self._legacy_action.setToolTip(
+                "Solo rotaciones antiguas compatibles; no edita planes guiados."
+                if self.language is Language.SPANISH
+                else "Older schemes only; guided scenarios stay in JROT."
+            )
 
     def refresh(self) -> None:
         """Render original source through a fresh context and clear stale results.
@@ -1082,10 +1133,15 @@ class LifftWindow(QMainWindow):
         source = self.active_source()
         if source is None or count >= len(source.tasks):
             return False
-        if any(task_has_data(task) for task in source.tasks[count:]):
+        if any(task_has_content(task) for task in source.tasks[count:]):
             return True
         panel = self.secondary_panel() or self.task_panel
         if panel is not None and panel.pending:
+            if any(
+                isinstance(control, QComboBox) and control.currentText().strip()
+                for control in panel.task_grid.task_names[count:]
+            ):
+                return True
             for row in panel.inputs[count:]:
                 for widget in row:
                     if isinstance(widget, QLineEdit) and not widget.isReadOnly():
@@ -1151,12 +1207,36 @@ class LifftWindow(QMainWindow):
             dialog.close()
             dialog.deleteLater()
 
+    def open_task_names(self) -> None:
+        """Open the project-local reusable name manager with shared history.
+
+        Args:
+            None.
+
+        Returns:
+            None; Main Save remains the sole publisher of accepted catalog edits.
+        """
+        from ergotools.presentation.desktop.task_name_dialog import TaskNameDialog
+
+        if not self.resolve_context_text():
+            return
+        dialog = TaskNameDialog(
+            self.presenter.workspace, self.icons, self.language, self
+        )
+        try:
+            dialog.exec()
+        finally:
+            dialog.deleteLater()
+            self.refresh()
+
     def open_preferences(self) -> None:
         """Apply preferences after validating pending text; Cancel edits nothing.
 
         Project units/decimals are committed on Apply without rewriting sources/results;
         language, decimal mark, camera focus and gauge markers remain personal
-        preferences. Gauge changes repaint without changing results/animation. Cancel
+        preferences. A solver-only Apply stores the comparison backend without
+        committing pending text; newly opened JROT windows read it.
+        Gauge changes repaint without changing results/animation. Cancel
         leaves settings and pending text intact. Valid pending task text is committed
         first for ordinary Apply, even if preference persistence fails.
         Count changes accept valid pending text and preserve retained rows. Removing
@@ -1196,14 +1276,38 @@ class LifftWindow(QMainWindow):
             gauge_markers=store.load().gauge_markers,
             undo_limit=store.load().undo_limit,
             developer_enabled=self._developer_enabled,
+            legacy_enabled=self._legacy_enabled,
+            avatar_preview=self._settings_avatar_preview,
+            diagnostics_report=self._diagnostics_report,
+            import_profiles=store.load().import_profiles,
+            assessment_columns=store.load().assessment_columns,
+            import_reader=self._assessment_editor_preferences.reader
+            if self._assessment_editor_preferences
+            else None,
         )
         try:
             if dialog.exec() != QDialog.Accepted:
                 return
-            if dialog.only_developer_changed():
+            if dialog.only_editor_preferences_changed():
+                store.save(
+                    replace(
+                        store.load(),
+                        import_profiles=dialog.import_settings.profiles(),
+                        assessment_columns=dialog.column_settings.profiles(),
+                    )
+                )
+                if self._assessment_editor_preferences is not None:
+                    self._assessment_editor_preferences.refresh_columns()
                 self.set_developer_mode(dialog.developer_option.isChecked())
+                self.set_legacy_mode(dialog.legacy_option.isChecked())
+                return
+            if dialog.only_session_menus_changed():
+                self.set_developer_mode(dialog.developer_option.isChecked())
+                self.set_legacy_mode(dialog.legacy_option.isChecked())
                 return
             developer_enabled = dialog.developer_option.isChecked()
+            legacy_enabled = dialog.legacy_option.isChecked()
+            import_profiles = dialog.import_settings.profiles()
             language = list(Language)[dialog.language.currentIndex()]
             units = list(MeasurementSystem)[dialog.units.currentIndex()]
             convention = list(DecimalConvention)[dialog.decimal.currentIndex()]
@@ -1239,6 +1343,8 @@ class LifftWindow(QMainWindow):
         store.save(
             replace(
                 store.load(),
+                import_profiles=import_profiles,
+                assessment_columns=dialog.column_settings.profiles(),
                 animated_body_region_focus=animated_focus,
                 animated_risk_gauge=animated_gauge,
                 animated_cumulative_damage=animated_damage,
@@ -1249,6 +1355,8 @@ class LifftWindow(QMainWindow):
                 decimal_convention=convention,
             )
         )
+        if self._assessment_editor_preferences is not None:
+            self._assessment_editor_preferences.refresh_columns()
         apply_result_animations(self, animated_gauge, animated_damage)
         editing = self.presenter.workspace.editing
         if editing is not None:
@@ -1290,9 +1398,10 @@ class LifftWindow(QMainWindow):
         self.translate()
         self.refresh()
         self.set_developer_mode(developer_enabled)
+        self.set_legacy_mode(legacy_enabled)
 
     def set_developer_mode(self, enabled: bool) -> None:
-        """Toggle the preview menu for this main-window session only.
+        """Toggle the separate development menu for this window session only.
 
         Args:
             enabled: Runtime visibility; never added to UserSettings or project data.
@@ -1306,17 +1415,59 @@ class LifftWindow(QMainWindow):
             assert action is not None
             action.setVisible(enabled)
 
-    def open_developer_preview(self) -> None:
-        """Launch an isolated prototype without accepting main assessment drafts.
+    def set_legacy_mode(self, enabled: bool) -> None:
+        """Show the independent Legacy menu for this window session only.
+
+        Args:
+            enabled: Session opt-in, independent of Developer and project state.
+
+        Returns:
+            None; no preference file, project mutation or history entry is created.
+        """
+        self._legacy_enabled = enabled
+        if self._legacy_menu is not None:
+            action = self._legacy_menu.menuAction()
+            assert action is not None
+            action.setVisible(enabled)
+
+    def open_legacy_rotation(self) -> None:
+        """Open only compatible old schemes through the explicitly enabled Legacy menu.
 
         Args:
             None.
 
         Returns:
-            None; the injected composition root detaches read-only catalog values.
+            None; guided records stay excluded and guarded by the existing repository.
         """
-        if self._developer_enabled and self._developer_opener is not None:
-            self._developer_opener(self)
+        workspace = self.presenter.workspace
+        if (
+            self._legacy_enabled
+            and self._rotation_opener is not None
+            and workspace.supports_rotations
+        ):
+            self._rotation_opener(workspace.rotation_repository(), self.language, self)
+
+    def open_guided_rotation(self) -> None:
+        """Launch production guided JROT after resolving current assessment text.
+
+        Args:
+            None.
+
+        Returns:
+            None; current project edits use shared history and the sole Main Save.
+        """
+        if (
+            self._guided_rotation_opener is not None
+            and self.presenter.workspace.supports_rotations
+            and self.presenter.workspace.editing is not None
+            and self.resolve_context_text()
+        ):
+            self._guided_rotation_opener(self.language, self.presenter.convention, self)
+            if self._settings_store is not None and self.results_sidebar is not None:
+                self.results_sidebar.risk_gauge.set_marker_settings(
+                    self._settings_store.load().gauge_markers
+                )
+            self.refresh()
 
     def change_gauge_markers(self, settings: GaugeMarkerSettings) -> None:
         """Persist a right-click gauge choice before changing its visible appearance.
@@ -1399,10 +1550,10 @@ class LifftWindow(QMainWindow):
         self.run(self.refresh)
 
     def change_assessment_tasks(self, delta: int) -> None:
-        """Resize the active tool by one row using established scoped count commands.
+        """Append one task or remove selected rows through scoped history commands.
 
         Args:
-            delta: One to append or minus one to remove the final task.
+            delta: One to append; minus one removes selected rows, else the last.
 
         Returns:
             None; invalid input/cancel preserves data. One through 100 rows are allowed;
@@ -1410,6 +1561,14 @@ class LifftWindow(QMainWindow):
         """
         source = self.active_source()
         if source is None or delta not in (-1, 1):
+            return
+        if delta < 0:
+            panel = self.secondary_panel() or self.task_panel
+            if panel is not None and panel.task_actions.remove_selected(
+                len(source.tasks) - 1
+            ):
+                self.refresh()
+                self.auto_calculate()
             return
         count = len(source.tasks) + delta
         if not 1 <= count <= 100:
@@ -1937,18 +2096,15 @@ class LifftWindow(QMainWindow):
             self.refresh()
 
     def open_rotation(self) -> None:
-        """Browse modal JROT over saved risks without committing assessment input.
+        """Launch the production guided JROT entry from the main toolbar/menu.
 
         Args:
             None.
 
         Returns:
-            None.
+            None; accepted edits use shared history and the sole Main Save.
         """
-        workspace = self.presenter.workspace
-        if self._rotation_opener is None or not workspace.supports_rotations:
-            return
-        self._rotation_opener(workspace.rotation_repository(), self.language, self)
+        self.open_guided_rotation()
 
     def open_plot(self) -> None:
         """Browse saved PLOT data without committing unfinished assessment fields.
@@ -2886,6 +3042,14 @@ class LifftWindow(QMainWindow):
         Returns:
             None.
         """
+        panel = self.secondary_panel() or self.task_panel
+        if panel is not None:
+            try:
+                if panel.commit_inputs():
+                    self.auto_calculate()
+            except DraftError as error:
+                self.message.setText(Translator(self.language).text(error.issue.code))
+                return
         if self._is_unsaved_project():
             self.save_project_as()
             return
@@ -3109,9 +3273,9 @@ class LifftWindow(QMainWindow):
         self.message.setWordWrap(False)
         self.message.setMinimumHeight(0)
         self.setWindowTitle("Fatigue Failure Risk Assessment Tools")
-        # Retain reference geometry as the tested minimum, not a resize lock.
-        self.setMinimumSize(1550, 1015)
-        self.resize(1550, 1015)
+        # Allow the shared task-name column without shrinking established inputs.
+        self.setMinimumSize(1725, 1015)
+        self.resize(1725, 1015)
         if self._renderer_factory is not None:
             widget, self._body_renderer = self._renderer_factory(
                 self.body_panel.viewport
@@ -3123,6 +3287,7 @@ class LifftWindow(QMainWindow):
         self._assessment_menu = AssessmentMenu(
             self.buttons,
             self.enable_controls,
+            icons=self.icons,
             language=self.language,
             open_preferences=lambda: self.run(self.open_preferences),
             open_recent=self.open_recent_project,
@@ -3134,19 +3299,35 @@ class LifftWindow(QMainWindow):
             export_csv=lambda: self.run(self.export_summary_csv),
             open_guide=lambda: self.run(self.open_help),
             open_authors=lambda: self.run(self.open_authors),
+            open_jrot_authors=lambda: self.run(self.open_jrot_authors),
             camera_animation=self.set_camera_animation,
             open_properties=self.open_project_properties,
             open_project_folder=self.open_project_folder,
+            open_task_names=lambda: self.run(self.open_task_names),
             parent=self,
         )
+        if self.main_navigation is not None:
+            for key in ("plot", "jrot"):
+                self._assessment_menu.tools.addAction(
+                    self.main_navigation.toolbar_actions[key]
+                )
         self._developer_menu = self._assessment_menu.addMenu("Developer Menu")
         assert self._developer_menu is not None
-        preview = self._developer_menu.addAction(
-            self.icons["jrot"], "JROT workflow prototype…"
+        development = self._developer_menu.addAction("No experimental tools installed")
+        assert development is not None
+        development.setEnabled(False)
+        self._legacy_menu = self._assessment_menu.addMenu("Legacy")
+        assert self._legacy_menu is not None
+        self._legacy_action = self._legacy_menu.addAction(
+            self.icons["jrot"], "Legacy JROT…"
         )
-        assert preview is not None
-        preview.setEnabled(self._developer_opener is not None)
-        preview.triggered.connect(lambda: self.run(self.open_developer_preview))
+        assert self._legacy_action is not None
+        self._legacy_action.triggered.connect(
+            lambda: self.run(self.open_legacy_rotation)
+        )
+        legacy_action = self._legacy_menu.menuAction()
+        assert legacy_action is not None
+        legacy_action.setVisible(False)
         developer_action = self._developer_menu.menuAction()
         assert developer_action is not None
         developer_action.setVisible(False)
@@ -3172,11 +3353,9 @@ class LifftWindow(QMainWindow):
         for key, asset in (("new_assessment", "new"),):
             self._assessment_menu.actions_by_key[key].setIcon(self.icons[asset])
         for action, asset in (
-            (self._assessment_menu.properties, "view"),
             (self._assessment_menu.close_project_action, "close"),
             (self._assessment_menu.preferences, "settings"),
             (self._assessment_menu.user_guide, "help"),
-            (self._assessment_menu.about, "help"),
             (self._assessment_menu.camera_animation, "body_view"),
         ):
             action.setIcon(self.icons[asset])
@@ -3370,6 +3549,22 @@ class LifftWindow(QMainWindow):
         if self._authors_logo is None:
             raise RuntimeError("The authors logo is not configured.")
         dialog = AuthorsDialog(self.language, self._authors_logo, parent=self)
+        try:
+            dialog.exec_()
+        finally:
+            dialog.close()
+            dialog.deleteLater()
+
+    def open_jrot_authors(self) -> None:
+        """Show historical JROT credits without parsing or staging pending input.
+
+        Args:
+            None.
+
+        Returns:
+            None; each modal is parent-owned and disposed after it closes.
+        """
+        dialog = JrotAuthorsDialog(self.language, self.icons, parent=self)
         try:
             dialog.exec_()
         finally:
@@ -3648,9 +3843,10 @@ class LifftWindow(QMainWindow):
                     else "Add one task at the end."
                 )
                 panel.remove_task_button.setToolTip(
-                    "Quitar la última tarea; los datos requieren confirmación."
+                    "Quitar filas seleccionadas (o la última); confirme si hay datos."
                     if spanish
-                    else "Remove the last task; entered data requires confirmation."
+                    else "Remove selected rows (or the last); "
+                    "confirm when data is present."
                 )
                 panel.add_task_button.setEnabled(view is not None and count < 100)
                 panel.remove_task_button.setEnabled(view is not None and count > 1)
@@ -3690,8 +3886,12 @@ class LifftWindow(QMainWindow):
             workspace.supports_job_risk and self._plot_opener is not None
         )
         navigation.toolbar_actions["jrot"].setEnabled(
-            workspace.supports_rotations and self._rotation_opener is not None
+            workspace.supports_rotations and self._guided_rotation_opener is not None
         )
+        if self._legacy_action is not None:
+            self._legacy_action.setEnabled(
+                workspace.supports_rotations and self._rotation_opener is not None
+            )
         export_enabled = (
             workspace.supports_assignment_history
             and self._summary_loader is not None

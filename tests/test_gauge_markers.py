@@ -97,7 +97,8 @@ def test_old_settings_default_markers_without_losing_saved_preferences(
         version: Existing supported settings version before gauge options.
 
     Returns:
-        None; load preserves old bytes and preferences, then v7 roundtrips options.
+        None; load preserves old bytes and preferences; the current format
+        roundtrips options after explicit Save.
     """
     path = tmp_path / "settings.json"
     store = JsonSettingsStore(path)
@@ -106,6 +107,8 @@ def test_old_settings_default_markers_without_losing_saved_preferences(
     data["version"] = version
     del data["gauge_markers"]
     for minimum, name in (
+        (9, "assessment_columns"),
+        (8, "import_profiles"),
         (7, "animated_risk_gauge"),
         (7, "animated_cumulative_damage"),
         (6, "undo_limit"),
@@ -125,7 +128,7 @@ def test_old_settings_default_markers_without_losing_saved_preferences(
     changed = replace(settings, gauge_markers=GaugeMarkerSettings(False, True, 10))
     store.save(changed)
     assert store.load() == changed
-    assert json.loads(path.read_text())["version"] == 7
+    assert json.loads(path.read_text())["version"] == 11
 
 
 @pytest.mark.parametrize(

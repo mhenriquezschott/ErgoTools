@@ -51,6 +51,7 @@ from ergotools.presentation.desktop.optional_duration_edit import OptionalDurati
 from ergotools.presentation.desktop.optional_time_edit import OptionalTimeEdit
 from ergotools.presentation.desktop.organization_text import organization_text
 from ergotools.presentation.desktop.project_history_actions import ProjectHistoryActions
+from ergotools.presentation.desktop.rotation_timing_dialog import RotationTimingDialog
 from ergotools.presentation.desktop.secondary_history_controls import (
     add_history_buttons,
 )
@@ -188,6 +189,7 @@ class OrganizationDialog(QDialog):
             | OptionalDateEdit
             | OptionalDurationEdit,
         ] = {}
+        self.rotation_timing_button: QPushButton | None = None
         self.ends_next_day: QCheckBox | None = None
         self.plant_shift_count: QLabel | None = None
         self.new_mode = False
@@ -724,6 +726,7 @@ class OrganizationDialog(QDialog):
         while self.optional_form.rowCount():
             self.optional_form.removeRow(0)
         self.editors.clear()
+        self.rotation_timing_button = None
         self.ends_next_day = None
 
     def set_optional_details_visible(self, expanded: bool) -> None:
@@ -886,6 +889,19 @@ class OrganizationDialog(QDialog):
                 )
                 self.ends_next_day.toggled.connect(self._refresh_pending_history)
                 self.optional_form.addRow("", self.ends_next_day)
+        if kind is OrganizationKind.SHIFT:
+            self.rotation_timing_button = QPushButton(self._text("Rotation timing…"))
+            self.rotation_timing_button.setIcon(self._icons["shift"])
+            self.rotation_timing_button.setToolTip(
+                self._text(
+                    "Edit shared breaks and equal/unequal "
+                    "work blocks. Existing templates use "
+                    "accepted Shift clocks; clear the "
+                    "template before changing duration."
+                )
+            )
+            self.rotation_timing_button.clicked.connect(self.open_rotation_timing)
+            self.required_form.addRow("", self.rotation_timing_button)
         self.plant_shift_count = None
         if kind is OrganizationKind.PLANT:
             self.plant_shift_count = QLabel(
@@ -911,6 +927,57 @@ class OrganizationDialog(QDialog):
                 "parent location."
             )
         )
+
+    def open_rotation_timing(self) -> None:
+        """Open reusable timing using accepted Shift clocks and shared project history.
+
+        Existing templates remain accessible even when pending clock edits would change
+        duration. Clearing that template lets the pending organization edit proceed;
+        neither the child dialog nor its closing path silently discards those values.
+
+        Args:
+            None.
+
+        Returns:
+            None; source/scientific results and saved rotations remain unchanged.
+        """
+        if self.current_entity is not OrganizationKind.SHIFT:
+            return
+        has_template = self.current_keys is not None and any(
+            t.shift_id == self.current_keys[0]
+            for t in self._workspace.load_shift_timings()
+        )
+        if not has_template and not self.accept_pending_entity():
+            return
+        if self.current_keys is None:
+            self.note.setText(self._text("Note: An identifier is required."))
+            return
+
+        def open_editor() -> None:
+            """Own the modal timing editor and renew the parent snapshot authority.
+
+            Args:
+                None.
+
+            Returns:
+                None; existing required/optional input widgets are retained.
+            """
+            assert self.current_keys is not None
+            dialog = RotationTimingDialog(
+                self._workspace,
+                self.current_keys[0],
+                self._icons,
+                self._language,
+                self,
+            )
+            try:
+                dialog.exec()
+            finally:
+                dialog.deleteLater()
+                self._snapshot = self._workspace.read_hierarchy()
+                self._refresh_pending_history()
+
+        self._run(open_editor)
 
     def add_child(self) -> None:
         """Start the next hierarchy level beneath the selected saved parent.

@@ -8,7 +8,7 @@ session, working OpenGL driver, and a writable project folder are required.
 
 | Platform | Setup | Validation |
 | --- | --- | --- |
-| Linux x86-64 | Locked desktop environment | Native GUI, VTK, CBC and HiGHS verified on Ubuntu 25.04 |
+| Linux x86-64 | Locked desktop environment | Native GUI, VTK and HiGHS verified on Ubuntu 25.04 |
 | Windows 10/11 x64 | Separate pinned trial requirements | Package resolution checked; native installation, GUI and solvers await testing |
 | macOS 11+ Intel / Apple silicon | Separate pinned trial requirements | Package resolution checked for both architectures; native installation, GUI and solvers await testing |
 
@@ -165,10 +165,34 @@ these instructions never reset local work.
 1. Launch without `--disable-vtk`; confirm the body model is visible and can rotate.
 2. Open a personal copy of `comparative_risk_test.ergprj`. Review LiFFT, DUET and ST.
 3. Open PLOT and check the plant image, charts and Individual/Job/Comparison views.
-4. Open JROT; run a selected-tool solve (CBC), then an all-three solve (HiGHS).
+4. Open JROT; run a selected-tool solve, then an all-three solve (both HiGHS).
 5. Save As to a new file, close, reopen and verify its data. Check native file dialogs,
    language switching, units and display scaling on your machine.
 
 These are the native Windows/macOS checks still to be performed. Report OS version,
 CPU architecture, `uv --version`, Python version and the exact error if startup fails.
 Use the platform checklist for the fuller acceptance review.
+
+
+## Spreadsheet files
+
+The application installs **openpyxl 3.1.5** and **et-xmlfile 2.0.0** for read-only XLSX
+cell import. These exact pins are included in the lock and desktop trial requirements.
+Microsoft Excel is not required; CSV/TSV and copied spreadsheet values also work.
+The importer does not evaluate workbook formulas or support the older `.xls` format.
+
+## Visual preferences and display reports
+
+See [Settings previews and diagnostics](settings_previews_and_diagnostics.md) for the
+reused gauge/bar controls, packaged avatar recording, launch flags, per-OS report
+locations and read-only DPI observation. Reporting defaults on for Windows/macOS
+and off for Linux; it never changes the platform scaling policy or project format.
+
+## Updating an older solver environment
+
+JROT now uses HiGHS directly for every tool subset. `uv sync --locked --extra desktop`
+removes the retired PuLP dependency from the dedicated Linux environment. For an existing
+dedicated Windows/macOS trial virtual environment managed with pip, uninstall unused PuLP
+with `python -m pip uninstall pulp` before installing the current trial requirements.
+There is no solver-selection setting. Previously saved result attribution is preserved;
+new optimizations use HiGHS. Native Windows/macOS execution still awaits platform testing.

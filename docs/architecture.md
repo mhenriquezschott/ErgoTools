@@ -7,7 +7,7 @@ presenters. One integrated Qt application hosts LiFFT/DUET/ST, PLOT and JROT.
 |---|---|---|
 | domain | Immutable sources, units, validation, calculators, risk bands, ownership, jobs, map geometry, rotation constraints | domain |
 | application | Evaluation, document/session history, workspace/project lifecycle, selection/catalog operations, PLOT/JROT use cases and ports | application, domain |
-| infrastructure | Strict codecs, parameterized transactional SQLite, native snapshots and source-bound calculations, resources/settings/CSV, PuLP CBC/HiGHS adapter | infrastructure, application, domain, resources |
+| infrastructure | Strict codecs, parameterized transactional SQLite, native snapshots and source-bound calculations, resources/settings/CSV, direct HiGHS adapter | infrastructure, application, domain, resources |
 | presentation | Typed projections, English/Spanish text, Qt dialogs/tasks/charts, interaction/animation and theme | presentation, application, domain |
 | resources | Local icons, models, guides and reference PDF | resources |
 | bootstrap | Compose concrete adapters and presenters after QApplication exists | composition root exception |
@@ -48,9 +48,12 @@ The shared risk gauge and damage bar are custom presentation components; fixed
 task headers synchronize actual column widths instead of space-padded strings.
 
 Pure rotation preparation produces plain constraints/risks. The optimizer port
-is implemented by `PulpRotationOptimizer`: CBC single-tool and HiGHS multi-tool;
+is implemented by `HighsRotationOptimizer` for the original workflow and
+`HighsRotationPlanner` for guided rotations. Both use the approved highspy1.11.0
+API directly for every tool subset; no solver switch, PuLP or bundled CBC remains;
 Qt worker orchestration owns cancellation/previews and never changes source from
-a solver thread. Acceptance requires explicit Apply; only the main Save publishes accepted changes. Packaging and platform setup are described in installation.md.
+a solver thread. Acceptance requires an explicit user action; guided results use Keep optimization result.
+Only the main Save publishes accepted changes. Packaging and platform setup are described in installation.md.
 
 ## Standards and evidence
 
@@ -432,16 +435,17 @@ JROT draft refresh runs in the application layer both on reopening and at main S
 PLOT reads current values on Apply/restoration. No dependency, solver or formula changes.
 
 
-## Disposable JROT developer prototype
+## Normal and compatibility JROT presentation
 
-The session-only English/cm/N Yes-path mockup is separate from production JROT.
-Bootstrap copies immutable hierarchy/Job/current-risk catalogs through read-only loads;
-the prototype never receives a writer or main history. An application-only scratch
-model calls existing calculations and prepares existing optimizer input. Separate Qt
-widgets/dialog/thread own temporary task names, progress, preview restrictions and
-CBC/HiGHS results. Only session-local Settings/menu hooks touch existing presentation.
-No schema/preferences serialization or production calculator/solver changes occur.
-The prototype is diagnostic and does not persist data.
+Normal toolbar/Tools JROT composes JrotDialog over shared project/history services.
+Compatibility-only UI adapters use legacy_jrot_* modules and a separately enabled Legacy
+menu. Both Legacy and Developer visibility default off and are session-only, independent
+switches. Developer currently has no installed experimental tools. The disposable scratch
+runtime/model and its sample mutation paths have been removed; normal opening creates no
+workers, Jobs, scenario defaults or sample data. Prior archives retain historical code.
+Existing calculator, optimizer, storage and application/domain modules remain shared and
+neutral. An exact presentation-path allowlist in the architecture gate permits these named
+compatibility views without admitting old-schema converter readers into the application.
 
 Job tool selection is retained as the immutable session-only `jobs.tool` editor value
 in ProjectEditingSession. A completed tab change is a chronological view action;
@@ -685,3 +689,193 @@ SQLite target deletion/copy/Move-source removal is one transaction. Historical o
 and unselected tools are protected. Removed target session caches are discarded after
 success. Main Save/history remains authoritative; active Move selects its new exact
 owner. Find ordering and destination badges are presentation changes only.
+
+
+## Reusable task labels and spreadsheet edits — native 20
+
+This section supersedes earlier native-19 current-format references. `TaskDefinition`
+in the domain contains only project-local ID, name and optional description. Existing
+immutable tool rows carry optional fallback names/references while retaining independent
+numeric inputs, row IDs and ST conventions. `task_has_data` remains the scientific
+predicate; `task_has_content` additionally protects label-only rows from silent removal.
+
+`TaskCatalogRepository` is a capability on current project adapters. `ProjectWorkspace`
+stages active sources before catalog edits, then uses the existing project history.
+`TaskCatalogStore` borrows the project connection and never commits or creates tables on
+read. Worker source writes validate references under their transaction; Job requests validate
+references before the existing private-store transaction. Definition
+renames do not rewrite scientific sources/results. Native 20 adds one catalog table;
+That earlier compatibility step supported full formats 8–19; current native 22 conversion
+also accepts format 20, as described below. Production has no legacy decoder.
+
+`assessment_clipboard` parses bounded quoted TSV into a fully validated immutable source,
+using the shared domain numeric grammar and established unit conversion. It performs no
+SQL, Qt operations, formula execution or scientific calculation. The desktop preview owns
+column/header mapping, units, decimal choice and cancellation. Its prepared replacement
+becomes one guarded source command; the existing host performs automatic calculation and
+shared Undo/Redo. IDs/derived columns cannot be pasted. Unmapped cells stay unchanged;
+mapped blank cells clear their fields. Appended rows receive fresh source-row IDs.
+
+`AssessmentTaskGrid` owns the common name controls and action toolbar. Name controls are
+separate from numeric `inputs` to preserve host field/index contracts. `AssessmentTaskActions`
+binds source, catalog, units, validation and acceptance callbacks in Main and Job editors.
+Read-only copy previews resolve names through the same catalog and preserve metadata in
+independent full/subset copies. The experimental guided JROT editor remains isolated;
+adopting this component is a later checkpoint. Formulas, solvers and dependencies do not
+change in this slice.
+
+
+## Relative Shift timing — native 21
+
+`domain.rotation_timing` owns minute intervals, shared breaks, complete work budgets and
+pure projection into working clock pieces. Productive minutes must be positive; blocks
+cover them exactly once and exclude breaks. Equal budgets divide integer remainders among
+earlier blocks. A boundary edit changes only two neighbors and keeps total work constant.
+`application.rotation_timing` resolves canonical recurring Shift clocks, validates optional
+Shift-owned templates and exposes a guarded repository capability. Clock arithmetic is
+planned local time, without calendar/DST or physiological recovery inference.
+
+`RotationTimingStore` strictly decodes one JSON payload per Shift and borrows the project
+transaction. `AssessmentProjectFile` validates templates on open and all hierarchy write
+paths, records template identities for destructive replay warnings, and stores one edit
+under the existing project cursor. Snapshot/Save As/backup retain timing through the same
+complete project boundary. Native 21 introduced one initially empty timing table;
+external upgrades preserve every preexisting value and never seed a timing or dated run.
+
+`RotationTimingDialog` reuses native optional clock editors, shared secondary history
+buttons and the owned dialog palette. Completed valid cells and boundary gestures accept
+one edit; incomplete rows/durations remain local and block replay until corrected or
+explicitly discarded on close. An unchanged initial preview writes nothing; Use this timing
+explicitly accepts it. Count changes rebalance equally, with confirmation for unequal
+budgets. Break edits retain unequal prefixes and adjust the last budget; insufficient
+remaining work is rejected. Count/mode changes deliberately replace that duration draft.
+
+`RotationTimeline` is a reusable drawing/input widget: mouse movement is preview-only,
+release commits the final snapped point once, Escape/click jitter writes nothing, and
+keyboard arrows nudge the selected cut. The same immutable model backs clock tables and
+geometry. Native Shift controls preserve their standard frames/arrows. No solver, risk
+formula or existing rotation codec changes. The current JROT window still uses its
+established equal-block model; integrated copied scenario timing belongs to J04/J05 and
+weighted solves to J06.
+
+
+## Named scenario persistence — native 22
+
+RotationInputs/RotationScenario separate incomplete current planning data from an immutable
+accepted RotationRun. RotationDraftRow stores explicit unentered matrix cells; complete rows
+reuse WorkerRotation. Creation requires a local planned date; current older codec-2 schemes
+project to unresolved scenario views without invented dates/timing/runs. Freeze current Job
+values and resolved task labels at acceptance; source measurements retain their own units.
+
+Application lifecycle helpers own creation, ordering, read-only fallback, copied Shift timing,
+duplication and late-run acceptance. Run freshness compares exact current planning inputs
+and numerical Job data, ignoring descriptive task metadata. The run's frozen labels/evidence
+never use later live catalogs for their original display. Unknown model versions are readable
+but never current supported results. No new optimizer/scientific formula is introduced.
+
+RotationScenarioStore reuses rotation_schemes with a distinct strict tagged codec and guarded
+expected-state edits. Project validation covers ordinary hierarchy, combined worker/Job and
+Job-catalog paths. Legacy-compatible storage omits guided rows and rejects destructive writes
+through stale older selections. The native marker prevents an older format hiding guided data.
+Selection stays in optional display state and survives other display changes. SQL snapshots,
+shared history and main publication retain all fields atomically. Normal guided JROT composes these ports and shared widgets, with selected-subset/duration/
+constraint planning and frozen result comparisons.
+
+## Guided entry composition
+
+JrotDialog owns expected-state scenario/page projection through the shared editing owner.
+Pure rotation_entry transformations reshape cells by worker/position identity and expose
+destructive consequences before acceptance. JrotJobPanel composes existing shared task,
+calculator-result and source-copy widgets; it introduces no calculation formulas. The neutral
+WorkflowDrawer and WorkplaceScopePicker are neutral reusable controls.
+RotationTimingDialog accepts paired read/write callbacks
+when editing an independent scenario copy; its original Shift-template path is unchanged.
+Normal JROT opens this composition; Legacy is a separate optional menu. See jrot_guided_entry.md.
+
+## Guided duration-aware planning
+
+RotationPlanningProblem owns pure weighted-score, staffing and hard-rule validation.
+RotationPlanningOptimizer is the solver port; HighsRotationPlanner implements the approved
+HiGHS stages without changing the older optimizer builders. Preparation freezes current
+Job and explicit neighboring-run evidence. An owned Qt worker receives no workspace/write
+capability. The GUI keeps successful optimization as a preview; explicit Keep optimization result
+rechecks sources before one shared history edit, leaving the original baseline unchanged.
+Step 04 generation accepts only the requested proposal and stays on that page; step 07
+only optimizes. Every guided optimization subset now minimizes ceilings then ranges,
+preserving first-pass bounds. Historical single-pass single-tool evidence remains readable;
+new settings identify both objectives without changing score/model interpretation.
+Native24/codec2/model2 separate the new contract from retained codec1/model1 evidence.
+See jrot_planning.md for objective limits and nonrecursive neighbor qualification.
+
+## Guided comparison boundary
+
+See jrot_comparisons.md. Pure rotation_comparison projects frozen run distributions and
+same-context deltas; it has no live catalog or solver dependency. JrotResultTable is shared
+by proposal, retained and compact comparison matrices. JrotComparisonPanel projects exact
+retained evidence, keeping stale/unsupported status. Summary cards and statistics reuse
+one frozen run; optional schedule/worker details never invoke the solver. Rework uses existing
+scenario lifecycle/history ports; no schema/codec or alternate Job profile is introduced.
+Main Save remains the only project publisher. Legacy cannot overwrite guided payloads.
+
+
+## Shared file and clipboard inputs
+
+`application.assessment_import` defines profiles, finite string tables, the file-reader
+port and strict interpretation into the existing clipboard mapper. Infrastructure's
+`SpreadsheetValueReader` owns read-only CSV/TSV/XLSX access and explicit encoding/range
+limits. Desktop composition injects it through `AssessmentEditorPreferences`; the same panel
+is used by worker/Job/guided JROT actions and embedded Settings. No renderer, calculator,
+solver or database dependency enters the portable import core. See
+[import contracts](assessment_import.md).
+
+
+## Personal editor presentation and visual timing
+
+`AssessmentEditorPreferences` now owns explicit per-host import and column preference
+composition; it replaces the narrower import-service name. Personal column changes use
+owned Qt signals and never enter project history. The pure optional-column contract lives
+in application; the same grid supplies Settings previews and real editor presentation.
+
+`rotation_timing_actions` prepares complete split/join/remove/break proposals against the
+existing minute model. Timeline gestures remain preview-only until release and use the
+same acceptance ports and shared history as manual clocks/durations. Editor proposals now
+require uninterrupted blocks and split work at breaks. Confirmed equalization moves pauses
+to block boundaries while preserving names/durations; the stored compatible model remains
+unchanged. No
+schema, solver or scientific formula changes are required.
+
+TaskNameDialog manages existing project definitions through the workspace catalog port. It has no SQL, independent history or Save. Shared measured AssessmentToolTabs reserve semibold caption/icon geometry and allow horizontal compression/scrolling without clipping selected tool names or displacing result panels.
+
+## Uniform segment editor update — 2026-11-01
+
+The current editor uses application.rotation_segments for both work and pauses. Removal extends immediate neighbors (sole neighbor at an edge, half to each inside). It may extend breaks; the host confirms reduced work time. Move applies to both types with local translation or whole-segment reordering; all interior boundaries resize neighbors. Coordinated equal/count edits preserve type totals and honor both equality choices; Equal breaks shares the existing pause budget. Positive-budget impossibilities reject without implicit deletion or extra work blocks. Break equality is inferred from saved durations, not a new stored field. Both tables have matching controls and keep full shift coverage. This supersedes earlier editor statements requiring removal of a break before removing adjacent work; explicit Join still preserves intervening intervals. Existing expected-state/scenario consent/history and native24 remain unchanged.
+
+## Rotation validation cost
+
+Rotation-reference validation reuses one validated hierarchy snapshot and one current
+Job catalog per pass. Reading a hierarchy itself validates saved feature references,
+including rotations; rereading it for every rotation would multiply whole-catalog work.
+The native adapter validates every record against the same transaction-local snapshots.
+It retains no validation cache across edits, source changes or Undo/Redo. The catalog
+scaling regression measures SQL work for five and 25 plans and still rejects a corrupt
+reference in the last plan. Numeric/solver behavior and native schema are unchanged.
+
+## Visual preferences and display reports
+
+See [Settings previews and diagnostics](settings_previews_and_diagnostics.md) for the
+reused gauge/bar controls, packaged avatar recording, launch flags, per-OS report
+locations and read-only DPI observation. Reporting defaults on for Windows/macOS
+and off for Linux; it never changes the platform scaling policy or project format.
+
+
+## Pasted-name acceptance
+
+The shared assessment action controller passes only the validated input rectangle and
+mapped/included name-row identities to `ProjectWorkspace.accept_task_paste`. A detached
+application plan reuses/creates existing task definitions; a compound project action
+combines those catalog entries with worker/Job source acceptance and derived results.
+No schema or scientific calculation changes are needed. Failure restores both native
+checkpoint and existing live replay observers; one confirmed Undo reverses the batch.
+Ordinary local typed names keep their earlier behavior. Main Save publishes accepted
+catalog and source edits together. Weak project notifications update reusable choices
+in other open editors while preserving unfinished name text.

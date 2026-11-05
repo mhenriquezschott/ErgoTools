@@ -9,6 +9,7 @@ host owners.
 from collections.abc import Callable, Mapping
 from html import escape
 
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QMenu, QMenuBar, QPushButton, QWidget
 
 from ergotools.application.settings import Language
@@ -23,6 +24,7 @@ class AssessmentMenu(QMenuBar):
         refresh_controls: Callable[[], None],
         *,
         language: Language,
+        icons: Mapping[str, QIcon] | None = None,
         open_preferences: Callable[[], None],
         open_recent: Callable[[str], None],
         refresh_recent: Callable[[], None],
@@ -33,9 +35,11 @@ class AssessmentMenu(QMenuBar):
         export_csv: Callable[[], None],
         open_guide: Callable[[], None],
         open_authors: Callable[[], None],
+        open_jrot_authors: Callable[[], None],
         camera_animation: Callable[[bool], None],
         open_properties: Callable[[], None],
         open_project_folder: Callable[[], None],
+        open_task_names: Callable[[], None] | None = None,
         parent: QWidget | None = None,
     ) -> None:
         """Reuse button callbacks, processed icons and shared localized captions.
@@ -45,6 +49,7 @@ class AssessmentMenu(QMenuBar):
                 menu mirrors.
             refresh_controls: Callback refreshing command availability when a menu
                 opens.
+            icons: Packaged semantic action icons supplied by the composition root.
             language: UI language only; does not reinterpret saved names, numeric inputs
                 or units.
             open_preferences: Host callback for owned application preferences.
@@ -61,12 +66,14 @@ class AssessmentMenu(QMenuBar):
                 edits.
             export_csv: Callback exporting saved assessment summaries through the host.
             open_guide: Callback opening the packaged localized user guide.
-            open_authors: Callback opening the original Authors modal.
+            open_authors: Callback opening the ErgoTools attribution modal.
+            open_jrot_authors: Callback opening the historical JROT research credits.
             camera_animation: Callback receiving the checked active-region camera
                 preference.
             open_properties: Callback presenting saved read-only project metadata.
             open_project_folder: Callback opening the saved project's directory in
                 the operating system file manager, without accepting editor drafts.
+            open_task_names: Optional project task-name catalog manager.
             parent: Qt owner of the new control; None leaves top-level ownership to the
                 caller.
 
@@ -154,11 +161,16 @@ class AssessmentMenu(QMenuBar):
         self.jobs.triggered.connect(buttons["job_form_title"].click)
         setup.addAction(self.organization)
         setup.addAction(self.jobs)
+        self.task_names = QAction(parent=self)
+        if open_task_names is not None:
+            self.task_names.triggered.connect(open_task_names)
+        setup.addAction(self.task_names)
         setup.aboutToShow.connect(refresh_controls)
         tools = self.addMenu("")
         assert tools is not None
         self.tools = tools
-        preferences = tools.addAction("")
+        self.edit.addSeparator()
+        preferences = self.edit.addAction("")
         assert preferences is not None
         self.preferences = preferences
         preferences.triggered.connect(open_preferences)
@@ -167,11 +179,23 @@ class AssessmentMenu(QMenuBar):
         self.help_menu = help_menu
         guide = help_menu.addAction("")
         authors = help_menu.addAction("")
-        assert guide is not None and authors is not None
+        jrot_authors = help_menu.addAction("")
+        assert guide is not None and authors is not None and jrot_authors is not None
         self.user_guide = guide
         self.about = authors
+        self.about_jrot = jrot_authors
+        for action, name in (
+            (self.save_as, "save_as"),
+            (self.backup, "project_backup"),
+            (self.properties, "project_properties"),
+            (self.about, "about"),
+            (self.about_jrot, "jrot"),
+            (self.task_names, "task_names"),
+        ):
+            action.setIcon((icons or {}).get(name, QIcon()))
         guide.triggered.connect(open_guide)
         authors.triggered.connect(open_authors)
+        jrot_authors.triggered.connect(open_jrot_authors)
         self.translate(language)
 
     def translate(self, language: Language) -> None:
@@ -222,6 +246,12 @@ class AssessmentMenu(QMenuBar):
         self.help_menu.setTitle("Ayuda" if spanish else "Help")
         self.user_guide.setText("Guía de usuario" if spanish else "User Guide")
         self.about.setText("Acerca de" if spanish else "About")
+        self.about_jrot.setText("Acerca de JROT" if spanish else "About JROT")
+        self.about_jrot.setToolTip(
+            "Mostrar los colaboradores de la investigación sobre rotación laboral."
+            if spanish
+            else "Show Job Rotation Optimization research contributors."
+        )
         self.user_guide.setToolTip(
             "Abrir el manual de Ergo Tools."
             if spanish
@@ -242,6 +272,12 @@ class AssessmentMenu(QMenuBar):
             "Administrar trabajos, riesgos, calculadoras y disponibilidad de puestos."
             if spanish
             else "Manage Jobs, risk values, calculators, and workplace availability."
+        )
+        self.task_names.setText("Nombres de tareas…" if spanish else "Task names…")
+        self.task_names.setToolTip(
+            "Administrar nombres reutilizables de tareas."
+            if spanish
+            else "Manage reusable task names in this project."
         )
         self.tools.setTitle("Herramientas" if spanish else "Tools")
         self.preferences.setText("Configuración" if spanish else "Settings")
@@ -332,6 +368,7 @@ class AssessmentMenu(QMenuBar):
             self._buttons["organization_management"].isEnabled()
         )
         self.jobs.setEnabled(self._buttons["job_form_title"].isEnabled())
+        self.task_names.setEnabled(self._buttons["job_form_title"].isEnabled())
         for key, action in self.actions_by_key.items():
             button = self._buttons[key]
             action.setText(button.text())

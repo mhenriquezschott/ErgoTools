@@ -85,10 +85,6 @@ QTreeWidget { background: white; alternate-background-color: #F5F8FA;
 border: 1px solid #CAD5DD; selection-background-color: #DDF3F5;
 selection-color: #0B326C; }
 QTreeWidget::item { min-height: 31px; }
-QPushButton#copyAlphabetButton { padding: 0; min-height: 26px; border: 0;
-background: transparent; font-size: 11px; }
-QPushButton#copyAlphabetButton:checked { background: #0B326C; color: white; }
-QPushButton#copyAlphabetButton:hover { background: #DDF3F5; }
 
 QLabel#inputError { color: #B3261E; }
 QComboBox:disabled, QDateEdit:disabled, QSpinBox:disabled {

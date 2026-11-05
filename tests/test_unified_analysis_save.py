@@ -19,8 +19,8 @@ from ergotools.domain.plot_filters import PlotRiskView
 from ergotools.domain.plot_positions import PlotPoint
 from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
 from ergotools.infrastructure.plant_image_import import import_plant_image
+from ergotools.presentation.desktop.legacy_jrot_dialog import LegacyJrotDialog
 from ergotools.presentation.desktop.plot_window import PlotWindow
-from ergotools.presentation.desktop.rotation_dialog import RotationDialog
 from tests.test_plot_markers import positions_for
 from tests.test_plot_results import project as project
 from tests.test_rotation_dialog import fill
@@ -106,10 +106,13 @@ def test_rotation_partial_reopen_complete_commit_and_shared_replay(
         None; complete frozen schemes publish only through the shared project commit.
     """
     path = tmp_path / "rotation.ergprj"
-    with seed(path, version=19) as repository, patch.object(RotationDialog, "_message"):
+    with (
+        seed(path, version=19) as repository,
+        patch.object(LegacyJrotDialog, "_message"),
+    ):
         before = path.read_bytes()
         editing = ProjectEditingSession(repository.metadata.project_id, repository)
-        dialog = RotationDialog(
+        dialog = LegacyJrotDialog(
             repository, load_icons(), language=language, editing=editing
         )
         try:
@@ -122,7 +125,7 @@ def test_rotation_partial_reopen_complete_commit_and_shared_replay(
             with pytest.raises(ValueError, match=r"project\.rotation_draft_incomplete"):
                 editing.commit()
             assert path.read_bytes() == before
-            reopened = RotationDialog(
+            reopened = LegacyJrotDialog(
                 repository, load_icons(), language=language, editing=editing
             )
             try:
@@ -162,7 +165,7 @@ def test_rotation_viewing_saved_and_cancelling_partial_remain_clean(
     with seed(path, version=19) as repository:
         repository.save_rotation_scheme(scheme())
         editing = ProjectEditingSession(repository.metadata.project_id, repository)
-        dialog = RotationDialog(repository, load_icons(), editing=editing)
+        dialog = LegacyJrotDialog(repository, load_icons(), editing=editing)
         try:
             dialog.close()
             assert not editing.is_dirty

@@ -75,9 +75,9 @@ def test_inline_totals_survive_save_projection_and_pending_input(
             assert panel.rect().contains(title.geometry())
             assert panel.rect().contains(value.geometry())
     if index in (0, 2):
-        assert "ft.lb" in panel.headers[3 if index == 0 else 4].text()
+        assert "ft.lb" in panel.headers[4 if index == 0 else 5].text()
     if index in (0, 2):
-        header = panel.headers[1 if index == 0 else 2].text()
+        header = panel.headers[2 if index == 0 else 3].text()
         assert f"({'in' if units is MeasurementSystem.IMPERIAL else 'cm'})" in header
     assert workspace.active.state == source
     fresh_style = summary.total_value.styleSheet()

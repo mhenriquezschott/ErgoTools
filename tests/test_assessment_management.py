@@ -74,11 +74,13 @@ def test_main_task_buttons_change_only_active_tool_and_undo(
         field.textEdited.emit("10")
         field.editingFinished.emit()
         assert ws.active.state.tasks[-1].repetitions == 10
-        with patch.object(w, "confirm_task_reset", return_value=False) as confirm:
+        with patch.object(
+            QMessageBox, "question", return_value=QMessageBox.Cancel
+        ) as confirm:
             panel.remove_task_button.click()
         confirm.assert_called_once()
         assert len(ws.active.state.tasks) == 2
-        with patch.object(w, "confirm_task_reset", return_value=True):
+        with patch.object(QMessageBox, "question", return_value=QMessageBox.Yes):
             panel.remove_task_button.click()
         assert len(ws.active.state.tasks) == 1
         w.history_actions.replay(redo=False)

@@ -19,7 +19,11 @@ from PyQt5.QtWidgets import (
 )
 
 from ergotools.application.settings import Language
-from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.application.task_catalog import (
+    ReplaceAssessmentSource,
+    label_assessment_task,
+)
+from ergotools.domain.assessments.document import AssessmentDraft, AssessmentKind
 from ergotools.domain.assessments.duet_summary import DuetSummary
 from ergotools.domain.assessments.validation import DraftError, InputIssue
 from ergotools.domain.display_precision import DisplayPrecision
@@ -30,6 +34,7 @@ from ergotools.presentation.desktop.assessment_editor_section import (
     AssessmentActionRow,
     AssessmentEditorSection,
 )
+from ergotools.presentation.desktop.assessment_task_actions import AssessmentTaskActions
 from ergotools.presentation.desktop.assessment_task_grid import (
     AssessmentCellEdit,
     AssessmentTaskGrid,
@@ -49,6 +54,7 @@ from ergotools.presentation.desktop.tool_result_summary import ToolResultSummary
 # separately.
 _HEADERS = (
     ("Task #", "Tarea #"),
+    ("Task name", "Nombre de tarea"),
     ("OMNI-Res Scale", "Escala OMNI-Res"),
     ("Repetitions (per work day)", "Repeticiones (por jornada laboral)"),
     ("Damage (cumulative)", "Daño (acumulado)"),
@@ -109,6 +115,7 @@ class DuetTaskPanel(QWidget):
             self.presenter.convention,
             kind=AssessmentKind.DUET,
             worker_layout=True,
+            icons=icons,
         )
         self.header_widget = self.task_grid.header_widget
         self.header_grid = self.task_grid.header_grid
@@ -119,6 +126,17 @@ class DuetTaskPanel(QWidget):
         self.grid = self.task_grid.grid
         self.task_grid.input_edited.connect(self._mark_pending)
         self.task_grid.cell_finished.connect(self._complete_cell)
+        self.task_actions = AssessmentTaskActions(
+            self.task_grid,
+            source=self._task_source,
+            accept=self._accept_shared_source,
+            accept_paste=self.presenter.workspace.accept_task_paste,
+            definitions=self.presenter.workspace.load_task_definitions,
+            replace_definitions=self.presenter.workspace.replace_task_definitions,
+            before_action=self._before_task_action,
+            system=lambda: self.presenter.system,
+            convention=lambda: self.presenter.convention,
+        )
         self.summary = ToolResultSummary()
         self.action_row = AssessmentActionRow(icons, tasks=True)
         self.clear_button = self.action_row.clear_button
@@ -153,8 +171,8 @@ class DuetTaskPanel(QWidget):
             for index, texts in enumerate(OMNI_RATINGS):
                 combo.setItemText(index, f"{index}: {texts[language]}")
             combo.blockSignals(False)
-            combo.setToolTip(_HEADERS[1][language])
-            editor.setToolTip(_HEADERS[2][language])
+            combo.setToolTip(_HEADERS[2][language])
+            editor.setToolTip(_HEADERS[3][language])
         self.clear_button.setText(("Clear assessment", "Limpiar evaluación")[language])
         self.calculate_button.setText(("Calculate", "Calcular")[language])
         self.clear_button.setToolTip(
@@ -181,6 +199,7 @@ class DuetTaskPanel(QWidget):
         Returns:
             None.
         """
+        self.task_actions.bind_catalog(self.presenter.workspace.editing)
         # Discard only projection-local completion signals before retiring fields;
         # callers resolve drafts before intentional navigation or bulk acceptance.
         self.pending = False
@@ -198,6 +217,9 @@ class DuetTaskPanel(QWidget):
         self.task_grid.precision = precision
         self.task_grid.system = self.presenter.system
         projected = self.presenter.source() if context else None
+        self.task_grid.task_definitions = (
+            self.presenter.workspace.load_task_definitions()
+        )
         self.task_grid.load_source(projected)
         self.headers = self.task_grid.headers
         self.task_ids = tuple(t.task_id for t in projected.tasks) if projected else ()
@@ -211,6 +233,80 @@ class DuetTaskPanel(QWidget):
         self.setEnabled(context is not None)
         self.translate()
         self.show_result()
+
+    def _task_source(self) -> AssessmentDraft | None:
+        """Read only the source owned by this exact displayed editor context.
+
+        Args:
+            None.
+
+        Returns:
+            Current canonical source, or None after navigation/rebinding retires the
+            projection. Focus departure during a tool switch cannot edit another tool.
+        """
+        active = self.presenter.workspace.active
+        if self.context is None or not self.context.preparation.is_current(active):
+            return None
+        return active.state if active is not None else None
+
+    def _accept_shared_source(
+        self,
+        expected: AssessmentDraft,
+        replacement: AssessmentDraft,
+        label: str,
+        rebuild: bool,
+    ) -> bool:
+        """Accept an exact metadata/bulk edit through the existing source session.
+
+        Args:
+            expected: Canonical source captured before preparation; stale edits fail.
+            replacement: Validated same-tool source preserving measurement units.
+            label: Stable history label for name editing or one clipboard batch.
+            rebuild: True when paste may change row count; False retains pending cells.
+
+        Returns:
+            True only when one current source was changed and observers notified.
+        """
+        active = self.presenter.workspace.active
+        if active is None or active.state != expected:
+            return False
+        changed = active.execute(
+            ReplaceAssessmentSource(active.document, expected, replacement, label)
+        )
+        if not changed:
+            return False
+        self.context = self.presenter.bind()
+        if rebuild:
+            self.load_source(self.presenter.bind())
+        elif self.task_grid.source is not None:
+            projected = self.task_grid.source
+            for task in replacement.tasks:
+                projected = label_assessment_task(
+                    projected, task.task_id, task.task_name, task.task_definition_id
+                )
+            self.task_grid.source = projected
+        self.pending = self.pending_change() is not False
+        self.presenter.evaluator.clear()
+        self.show_result()
+        self._changed()
+        if not self.pending:
+            self.input_committed.emit()
+        return True
+
+    def _before_task_action(self) -> bool:
+        """Resolve valid pending cells before opening a clipboard/catalog operation.
+
+        Args:
+            None.
+
+        Returns:
+            False for invalid pending input, preserving its text and source history.
+        """
+        try:
+            self.commit_inputs()
+        except DraftError:
+            return False
+        return self.pending_change() is not None
 
     def _complete_cell(self, edit: AssessmentCellEdit) -> None:
         """Bind shared-grid completion to the existing presenter cell command.
@@ -274,6 +370,8 @@ class DuetTaskPanel(QWidget):
         """
         if not self.pending or self.context is None:
             return False
+        if self.task_actions.pending_names():
+            return True
         try:
             return (
                 self.presenter.parse_grid(self.context, self.input_rows())
@@ -325,12 +423,13 @@ class DuetTaskPanel(QWidget):
             True when pending input changed the source; False when there is nothing to
             commit or values are unchanged.
         """
+        names_changed = self.task_actions.finish_names()
         if not self.pending or self.context is None:
-            return False
+            return names_changed
         rows = self.input_rows()
         changed = self.presenter.commit_grid(self.context, rows)
         self.pending = False
-        return changed
+        return changed or names_changed
 
     def calculate(self) -> None:
         """Commit and evaluate once; report rejected input without discarding it.

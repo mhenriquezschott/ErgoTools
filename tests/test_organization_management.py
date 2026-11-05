@@ -216,7 +216,7 @@ def test_empty_project_to_classified_assessment_via_forms(tmp_path: Path) -> Non
         document = workspace.active.document.document_id
         assert document != "initial"
         with AssessmentProjectFile.open(path) as project:
-            assert project.format_version == 19
+            assert project.format_version == 24
             assert project.load_hierarchy().plants == ("Plant A",)
             assert project.load_jobs().assignments[0].worker.worker_id == "worker-1"
             assert project.load_history().entries[0].document_id == document

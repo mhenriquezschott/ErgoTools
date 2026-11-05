@@ -47,3 +47,12 @@ share unchanged records and release with the modal document; a 1,000-edit,
 100-worker comprehensive-copy measurement retained about 1.11 MB. This is not a
 universal memory bound. [PLOT history](plot_history.md) documents the implemented
 retention/ownership policy and focused/full/native acceptance evidence.
+
+
+Pasted task inputs and automatically registered reusable task names form one compound
+`assessment.paste` action, including automatic calculations. The compound scope defers
+nested records and amendments until its final checkpoint. Failure restores data/editors
+and notifies existing replay subscribers without moving the cursor or truncating Redo.
+Undo Paste requests confirmation even when no new catalog record was needed. It restores
+prior inputs/results, removes only definitions created by this paste, and retains existing
+names. Redo restores the same IDs. Raw import previews and Cancel never enter history.

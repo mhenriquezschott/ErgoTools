@@ -101,6 +101,18 @@ contain her assessment locations for the active tool.
 
 [![Main worker and Assessment area with a saved workstation assessment selected](docs/images/assessment_workplace.png)](docs/images/main_assigned_assessment.png)
 
+### Job assessments and task data
+
+Jobs describe the activities assessed and rotated. Their shared assessment editor
+provides familiar LiFFT, DUET and ST task inputs, calculated results and risk summaries.
+Existing worker or Job assessments can supply reusable task data. Spreadsheet import
+supports selecting relevant rows and mapping input columns from Excel, CSV and TSV.
+
+<table>
+<tr><td width="62%"><img src="docs/images/job_assessment_editor.png" alt="Job assessment editor with task inputs and risk summary"></td><td width="38%"><img src="docs/images/import_row_selection.png" alt="Task import preview with column mapping and row selection"></td></tr>
+<tr><td>Job activities, workplace assignments and ergonomic assessment data.</td><td>Preview and select task data before importing.</td></tr>
+</table>
+
 ## PLOT
 
 PLOT maps ergonomic assessment results onto a plant layout, connecting risk values
@@ -259,6 +271,9 @@ outcome probability are related outputs, not interchangeable quantities.
 | DUET | Gallagher et al. (2018). [doi:10.1177/0018720818789319](https://doi.org/10.1177/0018720818789319) |
 | Shoulder Tool | Bani Hani et al. (2021). [doi:10.1080/00140139.2020.1811399](https://doi.org/10.1080/00140139.2020.1811399) |
 
+Spreadsheet cells and CSV/TSV/XLSX files can supply task inputs across worker, Job and
+rotation assessments. See the [import guide](docs/assessment_import.md).
+
 ## Installation
 
 A graphical desktop with OpenGL, **Python 3.13.14** and Git are required.
@@ -285,6 +300,11 @@ bash tools/run.sh
 
 Launch scripts: `tools/run.sh` for Linux, `tools\run_windows.cmd` for Windows,
 and `tools/run_macos.command` for macOS.
+
+For a visual introduction to cloning, updating and desktop shortcuts, see the
+[Windows/macOS PDF guide](docs/guides/ergotools_windows_macos_user_guide.pdf).
+The [capture and deployment checklist](docs/guides/desktop_capture_checklist.md)
+accompanies native platform trials.
 
 ## Publications and conferences
 

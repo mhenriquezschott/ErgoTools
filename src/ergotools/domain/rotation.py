@@ -1,8 +1,8 @@
 """Immutable JROT schedules and probability inputs, independent of solvers/UI.
 
 Domain layer. These rules and immutable values are independent of Qt, renderers and
-storage. Callers supply project snapshots and explicit units; persistence and localized
-presentation belong to the application and adapters.
+storage. Callers supply project snapshots and explicit units; persistence and
+localized presentation belong to the application and adapters.
 """
 
 from collections import Counter
@@ -14,11 +14,11 @@ from ergotools.domain.assessments.document import AssessmentKind
 
 
 class RotationBackend(StrEnum):
-    """Owner-approved backend identity; there is no automatic fallback."""
+    """Recorded solver provenance; historical labels never select a runtime engine."""
 
-    # Owner-approved single-tool solver; no automatic fallback.
+    # Read-only provenance for pre-HiGHS saved runs; never an execution choice.
     CBC = "cbc"
-    # Owner-approved multi-tool solver; GLPK is not supported.
+    # Sole runtime solver and provenance for all new optimization results.
     HIGHS = "highs"
 
 
@@ -177,6 +177,18 @@ class RotationProblem:
             raise ValueError("A solve stage requires a finite positive time limit.")
 
     @property
+    def worker_ids(self) -> tuple[str, ...]:
+        """Read original participant order for shared backend extraction.
+
+        Args:
+            None.
+
+        Returns:
+            Exact existing worker identities; no source schedule changes.
+        """
+        return tuple(row.worker_id for row in self.current)
+
+    @property
     def num_blocks(self) -> int:
         """Return the common number of time blocks.
 
@@ -266,7 +278,7 @@ class RotationSolution:
     Attributes:
         schedule: Validated replacement rows preserving workers, block shape, target
             totals and per-block exclusivity.
-        backend: Explicit solver identity: CBC for single-tool, HiGHS for multi-tool; no
+        backend: Recorded solver identity; all new solves use HiGHS, with no
             automatic fallback.
         stages: Ordered backend termination statuses; optimal is subject to the
             configured relative-gap tolerance.

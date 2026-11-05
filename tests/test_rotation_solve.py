@@ -31,8 +31,8 @@ from ergotools.domain.rotation import (
 )
 from ergotools.domain.rotation_scheme import RotationMode
 from ergotools.infrastructure.assessment_project_file import AssessmentProjectFile
-from ergotools.infrastructure.pulp_rotation_optimizer import PulpRotationOptimizer
-from ergotools.presentation.desktop.rotation_dialog import RotationDialog
+from ergotools.infrastructure.highs_rotation_optimizer import HighsRotationOptimizer
+from ergotools.presentation.desktop.legacy_jrot_dialog import LegacyJrotDialog
 from tests.test_rotation_persistence import seed
 
 # One retained QApplication for native Qt tests; keeps widgets alive and uses the
@@ -60,7 +60,7 @@ def two_jobs(project: AssessmentProjectFile) -> None:
     )
 
 
-def fill_rotation(dialog: RotationDialog) -> None:
+def fill_rotation(dialog: LegacyJrotDialog) -> None:
     """Fill a two-worker/two-block schedule whose best worst average is 40%.
 
     Args:
@@ -144,9 +144,9 @@ class ControlledOptimizer:
             raise RuntimeError("Solver unavailable")
         return RotationSolution(
             problem.current,
-            RotationBackend.HIGHS
+            RotationBackend.CBC
             if self.outcome == "wrong-backend"
-            else RotationBackend.CBC,
+            else RotationBackend.HIGHS,
             (RotationSolveStatus.FEASIBLE,),
         )
 
@@ -163,16 +163,16 @@ class ControlledOptimizer:
 
         Raises:
             AssertionError: The selected-tool action incorrectly calls the multi-tool
-                optimizer instead of the CBC port.
+                optimizer instead of the single-tool port.
         """
-        raise AssertionError("Selected-tool action must use CBC")
+        raise AssertionError("Selected-tool action must use the single-tool port")
 
 
 @pytest.mark.parametrize("language", list(Language))
-def test_actual_cbc_preview_transfer_explicit_save(
+def test_actual_highs_preview_transfer_explicit_save(
     tmp_path: Path, language: Language
 ) -> None:
-    """Actual CBC balances risks; neither solve nor transfer writes the project.
+    """Actual HiGHS balances risks; neither solve nor transfer writes the project.
 
     Args:
         tmp_path: Pytest-owned temporary directory; all created projects, images and
@@ -184,10 +184,10 @@ def test_actual_cbc_preview_transfer_explicit_save(
         None.
     """
     path = tmp_path / "cbc.ergprj"
-    with seed(path) as project, patch.object(RotationDialog, "_message"):
+    with seed(path) as project, patch.object(LegacyJrotDialog, "_message"):
         two_jobs(project)
-        dialog = RotationDialog(
-            project, load_icons(), optimizer=PulpRotationOptimizer(), language=language
+        dialog = LegacyJrotDialog(
+            project, load_icons(), optimizer=HighsRotationOptimizer(), language=language
         )
         dialog.show()
         fill_rotation(dialog)
@@ -243,10 +243,10 @@ def test_owned_cancel_and_deferred_closure(tmp_path: Path, close_action: str) ->
     solver = ControlledOptimizer()
     with (
         seed(tmp_path / "cancel.ergprj") as project,
-        patch.object(RotationDialog, "_message") as message,
+        patch.object(LegacyJrotDialog, "_message") as message,
     ):
         two_jobs(project)
-        dialog = RotationDialog(project, load_icons(), optimizer=solver)
+        dialog = LegacyJrotDialog(project, load_icons(), optimizer=solver)
         dialog.show()
         fill_rotation(dialog)
         controller = dialog.optimization
@@ -307,10 +307,10 @@ def test_solver_failure_retains_input_and_unlocks(tmp_path: Path, outcome: str) 
     solver.release.set()
     with (
         seed(tmp_path / "fail.ergprj") as project,
-        patch.object(RotationDialog, "_message") as message,
+        patch.object(LegacyJrotDialog, "_message") as message,
     ):
         two_jobs(project)
-        dialog = RotationDialog(project, load_icons(), optimizer=solver)
+        dialog = LegacyJrotDialog(project, load_icons(), optimizer=solver)
         dialog.show()
         fill_rotation(dialog)
         controller = dialog.optimization
@@ -341,10 +341,10 @@ def test_preview_and_applied_provenance_are_distinct(tmp_path: Path) -> None:
     solver.release.set()
     with (
         seed(tmp_path / "provenance.ergprj") as project,
-        patch.object(RotationDialog, "_message"),
+        patch.object(LegacyJrotDialog, "_message"),
     ):
         two_jobs(project)
-        dialog = RotationDialog(project, load_icons(), optimizer=solver)
+        dialog = LegacyJrotDialog(project, load_icons(), optimizer=solver)
         fill_rotation(dialog)
         controller = dialog.optimization
         controller.start()
@@ -386,10 +386,10 @@ def test_invalid_limit_and_missing_measurement_do_not_start(tmp_path: Path) -> N
     solver = ControlledOptimizer()
     with (
         seed(tmp_path / "invalid.ergprj") as project,
-        patch.object(RotationDialog, "_message") as message,
+        patch.object(LegacyJrotDialog, "_message") as message,
     ):
         two_jobs(project)
-        dialog = RotationDialog(project, load_icons(), optimizer=solver)
+        dialog = LegacyJrotDialog(project, load_icons(), optimizer=solver)
         fill_rotation(dialog)
         controller = dialog.optimization
         dialog.time_limit_input.setText("0")
@@ -414,7 +414,7 @@ def test_preparation_exact_evidence_zero_and_unused_targets(tmp_path: Path) -> N
         None.
     """
     with seed(tmp_path / "prepare.ergprj") as project:
-        dialog = RotationDialog(project, load_icons())
+        dialog = LegacyJrotDialog(project, load_icons())
         grid = dialog.grid
         grid.set_choice(0, 0, "w")
         key = grid.pool.targets[0].target.key

@@ -24,3 +24,13 @@ same hierarchy without creating assignments merely by selecting a location.
 
 See [database tables](database_tables.md), [assessment ownership](assessment_context.md)
 and [the user guide](user_guide.md).
+
+
+## Optional rotation timing
+
+Each Shift can retain a reusable relative-minute work/break template through Rotation
+timing…. It uses the same shared history and Main Save. Complete clocks are required;
+existing templates protect duration/Shift deletion until cleared. The editor can open an
+accepted template even with pending different clock values, letting the user clear it
+without losing those pending Organization fields. See the [user guide](user_guide.md#shift-rotation-timing-templates).
+Current JROT still uses equal blocks and does not apply templates yet.

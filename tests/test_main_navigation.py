@@ -244,7 +244,7 @@ def test_original_layout_translation_and_incomplete_actions(
     window.language = Language.SPANISH
     window.translate()
     window.refresh_navigation()
-    assert window.size().width() == 1550 and window.size().height() == 1015
+    assert window.size().width() == 1725 and window.size().height() == 1015
     assert nav.toolbar_title.text() == "Proyecto"
     assert (
         nav.toolbar_title.contentsRect().height()

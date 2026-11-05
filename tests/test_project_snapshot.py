@@ -106,7 +106,7 @@ def test_complete_creation_reopen_and_backup(
     (assessment,) = snapshot.assessments
     key = DocumentKey("p", assessment.ownership.document_id)
     with AssessmentProjectFile.create_from_snapshot(destination, snapshot) as project:
-        assert project.format_version == 19
+        assert project.format_version == 24
         assert project.metadata == snapshot.metadata
         assert project.load_hierarchy() == snapshot.hierarchy
         assert project.load_jobs() == snapshot.jobs
@@ -515,7 +515,7 @@ def test_source_archive_is_self_contained_and_survives_edits(
     identity, recorded = archived.saved_results[0]
     key = DocumentKey("p", identity)
     with AssessmentProjectFile.create_from_snapshot(path, archived) as project:
-        assert project.format_version == 19
+        assert project.format_version == 24
         assert project.load_saved_result(key) == recorded
         project.save_rotation_scheme(
             replace(archived.rotations[0], description="Edited")
@@ -581,7 +581,7 @@ def test_corrupt_source_archive_rejects_open(
     destination = tmp_path / "must-not-exist.ergprj"
     before = path.read_bytes()
     with upgrade_previous_project(path, destination) as project:
-        assert project.format_version == 19
+        assert project.format_version == 24
         identity, expected = archived.saved_results[0]
         assert project.load_saved_result(DocumentKey("p", identity)) == expected
     assert path.read_bytes() == before
