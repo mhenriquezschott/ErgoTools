@@ -51,6 +51,10 @@ def test_prominent_tool_choices_keep_subset_history_and_shared_icons(
         assert root.workspace.editing.replay(redo=False)
         root.reload()
         assert root.current() == before
+        summary_bar = root.summary_tabs.tabBar()
+        assert summary_bar is not None
+        assert summary_bar.tabRect(0).height() >= 34
+        assert summary_bar.tabRect(0).width() >= 170
         for tabs in (root.risk_tabs, root.solve.tabs, root.comparison.tabs):
             assert tabs.count() == 3
             assert all(not tabs.tabIcon(i).isNull() for i in range(3))

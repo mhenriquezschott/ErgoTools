@@ -104,10 +104,10 @@ class AssessmentToolTabBar(QTabBar):
 
 
 class AssessmentResultTabs(QTabWidget):
-    """Show compact tool-result tabs with full text instead of native mini segments."""
+    """Show readable result/summary tabs instead of native miniature segments."""
 
     def __init__(self) -> None:
-        """Compose the common readable LiFFT/DUET/ST results selector.
+        """Compose the common readable tool-result or Worker/Job summary selector.
 
         Args:
             None.
@@ -120,6 +120,7 @@ class AssessmentResultTabs(QTabWidget):
         self.setTabBar(AssessmentToolTabBar(12))
         self.setIconSize(QSize(24, 24))
         self.setStyleSheet(
+            "#assessmentResultTabs::tab-bar {alignment:left;}"
             "#assessmentResultTabs::pane {background:white;border:1px solid #D5DEE5;}"
             "#assessmentResultTabs QTabBar::tab {background:#EDF2F5;color:#405866;"
             "font-size:12px;font-weight:600;min-height:28px;padding:3px 10px;"

@@ -34,3 +34,10 @@ existing templates protect duration/Shift deletion until cleared. The editor can
 accepted template even with pending different clock values, letting the user clear it
 without losing those pending Organization fields. See the [user guide](user_guide.md#shift-rotation-timing-templates).
 Current JROT still uses equal blocks and does not apply templates yet.
+
+## Desktop text contrast
+
+Hierarchy rows and editable text fields declare dark foregrounds alongside their
+light backgrounds. This keeps unselected plants/sections/lines/stations and shift
+names readable under native dark desktop palettes; selected rows retain the existing
+teal/navy treatment. It does not change hierarchy selection, metadata or persistence.

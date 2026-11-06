@@ -163,6 +163,10 @@ PLOT_STYLE = """
                 font-size: 12px;
                 font-weight: 600;
             }
+            QTabWidget#plotDetailsTabs::pane {
+                background: white; border: 1px solid #D5DEE5;
+            }
+            QTabWidget#plotDetailsTabs::tab-bar { alignment: left; }
             QTabWidget#plotDetailsTabs QTabBar::tab {
                 min-height: 30px;
                 padding: 2px 9px;
@@ -323,6 +327,10 @@ PLOT_STYLE = """
                 border-color: #08A9B5;
             }
             QCheckBox, QRadioButton { color: #304652; spacing: 6px; }
+            QCheckBox::indicator:unchecked { background: white;
+                border: 1px solid #BCC9D3; border-radius: 2px; }
+            QCheckBox::indicator:unchecked:disabled { background: #F4F7F9;
+                border-color: #D5DEE5; }
             QCheckBox:disabled,
             QRadioButton:disabled,
             QLabel:disabled {

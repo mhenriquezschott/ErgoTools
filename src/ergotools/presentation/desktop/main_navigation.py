@@ -204,13 +204,15 @@ class MainNavigation(QWidget):
         self.worker_controls = worker_area
         worker_area.setMinimumWidth(0)
         worker_area.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
-        worker_area.setFixedHeight(65)
+        worker_area.setFixedHeight(68)
         worker_area.setObjectName("workerControls")
         worker_area.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         worker_grid = QGridLayout(worker_area)
         worker_grid.setContentsMargins(0, 0, 0, 0)
         worker_grid.setHorizontalSpacing(6)
-        worker_grid.setVerticalSpacing(1)
+        worker_grid.setVerticalSpacing(4)
+        worker_grid.setRowMinimumHeight(0, 36)
+        worker_grid.setRowMinimumHeight(1, 28)
         worker_icon = QLabel()
         worker_icon.setPixmap(icons["worker"].pixmap(26, 26))
         worker_icon.setFixedSize(28, 28)
@@ -222,6 +224,8 @@ class MainNavigation(QWidget):
         worker_grid.addWidget(worker_label, 0, 1)
         self.workers = QComboBox()
         style_combo_popup(self.workers)
+        self.workers.setFixedHeight(36)
+        self.workers.setAttribute(Qt.WidgetAttribute.WA_LayoutUsesWidgetRect, True)
         self.workers.setMinimumWidth(0)
         self.workers.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
         self.workers.currentIndexChanged.connect(self._worker_changed)
@@ -318,6 +322,10 @@ class MainNavigation(QWidget):
             actions.get("standalone"),
         )
         self.standalone_button.setObjectName("standaloneAssessmentButton")
+        # Cocoa button layout insets must not shrink the allocated first row.
+        self.standalone_button.setAttribute(
+            Qt.WidgetAttribute.WA_LayoutUsesWidgetRect, True
+        )
         self.standalone_button.setFixedHeight(36)
         worker_grid.addWidget(self.standalone_button, 0, 5)
         self.location_browser.summary.setObjectName("supportingText")

@@ -155,3 +155,14 @@ separate from automated dark-palette checks on Linux.
 optimization and comparison selectors. Explicit short-caption/icon spacing and teal
 selected styling avoid native Cocoa miniature segmented tabs; switching tabs still
 shows the same stored solution without another solve.
+
+The guided review's Worker schedule averages / Job risk values summary uses the same
+readable result tabs, with left alignment and a visible selected underline. It does
+not use the platform's miniature segmented tab style. Main's worker selector and
+Standalone action reserve their actual widget rectangles even when Cocoa supplies
+button-layout insets. A 36px first row and 28px alphabet/status row have a 4px gap;
+the assessment-browser animation still moves only the lower section.
+
+Main text fields also declare their foreground explicitly so dynamic workplace
+highlighting/repolishing cannot restore native white text on a pale field. Disabled
+fields remain muted. This changes neither the location catalog nor source selection.

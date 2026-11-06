@@ -176,6 +176,7 @@ MAIN_WORKSPACE_STYLE = """
                
             }
             QComboBox, QLineEdit {
+                color: #1B2933;
                 min-height: 30px;
                 background: white;
                 border: 1px solid #BCC9D3;
@@ -183,6 +184,7 @@ MAIN_WORKSPACE_STYLE = """
                 padding: 0 8px;
                
             }
+            QComboBox:disabled, QLineEdit:disabled { color: #89969E; }
             QComboBox:focus, QLineEdit:focus { border: 2px solid #08A9B5; }
             QComboBox QAbstractItemView {
                 background: white; color: #1B2933; border: 1px solid #9EB0BE;

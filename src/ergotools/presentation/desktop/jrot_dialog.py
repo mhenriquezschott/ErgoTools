@@ -34,7 +34,6 @@ from PyQt5.QtWidgets import (
     QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
-    QTabWidget,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -802,7 +801,7 @@ class JrotDialog(QDialog):
         self.readiness = self.notice("", self.page_layouts[5])
         self.risk_tabs = AssessmentResultTabs()
         self.risk_tabs.setIconSize(QSize(24, 24))
-        self.summary_tabs = QTabWidget()
+        self.summary_tabs = AssessmentResultTabs()
         self.start_notice = QLabel()
         self.start_notice.setWordWrap(True)
         self.start_table = AdaptiveTableWidget()

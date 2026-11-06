@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from PyQt5.QtCore import QPoint
+from PyQt5.QtCore import QPoint, Qt
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
@@ -69,6 +69,15 @@ def test_worker_layout_disclosure_and_shared_history(
     assert positions == sorted(positions)
     assert all(button.height() == 36 and button.isVisible() for button in controls)
     assert nav.context_disclosure.height() == 28
+    assert nav.standalone_button.testAttribute(
+        Qt.WidgetAttribute.WA_LayoutUsesWidgetRect
+    )
+    assert (
+        nav.standalone_button.mapTo(window, QPoint()).y()
+        + nav.standalone_button.height()
+        + 4
+        <= nav.context_disclosure.mapTo(window, QPoint()).y()
+    )
     assert (
         nav.context_disclosure.mapTo(window, QPoint()).y()
         > nav.standalone_button.mapTo(window, QPoint()).y()

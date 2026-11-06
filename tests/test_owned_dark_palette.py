@@ -22,17 +22,25 @@ from PyQt5.QtWidgets import (
     QFormLayout,
     QLabel,
     QLineEdit,
+    QTreeWidget,
+    QTreeWidgetItem,
     QWidget,
 )
 
 from ergotools.bootstrap import create_window, load_icons
+from ergotools.domain.assessments.context import WorkplaceContext
 from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.domain.language import Language
+from ergotools.presentation.desktop.assessment_location_browser import (
+    AssessmentLocation,
+)
 from ergotools.presentation.desktop.assessment_tool_tabs import (
     AssessmentResultTabs,
     assessment_tool_icon,
 )
 from ergotools.presentation.desktop.theme.dialogs import install_dialog_theme
 from ergotools.presentation.desktop.theme.job_management import JOB_MANAGEMENT_STYLE
+from ergotools.presentation.desktop.theme.organization import ORGANIZATION_STYLE
 
 # Qt widget ownership is process-scoped; each probe restores the original palette.
 _APP = QApplication.instance() or QApplication([])
@@ -138,7 +146,7 @@ def test_main_window_text_uses_owned_light_palette(
         tmp_path: Private settings path; no personal files/projects are opened.
 
     Returns:
-        None; Main and its worker selector inherit readable colors before painting.
+        None; worker and repolished workplace selectors retain readable foregrounds.
     """
     window = create_window(
         tmp_path / "settings.json", original_controls=True, original_navigation=True
@@ -151,6 +159,21 @@ def test_main_window_text_uses_owned_light_palette(
     assert (
         window.main_navigation.workers.palette().color(QPalette.Text).lightness() < 170
     )
+    browser = window.main_navigation.location_browser
+    row = AssessmentLocation(
+        "source",
+        1,
+        WorkplaceContext("Plant", "Packing", "Line A", "ST01", "1"),
+        "",
+        13.2,
+    )
+    for identity in (row.document_id, None, row.document_id):
+        browser.update_rows((row,), identity, Language.ENGLISH, "LiFFT")
+        _APP.processEvents()
+        for combo in browser.combos:
+            assert combo.palette().color(QPalette.Active, QPalette.Text) == QColor(
+                "#1B2933"
+            )
     assert _APP.palette().color(QPalette.Text) == dark_palette.color(QPalette.Text)
     window.close()
     window.deleteLater()
@@ -186,4 +209,38 @@ def test_result_tabs_keep_complete_captions_and_icons(dark_palette: QPalette) ->
         )
     tabs.close()
     tabs.deleteLater()
+    _APP.processEvents()
+
+
+def test_organization_tree_and_editors_have_explicit_dark_text(
+    dark_palette: QPalette,
+) -> None:
+    """Keep unselected hierarchy names readable beside a selected plant.
+
+    Args:
+        dark_palette: Native dark defaults; the application palette remains unchanged.
+
+    Returns:
+        None; real tree/editor controls keep their source text and dark foregrounds.
+    """
+    dialog = QDialog()
+    dialog.setStyleSheet(ORGANIZATION_STYLE)
+    layout = QFormLayout(dialog)
+    tree = QTreeWidget()
+    tree.setHeaderLabels(["Location hierarchy", "Type"])
+    first = QTreeWidgetItem(["Riverside Plant", "Plant"])
+    other = QTreeWidgetItem(["Workflow Plant", "Plant"])
+    tree.addTopLevelItems([first, other])
+    tree.setCurrentItem(first)
+    entry = QLineEdit("Packing")
+    layout.addRow(tree)
+    layout.addRow("Section name", entry)
+    dialog.show()
+    _APP.processEvents()
+    assert tree.palette().color(QPalette.Text) == QColor("#1B2933")
+    assert entry.palette().color(QPalette.Text) == QColor("#1B2933")
+    assert other.text(0) == "Workflow Plant" and not other.isSelected()
+    assert _APP.palette().color(QPalette.Text) == dark_palette.color(QPalette.Text)
+    dialog.close()
+    dialog.deleteLater()
     _APP.processEvents()
