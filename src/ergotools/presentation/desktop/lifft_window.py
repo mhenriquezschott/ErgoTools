@@ -42,7 +42,6 @@ from PyQt5.QtWidgets import (
     QStyledItemDelegate,
     QTableWidget,
     QTableWidgetItem,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -108,6 +107,7 @@ from ergotools.presentation.desktop.assessment_location_browser import (
     AssessmentLocation,
 )
 from ergotools.presentation.desktop.assessment_menu import AssessmentMenu
+from ergotools.presentation.desktop.assessment_tool_tabs import AssessmentToolTabs
 from ergotools.presentation.desktop.assignment_dialog_host import AssignmentDialogHost
 from ergotools.presentation.desktop.authors_dialog import (
     AuthorsDialog,
@@ -3198,7 +3198,7 @@ class LifftWindow(QMainWindow):
         tool_frame.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Expanding)
         tool_layout = QVBoxLayout(tool_frame)
         tool_layout.setContentsMargins(6, 6, 6, 6)
-        self.assessment_tabs = QTabWidget()
+        self.assessment_tabs = AssessmentToolTabs()
         self.assessment_tabs.setObjectName("assessmentTabs")
         self.assessment_tabs.setIconSize(QSize(36, 36))
         self.assessment_tabs.setMinimumWidth(0)
@@ -3206,7 +3206,7 @@ class LifftWindow(QMainWindow):
         tab_bar = self.assessment_tabs.tabBar()
         assert tab_bar is not None
         tab_bar.setElideMode(Qt.TextElideMode.ElideNone)
-        tab_bar.setUsesScrollButtons(False)
+        tab_bar.setUsesScrollButtons(True)
         tab_bar.setExpanding(False)
         self.assessment_tabs.addTab(
             self.task_panel,

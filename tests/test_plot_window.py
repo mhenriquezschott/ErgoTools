@@ -166,7 +166,7 @@ def test_host_original_regions_modes_resize_and_no_implicit_writes(
                 assert rail.rect().contains(
                     QRect(button.mapTo(rail, QPoint()), button.size())
                 )
-            assert window.tools.canvas.height() >= 250
+            assert window.tools.canvas.height() >= 220
             assert (
                 window.tools.canvas.geometry().bottom()
                 < window.tools.chart_combo.geometry().top()

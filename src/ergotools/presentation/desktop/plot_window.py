@@ -11,8 +11,8 @@ from collections.abc import Callable, Mapping
 from dataclasses import replace
 from datetime import datetime
 
-from PyQt5.QtCore import QSize, Qt
-from PyQt5.QtGui import QCloseEvent, QIcon, QPainter, QPixmap
+from PyQt5.QtCore import QRect, QSize, Qt
+from PyQt5.QtGui import QCloseEvent, QIcon, QPainter, QPixmap, QShowEvent
 from PyQt5.QtWidgets import (
     QDialog,
     QFileDialog,
@@ -43,6 +43,7 @@ from ergotools.domain.language import Language
 from ergotools.domain.model_units import MeasurementSystem
 from ergotools.domain.plant_layout_image import PlantLayoutImage
 from ergotools.domain.plot_filters import PlotFilterSelection, PlotRiskView
+from ergotools.presentation.desktop.assessment_tool_tabs import AssessmentToolTabBar
 from ergotools.presentation.desktop.plot_filters_panel import PlotFiltersPanel
 from ergotools.presentation.desktop.plot_history_actions import PlotHistoryActions
 from ergotools.presentation.desktop.plot_job_overview import PlotJobOverview
@@ -92,8 +93,9 @@ class PlotWindow(QDialog):
         """Build the title-row actions and fitted PLOT regions without saving records.
 
         The root minimum constraint follows live child size hints. Expanding filters
-        grows the window as needed, retaining the complete rail and chart controls
-        without introducing plant-image scrollbars. Ten-pixel outer margins match
+        retains the complete rail and chart controls within the available desktop
+        using compact map controls when needed, without plant-image scrollbars.
+        Ten-pixel outer margins match
         JROT; the window size includes the added inset without shrinking content.
 
         Args:
@@ -176,6 +178,7 @@ class PlotWindow(QDialog):
         self.overviews.addWidget(self.workers)
         self.overviews.addWidget(self.jobs)
         self.tabs = QTabWidget()
+        self.tabs.setTabBar(AssessmentToolTabBar(12))
         self.tabs.setObjectName("plotDetailsTabs")
         self.tabs.setIconSize(QSize(24, 24))
         self.tabs.addTab(
@@ -214,6 +217,7 @@ class PlotWindow(QDialog):
                 + 8,
             )
         )
+        self._details_minimum_width = self.tabs.minimumWidth()
         self.tabs.setMaximumWidth(500)
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
         self.splitter.setObjectName("plotMainSplitter")
@@ -599,6 +603,82 @@ class PlotWindow(QDialog):
             self.outcome.job_gauge,
         ):
             gauge.set_marker_settings(settings)
+
+    def showEvent(self, event: QShowEvent | None) -> None:  # noqa: N802 — Qt override
+        """Fit first-show content inside the current desktop's usable rectangle.
+
+        Args:
+            event: Qt show notification after the native window frame is available.
+
+        Returns:
+            None; existing data, filter selections and map navigation remain intact.
+        """
+        super().showEvent(event)
+        if event is not None and event.spontaneous():
+            return
+        screen = self.screen()
+        if screen is not None:
+            self.fit_available_geometry(
+                screen.availableGeometry(),
+                max(32, self.frameGeometry().height() - self.height()),
+            )
+
+    def fit_available_geometry(self, available: QRect, frame_height: int) -> None:
+        """Reserve desktop chrome and demographic disclosure before sizing PLOT.
+
+        Args:
+            available: Screen work area in Qt logical pixels, excluding taskbars.
+            frame_height: Native title/border height outside the dialog's client area.
+
+        Returns:
+            None; prefer the usual layout, compacting only the map rail if its full
+            height and disclosure need more than a 1200-pixel client-height budget.
+            Gauges and typography retain their normal sizes; compact charts keep
+            a 220-pixel floor, with a wider details panel to reduce text wrapping.
+        """
+        budget = max(1, available.height() - frame_height - 8)
+        layout = self.layout()
+        assert layout is not None
+        # Normal 1124-pixel content plus demographic disclosure and native
+        # wrapped-caption headroom requires about 1200 client pixels. Use a stable
+        # breakpoint: probing a live splitter's cached minima during show can
+        # alternate between profiles as its child resize events settle.
+        compact = budget < 1200
+        self.map_panel.set_compact_controls(compact)
+        self.tools.set_compact_layout(compact)
+        self.outcome.set_compact_layout(compact)
+        self.tabs.setMinimumWidth(
+            max(self._details_minimum_width, 520)
+            if compact
+            else self._details_minimum_width
+        )
+        self.tabs.setMaximumWidth(540 if compact else 500)
+        layout.setSpacing(4 if compact else 8)
+        layout.setContentsMargins(
+            10, 8, 10, 8
+        ) if compact else layout.setContentsMargins(10, 10, 10, 10)
+        for button in (
+            self.history_actions.undo_button,
+            self.history_actions.redo_button,
+        ):
+            side = 48 if compact else 58
+            width = max(
+                side, button.fontMetrics().horizontalAdvance(button.text()) + 14
+            )
+            button.setFixedSize(width, side)
+            button.setIconSize(QSize(24, 24) if compact else QSize(28, 28))
+        layout.invalidate()
+        self.setMinimumHeight(min(1049, budget))
+        layout.activate()
+        width = min(
+            max(self.width(), layout.minimumSize().width()), available.width() - 16
+        )
+        self.resize(width, min(1124, budget))
+        self.move(
+            max(available.left(), min(self.x(), available.right() - self.width())),
+            available.top()
+            + max(0, (available.height() - self.height() - frame_height) // 2),
+        )
 
     def text(self, english: str, spanish: str) -> str:
         """Translate owned captions while leaving stored workplace names literal.

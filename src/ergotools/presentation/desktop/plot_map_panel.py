@@ -100,7 +100,7 @@ _ACTIONS = (
 class PlotMapPanel(QWidget):
     """Own original map controls; injected adapters own all files/project mutations.
 
-    The rail reserves the full height of its fixed-size controls, so demographic
+    The rail reserves the full height of its screen-sized controls, so demographic
     disclosure cannot clip the bottom export action. Canvas navigation has no image
     scrollbars; source availability controls action enablement.
     """
@@ -156,6 +156,7 @@ class PlotMapPanel(QWidget):
         tools.setContentsMargins(0, 0, 0, 10)
         tools.setSpacing(0)
         title = QLabel(self.text("Plant\nView", "Vista de\nplanta"))
+        self.rail_title = title
         title.setObjectName("toolRailTitle")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setFixedHeight(42)
@@ -267,6 +268,32 @@ class PlotMapPanel(QWidget):
                         f"Zoom actual: {percentage}% (máximo 400%).",
                     )
                 )
+
+    def set_compact_controls(self, compact: bool) -> None:
+        """Fit the full action rail on shorter desktops without image scrollbars.
+
+        Args:
+            compact: Use 48-pixel buttons with 36-pixel artwork instead of 63/48.
+
+        Returns:
+            None; only presentation geometry changes, preserving map zoom/positions.
+        """
+        size = 48 if compact else 63
+        self.rail_title.setFixedHeight(32 if compact else 42)
+        for key, button in self.buttons.items():
+            if key in ("zoom_in", "zoom_out"):
+                width = size // 2 + (size % 2 if key == "zoom_out" else 0)
+                button.setFixedSize(width, size)
+                button.setIconSize(QSize(24 if compact else 29, 24 if compact else 29))
+            else:
+                button.setFixedSize(size, size)
+                button.setIconSize(QSize(36 if compact else 48, 36 if compact else 48))
+        self.canvas.setMinimumHeight(480 if compact else 580)
+        layout = self.rail.layout()
+        assert layout is not None
+        layout.invalidate()
+        self.rail.setMinimumHeight(layout.minimumSize().height())
+        self.updateGeometry()
 
     def text(self, english: str, spanish: str) -> str:
         """Translate owned captions without interpreting stored plant identities.

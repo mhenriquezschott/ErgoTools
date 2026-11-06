@@ -216,22 +216,6 @@ MAIN_WORKSPACE_STYLE = """
             }
             QPushButton#calculateButton:hover { background: #096D7C; }
             QPushButton#clearAssessmentButton { color: #0B326C; }
-            QTabWidget#assessmentTabs::pane { border: 0; background: white; }
-            QTabWidget#assessmentTabs QTabBar::tab {
-                min-height: 41px;
-                padding: 9px 4px;
-                color: #5F6F7A;
-                border: 0;
-                font-size: 13px;
-                font-weight: 600;
-               
-            }
-            QTabWidget#assessmentTabs QTabBar::tab:selected {
-                color: #087E91;
-                font-weight: 600;
-                border-bottom: 3px solid #08A9B5;
-               
-            }
             QScrollArea, QScrollArea QWidget {
                 background: white;
                 border-color: #D5DEE5;
@@ -355,3 +339,27 @@ QComboBox[assessmentCurrent="true"] {
 MAIN_WORKSPACE_STYLE += """
 QWidget#workerControls { background: white; border: 0; }
 """
+
+
+# Shared widget-local rules keep native tab styles from overriding inherited theme
+# captions in Main, Jobs and guided assessment editors. No host duplicates the CSS.
+ASSESSMENT_TAB_STYLE = """
+            #assessmentTabs::pane { border: 0; background: white; }
+            #assessmentTabs QTabBar::tab {
+                background: white;
+                min-height: 41px;
+                padding: 9px 4px;
+                color: #5F6F7A;
+                border: 0;
+                font-size: 13px;
+                font-weight: 600;
+               
+            }
+            #assessmentTabs QTabBar::tab:selected {
+                color: #087E91;
+                font-weight: 600;
+                border-bottom: 3px solid #08A9B5;
+               
+            }
+"""
+MAIN_WORKSPACE_STYLE += ASSESSMENT_TAB_STYLE

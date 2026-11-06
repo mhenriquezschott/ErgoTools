@@ -128,3 +128,13 @@ and order are unchanged. One shared Undo restores the entire source/result state
 Worker assessments retain one blank starter if every row is removed; Jobs retain their
 existing empty-source/starter projection. The same behavior applies to all tools in
 Main, Job Management and JROT. No new history engine or database format is introduced.
+
+
+## Shared assessment tabs
+
+Main, Job Management and guided JROT compose the same measured assessment tab control.
+Full captions are measured with their themed bold font and icon allowance, including
+closing parentheses. If the strip is constrained it scrolls instead of shortening the
+captions. Stable `assessmentTabs` object-ID theme selectors apply equally to Qt and
+shared widget subclasses, preserving the white tabs and teal selection cue. PLOT's
+shorter overview captions reuse the measured bar with its 12-pixel text setting.

@@ -248,6 +248,26 @@ class PlotOutcomePanel(QGroupBox):
         self.update_view()
         self.refresh()
 
+    def set_compact_layout(self, compact: bool) -> None:
+        """Tighten result-panel padding while preserving complete full-size gauges.
+
+        Args:
+            compact: Reduce outer/cluster vertical padding for shorter desktops.
+
+        Returns:
+            None; gauge geometry, labels, results and risk colors are unchanged.
+        """
+        layout = self.layout()
+        cluster = self.risk_cluster.layout()
+        assert layout is not None and cluster is not None
+        if compact:
+            layout.setContentsMargins(14, 6, 14, 4)
+            cluster.setContentsMargins(12, 4, 12, 4)
+        else:
+            layout.setContentsMargins(14, 12, 14, 10)
+            cluster.setContentsMargins(12, 8, 12, 8)
+        self.fit_content()
+
     def text(self, english: str, spanish: str) -> str:
         """Translate presentation only; station identities remain source literals.
 

@@ -7,7 +7,7 @@ host owners.
 """
 
 from collections.abc import Callable
-from math import isfinite
+from math import isclose, isfinite
 from typing import Literal
 
 from PyQt5.QtCore import QPoint, QPointF, Qt, QTimer, pyqtSignal
@@ -328,6 +328,8 @@ class PlotLayoutCanvas(QGraphicsView):
         target = max(
             self._fit_scale, min(self._fit_scale * MAX_PLOT_ZOOM, current * factor)
         )
+        if isclose(target, current, rel_tol=1e-12, abs_tol=1e-12):
+            return
         before = self.mapToScene(position)
         self.scale(target / current, target / current)
         after = self.mapToScene(position)

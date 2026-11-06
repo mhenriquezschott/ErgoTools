@@ -137,6 +137,7 @@ class PlotToolsOverview(QGroupBox):
         layout.addWidget(self.chart_combo)
         description_panel = QWidget(self)
         description_layout = QVBoxLayout(description_panel)
+        self.description_layout = description_layout
         description_layout.setContentsMargins(0, 2, 0, 2)
         description_layout.setSpacing(8)
         self.description = QLabel(description_panel)
@@ -172,6 +173,29 @@ class PlotToolsOverview(QGroupBox):
         layer.changed.connect(self.refresh)
         self.draw_current()
         self.refresh()
+
+    def set_compact_layout(self, compact: bool) -> None:
+        """Recover vertical space without hiding explanations or changing fonts.
+
+        Args:
+            compact: Use a 220-pixel chart floor and tighter spacing on short screens;
+                the usual layout retains its 250-pixel floor.
+
+        Returns:
+            None; datasets, graph options and chart aspect stay owned by the same view.
+        """
+        layout = self.layout()
+        assert layout is not None
+        if compact:
+            layout.setContentsMargins(8, 8, 8, 8)
+        else:
+            layout.setContentsMargins(10, 12, 10, 10)
+        layout.setSpacing(6 if compact else 8)
+        self.description_layout.setSpacing(4 if compact else 8)
+        self.canvas.setMinimumHeight(220 if compact else 250)
+        self.setMaximumWidth(520 if compact else 420)
+        self.setMinimumHeight(0)
+        self.fit_content()
 
     def text(self, english: str, spanish: str) -> str:
         """Translate source controls independently of saved identity and numbers.
@@ -376,8 +400,18 @@ class PlotToolsOverview(QGroupBox):
         layout = self.layout()
         assert layout is not None
         layout.invalidate()
-        required = max(
-            self.minimumSizeHint().height(), self.heightForWidth(self.width())
+        # Minimum-height-for-width accounts for wrapped labels without adopting
+        # Matplotlib's resize-dependent preferred canvas height as a hard minimum.
+        # Retain the canvas's ordinary Expanding policy so Qt never allocates less
+        # than its explicit chart floor when users resize the window manually.
+        contents = self.contentsRect()
+        frame_height = self.height() - contents.height()
+        required = (
+            max(
+                layout.minimumSize().height(),
+                layout.minimumHeightForWidth(contents.width()),
+            )
+            + frame_height
         )
         if self.minimumHeight() != required:
             self.setMinimumHeight(required)

@@ -7,6 +7,7 @@ from PyQt5.QtGui import QFont, QFontMetrics, QIcon
 from PyQt5.QtWidgets import QSizePolicy, QTabBar, QTabWidget
 
 from ergotools.domain.assessments.document import AssessmentKind
+from ergotools.presentation.desktop.theme.main_workspace import ASSESSMENT_TAB_STYLE
 
 
 def assessment_tool_icon(icons: Mapping[str, QIcon], kind: AssessmentKind) -> QIcon:
@@ -56,6 +57,7 @@ class AssessmentToolTabs(QTabWidget):
         super().__init__()
         self.setTabBar(AssessmentToolTabBar())
         self.setObjectName("assessmentTabs")
+        self.setStyleSheet(ASSESSMENT_TAB_STYLE)
         self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding)
         self.setIconSize(QSize(32, 32))
         bar = self.tabBar()
@@ -66,7 +68,22 @@ class AssessmentToolTabs(QTabWidget):
 
 
 class AssessmentToolTabBar(QTabBar):
-    """Measure the styled semibold caption rather than Qt's unstyled text estimate."""
+    """Reserve styled caption/icon space across native Qt platform styles."""
+
+    def __init__(self, caption_pixel_size: int = 13) -> None:
+        """Match the host theme while retaining full captions via strip scrolling.
+
+        Args:
+            caption_pixel_size: Actual theme text size in logical pixels.
+
+        Returns:
+            None; this bar owns geometry only, never tool selection or history.
+        """
+        super().__init__()
+        self.caption_pixel_size = caption_pixel_size
+        self.setElideMode(Qt.TextElideMode.ElideNone)
+        self.setUsesScrollButtons(True)
+        self.setExpanding(False)
 
     def tabSizeHint(self, index: int) -> QSize:  # noqa: N802 — Qt override
         """Reserve full caption/icon geometry, including closing parentheses.
@@ -75,11 +92,11 @@ class AssessmentToolTabBar(QTabBar):
             index: Existing tab whose literal caption is measured.
 
         Returns:
-            Native height and a width accommodating bold 13-pixel theme text.
+            Native height and a width accommodating the host theme's bold caption.
         """
         size = super().tabSizeHint(index)
         font = QFont(self.font())
-        font.setPixelSize(13)
+        font.setPixelSize(self.caption_pixel_size)
         font.setBold(True)
         icon = self.iconSize().width() + 8 if not self.tabIcon(index).isNull() else 0
         width = QFontMetrics(font).horizontalAdvance(self.tabText(index)) + icon + 28
