@@ -1,13 +1,14 @@
 # Installation guide: screenshot maintenance checklist
 
 Companion to the [ErgoTools Software Installation and GitHub Guide](ergotools_installation_and_github_guide.pdf),
-6 November 2026 edition (41 pages). The guide uses supplied Windows/macOS captures,
-Linux application captures and a small number of official reference illustrations.
-Use this list when replacing images after a UI or operating-system update.
+6 November 2026 edition (41 pages). Use this list when replacing images after a UI or operating-system update.
 
 ## Capture quality
 
 - Keep original PNGs at native resolution. Annotate or crop a copy.
+- Keep the selected file or field visible with its context menu. Check numbered
+  highlights against the final crop: borders must enclose the intended control,
+  and numbers must not cover labels or entered values.
 - Include the window title and enough context to identify the action. For small
   controls, capture both the window and a focused detail.
 - Record OS/version, architecture, display resolution/scaling, appearance and the
