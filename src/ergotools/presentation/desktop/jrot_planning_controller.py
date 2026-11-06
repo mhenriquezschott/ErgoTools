@@ -20,7 +20,6 @@ from PyQt5.QtWidgets import (
     QProgressDialog,
     QPushButton,
     QSpinBox,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -43,6 +42,7 @@ from ergotools.domain.rotation import (
 from ergotools.domain.rotation_comparison import compare_rotation_run
 from ergotools.domain.rotation_scenario import RotationInputs, RotationRun
 from ergotools.presentation.desktop.assessment_tool_tabs import (
+    AssessmentResultTabs,
     assessment_tool_icon,
     assessment_tool_title,
 )
@@ -187,7 +187,7 @@ class JrotPlanningController(QObject):
         heading_row.addWidget(self.tool_heading_icon)
         heading_row.addWidget(self.tool_heading, 1)
         layout.addLayout(heading_row)
-        self.tabs = QTabWidget()
+        self.tabs = AssessmentResultTabs()
         self.tabs.setIconSize(QSize(24, 24))
         self.tabs.currentChanged.connect(self.update_tool_heading)
         layout.addWidget(self.tabs, 1)

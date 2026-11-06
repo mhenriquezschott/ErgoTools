@@ -101,3 +101,30 @@ class AssessmentToolTabBar(QTabBar):
         icon = self.iconSize().width() + 8 if not self.tabIcon(index).isNull() else 0
         width = QFontMetrics(font).horizontalAdvance(self.tabText(index)) + icon + 28
         return QSize(max(size.width(), width), size.height())
+
+
+class AssessmentResultTabs(QTabWidget):
+    """Show compact tool-result tabs with full text instead of native mini segments."""
+
+    def __init__(self) -> None:
+        """Compose the common readable LiFFT/DUET/ST results selector.
+
+        Args:
+            None.
+
+        Returns:
+            None; the host retains tab contents, selected-tool history and results.
+        """
+        super().__init__()
+        self.setObjectName("assessmentResultTabs")
+        self.setTabBar(AssessmentToolTabBar(12))
+        self.setIconSize(QSize(24, 24))
+        self.setStyleSheet(
+            "#assessmentResultTabs::pane {background:white;border:1px solid #D5DEE5;}"
+            "#assessmentResultTabs QTabBar::tab {background:#EDF2F5;color:#405866;"
+            "font-size:12px;font-weight:600;min-height:28px;padding:3px 10px;"
+            "border:1px solid #BCC9D3;}"
+            "#assessmentResultTabs QTabBar::tab:selected {background:#DDF3F5;"
+            "color:#087E91;border-bottom:3px solid #08A9B5;}"
+            "#assessmentResultTabs QTabBar::tab:hover:!selected {background:#EAF7F8;}"
+        )

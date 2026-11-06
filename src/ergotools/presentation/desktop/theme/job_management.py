@@ -25,7 +25,8 @@ background: transparent; border: 0; padding: 0 4px; font-weight: 700;
 }
 QPushButton#contextToggleButton:hover { color: #087E91; background: #EDF7F8; }
 QLabel#supportingText { color: #405462; font-size: 12px; }
-QComboBox, QLineEdit { min-height: 30px; background: white; border: 1px solid
+QComboBox, QLineEdit { color: #1B2933; min-height: 30px; background: white;
+border: 1px solid
 #BCC9D3; border-radius: 5px; padding: 0 8px; }
 QComboBox:focus, QLineEdit:focus { border: 2px solid #08A9B5; }
 QComboBox QAbstractItemView {

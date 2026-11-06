@@ -138,3 +138,20 @@ closing parentheses. If the strip is constrained it scrolls instead of shortenin
 captions. Stable `assessmentTabs` object-ID theme selectors apply equally to Qt and
 shared widget subclasses, preserving the white tabs and teal selection cue. PLOT's
 shorter overview captions reuse the measured bar with its 12-pixel text setting.
+
+## Dark desktop defaults and result selectors
+
+ErgoTools-owned light forms resolve their text/control palette independently of a
+dark desktop palette. Controls receive those defaults before Qt polishes their
+explicit styles; colored results, avatar labels and selected states keep their own
+colors. The application palette and native file/color/font choosers are unchanged.
+The shared theme observes widget polish and owned-window show/palette events without
+walking descendants or changing data/history. It detaches before Qt shutdown; the
+light palette template is shared without rebuilding its roles for every task cell.
+Native macOS visual acceptance remains
+separate from automated dark-palette checks on Linux.
+
+`AssessmentResultTabs` reuses the measured tool tab bar for the guided JROT review,
+optimization and comparison selectors. Explicit short-caption/icon spacing and teal
+selected styling avoid native Cocoa miniature segmented tabs; switching tabs still
+shows the same stored solution without another solve.

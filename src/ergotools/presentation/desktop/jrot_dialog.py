@@ -92,7 +92,10 @@ from ergotools.domain.work_hierarchy import LineKey
 from ergotools.presentation.desktop.assessment_editor_preferences import (
     AssessmentEditorPreferences,
 )
-from ergotools.presentation.desktop.assessment_tool_tabs import assessment_tool_icon
+from ergotools.presentation.desktop.assessment_tool_tabs import (
+    AssessmentResultTabs,
+    assessment_tool_icon,
+)
 from ergotools.presentation.desktop.job_management_dialog import JobManagementDialog
 from ergotools.presentation.desktop.jrot_catalog_picker import (
     JrotCatalogChoice,
@@ -797,7 +800,7 @@ class JrotDialog(QDialog):
         row.addStretch(1)
         self.page_layouts[5].addLayout(row)
         self.readiness = self.notice("", self.page_layouts[5])
-        self.risk_tabs = QTabWidget()
+        self.risk_tabs = AssessmentResultTabs()
         self.risk_tabs.setIconSize(QSize(24, 24))
         self.summary_tabs = QTabWidget()
         self.start_notice = QLabel()

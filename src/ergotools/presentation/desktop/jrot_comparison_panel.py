@@ -28,7 +28,10 @@ from ergotools.domain.risk import classify_probability
 from ergotools.domain.rotation import RotationSolveStatus
 from ergotools.domain.rotation_comparison import ToolComparison, compare_rotation_run
 from ergotools.domain.rotation_scenario import ROTATION_RUN_MODEL_VERSION, RotationRun
-from ergotools.presentation.desktop.assessment_tool_tabs import assessment_tool_icon
+from ergotools.presentation.desktop.assessment_tool_tabs import (
+    AssessmentResultTabs,
+    assessment_tool_icon,
+)
 from ergotools.presentation.desktop.jrot_result_table import (
     JrotResultTable,
     tool_caption,
@@ -91,7 +94,7 @@ class JrotComparisonPanel(QWidget):
         high_layout = QVBoxLayout(self.high_notice_group)
         high_layout.addWidget(self.high_notice)
         body = QHBoxLayout()
-        self.tabs = QTabWidget()
+        self.tabs = AssessmentResultTabs()
         self.tabs.setIconSize(QSize(24, 24))
         body.addWidget(self.tabs, 1)
         body.addWidget(self.high_notice_group, 0, Qt.AlignmentFlag.AlignTop)
