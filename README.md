@@ -362,8 +362,8 @@ and macOS, run **both** the sync and desktop-library install commands; sync alon
 removes libraries outside the Linux desktop extra. Your shortcut or alias continues
 to launch the updated code from the same folder. Keep personal `.ergprj` files outside it.
 
-See the [installation reference](docs/installation.md) for setup and recovery, or the
-[illustrated installation and GitHub guide](docs/guides/ergotools_installation_and_github_guide.pdf)
+See the [installation reference](docs/installation.md) for setup and recovery, or download the
+[illustrated installation and GitHub guide (PDF, 41 pages)](https://raw.githubusercontent.com/mhenriquezschott/ErgoTools/main/docs/guides/ergotools_installation_and_github_guide.pdf)
 for step-by-step Windows, macOS and Linux instructions, screenshots, updates and bug reports.
 Report problems through [GitHub Issues](https://github.com/mhenriquezschott/ErgoTools/issues);
 the guide explains how to include screenshots, the installed revision and diagnostic logs.
