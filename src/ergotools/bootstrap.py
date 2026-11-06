@@ -16,6 +16,11 @@ from datetime import date
 from functools import partial
 from pathlib import Path
 
+# Load the solver's native libraries before Qt. A Windows 11/highspy
+# 1.11.0 probe crashes in native MIP threads with Qt-first imports, but succeeds
+# with this order and automatic threading. Keep this in the composition root so
+# module/console launches share it; do not scatter duplicate imports in windows.
+import highspy  # noqa: F401 -- Required native-library initialization order.
 from PyQt5.QtCore import QCoreApplication, QStandardPaths, QTimer
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget

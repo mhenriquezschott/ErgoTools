@@ -39,3 +39,20 @@ all nonempty tool subsets, secondary balancing, cancellation and saved-result co
 `tests/test_highs_runtime.py` checks direct native execution without PuLP, while
 `tests/test_jrot_known_solutions.py` compares schedules with independently known answers.
 Run `bash tools/check.sh` for the complete required Linux gate.
+
+## Native startup order on Windows
+
+The desktop composition root imports highspy before PyQt5. In the Windows 11,
+Python 3.13.14, highspy 1.11.0 deployment probe, Qt-first imports caused native
+access violation `0xc0000005` during automatic-thread MIP execution. The early-initialization probe
+(import plus a brief HiGHS instance/version read) completed the same model in a Qt
+worker with the expected optimum; limiting
+the native solve to one thread also passed, but is not required by this correction.
+
+Initialization order is centralized in bootstrap, shared by installed and module
+entry points. Automatic solver threading, model coefficients, limits and scientific
+calculations remain unchanged. Fresh-process regressions observe the actual first Qt
+import; in-process cached imports cannot verify this boundary. The probe does not separate import order from early instance creation, identify
+the underlying native DLL or certify every Windows optimization scenario. The
+minimal import-order correction still requires a Windows saved-project retest. Repeat a real saved-project solve
+after updating the application.

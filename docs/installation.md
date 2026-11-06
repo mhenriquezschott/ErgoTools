@@ -196,3 +196,23 @@ dedicated Windows/macOS trial virtual environment managed with pip, uninstall un
 with `python -m pip uninstall pulp` before installing the current trial requirements.
 There is no solver-selection setting. Previously saved result attribution is preserved;
 new optimizations use HiGHS. Native Windows/macOS execution still awaits platform testing.
+
+
+## Windows native-solver startup
+
+Use the current launcher rather than importing Qt from a custom wrapper first.
+The application imports HiGHS before Qt as a targeted correction for a reproduced
+Windows native solver access violation; a real-project Windows retest is required. See [native startup ordering](highs_only.md#native-startup-order-on-windows).
+After pulling this code-only correction, restart ErgoTools; no dependency reinstall
+or project migration is needed.
+
+If a native failure still occurs, open PowerShell in the repository and run these
+as **two separate commands**, then reproduce the problem:
+
+```powershell
+$env:PYTHONFAULTHANDLER = "1"
+.\tools\run_windows.cmd
+```
+
+Keep the complete console error. This enables native fault reporting for that
+PowerShell session without changing the installation or personal preferences.

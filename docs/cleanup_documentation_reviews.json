@@ -63,7 +63,7 @@
   "src/ergotools/application/settings.py": "5204b76c511d42a9448f6954db49e9c3a23c34976b12f16f70a0b5d8a42c0c14",
   "src/ergotools/application/task_catalog.py": "0256d8188b39c146bd9b5bcda730307d3dc1381d10473f23a99436537cd9617f",
   "src/ergotools/application/transfer_access.py": "50e3edf9d5295d8511a8736370e5513b32fc71f60ee4634e0627b289b87e1ed9",
-  "src/ergotools/bootstrap.py": "e2e3c88a4c604598188339651f151317a4eb5b607dfbd0e6ddf54e6037ca7ddf",
+  "src/ergotools/bootstrap.py": "d1c0d76e8765c3606f8bde0d09935cd51b5c25edb59a1e38dcbf5d2a2345b898",
   "src/ergotools/domain/__init__.py": "0c61476b4cf1155e48aaca4ca26e0115134ea0b883000534616bc856de50f96e",
   "src/ergotools/domain/assessment_history.py": "2bb92637fd58f449bcf196c54117f452f05402bfe2641696d10c985add3f546b",
   "src/ergotools/domain/assessment_transfer.py": "d2a74ba8bb73c6a348c2881e76d939342c71df0bffe04643a041aef7b433e0ad",
@@ -588,5 +588,6 @@
   "src/ergotools/infrastructure/highs_rotation_optimizer.py": "31ad6361ac382d8adb32bcffa2a459ed9da53afdd6d2ada8c64cc89d078f0179",
   "tests/test_highs_runtime.py": "eedacb7d52fc0c26dab378b2ae2403ab96b5463f5009efcaef42d30b31c72f20",
   "typings/highspy/__init__.pyi": "2661997c48dfafe411f20d4e2f75a7ae13763db8755bd37bcbd1f4d684e7b34c",
-  "typings/highspy/highs.pyi": "c394aea837e1f4412c3a9488f3245cab24efcb6354dcfa2917987727d11e8337"
+  "typings/highspy/highs.pyi": "c394aea837e1f4412c3a9488f3245cab24efcb6354dcfa2917987727d11e8337",
+  "tests/test_native_startup_order.py": "c6c1d280c7c1c32ce394714af98c46b56d5d77b82ee04f4828830a165c2b3711"
 }

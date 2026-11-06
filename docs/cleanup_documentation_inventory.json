@@ -1,13 +1,13 @@
 {
   "summary": {
-    "python_and_stub_files": 586,
-    "files_reviewed_M4": 586,
+    "python_and_stub_files": 587,
+    "files_reviewed_M4": 587,
     "files_pending_M4_review": 0,
-    "functions_including_private_and_nested": 4278,
+    "functions_including_private_and_nested": 4279,
     "functions_missing_docstring": 0,
     "functions_with_parameters_missing_args_section": 0,
     "functions_missing_return_or_yield_section": 0,
-    "functions_reviewed_M4": 4278,
+    "functions_reviewed_M4": 4279,
     "functions_pending_M4_review": 0,
     "classes_reviewed_M4": 524,
     "classes_pending_M4_review": 0,
@@ -9878,15 +9878,15 @@
     },
     {
       "path": "src/ergotools/bootstrap.py",
-      "sha256": "e2e3c88a4c604598188339651f151317a4eb5b607dfbd0e6ddf54e6037ca7ddf",
+      "sha256": "d1c0d76e8765c3606f8bde0d09935cd51b5c25edb59a1e38dcbf5d2a2345b898",
       "has_module_docstring": true,
       "file_documentation_review": "reviewed_M4",
       "structural_issues": [],
       "symbols": [
         {
           "qualified_name": "application_settings_path",
-          "line": 73,
-          "end_line": 91,
+          "line": 78,
+          "end_line": 96,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -9899,8 +9899,8 @@
         },
         {
           "qualified_name": "list_lifft_documents",
-          "line": 94,
-          "end_line": 113,
+          "line": 99,
+          "end_line": 118,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -9915,8 +9915,8 @@
         },
         {
           "qualified_name": "list_desktop_documents",
-          "line": 116,
-          "end_line": 136,
+          "line": 121,
+          "end_line": 141,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -9931,8 +9931,8 @@
         },
         {
           "qualified_name": "desktop_document_options",
-          "line": 139,
-          "end_line": 205,
+          "line": 144,
+          "end_line": 210,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -9948,8 +9948,8 @@
         },
         {
           "qualified_name": "create_window",
-          "line": 208,
-          "end_line": 365,
+          "line": 213,
+          "end_line": 370,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -9968,8 +9968,8 @@
         },
         {
           "qualified_name": "create_window.open_project_summary",
-          "line": 263,
-          "end_line": 283,
+          "line": 268,
+          "end_line": 288,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -9985,8 +9985,8 @@
         },
         {
           "qualified_name": "create_window.renderer_factory",
-          "line": 291,
-          "end_line": 309,
+          "line": 296,
+          "end_line": 314,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -10001,8 +10001,8 @@
         },
         {
           "qualified_name": "open_guided_jrot",
-          "line": 368,
-          "end_line": 428,
+          "line": 373,
+          "end_line": 433,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -10021,8 +10021,8 @@
         },
         {
           "qualified_name": "open_guided_jrot.save_markers",
-          "line": 389,
-          "end_line": 399,
+          "line": 394,
+          "end_line": 404,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -10037,8 +10037,8 @@
         },
         {
           "qualified_name": "open_legacy_rotation",
-          "line": 431,
-          "end_line": 473,
+          "line": 436,
+          "end_line": 478,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -10057,8 +10057,8 @@
         },
         {
           "qualified_name": "open_plot",
-          "line": 476,
-          "end_line": 552,
+          "line": 481,
+          "end_line": 557,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -10079,8 +10079,8 @@
         },
         {
           "qualified_name": "open_plot.save_gauge_markers",
-          "line": 509,
-          "end_line": 523,
+          "line": 514,
+          "end_line": 528,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -10095,8 +10095,8 @@
         },
         {
           "qualified_name": "load_icons",
-          "line": 555,
-          "end_line": 713,
+          "line": 560,
+          "end_line": 718,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -10109,8 +10109,8 @@
         },
         {
           "qualified_name": "create_job_management_demo",
-          "line": 716,
-          "end_line": 738,
+          "line": 721,
+          "end_line": 743,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -10125,8 +10125,8 @@
         },
         {
           "qualified_name": "run_job_management",
-          "line": 741,
-          "end_line": 795,
+          "line": 746,
+          "end_line": 800,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -10143,8 +10143,8 @@
         },
         {
           "qualified_name": "main",
-          "line": 798,
-          "end_line": 958,
+          "line": 803,
+          "end_line": 963,
           "kind": "function",
           "visibility": "public",
           "has_docstring": true,
@@ -63662,6 +63662,32 @@
           "has_returns_or_yields_section": true,
           "source_sha256": "64c38f3083290f71994d119561d7ba15f504ea7cb2acf6101a4f48ad95d66fae",
           "docstring_sha256": "74e06a9ccda46f1aa02f6bd1834814977249129c716db53368759dc050d1aa37",
+          "documentation_review": "reviewed_M4"
+        }
+      ],
+      "constants": []
+    },
+    {
+      "path": "tests/test_native_startup_order.py",
+      "sha256": "c6c1d280c7c1c32ce394714af98c46b56d5d77b82ee04f4828830a165c2b3711",
+      "has_module_docstring": true,
+      "file_documentation_review": "reviewed_M4",
+      "structural_issues": [],
+      "symbols": [
+        {
+          "qualified_name": "test_native_solver_loads_before_first_qt_import",
+          "line": 17,
+          "end_line": 58,
+          "kind": "function",
+          "visibility": "public",
+          "has_docstring": true,
+          "parameters": [
+            "module"
+          ],
+          "has_args_section": true,
+          "has_returns_or_yields_section": true,
+          "source_sha256": "54fc50bf441e8f5b551a727dfdaef5463e9a4bd402a054562cb286ab48544da9",
+          "docstring_sha256": "d0a51ad5ecbc3c78750a0c6b19bcce61d88a0664839bb5b7e3ed8e255c3a4a12",
           "documentation_review": "reviewed_M4"
         }
       ],
