@@ -186,6 +186,12 @@ one standard deviation.
 </tr>
 </table>
 
+**At plant scale.** The same views support a larger mapped workforce. This comparison
+example uses the comparison test project's plant layout, with many worker symbols
+and Job-risk squares visible together.
+
+![PLOT comparison view with a larger mapped workforce and population summaries](docs/images/plot_large_comparison.png)
+
 ## JROT
 
 JROT evaluates worker-by-time-block Job schedules and optimizes the distribution
@@ -276,19 +282,64 @@ rotation assessments. See the [import guide](docs/assessment_import.md).
 
 ## Installation
 
-A graphical desktop with OpenGL, **Python 3.13.14** and Git are required.
-The installation guide includes dependencies, setup commands and desktop shortcuts
-for each platform.
+Use **Python 3.13.14**, **uv 0.11.25**, a graphical desktop and OpenGL-capable graphics.
+Install [Git](https://git-scm.com/downloads) for the commands below, or clone with
+[GitHub Desktop](https://desktop.github.com/download/). Run commands as a normal user.
 
-| Platform | Requirements | Installation |
+| Platform | Desktop libraries | Launch from your checkout |
 | --- | --- | --- |
-| **Linux x86-64** | Qt/XCB and OpenGL system libraries; Qt 5.15.17 | [Linux setup](docs/installation.md#linux) |
-| **Windows 10/11 x64** | OpenGL-capable graphics driver; Qt 5.15.2 | [Windows setup and desktop shortcut](docs/installation.md#windows-trial) |
-| **macOS 11+ Intel / Apple silicon** | Matching Python architecture; Qt 5.15.17 | [macOS setup and desktop alias](docs/installation.md#macos-trial) |
+| Windows 10/11 x64 | PyQt5 5.15.11, Qt 5.15.2, VTK and HiGHS | `tools\run_windows.cmd` |
+| macOS Intel / Apple silicon | PyQt5 5.15.11, Qt 5.15.17, VTK and HiGHS | `tools/run_macos.command` |
+| Linux x86-64 | Qt/XCB and OpenGL system libraries, Qt 5.15.17, VTK and HiGHS | `tools/run.sh` |
 
+GitHub Desktop requires macOS 12 or later. Use tools matching your Mac's architecture.
 Windows uses Qt 5.15.2 because Qt 5.15.17 has no Windows wheel.
 
-**Linux quick start**, with [Git and uv installed](docs/installation.md#get-git-and-uv):
+### Windows - PowerShell
+
+Install uv, then close and reopen PowerShell:
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/0.11.25/install.ps1 | iex"
+```
+
+```powershell
+git clone --branch main --single-branch https://github.com/mhenriquezschott/ErgoTools.git
+cd ErgoTools
+uv python install 3.13.14
+uv sync --locked --no-dev --python 3.13.14
+uv pip install --python .venv\Scripts\python.exe --only-binary :all: -r tools\requirements_desktop_trial.txt
+.\tools\run_windows.cmd
+```
+
+Create a desktop shortcut to `tools\run_windows.cmd`; keep the original file in the checkout.
+
+### macOS - Terminal
+
+Install uv, then close and reopen Terminal:
+
+```bash
+curl -LsSf https://astral.sh/uv/0.11.25/install.sh | sh
+```
+
+```bash
+git clone --branch main --single-branch https://github.com/mhenriquezschott/ErgoTools.git
+cd ErgoTools
+uv python install 3.13.14
+uv sync --locked --no-dev --python 3.13.14
+uv pip install --python .venv/bin/python --only-binary :all: -r tools/requirements_desktop_trial.txt
+chmod +x tools/run_macos.command
+./tools/run_macos.command
+```
+
+Finish Apple's Command Line Tools installation if prompted. If Python reports that
+its library could not be patched, complete the tools installation, then run
+`uv python install 3.13.14 --reinstall` before creating the environment.
+Create a Finder alias to `tools/run_macos.command` and move the alias to the Desktop.
+
+### Linux - Terminal
+
+With Git and uv installed:
 
 ```bash
 git clone --branch main --single-branch https://github.com/mhenriquezschott/ErgoTools.git
@@ -298,13 +349,24 @@ uv sync --locked --no-dev --extra desktop --python 3.13.14
 bash tools/run.sh
 ```
 
-Launch scripts: `tools/run.sh` for Linux, `tools\run_windows.cmd` for Windows,
-and `tools/run_macos.command` for macOS.
+### Updates and help
 
-For a visual introduction to cloning, updating and desktop shortcuts, see the
-[Windows/macOS PDF guide](docs/guides/ergotools_windows_macos_user_guide.pdf).
-The [capture and deployment checklist](docs/guides/desktop_capture_checklist.md)
-accompanies native platform trials.
+Save your project, close ErgoTools, then update the checkout:
+
+```bash
+git pull --ff-only origin main
+```
+
+If dependencies changed, repeat your platform's environment commands. On Windows
+and macOS, run **both** the sync and desktop-library install commands; sync alone
+removes libraries outside the Linux desktop extra. Your shortcut or alias continues
+to launch the updated code from the same folder. Keep personal `.ergprj` files outside it.
+
+See the [installation reference](docs/installation.md) for setup and recovery, or the
+[illustrated installation and GitHub guide](docs/guides/ergotools_installation_and_github_guide.pdf)
+for step-by-step Windows, macOS and Linux instructions, screenshots, updates and bug reports.
+Report problems through [GitHub Issues](https://github.com/mhenriquezschott/ErgoTools/issues);
+the guide explains how to include screenshots, the installed revision and diagnostic logs.
 
 ## Publications and conferences
 

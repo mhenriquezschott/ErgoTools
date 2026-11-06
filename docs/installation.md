@@ -1,218 +1,180 @@
 # Install and launch ErgoTools
 
-[Back to the README](../README.md#installation)
+[Back to the README](../README.md#installation) · [Illustrated PDF guide](guides/ergotools_installation_and_github_guide.pdf) · [Copyable commands](guides/installation_commands.md)
 
-ErgoTools runs locally as a desktop application. Installation downloads Python and
-libraries; ordinary assessments and optimization work offline afterwards. A graphical
-session, working OpenGL driver, and a writable project folder are required.
+ErgoTools runs locally on Windows, macOS and Linux. Use Python **3.13.14** and
+**uv 0.11.25** with the repository’s pinned libraries. A graphical desktop,
+working OpenGL drivers and a writable project folder are required.
 
-| Platform | Setup | Validation |
-| --- | --- | --- |
-| Linux x86-64 | Locked desktop environment | Native GUI, VTK and HiGHS verified on Ubuntu 25.04 |
-| Windows 10/11 x64 | Separate pinned trial requirements | Package resolution checked; native installation, GUI and solvers await testing |
-| macOS 11+ Intel / Apple silicon | Separate pinned trial requirements | Package resolution checked for both architectures; native installation, GUI and solvers await testing |
+| Platform | Prepare |
+| --- | --- |
+| Windows | Windows 10/11 x64, PowerShell |
+| macOS | Intel or Apple silicon; use matching architecture throughout. GitHub Desktop requires macOS 12+. |
+| Linux | x86-64 graphical desktop, Git, curl and Qt/XCB/OpenGL system libraries |
 
-Use **CPython 3.13.14** and **uv 0.11.25**. Python 3.10 instructions from older
-branches do not apply to this codebase. Windows ARM64 is not a native trial target.
-On Apple silicon, use an arm64 Terminal/Python throughout, without mixing Intel
-packages. A virtual environment belongs to its installation path: recreate it if
-you move the checkout.
+Create a [GitHub account](https://github.com/signup) for GitHub Desktop and bug
+reports. [GitHub Desktop](https://desktop.github.com/download/) can clone/update
+Windows and macOS checkouts without a separate command-line Git installation.
+For the terminal route below, install [Git](https://git-scm.com/downloads).
 
-## Get Git and uv
+## Clone the code
 
-Install [Git](https://git-scm.com/downloads) and the pinned
-[uv installer](https://docs.astral.sh/uv/getting-started/installation/).
-If Git and uv are already available, skip their installers. On macOS, `git --version`
-may offer Apple's Command Line Tools installation; finish that first.
+In GitHub Desktop: **File → Clone Repository → URL**, enter
+`https://github.com/mhenriquezschott/ErgoTools.git`, select a stable local folder,
+and clone. Confirm the branch is **main**. Use **Show in Explorer/Finder** to find
+the checkout. Run installation commands from that folder.
 
-**Windows — PowerShell:**
+Alternatively, in a terminal:
 
-```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/0.11.25/install.ps1 | iex"
+```bash
+git clone --branch main --single-branch https://github.com/mhenriquezschott/ErgoTools.git
+cd ErgoTools
 ```
 
-**macOS / Linux — Terminal:**
+Keep your own `.ergprj` files outside this checkout. A `.venv` belongs to its
+installation location; recreate it if the checkout moves.
+
+## Windows
+
+Install uv in a normal PowerShell window:
+
+```powershell
+powershell -ExecutionPolicy ByPass `
+  -c "irm https://astral.sh/uv/0.11.25/install.ps1 | iex"
+```
+
+Close and reopen PowerShell. Enter the checkout folder (`cd "your actual path"`),
+then run each block in order:
+
+```powershell
+uv python install 3.13.14
+```
+```powershell
+uv sync --locked --no-dev --python 3.13.14
+```
+```powershell
+uv pip install --only-binary :all: `
+  --python .venv\Scripts\python.exe `
+  -r tools\requirements_desktop_trial.txt
+```
+```powershell
+.\tools\run_windows.cmd
+```
+
+The Windows libraries use PyQt5 5.15.11 and Qt 5.15.2; Qt 5.15.17 has no Windows
+wheel. Keep the provided versions.
+
+In Explorer, right-click `tools/run_windows.cmd` → **Show more options → Send to →
+Desktop (create shortcut)**. Rename the shortcut **ErgoTools**. Keep the original
+script inside `tools`; copying just the script to the Desktop breaks its environment
+lookup. The shortcut continues to work after code updates in the same checkout.
+
+## macOS
+
+Install uv in Terminal:
 
 ```bash
 curl -LsSf https://astral.sh/uv/0.11.25/install.sh | sh
 ```
 
-Reopen the terminal after installation and check:
-
-```text
-git --version
-uv --version
-```
-
-The commands below select the required Python explicitly; there is no need to
-activate the environment or change the system Python. Run them in a normal user
-terminal, in a folder you own.
-
-## Linux
+Open a new Terminal, enter the checkout folder, then run:
 
 ```bash
-git clone --branch main --single-branch https://github.com/mhenriquezschott/ErgoTools.git
-cd ErgoTools
 uv python install 3.13.14
-uv sync --locked --no-dev --extra desktop --python 3.13.14
-bash tools/run.sh
 ```
-
-Optional project argument:
-
 ```bash
-bash tools/run.sh "test_projects/native/comparative_risk_test.ergprj"
-```
-
-The desktop needs the distribution's OpenGL and Qt/XCB system libraries. If startup
-reports a missing shared library, use its exact name to identify the relevant OS
-package; reinstalling Python libraries does not supply system X11 drivers.
-See [independent Linux installation and recovery](linux_delivery.md) for wheel-based
-delivery. A Git clone does not contain generated `dist/` packages.
-
-## Windows trial
-
-The project's `desktop` extra currently has Linux-only markers. Consequently,
-`uv sync --extra desktop` alone does **not** install the Windows GUI. These steps
-install the editable application first and then the explicit trial libraries:
-
-```powershell
-git clone --branch main --single-branch https://github.com/mhenriquezschott/ErgoTools.git
-cd ErgoTools
-uv python install 3.13.14
 uv sync --locked --no-dev --python 3.13.14
-uv pip install --python .venv\Scripts\python.exe --only-binary :all: -r tools\requirements_desktop_trial.txt
-.\tools\run_windows.cmd
 ```
-
-Check that each command succeeds before continuing. This uses PyQt5 **5.15.11**
-with Qt **5.15.2**, explicitly approved for the Windows trial: Qt **5.15.17** has
-[Linux/macOS wheels but no Windows wheel](https://pypi.org/project/PyQt5-Qt5/5.15.17/#files).
-Other runtime versions match the Linux baseline. The separate
-[trial file](../tools/requirements_desktop_trial.txt) leaves `uv.lock` and the Linux
-environment intact. It requests wheels only; do not work around an unavailable
-wheel by upgrading packages or compiling a different Qt.
-
-### Desktop shortcut
-
-In File Explorer, locate `ErgoTools\tools\run_windows.cmd`. On Windows 11, use
-**Show more options → Send to → Desktop (create shortcut)**; on Windows 10,
-use **Send to → Desktop (create shortcut)**. Rename the shortcut **ErgoTools**.
-Double-click it to launch. Keep the script inside the checkout: a shortcut points
-to it; a copied script on the desktop would look for the wrong environment.
-
-The launcher selects this checkout's Python and needs no environment activation.
-A console remains available for startup errors. You can also pass a quoted project
-path from a terminal:
-
-```powershell
-.\tools\run_windows.cmd "C:\Users\YourName\Documents\ErgoTools projects\example.ergprj"
-```
-
-## macOS trial
-
 ```bash
-git clone --branch main --single-branch https://github.com/mhenriquezschott/ErgoTools.git
-cd ErgoTools
-uv python install 3.13.14
-uv sync --locked --no-dev --python 3.13.14
-uv pip install --python .venv/bin/python --only-binary :all: -r tools/requirements_desktop_trial.txt
+uv pip install --only-binary :all: \
+  --python .venv/bin/python \
+  -r tools/requirements_desktop_trial.txt
+```
+```bash
 chmod +x tools/run_macos.command
 ./tools/run_macos.command
 ```
 
-The trial uses the same exact library versions as Linux, including Qt **5.15.17**.
-Package resolution has been checked for Intel and Apple silicon; that does not
-establish successful native rendering or solver execution. Do not mix architectures
-or install the older branch's Conda/requirements environment on top of this one.
+Finish Apple’s Command Line Tools installation if prompted. The full Xcode app is
+not required. If uv reports a Python library-patching error before those tools were
+available, complete the tools installation and run `uv python install 3.13.14 --reinstall`,
+then repeat the environment commands. A normal rerun can simply say “already installed.”
 
-### Desktop alias
+In Finder, right-click `tools/run_macos.command` → **Make Alias**. Move only the
+alias to the Desktop and rename it **ErgoTools**. Keep the original launcher in
+`tools`; double-click the alias to start the app in Terminal.
 
-In Finder, locate `ErgoTools/tools/run_macos.command`, choose **File → Make Alias**,
-and move the **alias** to the Desktop. Rename it **ErgoTools**. Keep the original
-`.command` file inside `tools`; double-click the alias to launch in Terminal.
-This avoids a new Terminal command or environment activation at every launch.
+## Linux
 
-If macOS blocks a downloaded executable, review it and use the normal per-item
-**Open** / **Privacy & Security** approval. Do not disable Gatekeeper globally.
-To keep a startup error visible, run the command in an already open Terminal.
+Install uv, then reopen your terminal:
 
 ```bash
-./tools/run_macos.command "/Users/YourName/Documents/ErgoTools projects/example.ergprj"
+curl -LsSf https://astral.sh/uv/0.11.25/install.sh | sh
 ```
 
-## Update the code
+From the checkout:
 
-Save your project and close ErgoTools first. From the checkout:
+```bash
+uv python install 3.13.14
+```
+```bash
+uv sync --locked --no-dev --extra desktop --python 3.13.14
+```
+```bash
+bash tools/run.sh
+```
+
+Install your distribution’s Qt/XCB/OpenGL system libraries if a missing shared-library
+error identifies one. The [PDF guide](guides/ergotools_installation_and_github_guide.pdf)
+includes an optional application-menu launcher. See [Linux delivery](linux_delivery.md)
+for independent wheel installation and recovery.
+
+## Update
+
+Save your projects and close ErgoTools. In GitHub Desktop use **Fetch origin**, then
+**Pull origin** if offered. Or, from the checkout:
 
 ```bash
 git pull --ff-only origin main
 ```
 
-Your desktop shortcut/alias launches the updated editable source. It does not pull
-code, install libraries or save a project by itself. Keep your own projects outside
-the checkout so updates cannot replace example files you have edited.
+Repeat your platform’s environment commands before launching. On Windows/macOS,
+run **both** `uv sync` and the desktop requirements command, in that order: sync can
+remove GUI libraries outside its core selection. Linux uses `--extra desktop`.
+The desktop shortcut/alias keeps working; it launches code but does not download updates.
+If Git reports local changes or a non-fast-forward update, inspect them before proceeding.
 
-If dependency metadata changed, repeat your platform's environment commands.
-On Windows/macOS, repeat **both** `uv sync` and the trial `uv pip install` command:
-`uv sync` removes libraries that are outside the Linux-marked desktop extra.
-Do not run `uv sync` by itself there and expect the GUI dependencies to remain.
-If Git reports local changes or a non-fast-forward update, stop and inspect them;
-these instructions never reset local work.
+## Check the installation
 
-## First-launch check
+1. Open a personal copy of a bundled sample from `test_projects/native`.
+2. Check the 3D anatomy and task inputs for LiFFT, DUET and ST.
+3. Open PLOT and check the plant image, charts and view modes.
+4. Run a fresh single-tool and multi-tool optimization in JROT.
+5. Save your copy outside the checkout, reopen it and check a known input/result.
 
-1. Launch without `--disable-vtk`; confirm the body model is visible and can rotate.
-2. Open a personal copy of `comparative_risk_test.ergprj`. Review LiFFT, DUET and ST.
-3. Open PLOT and check the plant image, charts and Individual/Job/Comparison views.
-4. Open JROT; run a selected-tool solve, then an all-three solve (both HiGHS).
-5. Save As to a new file, close, reopen and verify its data. Check native file dialogs,
-   language switching, units and display scaling on your machine.
+Microsoft Excel is not needed for importing CSV, TSV, XLSX or XLSM cell values.
+Workbook formulas are not evaluated; use stored cell values. Older `.xls` files
+must be converted to a supported format.
 
-These are the native Windows/macOS checks still to be performed. Report OS version,
-CPU architecture, `uv --version`, Python version and the exact error if startup fails.
-Use the platform checklist for the fuller acceptance review.
+## Report a problem
 
+Use [GitHub Issues](https://github.com/mhenriquezschott/ErgoTools/issues), or
+GitHub Desktop → **Repository → Create Issue on GitHub** to open that page in your
+browser. Include the commit (Desktop History → Copy SHA), OS, display scaling,
+reproduction steps and screenshots.
 
-## Spreadsheet files
+Windows/macOS launch logs are enabled by default; Linux can enable them with
+`bash tools/run.sh --startup-diagnostics`.
 
-The application installs **openpyxl 3.1.5** and **et-xmlfile 2.0.0** for read-only XLSX
-cell import. These exact pins are included in the lock and desktop trial requirements.
-Microsoft Excel is not required; CSV/TSV and copied spreadsheet values also work.
-The importer does not evaluate workbook formulas or support the older `.xls` format.
+| OS | Diagnostic folder |
+| --- | --- |
+| Windows | `%LOCALAPPDATA%\ErgoTools\diagnostics` (Explorer address bar) |
+| macOS | `~/Library/Logs/ErgoTools` (Finder → Go → Go to Folder) |
+| Linux | `$XDG_STATE_HOME/ergotools/diagnostics`, or `~/.local/state/ergotools/diagnostics` |
 
-## Visual preferences and display reports
-
-See [Settings previews and diagnostics](settings_previews_and_diagnostics.md) for the
-reused gauge/bar controls, packaged avatar recording, launch flags, per-OS report
-locations and read-only DPI observation. Reporting defaults on for Windows/macOS
-and off for Linux; it never changes the platform scaling policy or project format.
-
-## Updating an older solver environment
-
-JROT now uses HiGHS directly for every tool subset. `uv sync --locked --extra desktop`
-removes the retired PuLP dependency from the dedicated Linux environment. For an existing
-dedicated Windows/macOS trial virtual environment managed with pip, uninstall unused PuLP
-with `python -m pip uninstall pulp` before installing the current trial requirements.
-There is no solver-selection setting. Previously saved result attribution is preserved;
-new optimizations use HiGHS. Native Windows/macOS execution still awaits platform testing.
-
-
-## Windows native-solver startup
-
-Use the current launcher rather than importing Qt from a custom wrapper first.
-The application imports HiGHS before Qt as a targeted correction for a reproduced
-Windows native solver access violation; a real-project Windows retest is required. See [native startup ordering](highs_only.md#native-startup-order-on-windows).
-After pulling this code-only correction, restart ErgoTools; no dependency reinstall
-or project migration is needed.
-
-If a native failure still occurs, open PowerShell in the repository and run these
-as **two separate commands**, then reproduce the problem:
-
-```powershell
-$env:PYTHONFAULTHANDLER = "1"
-.\tools\run_windows.cmd
-```
-
-Keep the complete console error. This enables native fault reporting for that
-PowerShell session without changing the installation or personal preferences.
+Settings → General → Display diagnostics → **Open report folder** opens the folder.
+Choose the report from the failing launch. Review paths/identifiers before sharing,
+ZIP the `.jsonl` file and matching rotated sibling when present, and attach that ZIP.
+The [guide](guides/ergotools_installation_and_github_guide.pdf) covers screenshots,
+console capture and attachment steps. See [display diagnostics](settings_previews_and_diagnostics.md)
+for technical details.

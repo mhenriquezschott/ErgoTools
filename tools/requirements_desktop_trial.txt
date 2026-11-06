@@ -1,8 +1,7 @@
-# Experimental native Windows/macOS desktop setup; not a replacement for uv.lock.
-# Same exact desktop versions as the Linux baseline, except owner-approved Windows
-# Qt 5.15.2 (2026-10-22): Qt 5.15.17 has no Windows wheel. No application changes.
+# Pinned Windows/macOS desktop libraries, installed after the core uv sync.
+# Same desktop versions as Linux, except Windows Qt 5.15.2:
+# Qt 5.15.17 has no Windows wheel.
 # Install with --only-binary :all: on CPython 3.13; missing wheels must stop setup.
-# Native GUI/OpenGL/solver acceptance on Windows/macOS is still pending.
 highspy==1.11.0
 PyQt5==5.15.11
 PyQt5-Qt5==5.15.2 ; sys_platform == 'win32'
