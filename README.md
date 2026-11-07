@@ -378,8 +378,9 @@ the guide explains how to include screenshots, the installed revision and diagno
 
 ### Conference presentations
 
-| Year and dates | Presentation | Event and location | Program |
+| Year and dates | Presentation | Event and location | Program and materials |
 | --- | --- | --- | --- |
+| **2026** · September 14–16 | **PLOT: Plant Layout Organizational Tool — Ergonomic risk mapping for the plant floor**. Presented by Iván Nail-Ulloa, PhD, Auburn University. | NSC Safety Congress & Expo, Indianapolis, Indiana, USA | [Presentation slides](docs/presentations/plot_nsc_congress_2026.pdf) · [Official event dates](https://congress.nsc.org/NSC2025/Public/Content.aspx?ID=8021&sortMenu=108001) |
 | **2025** · October 12–17 | **PLOT: A Plant-Layout Organizational Tool Based on Fatigue Failure Theory for MSD Control and Mitigation** | HFES 69th International Annual Meeting (ASPIRE 2025), Chicago, Illinois, USA. Presented October 15 in the *Effort and Fatigue* session. | [Official presentation record](https://hfesam2025.conference-program.com/presentation/?id=LECT420&sess=sess241) |
 | **2025** | ErgoTools/PLOT research dissemination at the Applied Human Factors and Ergonomics International Conference | Applied Human Factors and Ergonomics (AHFE 2025) | [Official AHFE 2025 program](https://www.ahfe.org/files/AHFE2025_FinalProgram.pdf) |
 | **2024** · September 9–13 | **Fatigue Failure Risk Assessment Tool: A Software for Integrated Approach to Ergonomic Analysis** | ASPIRE 2024 International Annual Meeting, Phoenix, Arizona, USA | [Event information](https://iea.cc/event/aspire-the-hfes-international-annual-meeting/) |
