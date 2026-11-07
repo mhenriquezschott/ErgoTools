@@ -125,7 +125,7 @@ with the physical workplace and the people working there.
 Workplace filters focus the analysis on a plant, section, line, station or shift.
 Demographic filters refine the worker population by sex, age, weight and height.
 
-![PLOT workplace and demographic filters](docs/images/plot_filters.png)
+![PLOT workplace filters with demographic filtering enabled and example sex, age, weight and height values](docs/images/plot_filters.png)
 
 ### Individual risk
 
