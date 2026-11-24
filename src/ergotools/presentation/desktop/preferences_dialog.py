@@ -213,7 +213,7 @@ class PreferencesDialog(QDialog):
         self.developer_option.setChecked(developer_enabled)
         developer_layout.addWidget(self.developer_option)
         developer_note = QLabel(
-            "Development tools are separate from production JROT and Legacy. "
+            "Enables experimental tools, including PLOT Shift View. "
             "This option resets on restart."
         )
         developer_note.setWordWrap(True)

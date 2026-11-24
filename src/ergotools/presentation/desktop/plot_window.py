@@ -10,6 +10,7 @@ import logging
 from collections.abc import Callable, Mapping
 from dataclasses import replace
 from datetime import datetime
+from math import isfinite
 
 from PyQt5.QtCore import QRect, QSize, Qt
 from PyQt5.QtGui import QCloseEvent, QIcon, QPainter, QPixmap, QShowEvent
@@ -19,10 +20,13 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLayout,
+    QLineEdit,
     QMessageBox,
+    QSizePolicy,
     QSplitter,
     QStackedWidget,
     QTabWidget,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -39,6 +43,7 @@ from ergotools.application.plot_layout import PlantLayoutReader, PlantLayoutWrit
 from ergotools.application.plot_results import PlotResults, saved_plot_results
 from ergotools.application.project_editing import ProjectEditingSession
 from ergotools.application.session import DocumentSession
+from ergotools.application.shift_playback import ShiftPlaybackRepository
 from ergotools.domain.language import Language
 from ergotools.domain.model_units import MeasurementSystem
 from ergotools.domain.plant_layout_image import PlantLayoutImage
@@ -48,8 +53,10 @@ from ergotools.presentation.desktop.plot_filters_panel import PlotFiltersPanel
 from ergotools.presentation.desktop.plot_history_actions import PlotHistoryActions
 from ergotools.presentation.desktop.plot_job_overview import PlotJobOverview
 from ergotools.presentation.desktop.plot_map_panel import PlotMapPanel
+from ergotools.presentation.desktop.plot_map_tools import PlotMapTools
 from ergotools.presentation.desktop.plot_marker_layer import PlotMarkerLayer
 from ergotools.presentation.desktop.plot_outcome_panel import PlotOutcomePanel
+from ergotools.presentation.desktop.plot_shift_player import PlotShiftPlayer
 from ergotools.presentation.desktop.plot_tools_overview import PlotToolsOverview
 from ergotools.presentation.desktop.plot_worker_overview import PlotWorkerOverview
 from ergotools.presentation.desktop.project_history_actions import ProjectHistoryActions
@@ -81,6 +88,7 @@ class PlotWindow(QDialog):
         icons: Mapping[str, QIcon],
         *,
         current_year: int,
+        shift_repository: ShiftPlaybackRepository | None = None,
         csv_writer: Callable[[str, tuple[tuple[str, ...], ...]], None] | None = None,
         system: MeasurementSystem = MeasurementSystem.METRIC,
         language: Language = Language.ENGLISH,
@@ -108,6 +116,8 @@ class PlotWindow(QDialog):
                 metadata for a chosen file.
             icons: Processed packaged icons indexed by stable asset identity, not system
                 theme names.
+            shift_repository: Optional read-only rotation capability, supplied only
+                after the session Developer option is enabled. No schema change.
             current_year: Explicit calendar year for demographic ages; keeps loaded
                 projections deterministic.
             csv_writer: Optional file writer receiving a destination and complete CSV
@@ -141,6 +151,7 @@ class PlotWindow(QDialog):
         self.csv_writer = csv_writer
         self.load_assessment = load_assessment
         self._closure_accepted = False
+        self.shift_player: PlotShiftPlayer | None = None
         self._filter_results: dict[PlotFilterSelection, PlotResults] = {}
         self.setObjectName("plotDialog")
         self.setWindowTitle("Plant-Layout Organizational Tool (PLOT)")
@@ -160,6 +171,13 @@ class PlotWindow(QDialog):
             current_year=current_year,
             language=language,
             load_assessment=self.handoff if load_assessment is not None else None,
+        )
+        self.map_tools = PlotMapTools(self.layer, icons)
+        self.map_panel.rail_tools.insertWidget(
+            self.map_panel.rail_tools.indexOf(self.map_panel.buttons["opacity"]) + 1,
+            self.map_tools,
+            0,
+            Qt.AlignmentFlag.AlignHCenter,
         )
         self.filters = PlotFiltersPanel(
             hierarchy,
@@ -243,6 +261,8 @@ class PlotWindow(QDialog):
                 language,
                 prepare=self.accept_plot_fields,
                 restored=self.restore_project_plot,
+                pending=self.pending_plot_edit,
+                prefer_document_history=self.map_field_history,
             )
         else:
             self.history_actions = PlotHistoryActions(
@@ -287,7 +307,10 @@ class PlotWindow(QDialog):
         # Non-collapsible children propagate their live rail/chart minima through
         # this layout, including demographic disclosure and wrapped chart text.
         root.addWidget(self.splitter, 1)
-        root.addWidget(self.outcome)
+        self.outcome_stack = QStackedWidget()
+        self.outcome_stack.addWidget(self.outcome)
+        self.sync_outcome_height()
+        root.addWidget(self.outcome_stack)
         self.setMinimumWidth(max(1316, root.minimumSize().width()))
         self.layer.changed.connect(self.sync_mode)
         self.layer.selection_changed.connect(self.reveal_selection)
@@ -305,6 +328,36 @@ class PlotWindow(QDialog):
                 )
                 self.layer.replay_view = self.replay_history
         self.filters.history_changed.connect(self.record_filter_history)
+
+        self.shift_button = QToolButton(self.filters.risk_group)
+        self.shift_button.setObjectName("plotRiskViewButton")
+        self.shift_button.setText(self.text("Shift View", "Vista de turno"))
+        self.shift_button.setCheckable(True)
+        self.shift_button.setAutoExclusive(True)
+        self.shift_button.setToolTip(
+            self.text(
+                "Read-only baseline/optimized shift playback.",
+                "Reproducción inicial/optimizada de solo lectura.",
+            )
+        )
+        risk_layout = self.filters.risk_group.layout()
+        assert risk_layout is not None
+        self.shift_button.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        assert isinstance(risk_layout, QHBoxLayout)
+        risk_layout.addWidget(self.shift_button, 1)
+        self.shift_button.setVisible(shift_repository is not None)
+        if shift_repository is not None:
+            self.shift_player = PlotShiftPlayer(self, shift_repository, dict(icons))
+            self.outcome_stack.addWidget(self.shift_player)
+            self.shift_button.clicked.connect(self.shift_player.enter)
+            for button in self.filters.risk_buttons.values():
+                button.clicked.connect(self.shift_player.leave)
+            self.map_panel.canvas.layout_replaced.connect(
+                self.shift_player.clear_glyphs
+            )
+            self.finished.connect(self.shift_player.pause)
 
         self._accepting_plot = False
         self.layer.project_editing = editing is not None
@@ -328,6 +381,7 @@ class PlotWindow(QDialog):
             ):
                 field.editingFinished.connect(self.accept_plot_field_edit)
             self.layer.changed.connect(self.accept_plot_state)
+            self.layer.changed.connect(self.history_actions.refresh)
             self.map_panel.buttons["open"].clicked.connect(self.accept_plot_image)
             retained = editing.editor("plot.view")
             if isinstance(retained, PlotEditState):
@@ -336,6 +390,70 @@ class PlotWindow(QDialog):
                 editing.seed_editor("plot.view", self.layer.history.session.state)
 
         self.map_panel.canvas.view_edited.connect(self.record_map_view)
+
+    def sync_outcome_height(self) -> None:
+        """Reserve the same bottom region for ordinary results and shift playback.
+
+        Args:
+            None.
+
+        Returns:
+            None; map, rail and sidebar retain their common viewport geometry.
+        """
+        self.outcome_stack.setFixedHeight(self.outcome.minimumHeight())
+
+    def pending_plot_edit(self) -> str | None:
+        """Expose valid pending map numbers to the shared Undo button.
+
+        Args:
+            None.
+
+        Returns:
+            The existing map-edit label, or None for absent/invalid field drafts.
+        """
+        controls = self.workers.controls
+        try:
+            for values in controls.field_drafts.values():
+                x, y, scale = (float(value) for value in values)
+                if not all(isfinite(value) for value in (x, y, scale)) or scale <= 0:
+                    return None
+            if self.jobs.has_unaccepted_fields and not all(
+                isfinite(float(f.text()))
+                for f in (self.jobs.x_input, self.jobs.y_input)
+            ):
+                return None
+            return (
+                "plot.edit"
+                if controls.field_drafts or self.jobs.has_unaccepted_fields
+                else None
+            )
+        except ValueError:
+            return None
+
+    def map_field_history(self, field: QWidget) -> bool:
+        """Route complete map coordinate/scale edits through project chronology.
+
+        Args:
+            field: Current focused editor, normalized by the history adapter.
+
+        Returns:
+            True for complete valid map numbers; partial typing keeps native Undo.
+        """
+        controls = self.workers.controls
+        fields = (
+            controls.x_input,
+            controls.y_input,
+            controls.scale_input,
+            self.jobs.x_input,
+            self.jobs.y_input,
+        )
+        if not isinstance(field, QLineEdit) or field not in fields:
+            return False
+        try:
+            value = float(field.text())
+        except ValueError:
+            return False
+        return isfinite(value) and (field is not controls.scale_input or value > 0)
 
     def record_map_view(
         self, before: PlotNavigationState, after: PlotNavigationState
@@ -350,6 +468,8 @@ class PlotWindow(QDialog):
             None; replay and automatic layout never create nested commands or writes.
         """
         history = self.layer.history
+        if self.shift_player is not None and self.shift_player.active:
+            return
         if history is None or self._accepting_plot:
             return
         if self.editing is not None and self.editing.replaying:
@@ -445,6 +565,7 @@ class PlotWindow(QDialog):
                 controls.select(("worker", identity))
                 marker = controls.selected_settings()
                 controls.field_drafts.pop(identity, None)
+                controls._typed = False
                 self.layer.preview_worker(marker)
             if self.jobs.has_unaccepted_fields:
                 self.jobs.save()
@@ -517,6 +638,8 @@ class PlotWindow(QDialog):
         editing = self.editing
         if editing is None:
             return
+        if self.shift_player is not None:
+            self.shift_player.leave()
         cursor_mode = self.map_panel.canvas.navigation_mode
         worker_selected = self.workers.selected_id
         job_selected = self.jobs.selected_id
@@ -644,9 +767,11 @@ class PlotWindow(QDialog):
         # breakpoint: probing a live splitter's cached minima during show can
         # alternate between profiles as its child resize events settle.
         compact = budget < 1200
+        self.map_tools.set_compact(compact)
         self.map_panel.set_compact_controls(compact)
         self.tools.set_compact_layout(compact)
         self.outcome.set_compact_layout(compact)
+        self.sync_outcome_height()
         self.tabs.setMinimumWidth(
             max(self._details_minimum_width, 520)
             if compact
@@ -707,6 +832,11 @@ class PlotWindow(QDialog):
             True after complete results and scope are published; False retains the
             previous applied dataset.
         """
+        if self.shift_player is not None and self.shift_player.active:
+            if not self.map_panel.set_scope(selection.scope):
+                return False
+            self.shift_player.apply_filters(selection)
+            return True
         if self.layer.pending:
             self.map_panel.show_error(
                 self.text(
@@ -733,6 +863,8 @@ class PlotWindow(QDialog):
         Returns:
             None.
         """
+        if self.shift_player is not None and self.shift_player.active:
+            return
         history = self.layer.shared_history
         if history is not None and self.filters.workplace.scope is not None:
             results = self.layer.results
@@ -800,6 +932,8 @@ class PlotWindow(QDialog):
         Returns:
             None.
         """
+        if self.shift_player is not None and self.shift_player.active:
+            self.shift_player.leave()
         results = self.layer.results
         if (
             results is not None
@@ -819,11 +953,18 @@ class PlotWindow(QDialog):
         Returns:
             None.
         """
+        if self.shift_player is not None and self.shift_player.active:
+            return
         self.map_panel.buttons["export"].setEnabled(self.csv_writer is not None)
         results = self.layer.results
         job_view = (
             results is not None and results.selection.risk_view is PlotRiskView.JOB
         )
+        self.workers.controls.setVisible(
+            results is None
+            or results.selection.risk_view is not PlotRiskView.COMPARISON
+        )
+        self.sync_outcome_height()
         self.overviews.setCurrentIndex(1 if job_view else 0)
         self.tabs.setTabText(
             1,

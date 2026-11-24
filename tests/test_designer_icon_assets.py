@@ -59,6 +59,10 @@ DESIGNER_NAMES = (
     "validate_import",
     "worker_restrictions",
     "worksheet",
+    "horizontal_alignment",
+    "vertical_alignment",
+    "snap_to_grid",
+    "show_grid",
 )
 
 

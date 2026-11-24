@@ -44,6 +44,9 @@ and organization management, and interactive 3D anatomical visualization.
 Three assessment methods share a workspace with task inputs, calculated damage
 contributions, a 3D anatomical view and a risk summary.
 
+For illustrated walkthroughs of the interfaces and complete examples, see the
+[ErgoTools user guide (PDF)](https://raw.githubusercontent.com/mhenriquezschott/ErgoTools/main/docs/guides/ergotools_user_guide.pdf).
+
 ### LiFFT — Lifting Fatigue Failure Tool
 
 Low-back assessment based on load, horizontal lever arm and repetitions. Results
@@ -222,8 +225,8 @@ or copied worker assessments.
 
 | Mode | Optimization goal | Interpreting the result |
 | --- | --- | --- |
-| **Optimize Tool** | Minimize the highest worker schedule average for the selected method: LiFFT, DUET or ST. Uses CBC. | A schedule optimized for one anatomical region may improve or worsen the results for the other methods. The comparison view evaluates those other methods without optimizing again. |
-| **Optimize All Tools** | Consider LiFFT, DUET and ST together, first minimizing the sum of their maximum worker averages, then reducing the exposure spread within those bounds. Uses HiGHS. | Produces one shared schedule balancing the three methods. Each comparison tab evaluates that schedule with a different tool; the tabs are not three independent optimizations. |
+| **Optimize Tool** | Minimize the highest worker schedule average for the selected method: LiFFT, DUET or ST, then reduce the spread while preserving that best maximum. | A schedule optimized for one anatomical region may improve or worsen the results for the other methods. The comparison view evaluates those other methods without optimizing again. |
+| **Optimize All Tools** | Consider LiFFT, DUET and ST together, first minimizing the sum of their maximum worker averages, then reducing the exposure spread within those bounds. | Produces one shared schedule balancing the three methods. Each comparison tab evaluates that schedule with a different tool; the tabs are not three independent optimizations. |
 
 Both modes retain the scheduled Job occurrences and the staffing constraints.
 Redistributing work can reduce the highest worker exposure or make the distribution
@@ -264,6 +267,17 @@ results for exactly the same assignments.
 Click a comparison image for full resolution. Rotation analysis complements Job
 redesign and other ergonomic controls; redistributing exposure does not eliminate a
 hazardous activity.
+
+### Step-by-step JROT tutorials
+
+Each tutorial starts with a new project and covers organization, workers, Job
+assessments, rotation setup and interpretation of the results.
+
+| Scenario | PDF tutorial |
+| --- | --- |
+| Evaluate and optimize a rotation already in use | [Evaluate a current rotation](https://raw.githubusercontent.com/mhenriquezschott/ErgoTools/main/docs/guides/jrot_tutorial_1_evaluate_current_rotation.pdf) |
+| Revise an existing rotation | [Change a current rotation](https://raw.githubusercontent.com/mhenriquezschott/ErgoTools/main/docs/guides/jrot_tutorial_2_change_current_rotation.pdf) |
+| Explore introducing job rotation | [Explore job rotation](https://raw.githubusercontent.com/mhenriquezschott/ErgoTools/main/docs/guides/jrot_tutorial_3_explore_job_rotation.pdf) |
 
 ## Scientific basis
 
@@ -397,14 +411,14 @@ software citation have not yet been published.
 
 ## Documentation
 
-[Documentation index](docs/README.md)
+[Documentation index](docs/README.md) · [Complete illustrated user guide (PDF)](https://raw.githubusercontent.com/mhenriquezschott/ErgoTools/main/docs/guides/ergotools_user_guide.pdf)
 
 | Users | Developers |
 | --- | --- |
-| [Installation and desktop launchers](docs/installation.md) | [Development](docs/development.md) |
+| [Installation and GitHub guide (PDF)](https://raw.githubusercontent.com/mhenriquezschott/ErgoTools/main/docs/guides/ergotools_installation_and_github_guide.pdf) · [Setup reference](docs/installation.md) | [Development](docs/development.md) |
 | [English user guide](docs/user_guide.md) · [Guía en español](docs/user_guide_es.md) | [Architecture](docs/architecture.md) · [Coding standards](docs/coding_standards.md) |
 | [Backup and recovery](docs/recovery.md) | [API contracts](docs/api_contracts.md) · [Database reference](docs/database_tables.md) |
-| [Example projects](test_projects/native/README.md) | [Scientific calculations](#scientific-basis) |
+| [JROT scenario tutorials (PDF)](#step-by-step-jrot-tutorials) · [Example projects](test_projects/native/README.md) | [Scientific calculations](#scientific-basis) |
 
 ## Repository structure
 
@@ -418,7 +432,8 @@ software citation have not yet been published.
 | `tests/` | Calculation, storage, interface and integration tests |
 | `test_projects/` | Example projects and conversion test datasets |
 | `tools/` | Launchers, development checks and conversion utilities |
-| `docs/` | User guides, technical documentation and screenshots |
+| `docs/` | PDF guides and tutorials, technical documentation and screenshots |
+| `prototypes/android_demo/` | Isolated Android tablet demonstration with its own setup instructions |
 
 ## Contributing
 

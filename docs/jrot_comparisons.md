@@ -64,6 +64,12 @@ Main Save publishes kept data; reopening displays it without another solve. Canc
 failed or stale solves cannot overwrite it. Changed inputs retain prior frozen evidence
 with an explicit stale label.
 
+After an unsuccessful attempt, the failure notice takes precedence over older kept
+results in steps 07 and 08. Comparison cards, matrices and result actions are cleared
+for that attempt; there is no fallback that could look like a new optimization.
+The old kept run remains stored. A valid retry restores normal result presentation.
+See [failure behavior](jrot_planning.md#infeasibility-and-bounded-runs).
+
 No-path feasibility generation remains distinct. In 04, Generate initial proposal creates
 only a starting proposal, confirms any replacement and stays in 04 for further editing.
 Step 07 only optimizes; feasibility generation is available only in 04.

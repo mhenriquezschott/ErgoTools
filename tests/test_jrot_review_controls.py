@@ -1,4 +1,4 @@
-"""Owner walkthrough regressions for visible tools, optional links and coherent rules.
+"""Owner walkthrough checks for visible tools, preserved metadata and coherent rules.
 
 Native presentation tests use private projects and real shared history. No solver,
 calculator or project format is replaced by a test-only implementation.
@@ -63,48 +63,26 @@ def test_prominent_tool_choices_keep_subset_history_and_shared_icons(
 
 
 @pytest.mark.parametrize("language", list(Language))
-def test_optional_neighbor_disclosure_requests_and_hover_help(
-    tmp_path: Path, language: Language
-) -> None:
-    """Links activate per boundary, while expanding and hover create no source edits.
+def test_across_shift_controls_are_absent(tmp_path: Path, language: Language) -> None:
+    """Keep step 03 focused on workers and within-shift restrictions.
 
     Args:
         tmp_path: Private editor state.
-        language: Owned English/Spanish wording.
+        language: Maintained interface language.
 
     Returns:
-        None; disabled selection still explains when it becomes relevant.
+        None; neither old neighbor controls nor their selection callbacks are exposed.
     """
     root = planning_dialog(tmp_path, language)
     try:
         root.go(2)
-        section = root.neighbors
-        assert not section.toggle.isChecked() and section.disclosure.isHidden()
-        assert not any(b.isEnabled() for b in section.choose_buttons.values())
         before = root.current()
-        section.toggle.click()
-        QTest.qWait(230)
-        assert section.disclosure.isVisible()
+        assert not hasattr(root, "neighbors")
+        assert not hasattr(root, "choose_neighbor")
+        assert not hasattr(root, "clear_neighbor")
+        root.go(5)
+        assert "boundary" not in root.readiness.text().lower()
         assert root.current() == before
-        changed = replace(before.inputs, rules=(NoAdjacentHigh("W1", previous=True),))
-        assert root.edit_inputs(before, RotationEntryChange(changed))
-        root.reload()
-        assert section.toggle.isChecked()
-        assert section.choose_buttons[True].isEnabled()
-        assert not section.choose_buttons[False].isEnabled()
-        previous_text = section.explanation(True)
-        root.activateWindow()
-        root.raise_()
-        QTest.qWait(20)
-        section.choose_buttons[True].setFocus()
-        QTest.qWait(10)
-        assert section.help.text() == previous_text
-        QTest.mouseMove(
-            section.choose_buttons[False], section.choose_buttons[False].rect().center()
-        )
-        QTest.qWait(20)
-        assert section.help.text() == section.explanation(False)
-        assert root.current().inputs == changed
     finally:
         dispose(root)
 
@@ -208,31 +186,59 @@ def test_excluding_every_job_retains_previous_draft(
         dispose(root)
 
 
-def test_unused_neighbor_links_survive_disclosure_projection(tmp_path: Path) -> None:
-    """Disabling a worker rule never silently removes a previously linked result.
+def test_stored_cross_shift_metadata_survives_rule_editing(tmp_path: Path) -> None:
+    """Preserve stored neighbor links and rule flags after withdrawing their UI.
 
     Args:
-        tmp_path: Disposable retained real optimization.
+        tmp_path: Disposable project with retained real optimization evidence.
 
     Returns:
-        None; clearing remains an explicit host-owned action even with no active rule.
+        None; accepting unrelated restrictions retains the hidden metadata exactly,
+        and shared Undo/Redo restores the original and edited scenarios.
     """
     root = solved_dialog(tmp_path)
     try:
         before = root.current()
         boundary = capture_rotation_boundary(before, previous=True)
-        inputs = replace(before.inputs, previous=boundary)
-        root.neighbors.project(inputs, {before.scenario_id: "Named source rotation"})
-        assert not root.neighbors.choose_buttons[True].isEnabled()
-        assert root.neighbors.clear_buttons[True].isEnabled()
-        assert "Named source rotation" in root.neighbors.links.text()
-        assert root.current() == before
+        worker = before.inputs.workers[0].worker_id
+        rule = NoAdjacentHigh(worker, previous=True, following=True)
+        inputs = replace(
+            before.inputs, previous=boundary, following=boundary, rules=(rule,)
+        )
+        assert root.edit_inputs(before, RotationEntryChange(inputs))
+        root.reload()
+        stored = root.current()
+        dialog = JrotRulesDialog(
+            inputs,
+            {t.key: t.job_id for t in inputs.targets},
+            root.icons,
+            root.language,
+            root,
+        )
+        try:
+            assert dialog.table.columnCount() == 4
+            assert len(dialog.controls[worker]) == 3
+            assert dialog.collect_rules() == (rule,)
+            dialog.controls[worker][0].setCurrentIndex(1)
+            dialog.accept_rules()
+            assert rule in dialog.selected
+            assert root.edit_inputs(
+                stored, RotationEntryChange(replace(inputs, rules=dialog.selected))
+            )
+            edited = root.current()
+            assert edited.inputs.previous == edited.inputs.following == boundary
+            assert root.workspace.editing.replay(redo=False)
+            assert root.current() == stored
+            assert root.workspace.editing.replay(redo=True)
+            assert root.current() == edited
+        finally:
+            dialog.deleteLater()
     finally:
         dispose(root)
 
 
 @pytest.mark.parametrize("language", list(Language))
-def test_rule_summary_tracks_local_choices_and_missing_neighbor_context(
+def test_rule_summary_tracks_within_shift_choices(
     tmp_path: Path, language: Language
 ) -> None:
     """Keep counts and warnings synchronized without accepting local edits.
@@ -273,15 +279,8 @@ def test_rule_summary_tracks_local_choices_and_missing_neighbor_context(
         dialog.clear_excluded()
         controls[2].setChecked(True)
         assert dialog.summary_counts["high"].text().startswith("<b>1</b>")
-        controls[3].setChecked(True)
-        assert "03" in dialog.summary_status.text()
-        assert "previous" in dialog.summary_status.text() or (
-            "anterior" in dialog.summary_status.text()
-        )
-        controls[4].setChecked(True)
-        assert "following" in dialog.summary_status.text() or (
-            "siguiente" in dialog.summary_status.text()
-        )
+        assert dialog.table.columnCount() == 4
+        assert set(dialog.column_header.buttons) == {1, 2, 3}
         dialog.bulk_checks(3, False)
         assert dialog.summary_counts["high"].text().startswith("<b>0</b>")
         assert dialog.summary_status.text() == empty_status

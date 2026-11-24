@@ -96,7 +96,7 @@ def test_comparison_uses_same_frozen_solution_and_readonly_views(
                 assert table.item(2, 2).text() == "0.00"
         assert dialog.current() == original
         assert Path(dialog.workspace.location).read_bytes() == saved
-        assert not dialog.comparison.report_button.isEnabled()
+        assert dialog.comparison.report_button.isEnabled()
         assert dialog.comparison.rework_button.isEnabled()
     finally:
         dispose(dialog)

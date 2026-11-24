@@ -252,3 +252,62 @@ def test_job_summary_uses_exact_risk_and_refreshes_after_calculation(
         )
     finally:
         dispose(dialog)
+
+
+@pytest.mark.parametrize("damage", [0.0, 2.76444e-5, 1e-20, 0.0326064])
+def test_small_direct_damage_summary_keeps_numeric_styling(
+    tmp_path: Path, damage: float
+) -> None:
+    """Small/zero direct results remain legible, centered and bold after refresh.
+
+    Args:
+        tmp_path: Disposable native Job project.
+        damage: Exact nonnegative cumulative damage stored as a direct measurement.
+
+    Returns:
+        None; formatting changes no measurement and scientific fallback stays numeric.
+    """
+    from ergotools.domain.job_risk import JobRiskMeasurement, JobRiskValues
+    from ergotools.presentation.desktop.table_presentation import numeric_display
+
+    root = populated_dialog(tmp_path)
+    try:
+        job = root.workspace.read_jobs().jobs.jobs[0]
+        measurement = JobRiskMeasurement(AssessmentKind.LIFFT, damage, 5.0)
+        root.workspace.save_job_details(
+            root.workspace.read_jobs(),
+            root.workspace.read_job_risk(),
+            job,
+            JobRiskValues(job.job_id, (measurement,)),
+        )
+        root.go(5)
+        table = root.risk_tabs.widget(0)
+        cell = table.item(0, 2)
+        assert numeric_display(cell.text())
+        assert cell.textAlignment() == Qt.AlignCenter and cell.font().bold()
+        if damage == 2.76444e-5:
+            assert cell.text() == "0.0000276444"
+        if damage == 0:
+            assert cell.text() == "0.0000"
+        if damage:
+            assert float(cell.text()) != 0
+        assert root.workspace.read_job_risk().risk.for_job(job.job_id).measurements == (
+            measurement,
+        )
+    finally:
+        dispose(root)
+
+
+@pytest.mark.parametrize("text", ["2.76444e-05", "1E+20", "-2,5e-8%", "0.0000", "—"])
+def test_scientific_display_tokens_are_numeric(text: str) -> None:
+    """Recognize whole scientific display tokens for table styling, never input parsing.
+
+    Args:
+        text: Finite display text or the shared missing-value token.
+
+    Returns:
+        None; exponent notation gets the same presentation as fixed decimal values.
+    """
+    from ergotools.presentation.desktop.table_presentation import numeric_display
+
+    assert numeric_display(text)

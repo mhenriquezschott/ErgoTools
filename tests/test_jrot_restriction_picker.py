@@ -54,14 +54,12 @@ def test_fixed_then_exclusion_modal_accept_cancel_and_shared_history(
             """
             modal = QApplication.activeModalWidget()
             assert isinstance(modal, JrotRulesDialog)
-            fixed, excluded, high, previous, following = modal.controls["W1"]
+            fixed, excluded, high = modal.controls["W1"]
             fixed.setCurrentIndex(fixed.findData(a))
-            assert not previous.isEnabled() and not following.isEnabled()
+            assert modal.table.columnCount() == 4
             high.setChecked(True)
-            assert previous.isEnabled() and following.isEnabled()
-            assert all(
-                c.toolTip() for c in (fixed, excluded, high, previous, following)
-            )
+            assert high.isChecked()
+            assert all(c.toolTip() for c in (fixed, excluded, high))
 
             def choose() -> None:
                 """Choose the other Job by its exact key and accept the nested picker.

@@ -7,6 +7,7 @@ Use the normal Tools → JROT entry for the guided rotation workflow.
 | Project | Workers | Worker assessments/results | Jobs | Saved rotations |
 |---|---:|---:|---:|---:|
 | workflow_4_workers.ergprj | 7 | 12 | 10 | 34 |
+| jrot_workflow_optimization_test01.ergprj | 7 | 12 | 10 | 35 |
 | jrot_workflow_demo.ergprj | 6 | 0 | 6 | 0 |
 | comparative_risk_test.ergprj | 28 | 194 | 12 | 7 |
 | integrated_test.ergprj | 28 | 194 | 12 | 5 |
@@ -47,3 +48,23 @@ Demo 11–14 compares unrestricted and restricted optimal ordering; see
 
 Demo 15–20 adds four-worker/eight-block fixed/excluded/timing pairs and AJ04 (25%).
 See [the walkthrough and exact bounds](../../docs/jrot_rule_timing_examples.md).
+
+The current JROT workflow test project is
+`jrot_workflow_optimization_test01.ergprj`. **Demo 21 · Infeasible combined
+restrictions** combines valid fixed Jobs and no-adjacent-High rules into a
+cross-block impossibility. It should produce a clear warning and no optimized
+matrix; clearing V03's adjacency restriction makes it solvable. See
+[the example and checks](../../docs/jrot_infeasible_example.md). Existing records
+and kept runs remain intact; the older four-workers file is not updated by this case.
+
+## Shift View developer demo
+
+`shift_view_demo.ergprj` contains 20 fictional workers, 20 positioned Job placements,
+all three tools with named task inputs/results for Jobs and workers, and two retained
+four-block baseline/optimized rotations. Day shift: 08:00–18:00, four 135-minute work
+blocks and three 20-minute breaks. One example adds No adjacent High for all workers.
+The owner supplied a dedicated 20-worker plant image and baseline placements,
+now aligned horizontally within its eight work cells. The earlier seed used the
+comparison image; its worker data was never copied. Enable the session Developer option, then PLOT → Shift
+View. See [the playback guide](../../docs/plot_shift_view.md) for controls, weighted
+index meaning and how to reoptimize in JROT. The existing native format is unchanged.

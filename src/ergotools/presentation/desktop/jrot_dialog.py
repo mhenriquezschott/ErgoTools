@@ -53,15 +53,10 @@ from ergotools.application.rotation_entry import (
     set_rotation_cell,
 )
 from ergotools.application.rotation_optimization import RotationPlanningOptimizer
-from ergotools.application.rotation_planning import (
-    capture_rotation_boundary,
-    neighbors_are_current,
-)
 from ergotools.application.rotation_scenarios import (
     create_scenario,
     duplicate_scenario,
     opening_scenario,
-    own_run_is_current,
 )
 from ergotools.application.rotation_timing import ShiftClock, clock_minute, shift_clock
 from ergotools.domain.assessments.context import WorkplaceContext
@@ -78,7 +73,6 @@ from ergotools.domain.language import Language
 from ergotools.domain.risk import classify_probability
 from ergotools.domain.rotation import RotationRisk
 from ergotools.domain.rotation_comparison import starting_indices
-from ergotools.domain.rotation_planning import rotation_interval
 from ergotools.domain.rotation_scenario import (
     ROTATION_RUN_MODEL_VERSION,
     RotationDraftRow,
@@ -102,7 +96,6 @@ from ergotools.presentation.desktop.jrot_catalog_picker import (
 )
 from ergotools.presentation.desktop.jrot_comparison_panel import JrotComparisonPanel
 from ergotools.presentation.desktop.jrot_job_panel import JrotJobPanel
-from ergotools.presentation.desktop.jrot_neighbor_section import JrotNeighborSection
 from ergotools.presentation.desktop.jrot_planning_controller import (
     JrotPlanningController,
 )
@@ -122,6 +115,7 @@ from ergotools.presentation.desktop.secondary_history_controls import (
 )
 from ergotools.presentation.desktop.table_presentation import (
     AdaptiveTableWidget,
+    compact_decimal_display,
     numeric_display,
 )
 from ergotools.presentation.desktop.theme.dialogs import apply_dialog_theme
@@ -747,10 +741,6 @@ class JrotDialog(QDialog):
             )
         )
         self.page_layouts[2].addLayout(rule_actions)
-        self.neighbors = JrotNeighborSection(
-            self.language, self.choose_neighbor, self.clear_neighbor, icons=self.icons
-        )
-        self.page_layouts[2].addWidget(self.neighbors)
 
     def build_review(self) -> None:
         """Compose selected-tool readiness and literal current Job risk summaries.
@@ -2563,11 +2553,10 @@ class JrotDialog(QDialog):
             if issues
             else self.text(
                 "Input check — Basic entry is complete. The planner validates hard"
-                " rules "
-                "and boundary freshness before solving.",
+                " rules before solving.",
                 "Revisión de datos — Los datos básicos están completos. El "
                 "optimizador valida "
-                "restricciones y límites antes de calcular.",
+                "restricciones antes de calcular.",
             )
         )
         for kind, check in self.tools.items():
@@ -2597,7 +2586,7 @@ class JrotDialog(QDialog):
                     (
                         target.job_id,
                         self.target_caption(target),
-                        f"{item.cumulative_damage:.6g}"
+                        compact_decimal_display(item.cumulative_damage)
                         if item and item.cumulative_damage is not None
                         else "—",
                         f"{probability:.1f}%" if probability is not None else "—",
@@ -2642,13 +2631,6 @@ class JrotDialog(QDialog):
                     "Restricciones de trabajadores activas: ",
                 )
                 + str(len(inputs.rules))
-            )
-            self.neighbors.project(
-                inputs,
-                {
-                    record.scenario_id: record.name
-                    for record in self.repository.load_rotation_scenarios()
-                },
             )
         self.risk_tabs.setCurrentIndex(min(max(0, old), self.risk_tabs.count() - 1))
         self.refresh_starting_indices(inputs)
@@ -2954,118 +2936,6 @@ class JrotDialog(QDialog):
                     ),
                 )
                 self.reload()
-        finally:
-            dialog.deleteLater()
-
-    def clear_neighbor(self, previous: bool) -> None:
-        """Remove a neighbor link while retaining boundary-check intentions.
-
-        Args:
-            previous: True clears the previous run, False the following run.
-
-        Returns:
-            None; no rule is silently relaxed and Main Save remains the publication
-            owner.
-        """
-        if self.planning_busy() or not self.prepare() or self.scenario is None:
-            return
-        inputs = self.scenario.inputs
-        candidate = (
-            replace(inputs, previous=None)
-            if previous
-            else replace(inputs, following=None)
-        )
-        self.edit_inputs(self.scenario, RotationEntryChange(candidate))
-        self.reload()
-
-    def choose_neighbor(self, previous: bool) -> None:
-        """Select an accepted neighboring run without inferring adjacency.
-
-        Args:
-            previous: True captures its last block; False its first block.
-
-        Returns:
-            None; source freshness and temporal compatibility are checked before
-            saving.
-        """
-        if self.planning_busy() or not self.prepare() or self.scenario is None:
-            return
-        record = self.scenario
-        h, j, r = (
-            self.workspace.read_hierarchy().hierarchy,
-            self.workspace.read_jobs().jobs,
-            self.workspace.read_job_risk().risk,
-        )
-        sources = tuple(
-            s
-            for s in self.repository.load_rotation_scenarios()
-            if s.scenario_id != record.scenario_id and own_run_is_current(s, h, j, r)
-        )
-        choices = tuple(
-            JrotCatalogChoice(
-                s.scenario_id,
-                (
-                    s.name,
-                    s.inputs.planned_date.isoformat() if s.inputs.planned_date else "—",
-                    ", ".join(tool_caption(k.value) for k in s.inputs.tools),
-                ),
-            )
-            for s in sources
-        )
-        dialog = JrotCatalogPicker(
-            self.text(
-                "Select preceding rotation result"
-                if previous
-                else "Select following rotation result",
-                "Seleccionar resultado de rotación anterior"
-                if previous
-                else "Seleccionar resultado de rotación siguiente",
-            ),
-            (
-                self.text("Rotation", "Rotación"),
-                self.text("Date", "Fecha"),
-                self.text("Tools", "Herramientas"),
-            ),
-            choices,
-            (),
-            self.language,
-            self,
-            icons=self.icons,
-            entity_icon="jrot",
-        )
-        try:
-            if dialog.exec() != QDialog.Accepted:
-                return
-            if len(dialog.selected) != 1:
-                raise ValueError("Select exactly one accepted neighboring run.")
-            source = next(s for s in sources if s.scenario_id == dialog.selected[0])
-            boundary = capture_rotation_boundary(source, previous=previous)
-            candidate = (
-                replace(record.inputs, previous=boundary)
-                if previous
-                else replace(record.inputs, following=boundary)
-            )
-            if not neighbors_are_current(
-                replace(record, inputs=candidate),
-                self.repository.load_rotation_scenarios(),
-                h,
-                j,
-                r,
-            ):
-                raise ValueError(
-                    "Selected neighbor changed; choose its current accepted run."
-                )
-            if candidate.timing is not None and candidate.start_minute is not None:
-                start, end = rotation_interval(candidate)
-                if boundary.end > start if previous else boundary.start < end:
-                    raise ValueError(
-                        "Neighbor overlaps or has the wrong temporal order."
-                    )
-            # Complete preparation also validates requested worker/tool boundaries.
-            self.edit_inputs(record, RotationEntryChange(candidate))
-            self.reload()
-        except ValueError as error:
-            self.show_error(error)
         finally:
             dialog.deleteLater()
 

@@ -151,7 +151,7 @@ class PlotMapPanel(QWidget):
         layout.setSpacing(8)
         self.rail = QGroupBox()
         self.rail.setObjectName("plotToolRail")
-        self.rail.setFixedWidth(81)
+        self.rail.setFixedWidth(52)
         tools = QVBoxLayout(self.rail)
         tools.setContentsMargins(0, 0, 0, 10)
         tools.setSpacing(0)
@@ -159,7 +159,7 @@ class PlotMapPanel(QWidget):
         self.rail_title = title
         title.setObjectName("toolRailTitle")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setFixedHeight(42)
+        title.setFixedHeight(max(32, title.fontMetrics().lineSpacing() * 2 + 4))
         title.setToolTip(
             self.text(
                 "Plant layout viewing and export tools.",
@@ -171,8 +171,8 @@ class PlotMapPanel(QWidget):
         for key, asset, english, spanish in _ACTIONS:
             button = QPushButton()
             button.setObjectName("plotToolButton")
-            button.setFixedSize(63, 63)
-            button.setIconSize(QSize(48, 48))
+            button.setFixedSize(40, 40)
+            button.setIconSize(QSize(28, 28))
             button.setIcon(
                 navigation_icon(
                     "select" if key == "select" else "pan" if key == "pan" else "fit"
@@ -185,23 +185,9 @@ class PlotMapPanel(QWidget):
             if key in ("select", "zoom_in", "zoom_out", "pan"):
                 button.setCheckable(True)
             self.buttons[key] = button
-        # Share one rail row between magnifiers to add Pan without a taller rail.
         for key, *_rest in _ACTIONS:
-            if key == "zoom_in":
-                zoom_row = QWidget()
-                zoom_layout = QHBoxLayout(zoom_row)
-                zoom_layout.setContentsMargins(0, 0, 0, 0)
-                zoom_layout.setSpacing(0)
-                for zoom_key in ("zoom_in", "zoom_out"):
-                    zoom_button = self.buttons[zoom_key]
-                    zoom_button.setProperty("compactZoom", True)
-                    zoom_button.setProperty("zoomOut", zoom_key == "zoom_out")
-                    zoom_button.setFixedSize(32 if zoom_key == "zoom_out" else 31, 63)
-                    zoom_button.setIconSize(QSize(29, 29))
-                    zoom_layout.addWidget(zoom_button)
-                tools.addWidget(zoom_row, 0, Qt.AlignmentFlag.AlignHCenter)
-            elif key != "zoom_out":
-                tools.addWidget(self.buttons[key], 0, Qt.AlignmentFlag.AlignHCenter)
+            tools.addWidget(self.buttons[key], 0, Qt.AlignmentFlag.AlignHCenter)
+        self.rail_tools = tools
         tools.addStretch(1)
         self.rail.setMinimumHeight(tools.minimumSize().height())
         layout.addWidget(self.rail)
@@ -216,6 +202,7 @@ class PlotMapPanel(QWidget):
             )
         )
         column = QVBoxLayout()
+        self.canvas_column = column
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(6)
         column.addWidget(self.canvas, 1)
@@ -273,21 +260,21 @@ class PlotMapPanel(QWidget):
         """Fit the full action rail on shorter desktops without image scrollbars.
 
         Args:
-            compact: Use 48-pixel buttons with 36-pixel artwork instead of 63/48.
+            compact: Use 34-pixel buttons with 24-pixel artwork instead of 40/28.
 
         Returns:
             None; only presentation geometry changes, preserving map zoom/positions.
         """
-        size = 48 if compact else 63
-        self.rail_title.setFixedHeight(32 if compact else 42)
-        for key, button in self.buttons.items():
-            if key in ("zoom_in", "zoom_out"):
-                width = size // 2 + (size % 2 if key == "zoom_out" else 0)
-                button.setFixedSize(width, size)
-                button.setIconSize(QSize(24 if compact else 29, 24 if compact else 29))
-            else:
-                button.setFixedSize(size, size)
-                button.setIconSize(QSize(36 if compact else 48, 36 if compact else 48))
+        size = 34 if compact else 40
+        self.rail_title.setFixedHeight(
+            max(
+                28 if compact else 32,
+                self.rail_title.fontMetrics().lineSpacing() * 2 + 4,
+            )
+        )
+        for button in self.buttons.values():
+            button.setFixedSize(size, size)
+            button.setIconSize(QSize(24 if compact else 28, 24 if compact else 28))
         self.canvas.setMinimumHeight(480 if compact else 580)
         layout = self.rail.layout()
         assert layout is not None

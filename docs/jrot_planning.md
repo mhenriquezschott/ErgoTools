@@ -3,7 +3,7 @@
 Normal JROT runs duration-aware planning on the project's selected Jobs and workers.
 The separately optional Legacy editor retains only compatible older equal-block schemes.
 Guided comparisons and rework are described in [jrot_comparisons.md](jrot_comparisons.md).
-Report contents/formats remain deferred; the export button is disabled.
+The report can be previewed and exported as PDF; see [JROT reports](jrot_report.md).
 
 ## Scores and objectives
 
@@ -39,9 +39,10 @@ rules. Fixed means that exact position in every productive block. High means Hig
 selected tool under the existing thresholds (strictly greater than 50%). An unselected tool
 cannot change this classification. Breaks do not reset adjacency.
 
-A no-consecutive-High rule can also check the previous run's last block and/or following
-run's first block. Each side must be selected explicitly from an actual accepted supported
-run. The saved reference freezes that source's identity, exact run signature, local start/end
+Stored no-consecutive-High rules may also reference the previous run's last block and/or
+following run's first block. This compatibility remains in the schema and engine; the
+current desktop UI no longer offers these controls. Each stored side references an actual
+accepted supported run. The saved reference freezes that source's identity, exact run signature, local start/end
 and per-worker boundary coefficients. It neither infers a recurring Shift nor wraps the
 same schedule automatically. Overlap and reversed temporal order are rejected. A gap is
 allowed for an explicitly selected neighbor and grants no assumed recovery effect.
@@ -85,6 +86,31 @@ Generation is available only in step 04; step 07 only optimizes.
 Comparison and advanced rework details are described in
 jrot_comparisons.md.
 
+## Infeasibility and bounded runs
+
+A failed solve opens an explicit warning and leaves a prominent persistent notice
+in steps 07 and 08. No new matrix, comparison, Keep or Report action is offered.
+Refreshing or navigating cannot silently substitute the baseline or an older kept
+run for the failed attempt. Baseline/proposal data and any previously kept result
+remain unchanged in the project. The failure notice belongs to this window's
+current attempt, not a new saved result; retrying resets it. Changed input/source
+context retires the failure banner. Reopening can still show a previously kept
+result with its existing retained-run identity and timestamp.
+
+Proven infeasibility means the selected restrictions cannot all be satisfied. A
+time limit without a complete validated result does not prove infeasibility; the
+message suggests more time or reviewing restrictions. This applies to either
+optimization pass and to initial-proposal generation. A complete independently
+validated incumbent returned at a limit remains usable, but is explicitly labeled
+feasible with optimality unproven. No mathematical constraint, objective, time
+budget or risk calculation is relaxed to manufacture a result.
+
+The adapter supplies portable `RotationFailureReason` categories through
+`RotationOptimizationError`. The presentation never parses native diagnostic text
+to decide whether infeasibility was proved. Expected no-solution outcomes are
+logged without an exception traceback; unexpected failures retain diagnostic logs.
+See [the combined-restriction example](jrot_infeasible_example.md).
+
 ## Storage and recovery
 
 Native24 adds no tables or columns. Guided codec2 stores typed restrictions and frozen
@@ -116,7 +142,7 @@ column minima, assignments, scientific results or project data. Step 08 arrows u
 packaged next icon as application navigation.
 
 
-## Tool selection and optional neighboring results
+## Tool selection and worker restrictions
 
 Step 06 uses a compact joined strip of icon-bearing tool buttons, styled like PLOT.
 Teal pressed buttons
@@ -125,12 +151,11 @@ at least one remains selected. Roomy guided review/optimization/comparison tabs 
 result headings use the same processed LiFFT/DUET/ST icons as the main UI. Narrow table
 headers remain text-only where icons would crowd the data.
 
-Step 03 Across-shift checks starts collapsed with a visible summary. Expand for preceding/
-following result buttons, literal linked rotation names and a prominent help area. Hover
-or keyboard focus explains chronology, activation and optimizer effects. Selection enables
-only when a worker has No adjacent High plus the corresponding boundary flag. Retained
-links are never removed when a rule is disabled; Clear link explicitly removes one. A
-requested missing/stale link still blocks solving; no constraint is silently ignored.
+Step 03 offers worker selection and within-shift Worker restrictions. The form contains
+Worker, Fixed Job, Excluded Jobs and No adjacent High, with bulk actions for the visible
+options. Adjacent-shift selection/disclosure and previous/following boundary columns are
+removed from the UI. Native schema, stored boundary links/flags and application/optimizer
+validation remain unchanged. Accepting unrelated restrictions preserves stored metadata.
 
 Worker restrictions says Fixed Job and Excluded Jobs. A fixed Job is not offered for
 exclusion; excluded Jobs and Jobs already fixed to another worker are disabled as fixed

@@ -748,9 +748,9 @@ class LifftWindow(QMainWindow):
                 else "Developer Menu"
             )
             self._developer_menu.actions()[0].setText(
-                "Sin herramientas experimentales instaladas"
+                "Vista de turno disponible en PLOT"
                 if self.language is Language.SPANISH
-                else "No experimental tools installed"
+                else "Shift View available in PLOT"
             )
         if self._legacy_menu is not None:
             self._legacy_menu.setTitle(
@@ -1410,6 +1410,7 @@ class LifftWindow(QMainWindow):
             None; no source resolution, dirty marker or persistence operation occurs.
         """
         self._developer_enabled = enabled
+        self.setProperty("developerMode", enabled)
         if self._developer_menu is not None:
             action = self._developer_menu.menuAction()
             assert action is not None
@@ -3313,7 +3314,7 @@ class LifftWindow(QMainWindow):
                 )
         self._developer_menu = self._assessment_menu.addMenu("Developer Menu")
         assert self._developer_menu is not None
-        development = self._developer_menu.addAction("No experimental tools installed")
+        development = self._developer_menu.addAction("Shift View available in PLOT")
         assert development is not None
         development.setEnabled(False)
         self._legacy_menu = self._assessment_menu.addMenu("Legacy")

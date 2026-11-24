@@ -285,10 +285,8 @@ PLOT_STYLE = """
                 border-color: #087E91;
             }
             QPushButton#plotToolButton {
-                min-width: 63px;
-                max-width: 63px;
-                min-height: 63px;
-                max-height: 63px;
+                min-width: 0;
+                min-height: 0;
                 padding: 0;
                 border: 0;
                 border-bottom: 1px solid #D5DEE5;

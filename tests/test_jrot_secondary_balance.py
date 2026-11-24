@@ -72,7 +72,7 @@ def test_bulk_restrictions_are_eligible_local_and_cancellable(
 
     Returns:
         None; complete icon/caption rows fit above bulk actions in both languages;
-        bulk prerequisite logic works and cancelling never changes the project.
+        visible-column bulk actions work and cancelling never changes the project.
     """
     root = planning_dialog(tmp_path, language)
     before = root.current()
@@ -94,7 +94,7 @@ def test_bulk_restrictions_are_eligible_local_and_cancellable(
         for width in (1240, 1100):
             dialog.resize(width, 620)
             QTest.qWait(20)
-            for column in range(6):
+            for column in range(4):
                 item = dialog.table.horizontalHeaderItem(column)
                 assert item is not None and not item.icon().isNull()
                 assert dialog.table.columnWidth(column) >= (
@@ -109,19 +109,11 @@ def test_bulk_restrictions_are_eligible_local_and_cancellable(
                     dialog.column_header.sectionViewportPosition(column) + 1
                 )
         buttons = dialog.column_header.buttons
-        assert not buttons[4][0].isEnabled()
+        assert set(buttons) == {1, 2, 3}
         buttons[3][0].click()
         assert all(c[2].isChecked() for c in dialog.controls.values())
-        buttons[4][0].click()
-        buttons[5][0].click()
-        assert all(
-            c[3].isChecked() and c[4].isChecked() for c in dialog.controls.values()
-        )
         buttons[3][1].click()
-        assert all(
-            not any(c[i].isChecked() for i in (2, 3, 4))
-            for c in dialog.controls.values()
-        )
+        assert all(not c[2].isChecked() for c in dialog.controls.values())
         worker = next(iter(dialog.controls))
         key = before.inputs.targets[0].key
         dialog.excluded[worker] = {key}

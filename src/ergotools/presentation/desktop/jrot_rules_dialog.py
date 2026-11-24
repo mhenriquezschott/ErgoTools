@@ -1,4 +1,4 @@
-"""Owned local hard-rule form and explicit accepted-neighbor selection.
+"""Owned within-shift worker restrictions; stored cross-shift metadata is preserved.
 
 Presentation layer. Forms return complete immutable proposals; the guided host owns
 confirmation, one shared history edit and Main Save. No SQL, coefficients or fake
@@ -91,9 +91,7 @@ class JrotRulesDialog(QDialog):
             for w in inputs.workers
         }
         self.exclusion_summaries: dict[str, QLabel] = {}
-        self.controls: dict[
-            str, tuple[QComboBox, QPushButton, QCheckBox, QCheckBox, QCheckBox]
-        ] = {}
+        self.controls: dict[str, tuple[QComboBox, QPushButton, QCheckBox]] = {}
         self.setWindowTitle(
             self.text("Worker restrictions", "Restricciones de trabajadores")
         )
@@ -103,7 +101,7 @@ class JrotRulesDialog(QDialog):
         layout.setSpacing(8)
         layout.addWidget(self.build_heading())
         summary_panel = self.build_summary()
-        self.table = QTableWidget(len(inputs.workers), 6)
+        self.table = QTableWidget(len(inputs.workers), 4)
         style_rotation_table(self.table)
         self.table.setHorizontalHeaderLabels(
             [
@@ -111,8 +109,6 @@ class JrotRulesDialog(QDialog):
                 self.text("Fixed Job", "Trabajo fijo"),
                 self.text("Excluded Jobs", "Trabajos excluidos"),
                 self.text("No adjacent High", "Sin alto consecutivo"),
-                self.text("Previous boundary", "Límite anterior"),
-                self.text("Following boundary", "Límite siguiente"),
             ]
         )
         self.table.setIconSize(QSize(26, 26))
@@ -121,8 +117,6 @@ class JrotRulesDialog(QDialog):
             (1, "fixed_job"),
             (2, "excluded_jobs"),
             (3, "no_adjacent_high"),
-            (4, "previous_rotation_result"),
-            (5, "following_rotation_result"),
         ):
             header = self.table.horizontalHeaderItem(column)
             if header is not None:
@@ -155,8 +149,6 @@ class JrotRulesDialog(QDialog):
             excluded.setAutoDefault(False)
             excluded.clicked.connect(partial(self.choose_exclusions, w.worker_id))
             high = QCheckBox()
-            previous = QCheckBox()
-            following = QCheckBox()
             rule = next(
                 (
                     r
@@ -166,13 +158,7 @@ class JrotRulesDialog(QDialog):
                 None,
             )
             high.setChecked(rule is not None)
-            previous.setChecked(rule.previous if rule else False)
-            following.setChecked(rule.following if rule else False)
-            previous.setEnabled(high.isChecked())
-            following.setEnabled(high.isChecked())
-            high.toggled.connect(previous.setEnabled)
-            high.toggled.connect(following.setEnabled)
-            self.controls[w.worker_id] = (fixed, excluded, high, previous, following)
+            self.controls[w.worker_id] = (fixed, excluded, high)
             for col, control in enumerate(self.controls[w.worker_id], 1):
                 if isinstance(control, QCheckBox):
                     host = QWidget()
@@ -207,22 +193,6 @@ class JrotRulesDialog(QDialog):
                     "turno.",
                 )
             )
-            previous.setToolTip(
-                self.text(
-                    "Also check the linked previous shift's last block. Choose "
-                    "that rotation in step 03.",
-                    "Comprobar también el último bloque del turno anterior "
-                    "vinculado. Elija esa rotación en el paso 03.",
-                )
-            )
-            following.setToolTip(
-                self.text(
-                    "Also check the linked following shift's first block. Choose "
-                    "that rotation in step 03.",
-                    "Comprobar también el primer bloque del turno siguiente "
-                    "vinculado. Elija esa rotación en el paso 03.",
-                )
-            )
             self._fixed_keys[w.worker_id] = fixed.currentData()
             fixed.currentIndexChanged.connect(partial(self.fixed_changed, w.worker_id))
             self.update_exclusion_label(w.worker_id)
@@ -250,7 +220,7 @@ class JrotRulesDialog(QDialog):
                 ),
             ),
         }
-        for column in (3, 4, 5):
+        for column in (3,):
             actions_by_column[column] = (
                 (
                     self.text("All", "Todos"),
@@ -278,8 +248,6 @@ class JrotRulesDialog(QDialog):
         scrollbar.valueChanged.connect(self.column_header.position_actions)
         for controls in self.controls.values():
             controls[2].toggled.connect(self.update_bulk_state)
-            controls[3].toggled.connect(self.update_summary)
-            controls[4].toggled.connect(self.update_summary)
         self.update_bulk_state()
         self.refresh_fixed_choices()
         self.table.resizeColumnsToContents()
@@ -370,7 +338,7 @@ class JrotRulesDialog(QDialog):
 
         Returns:
             Owned summary panel. Counters describe current draft choices, not
-            solver feasibility; missing neighbor context remains an explicit warning.
+            solver feasibility; stored cross-shift fields are not edited by this form.
         """
         frame = QFrame(self)
         frame.setObjectName("restrictionSummary")
@@ -408,7 +376,7 @@ class JrotRulesDialog(QDialog):
         return frame
 
     def update_summary(self) -> None:
-        """Project draft counts and unresolved requested neighboring-shift context.
+        """Project within-shift restriction counts and draft-acceptance guidance.
 
         Args:
             None.
@@ -431,93 +399,50 @@ class JrotRulesDialog(QDialog):
         }
         for key, (count, caption) in values.items():
             self.summary_counts[key].setText(f"<b>{count}</b> · {caption}")
-        missing_previous = self.inputs.previous is None and any(
-            c[2].isChecked() and c[3].isChecked() for c in self.controls.values()
+        self.summary_status.setText(
+            self.text(
+                "No restrictions selected. Workers may perform any selected Job."
+                if not fixed and not excluded and not high
+                else "Use restrictions applies this draft to the rotation; "
+                "Cancel keeps the previous restrictions. The optimizer checks "
+                "the complete schedule.",
+                "Sin restricciones seleccionadas. Los trabajadores pueden "
+                "realizar cualquier trabajo seleccionado."
+                if not fixed and not excluded and not high
+                else "Usar restricciones aplica este borrador a la rotación; "
+                "Cancelar conserva las restricciones anteriores. El optimizador "
+                "comprueba el horario completo.",
+            )
         )
-        missing_following = self.inputs.following is None and any(
-            c[2].isChecked() and c[4].isChecked() for c in self.controls.values()
-        )
-        if missing_previous or missing_following:
-            missing = []
-            if missing_previous:
-                missing.append(self.text("previous", "anterior"))
-            if missing_following:
-                missing.append(self.text("following", "siguiente"))
-            self.summary_status.setText(
-                self.text(
-                    "Neighboring shift results needed: "
-                    + ", ".join(missing)
-                    + ". Select them in step 03 before optimizing.",
-                    "Faltan resultados de turnos vecinos: "
-                    + ", ".join(missing)
-                    + ". Selecciónelos en el paso 03 antes de optimizar.",
-                )
-            )
-            self.summary_status.setStyleSheet(
-                "background:#FFF3D6;color:#805000;border-radius:4px;padding:5px 8px;"
-            )
-        else:
-            self.summary_status.setText(
-                self.text(
-                    "No restrictions selected. Workers may perform any selected Job."
-                    if not fixed and not excluded and not high
-                    else "Use restrictions applies this draft to the rotation; "
-                    "Cancel keeps the previous restrictions. The optimizer checks "
-                    "the complete schedule.",
-                    "Sin restricciones seleccionadas. Los trabajadores pueden "
-                    "realizar cualquier trabajo seleccionado."
-                    if not fixed and not excluded and not high
-                    else "Usar restricciones aplica este borrador a la rotación; "
-                    "Cancelar conserva las restricciones anteriores. El optimizador "
-                    "comprueba el horario completo.",
-                )
-            )
-            self.summary_status.setStyleSheet("color:#4E6578;")
+        self.summary_status.setStyleSheet("color:#4E6578;")
 
     def bulk_checks(self, column: int, checked: bool) -> None:
         """Set a checkbox column for eligible workers in this local draft only.
 
         Args:
-            column: Logical checkbox column3/4/5, mapped to its row control.
+            column: Logical No adjacent High column (3), mapped to its row control.
             checked: True selects enabled rows; False clears every row.
 
         Returns:
-            None; boundary selections require No adjacent High. Clearing High also
-            clears its boundary flags. Use restrictions still owns project acceptance.
+            None; Use restrictions still owns project acceptance. Existing boundary
+            flags survive when their No adjacent High rule remains enabled.
         """
         for controls in self.controls.values():
             control = controls[column - 1]
             assert isinstance(control, QCheckBox)
             if not checked or control.isEnabled():
                 control.setChecked(checked)
-            if column == 3 and not checked:
-                controls[3].setChecked(False)
-                controls[4].setChecked(False)
         self.update_bulk_state()
 
     def update_bulk_state(self) -> None:
-        """Enable boundary All actions only when some worker has adjacency enabled.
+        """Refresh the visible within-shift checkbox heading and draft counts.
 
         Args:
             None.
 
         Returns:
-            None; disabled buttons explain the prerequisite and change no flags.
+            None; no stored cross-shift links or flags are projected into controls.
         """
-        active = any(c[2].isChecked() for c in self.controls.values())
-        for column in (4, 5):
-            button = self.column_header.buttons[column][0]
-            button.setEnabled(active)
-            button.setToolTip(
-                self.text(
-                    "Select all workers with No adjacent High enabled"
-                    if active
-                    else "Enable No adjacent High first",
-                    "Seleccionar trabajadores con Sin alto consecutivo"
-                    if active
-                    else "Active Sin alto consecutivo primero",
-                )
-            )
         self.column_header.position_actions()
         self.update_summary()
 
@@ -656,8 +581,7 @@ class JrotRulesDialog(QDialog):
             None.
 
         Returns:
-            None; missing requested neighbors remain visibly unresolved until
-            selected.
+            None; cross-shift metadata remains in the model without extra UI controls.
         """
         rules = self.collect_rules()
         try:
@@ -686,8 +610,6 @@ class JrotRulesDialog(QDialog):
             fixed,
             _excluded,
             high,
-            previous,
-            following,
         ) in self.controls.items():
             if fixed.currentData() is not None:
                 rules.append(FixedPosition(worker, str(fixed.currentData())))
@@ -695,8 +617,16 @@ class JrotRulesDialog(QDialog):
                 ExcludedPosition(worker, key) for key in sorted(self.excluded[worker])
             )
             if high.isChecked():
+                existing = next(
+                    (
+                        rule
+                        for rule in self.inputs.rules
+                        if isinstance(rule, NoAdjacentHigh) and rule.worker_id == worker
+                    ),
+                    None,
+                )
                 rules.append(
-                    NoAdjacentHigh(worker, previous.isChecked(), following.isChecked())
+                    existing if existing is not None else NoAdjacentHigh(worker)
                 )
         return tuple(rules)
 

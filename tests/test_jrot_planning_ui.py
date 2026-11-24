@@ -355,7 +355,7 @@ def test_rule_dialog_acceptance_is_one_shared_reversible_edit(tmp_path: Path) ->
             """
             modal = QApplication.activeModalWidget()
             assert isinstance(modal, JrotRulesDialog)
-            fixed, _, high, _, _ = modal.controls["W1"]
+            fixed, _, high = modal.controls["W1"]
             fixed.setCurrentIndex(fixed.findData(before.inputs.targets[0].key))
             assert "J1" in fixed.currentText() and "Packing" in fixed.currentText()
             high.setChecked(True)

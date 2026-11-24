@@ -206,6 +206,19 @@ class PlotJobOverview(QScrollArea):
         self.status = QLabel(group)
         self.status.setObjectName("jobPositionStatus")
         position.addWidget(self.status)
+        self.cursor_position = QLabel(
+            self.text("Mouse: X — · Y —", "Cursor: X — · Y —")
+        )
+        self.cursor_position.setToolTip(
+            self.text(
+                "Live mouse position in original image pixels; "
+                "editable X/Y fields show the assignment anchor.",
+                "Posición del cursor en píxeles originales; "
+                "los campos X/Y muestran el ancla de la asignación.",
+            )
+        )
+        position.addWidget(self.cursor_position)
+        self.layer.canvas.pointer_changed.connect(self.show_cursor_position)
         actions = QHBoxLayout()
         self.cancel_button = QPushButton(
             self.text("Cancel movement", "Cancelar movimiento"), group
@@ -248,6 +261,20 @@ class PlotJobOverview(QScrollArea):
         layer.changed.connect(self.refresh)
         layer.selection_changed.connect(self.marker_selected)
         self.refresh()
+
+    def show_cursor_position(self, x: float, y: float) -> None:
+        """Display live map coordinates separately from editable assignment anchors.
+
+        Args:
+            x: Pointer horizontal coordinate in original image pixels.
+            y: Pointer vertical coordinate in original image pixels.
+
+        Returns:
+            None; moving the cursor never changes project data or history.
+        """
+        self.cursor_position.setText(
+            self.text("Mouse", "Cursor") + f": X {x:.1f} · Y {y:.1f}"
+        )
 
     def text(self, english: str, spanish: str) -> str:
         """Translate captions independently of stored identity and pixel values.

@@ -112,6 +112,8 @@ Job Overview includes a labeled Locate button beneath Current Job risk; it cente
 
 In integrated Job view, Cancel movement restores the selected square's most recent accepted move in the current view. The restoration itself can be undone/redone. Pending typed coordinates can be discarded without replacing the accepted point. The panel reports the result; broader Undo remains available after changing views or reopening the window. Main Save writes accepted geometry changes.
 
+The compact Plant View rail contains alignment, Snap and Grid; right-click Grid to set spacing. Live mouse coordinates appear in the worker/job visual controls. Comparison hides worker visual editing. Developer Shift View uses the same map geometry with its player in the bottom results area; Previous/Next skips blocks or breaks, Reload preserves Play/Pause, Locate blinks, and clicking the selected exposure row clears selection.
+
 ## JROT: guided rotations and optimization
 
 Open JROT from the project toolbar or Tools menu. Create a named, dated rotation or select
@@ -122,7 +124,7 @@ breaks and averaging choice. Job means activity; Station means physical location
 Yes enters an existing baseline. No leaves the baseline absent: enter a proposal or generate
 a feasible initial proposal. Generation is not risk optimization. Review/edit shared Job
 tasks and risks, choose any one, two or all three tools, and optionally set worker restrictions
-and explicit neighboring runs. One worker occupies each selected position in each block.
+within the shift. One worker occupies each selected position in each block.
 
 Run optimization produces a preview. Keep optimization result retains it explicitly,
 leaving the original baseline unchanged. Optimization first reduces the worst worker index, then balances the remaining
@@ -135,7 +137,7 @@ Job-risk schedule measures, not individual assessments. Missing before schedules
 Later Job edits mark older evidence stale rather than rewriting it. Reopen restores accepted
 results. Separate icon buttons provide rework commands. Creating a new rotation preserves the original;
 replacing the editable baseline requires confirmation. Keeping a rerun confirms replacement of the prior result as an undoable edit.
-Shared Undo/Redo handles accepted edits. Reports remain unavailable pending their specification.
+Shared Undo/Redo handles accepted edits. In step 08, Report… previews the displayed recorded optimization inside ErgoTools. Save PDF… exports the same pages, including schedules, per-tool and worker comparisons and High Job warnings. Preview/stale evidence is marked; exporting does not keep the result, change the baseline or save the project.
 
 Settings → General → Compatibility → Show Legacy menu for this session exposes Legacy JROT
 for compatible older equal-block schemes. Guided scenarios cannot be edited/deleted there.
@@ -544,7 +546,7 @@ Step 05 identifies missing tool/task inputs below the Job list. Step 06 labels i
 check above the review tabs. Step 08 shows before/after maximum-worker-index cards, summary
 statistics and a High-Job notice; expand schedule details for matrices and worker values.
 Separate icon buttons create a new rotation from the result or, after warning, replace
-the original baseline. Show/Hide schedule details expands directly below the statistics. Report export awaits team input.
+the original baseline. Show/Hide schedule details expands directly below the statistics. Report… previews the recorded comparison; Save PDF… exports its schedules, statistics, worker changes and High Job warnings without changing the baseline or saving the project.
 
 Conservar resultado guarda explícitamente una vista previa válida como un paso de
 Deshacer compartido, sin cambiar la referencia original.
@@ -576,7 +578,7 @@ column minima, assignments, scientific results or project data. Step 08 arrows u
 packaged next icon as application navigation.
 
 
-## Tool selection and optional neighboring results
+## Tool selection and worker restrictions
 
 Step 06 uses a compact joined strip of icon-bearing tool buttons, styled like PLOT.
 Teal pressed buttons
@@ -585,12 +587,11 @@ at least one remains selected. Roomy guided review/optimization/comparison tabs 
 result headings use the same processed LiFFT/DUET/ST icons as the main UI. Narrow table
 headers remain text-only where icons would crowd the data.
 
-Step 03 Across-shift checks starts collapsed with a visible summary. Expand for preceding/
-following result buttons, literal linked rotation names and a prominent help area. Hover
-or keyboard focus explains chronology, activation and optimizer effects. Selection enables
-only when a worker has No adjacent High plus the corresponding boundary flag. Retained
-links are never removed when a rule is disabled; Clear link explicitly removes one. A
-requested missing/stale link still blocks solving; no constraint is silently ignored.
+Step 03 offers worker selection and within-shift Worker restrictions. The form contains
+Worker, Fixed Job, Excluded Jobs and No adjacent High, with bulk actions for the visible
+options. Adjacent-shift selection/disclosure and previous/following boundary columns are
+removed from the UI. Native schema, stored boundary links/flags and application/optimizer
+validation remain unchanged. Accepting unrelated restrictions preserves stored metadata.
 
 Worker restrictions says Fixed Job and Excluded Jobs. A fixed Job is not offered for
 exclusion; excluded Jobs and Jobs already fixed to another worker are disabled as fixed

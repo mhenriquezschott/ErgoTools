@@ -111,6 +111,8 @@ class PlotMarkerItem(QGraphicsObject):
         self.context_callback = context
         self.moved_callback = moved
         self.offset = offset or QPointF()
+        self.position_constraint: Callable[[QPointF], QPointF] | None = None
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
         self.pending = False
         self.internal_scale = 1.0
         self._zoom_start: float | None = None
@@ -253,27 +255,7 @@ class PlotMarkerItem(QGraphicsObject):
         if not job and self.isSelected():
             self._paint_selection(painter, rect, job=False)
         if job:
-            color = QColor(appearance.color)
-            painter.setPen(
-                QColor("#071B2D")
-                if (color.red() * 0.299 + color.green() * 0.587 + color.blue() * 0.114)
-                > 145
-                else QColor("white")
-            )
-            font = QFont("Segoe UI")
-            font.setBold(True)
-            font.setPixelSize(max(8, round(11 * self.internal_scale)))
-            # Fit ordinary IDs inside the unchanged Comparison frame. Full literal
-            # identity remains in the tooltip when an unusually long ID needs elision.
-            width = max(1.0, rect.width() - 2 * self.internal_scale)
-            measured = QFontMetricsF(font).horizontalAdvance(appearance.label)
-            if measured > width:
-                font.setPixelSize(max(6, int(font.pixelSize() * width / measured)))
-            painter.setFont(font)
-            label = QFontMetricsF(font).elidedText(
-                appearance.label, Qt.TextElideMode.ElideMiddle, width
-            )
-            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, label)
+            self.paint_label(painter, rect)
         else:
             painter.setPen(
                 QPen(QColor("#162C3A"), max(1, round(1.5 * self.internal_scale)))
@@ -284,8 +266,60 @@ class PlotMarkerItem(QGraphicsObject):
                 painter.drawEllipse(path.boundingRect())
             else:
                 painter.drawPolygon(path.toFillPolygon())
+            self.paint_label(painter, path.boundingRect())
         if job and self.isSelected():
             self._paint_selection(painter, rect, job=True)
+
+    def paint_label(self, painter: QPainter, rect: QRectF) -> None:
+        """Fit the literal worker/Job ID inside its actual colored symbol.
+
+        Args:
+            painter: Active scene painter.
+            rect: Local shape bounds, including comparison inset when present.
+
+        Returns:
+            None; viewport-pixel fitting is recomputed on every paint, restoring full
+            IDs as zoom creates room. Painter state and stored geometry are unchanged.
+            Compact symbols retain elision and full IDs in their existing tooltips.
+        """
+        # Measure in viewport pixels: scaling text and shape equally would preserve
+        # the same elision forever, even when zoom gives the symbol room for its ID.
+        lod = max(
+            0.01,
+            QStyleOptionGraphicsItem.levelOfDetailFromTransform(
+                painter.worldTransform()
+            ),
+        )
+        painter.save()
+        painter.scale(1 / lod, 1 / lod)
+        rect = QRectF(
+            rect.x() * lod, rect.y() * lod, rect.width() * lod, rect.height() * lod
+        )
+        color = QColor(self.appearance.color)
+        painter.setPen(
+            QColor("#071B2D")
+            if color.red() * 0.299 + color.green() * 0.587 + color.blue() * 0.114 > 145
+            else QColor("white")
+        )
+        font = QFont("Segoe UI")
+        font.setBold(True)
+        font.setPixelSize(max(8, min(16, round(rect.height() * 0.32))))
+        width = max(
+            1.0, rect.width() * (0.58 if self.appearance.shape == "triangle" else 0.90)
+        )
+        while (
+            font.pixelSize() > 6
+            and QFontMetricsF(font).horizontalAdvance(self.appearance.label) > width
+        ):
+            font.setPixelSize(font.pixelSize() - 1)
+        painter.setFont(font)
+        label = QFontMetricsF(font).elidedText(
+            self.appearance.label, Qt.TextElideMode.ElideMiddle, width
+        )
+        if self.appearance.shape == "triangle":
+            rect = rect.translated(0, rect.height() * 0.16)
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, label)
+        painter.restore()
 
     def _paint_selection(self, painter: QPainter, rect: QRectF, *, job: bool) -> None:
         """Preserve source paint order: worker border below shape, job border above.
@@ -327,6 +361,26 @@ class PlotMarkerItem(QGraphicsObject):
         return PlotPoint(
             self.pos().x() - self.offset.x(), self.pos().y() - self.offset.y()
         )
+
+    def itemChange(  # noqa: N802 — Qt override
+        self, change: QGraphicsItem.GraphicsItemChange, value: object
+    ) -> object:
+        """Apply the canvas snap constraint only to live pointer movement.
+
+        Args:
+            change: Qt graphics mutation notification.
+            value: Proposed local position or other Qt property.
+
+        Returns:
+            Snapped position when a drag owns the change; otherwise Qt's value.
+        """
+        if (
+            change == QGraphicsItem.GraphicsItemChange.ItemPositionChange
+            and isinstance(value, QPointF)
+            and self.position_constraint is not None
+        ):
+            return self.position_constraint(value)
+        return super().itemChange(change, value)
 
     def mark_saved(self) -> None:
         """Accept the current position/scale only after a successful external save.
@@ -370,8 +424,17 @@ class PlotMarkerItem(QGraphicsObject):
         """
         assert event is not None
         self._drag_start = self.pos()
-        self.selected_callback(self)
+        if (
+            event.button() == Qt.MouseButton.LeftButton
+            and event.modifiers() & Qt.KeyboardModifier.ShiftModifier
+        ):
+            self.setSelected(not self.isSelected())
+            if self.isSelected():
+                self.selected_callback(self)
+            event.accept()
+            return
         if event.button() == Qt.MouseButton.RightButton and self.context_callback:
+            self.selected_callback(self)
             self.context_callback(self, event.screenPos())
             event.accept()
             return
@@ -381,6 +444,7 @@ class PlotMarkerItem(QGraphicsObject):
             and self.appearance.shape != "job"
             and not self.locked
         ):
+            self.selected_callback(self)
             self._zoom_start = event.scenePos().y()
             self._zoom_scale = self.marker_scale
             self.setCursor(Qt.CursorShape.SizeVerCursor)
@@ -388,6 +452,7 @@ class PlotMarkerItem(QGraphicsObject):
             return
         self.setCursor(Qt.CursorShape.ClosedHandCursor)
         super().mousePressEvent(event)
+        self.selected_callback(self)
 
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent | None) -> None:  # noqa: N802
         """Retain original Control-drag scaling; never mutate result dictionaries.

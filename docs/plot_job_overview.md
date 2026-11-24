@@ -8,7 +8,9 @@ The hierarchy-aware Job selector lists only relevant placed data from the applie
 Job identity, workplace/shift and map assignment are explicit. The overview shows the
 selected tool's Job inputs/results as available, plus the assignment's map position.
 Locate reveals and centers its square in a zoomed view, without changing saved coordinates.
-Cancel movement restores the saved assignment point and reports the outcome.
+The Assignment map position group separates live mouse X/Y from editable assignment
+coordinates. Complete coordinate edits use shared project Undo/Redo even when the field
+still has focus. Cancel movement restores the saved assignment point and reports the outcome.
 
 Job charts distinguish risk values from repeated occurrence counts. Population Job summaries
 and worker assessment summaries remain separate quantities; Comparison displays both.

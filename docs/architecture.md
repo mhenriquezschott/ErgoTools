@@ -879,3 +879,111 @@ checkpoint and existing live replay observers; one confirmed Undo reverses the b
 Ordinary local typed names keep their earlier behavior. Main Save publishes accepted
 catalog and source edits together. Weak project notifications update reusable choices
 in other open editors while preserving unfinished name text.
+
+## JROT PDF reports
+
+The read-only application report snapshot reuses frozen domain comparisons. The
+Qt report adapter owns localized content, preview, pagination and atomic external
+PDF export. It has no repository/solver mutation port. See [report contracts and
+interpretation](jrot_report.md). No new runtime dependency or database format is used.
+
+## Isolated Android feasibility slice
+
+The optional [tablet prototype](mobile_android_demo.md) packages byte-identical
+shared Python domain/application/infrastructure sources with a separate Flet screen.
+It demonstrates local Android calculation and native project storage without Qt,
+VTK, a solver or server. M01 adds a separate private workspace/recent catalog and native Android
+file-picker import/export with explicit tablet-copy saving. See
+[the mobile demo plan](mobile_demo_plan.md). Broader interaction design and production
+packaging remain later work. The desktop composition/runtime/schema are unchanged.
+
+
+The M02 tablet worker browser reuses native worker catalog replacement, canonical
+body conversions and the existing generic DocumentSession engine. A single bounded
+mobile project timeline stores immutable native-byte snapshots; Save verifies the
+published file before marking the revision clean. Worker forms/pickers/alphabet
+are mobile presentation only. Fixed subpage actions and retained disclosure/scroll
+avoid losing context during replay. No desktop workflow or schema changes.
+
+
+M03 adds a touch LiFFT list/detail editor and a reusable mobile result surface.
+Portable task operations use the existing grid evaluator, source-bound result,
+ownership and task-name catalog APIs; source/names/results form one project-history
+change. Empty/partial/invalid results remain distinct. Existing units, row identities
+and untouched numeric precision survive edits and native export. The presentation
+owns clipboard TSV, checkboxes and gauge animation; the domain, desktop, schema and
+root dependency environment are unchanged. See the mobile demo contracts for bounds.
+
+
+M04 generalizes that same mobile task adapter/editor to DUET and ST. Tool metadata
+and selector parsing stay in the prototype; grid evaluation, result precision,
+original unit/ST convention interpretation and ownership stay in the unchanged core.
+One project history/save covers all tools. The isolated prototype packages byte-identical
+shared code; neither a duplicate calculator nor a parallel native schema is introduced.
+
+
+M05 adds an isolated mobile context/transfer adapter over native ownership APIs.
+The frontend detaches exact worker/tool/source/result records and reuses one hierarchy
+picker for creation and Copy/Move. Existing atomic native operations enforce ownership,
+replacement and result preservation. One project history covers assignments/sources/
+results; search, disclosure and selection are mobile view state. The desktop core and
+native schema remain shared and unchanged.
+
+M06 keeps tablet-only display preferences in a separate immutable/atomic JSON store;
+project source/result/dirty/history never contain animation or optional-field choices.
+The Settings screen reuses the actual mobile result/body components and read-only
+layout examples. Local Canvas body regions require no desktop renderer or network.
+A fresh opt-in complete demo is generated solely through existing native APIs in
+owned temporary storage, validated before activation, with no maintained-fixture or
+schema changes. The six mobile worker-assessment demo slices are complete; broader
+mobile workflows and device/store distribution remain outside this demonstration.
+
+### Tablet refinement adapters
+
+The isolated Android demo additionally composes `tablet_home`, `tablet_style`,
+`tablet_organization` and `tablet_timing`. Portable `mobile_organization` accepts
+metadata/timing edits through existing application and native repository guards,
+including expected-value checks. Organization changes share the existing private
+project history and explicit Save. No schema or desktop adapter changes result.
+`body_region` uses offline turntable PNGs/masks generated from the existing desktop
+STL geometry; VTK remains developer-only for generating these assets, never an
+Android runtime dependency. See `mobile_design_refinement.md` for current evidence.
+
+## Developer-only PLOT shift playback
+
+The session Developer flag may inject a `ShiftPlaybackRepository` read capability into
+PLOT. The persisted `PlotRiskView` enum and native schema are unchanged. Pure
+`shift_playback` prepares exact baseline-block-one destinations, frozen paired
+coefficients, elapsed weighted contributions and wall-time preview stages. Qt's
+`PlotShiftPlayer` owns transient scene items, timer, timeline and controls. These
+items are separate from editable assignment markers and never invoke their mutation
+callbacks. No rotation, source assessment or stored map position changes during
+playback. See [Shift View](plot_shift_view.md) and its source review for boundaries,
+demo data and verification.
+
+
+PLOT's follow-up keeps Shift View inside the existing details tabs, using the ordinary
+applied tool/workplace/demographic filter contract. `ShiftWorkerOverview` composes the
+shared adaptive alphabet and read-only navigation. Shift glyphs reuse `PlotMarkerItem`
+geometry/label/selection rendering with movement disabled; saved top-left coordinates
+are never interpreted as centers. Partial preparation carries explicit issues instead
+of fabricating missing risk/geometry. Projection remains read-only and filtering does
+not change the frozen schedule or full-shift exposure divisor.
+
+`PlotMapTools` receives packaged designer alignment/Snap/Grid icons from the
+composition mapping via `PlotWindow`; it no longer paints temporary glyphs.
+`PlotMapTools` publishes normal-view alignment through one `PlotMarkerLayer.preview_batch`
+operation. Multi-drag uses the same batch boundary. The canvas owns rubber-band selection,
+a bounded temporary snap grid and pointer feedback; only completed source-coordinate
+changes enter existing local/shared history. Overlay and spacing state are transient.
+Qt scene teardown guards avoid dereferencing items already deleted by their scene.
+
+
+PLOT's compact rail also owns the transient Grid/Snap controls; the Grid context menu
+contains the spacing editor. Live pointer labels belong to the worker/job detail groups.
+The host reserves one bottom `QStackedWidget` for outcome cards and shift playback,
+with the ordinary outcome height as its fixed budget. Switching mode therefore does
+not insert content above the map or alter the splitter's geometry. The shared history
+adapter accepts an optional focused-field policy; PLOT uses it for complete valid map
+numbers so the NoFocus Undo button replays the project rather than only its text buffer.
+See [the compact-rail follow-up](plot_polish_20261112.md) for tests and ownership details.

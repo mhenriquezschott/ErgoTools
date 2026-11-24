@@ -123,6 +123,7 @@ class ProjectHistoryActions(QObject):
         restored: Callable[[], None] | None = None,
         blocked: Callable[[], bool] | None = None,
         pending: Callable[[], str | None] | None = None,
+        prefer_document_history: Callable[[QWidget], bool] | None = None,
     ) -> None:
         """Borrow one project session and connect controls for this window only.
 
@@ -134,6 +135,8 @@ class ProjectHistoryActions(QObject):
             prepare: Optional acceptance/validation of pending form edits before replay.
             restored: Optional rebind callback after project replay, never after edits.
             blocked: Optional solver/invalid-input interlock.
+            prefer_document_history: Optional focused-field policy for complete form
+                edits already owned by project history; other fields keep native Undo.
             pending: Optional stable action label for a valid pending form edit.
                 Enables Undo before acceptance; replay still uses prepare and the
                 same shared cursor. No independent form history is introduced.
@@ -151,6 +154,7 @@ class ProjectHistoryActions(QObject):
         self._restored_step: tuple[int | None, int] | None = None
         self.blocked = blocked
         self.pending = pending
+        self.prefer_document_history = prefer_document_history
         self.undo_action = QAction(icons["undo"], "", self)
         self.redo_action = QAction(icons["redo"], "", self)
         self._undo_button: QToolButton | None = None
@@ -330,6 +334,9 @@ class ProjectHistoryActions(QObject):
         if (
             isinstance(field, (QLineEdit, QPlainTextEdit, QTextEdit))
             and field.window() is self.window
+            and not (
+                self.prefer_document_history and self.prefer_document_history(field)
+            )
         ):
             field.redo() if redo else field.undo()
             return

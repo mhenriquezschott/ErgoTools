@@ -75,7 +75,7 @@ def test_plot_fits_windows_work_area_with_all_results(
             assert canvas.verticalScrollBarPolicy() == Qt.ScrollBarAlwaysOff
     window.fit_available_geometry(QRect(0, 0, 2400, 1600), 40)
     QApplication.processEvents()
-    assert window.map_panel.buttons["open"].height() == 63
+    assert window.map_panel.buttons["open"].height() == 40
     assert window.tools.canvas.minimumHeight() == 250
     window.close()
     window.deleteLater()

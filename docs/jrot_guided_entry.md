@@ -28,7 +28,7 @@ input review, optimization and comparison/report. Back, Continue and the drawer 
 review of any page. Incomplete setup does not prevent looking ahead. Invalid pending input
 must be corrected before leaving it. Closing an uncreated named form asks before discarding
 that form; it does not discard accepted project edits. Optimization runs the real planner with an explicit Keep optimization result boundary. The comparison page shows frozen before/after cards, statistics, optional worker/schedule details and a High Risk Notice;
-report export remains disabled pending the team specification.
+In step 08, Report… previews the displayed recorded optimization inside ErgoTools. Save PDF… exports the same pages, including schedules, per-tool and worker comparisons and High Job warnings. Preview/stale evidence is marked; exporting does not keep the result, change the baseline or save the project.
 
 Choose a real Line and Shift using the hierarchy/clock picker. All Jobs offers active
 project Jobs as unique global activities. Workplace scope offers exact active Job placements
@@ -110,7 +110,7 @@ manually is not a downgrade.
 See [jrot_planning.md](jrot_planning.md) for duration weighting, all tool subsets, hard
 restrictions, explicit neighboring-run checks, real generation, cancellation and explicit optimization retention.
 See [jrot_comparisons.md](jrot_comparisons.md) for comparisons, saved-result reopening,
-explicit generated proposals and advanced duplicate-first rework. Report export remains disabled pending the team specification.
+explicit generated proposals and advanced duplicate-first rework. In step 08, Report… previews the displayed recorded optimization inside ErgoTools. Save PDF… exports the same pages, including schedules, per-tool and worker comparisons and High Job warnings. Preview/stale evidence is marked; exporting does not keep the result, change the baseline or save the project.
 
 The timing editor now treats work and pauses as uniform segments: both can move/resize, and Remove extends their actual immediate neighbors. Both count/equality groups are available; coordinated review preserves total time and explains changes to the other type. See rotation_timing.md for exact rules.
 
@@ -133,7 +133,7 @@ column minima, assignments, scientific results or project data. Step 08 arrows u
 packaged next icon as application navigation.
 
 
-## Tool selection and optional neighboring results
+## Tool selection and worker restrictions
 
 Step 06 uses a compact joined strip of icon-bearing tool buttons, styled like PLOT.
 Teal pressed buttons
@@ -142,12 +142,11 @@ at least one remains selected. Roomy guided review/optimization/comparison tabs 
 result headings use the same processed LiFFT/DUET/ST icons as the main UI. Narrow table
 headers remain text-only where icons would crowd the data.
 
-Step 03 Across-shift checks starts collapsed with a visible summary. Expand for preceding/
-following result buttons, literal linked rotation names and a prominent help area. Hover
-or keyboard focus explains chronology, activation and optimizer effects. Selection enables
-only when a worker has No adjacent High plus the corresponding boundary flag. Retained
-links are never removed when a rule is disabled; Clear link explicitly removes one. A
-requested missing/stale link still blocks solving; no constraint is silently ignored.
+Step 03 offers worker selection and within-shift Worker restrictions. The form contains
+Worker, Fixed Job, Excluded Jobs and No adjacent High, with bulk actions for the visible
+options. Adjacent-shift selection/disclosure and previous/following boundary columns are
+removed from the UI. Native schema, stored boundary links/flags and application/optimizer
+validation remain unchanged. Accepting unrelated restrictions preserves stored metadata.
 
 Worker restrictions says Fixed Job and Excluded Jobs. A fixed Job is not offered for
 exclusion; excluded Jobs and Jobs already fixed to another worker are disabled as fixed
@@ -155,3 +154,12 @@ choices. Other impossible static assignments revert immediately with visible gui
 using existing one-worker-per-Job matching validation. Exclusion proposals that cannot
 staff all Jobs keep the previous set. These are UI safeguards, not a relaxation of hard
 rules; the optimizer still validates temporal and other constraints independently.
+
+
+## Current UI scope — 2026-11-14
+
+Adjacent-shift controls have been withdrawn from step 03 and the worker restriction
+columns. Earlier rollout descriptions of those controls are historical. Stored links,
+boundary flags and engine validation remain intact. Review damage cells use readable
+fixed decimals for small values, while scientific fallback retains numeric styling.
+See [the cleanup scope and evidence](jrot_ui_cleanup_20261114.md).

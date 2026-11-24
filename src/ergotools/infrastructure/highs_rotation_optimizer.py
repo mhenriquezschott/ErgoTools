@@ -19,6 +19,7 @@ import highspy
 from highspy.highs import highs_linear_expression, highs_var
 
 from ergotools.application.rotation_optimization import (
+    RotationFailureReason,
     RotationOptimizationError,
     RotationSolveShape,
 )
@@ -271,8 +272,15 @@ def _solve(
         or not solution.value_valid
         or info.primal_solution_status != highspy.SolutionStatus.kSolutionStatusFeasible
     ):
+        reason = RotationFailureReason.OTHER
+        if outcome != highspy.HighsStatus.kError:
+            if status == highspy.HighsModelStatus.kInfeasible:
+                reason = RotationFailureReason.INFEASIBLE
+            elif status == highspy.HighsModelStatus.kTimeLimit:
+                reason = RotationFailureReason.TIME_LIMIT
         raise RotationOptimizationError(
-            "No feasible rotation returned: " + stage.modelStatusToString(status) + "."
+            "No feasible rotation returned: " + stage.modelStatusToString(status) + ".",
+            reason,
         )
     schedule = _extract(problem, variables, solution.col_value)
     try:

@@ -285,7 +285,9 @@ class PlotMarkerLayer(QObject):
             ),
             self.results.selection.risk_view is PlotRiskView.COMPARISON,
             evidence.measurement.probability_percent if evidence else None,
-            worker_row.job.job_id.removeprefix("Job-") if worker_row.job else "—",
+            (worker_row.job.job_id.removeprefix("Job-") if worker_row.job else "—")
+            if job_only
+            else worker_row.worker.worker_id,
         )
         item = self.add_item(
             ("job" if job_only else "worker", identity),
@@ -453,6 +455,9 @@ class PlotMarkerLayer(QObject):
         scene = self.canvas.scene()
         assert scene is not None
         item.setOpacity(self.canvas.marker_opacity)
+        item.position_constraint = lambda point, marker=item: self.canvas.snap_position(
+            point, marker
+        )
         scene.addItem(item)
         self.items[key] = item
         return item
@@ -478,8 +483,13 @@ class PlotMarkerLayer(QObject):
         Returns:
             None.
         """
+        multiple = (
+            selected.isSelected()
+            and sum(i.isSelected() for i in self.items.values()) > 1
+        )
         for key, item in self.items.items():
-            item.setSelected(item is selected)
+            if not multiple:
+                item.setSelected(item is selected)
             if item is selected:
                 self.selection_changed.emit(key)
                 if self.on_select is not None:
@@ -494,21 +504,101 @@ class PlotMarkerLayer(QObject):
         Returns:
             None.
         """
-        key = next(key for key, item in self.items.items() if item is moved)
+        markers = []
+        for key, item in self.items.items():
+            if item is not moved and not item.isSelected():
+                continue
+            previous = self.worker_settings(key[1])
+            if (
+                item.anchor_point() == previous.point
+                and item.marker_scale == previous.scale
+            ):
+                continue
+            if self.project_editing:
+                self.movement_origins[key[1]] = previous
+            markers.append(
+                replace(
+                    previous,
+                    point=item.anchor_point(),
+                    scale=item.marker_scale,
+                    source=WorkerPositionSource.MANUAL,
+                )
+            )
+        self.preview_batch(tuple(markers), label_key="plot.history.move")
+
+    def preview_batch(
+        self,
+        markers: tuple[WorkerAssignmentMarker, ...],
+        *,
+        label_key: str = "plot.history.batch",
+    ) -> None:
+        """Publish one validated layout gesture for every affected assignment.
+
+        Args:
+            markers: Complete proposed settings for eligible displayed assignments.
+            label_key: Existing localized map command identity.
+
+        Returns:
+            None; one history edit and changed signal make grouped Undo atomic.
+        """
+        if not markers:
+            return
         assert self.history is not None
-        previous = self.worker_settings(key[1])
-        if self.project_editing and (
-            moved.anchor_point() != previous.point
-            or moved.marker_scale != previous.scale
-        ):
-            self.movement_origins[key[1]] = previous
-        marker = replace(
-            previous,
-            point=moved.anchor_point(),
-            scale=moved.marker_scale,
-            source=WorkerPositionSource.MANUAL,
-        )
-        self.preview_worker(marker, label_key="plot.history.move")
+        positions = self.history.state
+        for marker in markers:
+            self.worker_settings(marker.assignment_id)
+            positions = positions.ensure_marker(marker.assignment_id, self.jobs)
+            positions = replace(
+                positions,
+                workers=tuple(
+                    marker if p.assignment_id == marker.assignment_id else p
+                    for p in positions.workers
+                ),
+            )
+        if positions == self.history.state:
+            return
+        self.history.edit(positions, label_key)
+        for marker in markers:
+            self.worker_drafts[marker.assignment_id] = marker
+            self._project_worker(marker, pending=True)
+        self.changed.emit()
+
+    def align_selected(self, horizontal: bool) -> None:
+        """Align selected unlocked marker centers through one ordinary map edit.
+
+        Args:
+            horizontal: True shares a center Y; False shares a center X.
+
+        Returns:
+            None; zero/one eligible marker and playback are no-ops. Locked items
+            retain their position; source coordinates, not screen pixels, are saved.
+        """
+        if self.canvas.read_only:
+            return
+        selected = [
+            (key, item)
+            for key, item in self.items.items()
+            if item.isSelected() and item.isVisible() and not item.locked
+        ]
+        if len(selected) < 2:
+            return
+        centers = [item.mapToScene(item.marker_rect().center()) for _, item in selected]
+        mean = sum(p.y() if horizontal else p.x() for p in centers) / len(centers)
+        markers = []
+        for (key, item), center in zip(selected, centers, strict=True):
+            previous = self.worker_settings(key[1])
+            point = item.anchor_point()
+            point = (
+                PlotPoint(point.x, point.y + mean - center.y())
+                if horizontal
+                else PlotPoint(point.x + mean - center.x(), point.y)
+            )
+            if self.project_editing:
+                self.movement_origins[key[1]] = previous
+            markers.append(
+                replace(previous, point=point, source=WorkerPositionSource.MANUAL)
+            )
+        self.preview_batch(tuple(markers))
 
     def save(self, key: MarkerKey) -> bool:
         """Commit selected intent; Undo after Save remains a purely local draft.

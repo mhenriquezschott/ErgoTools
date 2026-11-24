@@ -26,11 +26,11 @@ See [markers](plot_marker_rendering.md), [Job view](plot_job_overview.md) and
 
 PLOT uses the current screen's available logical geometry, reserving native title/border
 space and the taskbar rather than sizing against raw monitor resolution. Below a
-1200-pixel client-height budget it uses compact presentation: 48-pixel map controls,
-36-pixel map artwork, tighter spacing/history buttons and result-panel padding,
+1200-pixel client-height budget it uses compact presentation: 34-pixel map controls,
+24-pixel map artwork, tighter spacing/history buttons and result-panel padding,
 and a wider details panel to
 reduce wrapped text. The chart retains a 220-pixel floor; normal desktops retain
-63-pixel map controls and a 250-pixel chart floor. Gauges and text sizes are unchanged.
+40-pixel map controls with 28-pixel artwork and a 250-pixel chart floor. Gauges and text sizes are unchanged.
 Demographics disclosure and all three risk modes retain the complete bottom results.
 The plant-image view never gains scrollbars; fitting the layout preserves marker anchors.
 
@@ -45,3 +45,38 @@ undo history unchanged; integer viewport rounding must not create a phantom pan.
 The verified compact target is a 1920×1200 desktop with 1152 logical pixels of
 available height. Smaller logical work areas remain subject to the controls' functional
 minimum sizes; the application does not make text microscopic to bypass those limits.
+
+
+## Placement tools and live coordinates
+
+The 52-pixel Plant View rail includes center alignment, Snap and Grid beside its
+navigation actions. Select remains first. Drag an empty map area to select several
+workers, or Shift-click to add/remove one. Selected icons keep blue frames; a dashed
+envelope marks the group. Horizontal alignment shares centers' Y coordinate; Vertical
+shares X. Locked items stay fixed. Group drags and alignment are single history steps.
+
+Grid is a persistent dotted overlay toggle; right-click it to choose cell size in original
+image pixels. Snap shows that grid during a drag and rounds the dragged anchor to an
+intersection while retaining group offsets. Grid, snap and spacing are transient view
+settings. They do not add project data or change risk calculations.
+
+Mouse X/Y feedback appears inside Worker Overview → Visual controls and Job Overview →
+Assignment map position. Editable X/Y fields remain the assignment's anchor coordinates.
+Complete coordinate/scale edits and Visible/Enable/Lock changes use project Undo/Redo;
+the Undo button accepts a valid still-focused numeric edit before reversing it.
+Comparison does not show the worker Visual controls group.
+
+Developer Shift View replaces the bottom outcome region with its player, preserving map,
+rail and sidebar geometry. See [Shift View](plot_shift_view.md) for transport, selection,
+read-only interpretation and current validation.
+
+Placement tools (Horizontal/Vertical alignment, Snap and Grid) are grouped directly
+below the opacity tool in the compact Plant View rail.
+
+### Placement icons
+
+The alignment, Snap and Grid buttons use the dedicated designer artwork supplied
+on 17 November 2026, normalized to the same transparent packaged canvas as other
+application icons. The compact and normal rail sizes, selection requirements and
+right-click grid-spacing menu remain as described above. No extra toolbar row is
+introduced.

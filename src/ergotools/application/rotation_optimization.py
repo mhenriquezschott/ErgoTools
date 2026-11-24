@@ -6,6 +6,7 @@ lifetime; concrete adapters own I/O and transaction enforcement.
 """
 
 from collections.abc import Callable
+from enum import Enum
 from typing import Protocol
 
 from ergotools.domain.assessments.document import AssessmentKind
@@ -17,8 +18,34 @@ from ergotools.domain.rotation import (
 from ergotools.domain.rotation_planning import RotationPlanningProblem
 
 
+class RotationFailureReason(Enum):
+    """Portable failure categories; native solver statuses stay in the adapter."""
+
+    # Proven impossibility differs from a bounded search with no usable result.
+    INFEASIBLE = "infeasible"
+    # A time-limited pass returned no independently valid feasible incumbent.
+    TIME_LIMIT = "time_limit"
+    # Backend, invalid primal and other failures have no stronger feasibility claim.
+    OTHER = "other"
+
+
 class RotationOptimizationError(RuntimeError):
-    """Required backend failed or did not produce a complete feasible schedule."""
+    """A failed solve with a portable reason and an unchanged diagnostic message."""
+
+    def __init__(
+        self, message: str, reason: RotationFailureReason = RotationFailureReason.OTHER
+    ) -> None:
+        """Capture diagnostic text without parsing backend wording in the UI.
+
+        Args:
+            message: Technical diagnostic retained for logs and existing callers.
+            reason: Proven infeasibility, time exhaustion or an unspecified failure.
+
+        Returns:
+            None; no schedule or project mutation is associated with an error.
+        """
+        super().__init__(message)
+        self.reason = reason
 
 
 class RotationOptimizer(Protocol):

@@ -16,6 +16,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QProgressBar,
     QProgressDialog,
     QPushButton,
@@ -25,6 +26,8 @@ from PyQt5.QtWidgets import (
 )
 
 from ergotools.application.rotation_optimization import (
+    RotationFailureReason,
+    RotationOptimizationError,
     RotationPlanningOptimizer,
 )
 from ergotools.application.rotation_planning import (
@@ -85,6 +88,7 @@ class PlanningThread(QThread):
         self.cancelled = Event()
         self.solution: RotationSolution | None = None
         self.error: str | None = None
+        self.failure_reason = RotationFailureReason.OTHER
 
     def run(self) -> None:
         """Solve and validate detached results without project access.
@@ -108,6 +112,10 @@ class PlanningThread(QThread):
                 raise ValueError("Invalid planning solver evidence.")
             if not self.cancelled.is_set():
                 self.solution = result
+        except RotationOptimizationError as error:
+            _LOG.warning("Guided planning solve failed: %s", error)
+            self.error = str(error)
+            self.failure_reason = error.reason
         except Exception as error:
             _LOG.exception("Guided planning solve failed")
             self.error = str(error)
@@ -136,6 +144,8 @@ class JrotPlanningController(QObject):
         self.preview: RotationSolution | None = None
         self.run: RotationRun | None = None
         self.displayed_run: RotationRun | None = None
+        self.failure_context: tuple[str, RotationInputs] | None = None
+        self.failure_message = ""
         self.close_requested = False
         self.entry_generation = False
         self.entry_origin: RotationInputs | None = None
@@ -259,6 +269,10 @@ class JrotPlanningController(QObject):
             )
             return
         record = self.root.scenario
+        if self.failure_context != (
+            (record.scenario_id, record.inputs) if record else None
+        ):
+            self.clear_failure()
         self.start_button.setIcon(
             self.root.icons[
                 "optimize_selected_tool"
@@ -279,6 +293,7 @@ class JrotPlanningController(QObject):
             self.preview = None
             self.run = None
             self.prepared = None
+            self.clear_failure()
             self.clear_matrices()
         available = self.optimizer is not None and record is not None and not self.busy
         self.start_button.setEnabled(available)
@@ -299,7 +314,10 @@ class JrotPlanningController(QObject):
         self.keep_button.setEnabled(self.preview is not None and not self.busy)
         self.discard_button.setEnabled(self.preview is not None and not self.busy)
         if not self.busy and self.preview is None:
-            if record is not None and record.run is not None:
+            if self.unsuccessful_attempt:
+                self.clear_matrices()
+                self.status.setText(self.failure_message)
+            elif record is not None and record.run is not None:
                 self.show_saved_run(record.run)
             else:
                 self.clear_matrices()
@@ -311,6 +329,102 @@ class JrotPlanningController(QObject):
                         "paso 04 y los valores del 05; luego optimice aquí.",
                     )
                 )
+        self.status.setStyleSheet(
+            "color:#8D221B;background:#FFF0ED;border:1px solid #E6B4AE;"
+            "border-radius:4px;padding:9px;font-weight:bold;"
+            if self.unsuccessful_attempt
+            else ""
+        )
+
+    @property
+    def unsuccessful_attempt(self) -> bool:
+        """Identify a failed/retired attempt for these exact current inputs.
+
+        Args:
+            None.
+
+        Returns:
+            True while its notice must suppress fallback to a previously kept run.
+            Editing inputs or selecting another rotation releases this UI-only state.
+        """
+        record = self.root.scenario
+        return bool(
+            self.failure_message
+            and record is not None
+            and self.failure_context == (record.scenario_id, record.inputs)
+        )
+
+    def clear_failure(self) -> None:
+        """Release only the old attempt notice, preserving unrelated form errors.
+
+        Args:
+            None.
+
+        Returns:
+            None; called for a retry or a changed rotation/input/source context.
+        """
+        if self.failure_message and self.root.error.text() == self.failure_message:
+            self.root.error.clear()
+        self.failure_context = None
+        self.failure_message = ""
+
+    def record_failure(self, message: str) -> None:
+        """Retain an unsuccessful outcome without deleting a previous saved run.
+
+        Args:
+            message: Localized explanation shown on optimization and comparison pages.
+
+        Returns:
+            None; new matrices and Keep actions are cleared, project data is intact.
+        """
+        record = self.root.scenario
+        self.failure_context = (record.scenario_id, record.inputs) if record else None
+        self.failure_message = message
+        self.preview = None
+        self.run = None
+        self.clear_matrices()
+        self.root.show_error(message)
+        self.status.setText(message)
+
+    def failed_solve_message(self, reason: RotationFailureReason) -> str:
+        """Describe actual failure evidence without claiming a timeout is infeasible.
+
+        Args:
+            reason: Portable category reported by the solve worker.
+
+        Returns:
+            Actionable bilingual message with no solver-internal terminology.
+        """
+        if reason is RotationFailureReason.INFEASIBLE:
+            return self.root.text(
+                "No feasible rotation exists for this combination of restrictions. "
+                "Review the restrictions, Jobs and workers, then try again. "
+                "No new result was applied; the baseline is unchanged.",
+                "No existe una rotación factible con esta combinación "
+                "de restricciones. "
+                "Revise las restricciones, trabajos y trabajadores "
+                "e intente nuevamente. "
+                "No se aplicó un resultado nuevo; la base no cambió.",
+            )
+        if reason is RotationFailureReason.TIME_LIMIT:
+            return self.root.text(
+                "The time limit was reached without a complete validated optimization "
+                "result. This does not prove the restrictions are infeasible. Increase "
+                "the time limit or review the restrictions and try again. "
+                "No new result was applied; the baseline is unchanged.",
+                "Se alcanzó el límite de tiempo sin un resultado completo y validado. "
+                "Esto no demuestra que las restricciones sean inviables. Aumente el "
+                "tiempo o revise las restricciones e intente nuevamente. "
+                "No se aplicó un resultado nuevo; la base no cambió.",
+            )
+        return self.root.text(
+            "Optimization did not return a valid result. Review the input data and "
+            "try again. No new result was applied; the baseline is unchanged. "
+            "See the diagnostic log if the problem persists.",
+            "La optimización no devolvió un resultado válido. Revise los datos e "
+            "intente nuevamente. No se aplicó un resultado nuevo; la base no cambió. "
+            "Consulte el registro de diagnóstico si el problema continúa.",
+        )
 
     def clear_matrices(self) -> None:
         """Release displayed result widgets before a new or retired solve context.
@@ -381,6 +495,7 @@ class JrotPlanningController(QObject):
         self.entry_origin = origin.inputs if self.entry_generation and origin else None
         self.root.go(3 if generation else 6)
         self.clear_matrices()
+        self.clear_failure()
         self.prepared = prepared
         self.preview = None
         self.run = None
@@ -554,24 +669,27 @@ class JrotPlanningController(QObject):
                     )
                 )
             elif worker.solution is None:
-                self.root.show_error(worker.error or "No feasible incumbent returned.")
-                self.status.setText(worker.error or "No result.")
+                message = self.failed_solve_message(worker.failure_reason)
+                self.record_failure(message)
+                self.refresh()
+                self.root.comparison.refresh()
+                QMessageBox.warning(
+                    self.root,
+                    self.root.text(
+                        "Optimization unsuccessful", "Optimización sin resultado"
+                    ),
+                    message,
+                )
             else:
                 assert self.prepared is not None
                 if not self.prepared.problem.generation:
                     self.run = accepted_rotation_run(self.prepared, worker.solution)
                 if not self.fresh():
-                    self.run = None
-                    self.root.show_error(
+                    self.prepared = None
+                    self.record_failure(
                         self.root.text(
                             "Inputs or source context changed. Run again.",
                             "Los datos o su contexto cambiaron. Calcule nuevamente.",
-                        )
-                    )
-                    self.status.setText(
-                        self.root.text(
-                            "Result retired. Run again.",
-                            "Resultado sin vigencia. Calcule nuevamente.",
                         )
                     )
                 else:
@@ -580,10 +698,9 @@ class JrotPlanningController(QObject):
                         self.keep_result()
                     else:
                         self.render()
-        except Exception as error:
+        except Exception:
             _LOG.exception("Unable to present guided solve")
-            self.root.show_error(error)
-            self.status.setText(str(error))
+            self.record_failure(self.failed_solve_message(RotationFailureReason.OTHER))
         finally:
             worker.deleteLater()
             self.root.project_page()
@@ -600,7 +717,8 @@ class JrotPlanningController(QObject):
         if self.preview is None:
             termination = self.status.text()
             self.refresh()
-            self.status.setText(termination + " · " + self.status.text())
+            if not self.unsuccessful_attempt:
+                self.status.setText(termination + " · " + self.status.text())
         if self.close_requested:
             self.close_requested = False
             self.root.accept()
@@ -690,8 +808,11 @@ class JrotPlanningController(QObject):
         """
         return (
             self.root.text(
-                " Further improvement may be possible within a longer time limit.",
-                " Un límite de tiempo mayor podría mejorar el resultado.",
+                " Feasible result; optimality was not proven within the limits. "
+                "A longer time limit may improve it.",
+                " Resultado factible; no se demostró optimalidad "
+                "dentro de los límites. "
+                "Un límite de tiempo mayor podría mejorarlo.",
             )
             if RotationSolveStatus.FEASIBLE in stages
             else ""

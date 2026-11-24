@@ -41,6 +41,29 @@ the inventory does not certify a substantive review. UI changes also require vis
 inspection, including the VTK avatar and populated, empty and resized states.
 Use private copies of example projects for checks that modify data.
 
+## Isolated graphical testing
+
+Routine UI, screenshot and VTK tests must run on a private virtual X display,
+not on the owner's actual desktop. Qt XCB plus Xvfb/GLX supports the real VTK
+framebuffer, interaction and captures; native rendering does not require visible
+windows in the user's session. Offscreen Qt is appropriate for non-rendering UI
+checks. Keep visual acceptance and pointer-interaction checks in an isolated XCB
+session when they need real window-system behavior.
+
+For example, with the existing system Xvfb tools:
+
+```bash
+xvfb-run -a -s "-screen 0 1920x1440x24 +extension GLX +render -noreset" \
+  env -u XDG_SESSION_TYPE QT_QPA_PLATFORM=xcb bash tools/check.sh
+```
+
+Use the owner's real desktop only for a focused, explicitly identified check of
+its compositor, graphics driver, scaling or window manager, with advance notice.
+Do not fall back to running the full suite there after an offscreen failure.
+Record the actual display/backend in evidence; never equate offscreen, isolated
+native XCB, and owner-desktop acceptance. A failed isolated-display launch should
+be investigated rather than silently replaced by the owner's display.
+
 ## Packaging
 
 ```bash

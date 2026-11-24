@@ -205,11 +205,11 @@ def test_zoom_scales_markers_with_image_and_recreated_items(
             window.map_panel.buttons[name] for name in ("zoom_in", "zoom_out")
         )
         assert left.parentWidget() is right.parentWidget()
-        assert left.geometry().right() + 1 == right.geometry().left()
+        assert left.geometry().bottom() + 1 == right.geometry().top()
         assert (
             left.height() == right.height() == window.map_panel.buttons["open"].height()
         )
-        assert left.width() + right.width() == window.map_panel.buttons["open"].width()
+        assert left.width() == right.width() == window.map_panel.buttons["open"].width()
     finally:
         window.confirm_close = Mock(return_value=True)
         window.close()
@@ -536,6 +536,118 @@ def test_fitted_controls_and_live_zoom_tooltips_follow_history(
         assert not buttons["zoom_out"].isEnabled() and not buttons["pan"].isEnabled()
         assert "Current zoom: 100%" in buttons["zoom_in"].toolTip()
         assert project.load_plot_positions() == before
+    finally:
+        window.confirm_close = Mock(return_value=True)
+        window.close()
+        window.deleteLater()
+
+
+@pytest.mark.parametrize(
+    "name,value", [("scale_input", "1.75"), ("x_input", "123.25"), ("y_input", "234.5")]
+)
+def test_focused_map_number_replays_shared_project_history(
+    project: AssessmentProjectFile, tmp_path: Path, name: str, value: str
+) -> None:
+    """Undo accepted or still-focused complete map edits as one project operation.
+
+    Args:
+        project: Disposable native assessment and position repository.
+        tmp_path: Temporary synthetic image directory.
+        name: Worker numeric editor being exercised.
+        value: Complete valid replacement text.
+
+    Returns:
+        None; repeated edit/Undo/Redo cycles preserve exact canonical map settings.
+    """
+    window = navigation_host(project, tmp_path, True)
+    try:
+        window.tabs.setCurrentIndex(1)
+        window.workers.selector.select_id(1)
+        controls = window.workers.controls
+        before = project.load_plot_positions()
+        for _ in range(2):
+            field = getattr(controls, name)
+            field.setFocus()
+            field.selectAll()
+            QTest.keyClicks(field, value)
+            assert window.history_actions.undo_button.isEnabled()
+            # The NoFocus button deliberately leaves the numeric field focused.
+            window.history_actions.undo_button.click()
+            assert project.load_plot_positions() == before
+            assert not controls.field_drafts
+            window.history_actions.redo_button.click()
+            after = project.load_plot_positions()
+            assert after != before
+            window.history_actions.undo_button.click()
+            assert project.load_plot_positions() == before
+    finally:
+        window.confirm_close = Mock(return_value=True)
+        window.close()
+        window.deleteLater()
+
+
+@pytest.mark.parametrize("name", ["visible", "enabled", "locked"])
+def test_visual_flags_use_shared_history(
+    project: AssessmentProjectFile, tmp_path: Path, name: str
+) -> None:
+    """Replay each worker visibility/inclusion/lock flag independently.
+
+    Args:
+        project: Private source repository.
+        tmp_path: Temporary map directory.
+        name: Existing visual checkbox whose canonical flag must be reversible.
+
+    Returns:
+        None; view selection survives replay and saved values match actual intent.
+    """
+    window = navigation_host(project, tmp_path, True)
+    try:
+        window.tabs.setCurrentIndex(1)
+        window.workers.selector.select_id(1)
+        controls = window.workers.controls
+        before = project.load_plot_positions()
+        button = getattr(controls, name)
+        button.setChecked(not button.isChecked())
+        after = project.load_plot_positions()
+        assert after != before and window.history_actions.undo_button.isEnabled()
+        window.history_actions.undo_button.click()
+        assert project.load_plot_positions() == before
+        window.history_actions.redo_button.click()
+        assert project.load_plot_positions() == after
+    finally:
+        window.confirm_close = Mock(return_value=True)
+        window.close()
+        window.deleteLater()
+
+
+def test_job_coordinate_edit_replays_with_field_focused(
+    project: AssessmentProjectFile, tmp_path: Path
+) -> None:
+    """Job map coordinates share the same numeric acceptance and Undo policy.
+
+    Args:
+        project: Private native repository.
+        tmp_path: Temporary image directory.
+
+    Returns:
+        None; comparison hides worker visual controls without hiding job controls.
+    """
+    window = navigation_host(project, tmp_path, True)
+    try:
+        window.filters.risk_buttons[PlotRiskView.COMPARISON].click()
+        assert window.workers.controls.isHidden()
+        window.filters.risk_buttons[PlotRiskView.JOB].click()
+        window.tabs.setCurrentIndex(1)
+        window.jobs.selector.select_id(1)
+        before = project.load_plot_positions()
+        window.jobs.x_input.setFocus()
+        window.jobs.x_input.selectAll()
+        QTest.keyClicks(window.jobs.x_input, "432.125")
+        assert window.history_actions.undo_button.isEnabled()
+        window.history_actions.undo_button.click()
+        assert project.load_plot_positions() == before
+        window.history_actions.redo_button.click()
+        assert project.load_plot_positions().marker(1).point.x == 432.125
     finally:
         window.confirm_close = Mock(return_value=True)
         window.close()

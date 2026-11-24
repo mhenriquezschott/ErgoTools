@@ -416,3 +416,51 @@ def test_individual_symbols_have_visible_outline(shape: str) -> None:
     assert sum(pixels.pixel(x, y) == edge for x in range(96) for y in range(96)) > 100
     assert pixels.pixelColor(48, 48).name() == "#2eff00"
     item.deleteLater()
+
+
+@pytest.mark.parametrize("shape", ["triangle", "circle", "hexagon", "job"])
+@pytest.mark.parametrize("fit", [0.25, 1.0])
+def test_marker_label_restores_full_id_with_zoom(shape: str, fit: float) -> None:
+    """Zoom reveals full IDs rather than magnifying an already elided label.
+
+    Args:
+        shape: Shared worker or Job symbol renderer.
+        fit: Initial fitted scene-to-viewport scale before interactive zoom.
+
+    Returns:
+        None; zoom-out elides again, keeping exact IDs, marker geometry and
+        painter state.
+    """
+    from unittest.mock import patch
+
+    from PyQt5.QtGui import QImage, QPainter
+
+    appearance = MarkerAppearance(shape, "#72ff00", label="SSN0015")
+    item = PlotMarkerItem(
+        PlotPoint(0, 0),
+        appearance,
+        lambda _item: None,
+        lambda _item: None,
+        size=30,
+        scale=0.6,
+        view_scale=fit,
+    )
+    image = QImage(400, 400, QImage.Format_ARGB32)
+    painter = QPainter(image)
+    try:
+        labels = []
+        bounds = item.marker_rect()
+        for zoom in (1, 4, 1):
+            painter.resetTransform()
+            painter.scale(fit * zoom, fit * zoom)
+            transform = painter.worldTransform()
+            with patch.object(painter, "drawText", wraps=painter.drawText) as draw:
+                item.paint_label(painter, bounds)
+                labels.append(draw.call_args.args[2])
+            assert painter.worldTransform() == transform
+        assert labels[0] != appearance.label
+        assert labels[1] == appearance.label
+        assert labels[2] == labels[0]
+        assert item.appearance.label == "SSN0015" and item.marker_rect() == bounds
+    finally:
+        painter.end()

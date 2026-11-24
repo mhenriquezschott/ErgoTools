@@ -15,6 +15,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QMessageBox,
     QTableWidget,
     QTableWidgetItem,
     QTabWidget,
@@ -23,6 +24,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+from ergotools.application.rotation_report import build_rotation_report
 from ergotools.application.rotation_scenarios import run_is_current
 from ergotools.domain.risk import classify_probability
 from ergotools.domain.rotation import RotationSolveStatus
@@ -32,6 +34,7 @@ from ergotools.presentation.desktop.assessment_tool_tabs import (
     AssessmentResultTabs,
     assessment_tool_icon,
 )
+from ergotools.presentation.desktop.jrot_report_dialog import JrotReportDialog
 from ergotools.presentation.desktop.jrot_result_table import (
     JrotResultTable,
     tool_caption,
@@ -66,6 +69,8 @@ class JrotComparisonPanel(QWidget):
         self.root = root
         self.signature: tuple[object, ...] = ()
         self.run: RotationRun | None = None
+        self.report_current = False
+        self.report_preview = False
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self.notice = QLabel()
@@ -147,17 +152,16 @@ class JrotComparisonPanel(QWidget):
             )
         )
         self.report_button = stacked_action(
-            root.text("Save report", "Guardar informe"),
-            lambda: None,
+            root.text("Report…", "Informe…"),
+            self.open_report,
             root.icons["export"],
         )
         self.report_button.setIcon(root.icons["export"])
         self.report_button.setEnabled(False)
         self.report_button.setToolTip(
             root.text(
-                "Report contents and export formats await the team's specification.",
-                "El contenido y formato del informe esperan la "
-                "especificación del equipo.",
+                "Preview the rotation comparison and save its PDF report.",
+                "Revisar la comparación de la rotación y guardar su informe PDF.",
             )
         )
         for button in (
@@ -200,6 +204,7 @@ class JrotComparisonPanel(QWidget):
             for button in (
                 self.rework_button,
                 self.replace_button,
+                self.report_button,
             ):
                 button.setEnabled(False)
             self.notice.setText(
@@ -215,7 +220,16 @@ class JrotComparisonPanel(QWidget):
             and owner.solve.run is not None
             and owner.solve.fresh()
         )
-        run = owner.solve.run if preview else record.run if record else None
+        failed = owner.solve.unsuccessful_attempt
+        run = (
+            None
+            if failed
+            else owner.solve.run
+            if preview
+            else record.run
+            if record
+            else None
+        )
         self.keep_button.setVisible(preview)
         self.keep_button.setEnabled(preview and not owner.planning_busy())
         current = False
@@ -234,17 +248,34 @@ class JrotComparisonPanel(QWidget):
             and record.run.contract_version == ROTATION_RUN_MODEL_VERSION
             and not owner.planning_busy()
             and owner.solve.preview is None
+            and not failed
         )
         self.rework_button.setEnabled(rework)
         self.replace_button.setEnabled(rework)
-        signature = (record.scenario_id if record else None, run, preview, current)
+        self.report_current, self.report_preview = current, preview
+        self.report_button.setEnabled(
+            run is not None
+            and run.contract_version == ROTATION_RUN_MODEL_VERSION
+            and not owner.planning_busy()
+        )
+        signature = (
+            record.scenario_id if record else None,
+            run,
+            preview,
+            current,
+            owner.solve.failure_message if failed else "",
+        )
         if signature == self.signature:
             return
         self.signature, self.run = signature, run
         self.clear_tabs()
+        self.cards.setVisible(run is not None)
+        self.high_notice_group.setVisible(run is not None)
         if run is None:
             self.notice.setText(
-                owner.text(
+                owner.solve.failure_message
+                if failed
+                else owner.text(
                     "No optimized result yet. Generate or enter a starting proposal if "
                     "needed, then run optimization. No before/after "
                     "values are invented.",
@@ -254,7 +285,14 @@ class JrotComparisonPanel(QWidget):
                     "valores comparativos.",
                 )
             )
+            self.notice.setStyleSheet(
+                "color:#8D221B;background:#FFF0ED;border:1px solid #E6B4AE;"
+                "border-radius:4px;padding:9px;font-weight:bold;"
+                if failed
+                else ""
+            )
             return
+        self.notice.setStyleSheet("")
         state = (
             owner.text(
                 "Preview · not kept yet · original baseline unchanged",
@@ -333,6 +371,7 @@ class JrotComparisonPanel(QWidget):
         try:
             comparisons = compare_rotation_run(run)
         except ValueError as error:
+            self.report_button.setEnabled(False)
             self.notice.setText(self.notice.text() + "\n" + str(error))
             # Unknown models retain exact matrices but receive no recalculated index.
             for kind in run.inputs.tools:
@@ -349,6 +388,45 @@ class JrotComparisonPanel(QWidget):
                 assessment_tool_icon(owner.icons, comparison.kind),
                 tool_caption(comparison.kind.value),
             )
+
+    def open_report(self) -> None:
+        """Preview/export only the exact run currently displayed in this panel.
+
+        Args:
+            None.
+
+        Returns:
+            None; previewing, canceling and exporting do not accept or save a run.
+        """
+        self.refresh()
+        if not self.report_button.isEnabled() or self.run is None:
+            return
+        record = self.root.scenario
+        if record is None:
+            return
+        try:
+            report = build_rotation_report(
+                self.root.metadata.title,
+                record.name,
+                self.run,
+                preview=self.report_preview,
+                current=self.report_current,
+            )
+        except ValueError:
+            QMessageBox.warning(
+                self,
+                self.root.text("Report unavailable", "Informe no disponible"),
+                self.root.text(
+                    "This result cannot produce a supported comparison report.",
+                    "Este resultado no permite generar un informe compatible.",
+                ),
+            )
+            return
+        dialog = JrotReportDialog(
+            report, self.root.language, self.root.icons, self.root
+        )
+        dialog.exec_()
+        dialog.deleteLater()
 
     def clear_tabs(self) -> None:
         """Release replaced read-only tables and summary cards.

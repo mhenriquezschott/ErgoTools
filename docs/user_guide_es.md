@@ -276,6 +276,8 @@ coordenadas pendientes se descartan conservando la posición aceptada. El panel 
 resultado; el historial general sigue disponible al cambiar de vista o reabrir la ventana.
 Guardar principal escribe los cambios de geometría aceptados.
 
+La barra compacta Vista de planta contiene alineación, Ajustar y Cuadrícula; haga clic derecho en Cuadrícula para ajustar el espaciado. Las coordenadas del cursor aparecen en los controles visuales del trabajador/trabajo. Comparación oculta la edición visual del trabajador. Vista de turno conserva la geometría del mapa y coloca el reproductor abajo; Anterior/Siguiente salta bloques o descansos, Recargar conserva reproducción/pausa, Localizar parpadea y volver a pulsar la fila seleccionada quita la selección.
+
 ## JROT: rotaciones guiadas y optimización
 
 Abra JROT desde la barra del proyecto o Herramientas. Cree una rotación con nombre y fecha
@@ -300,7 +302,7 @@ ponderadas del horario, no evaluaciones individuales. Una referencia ausente no 
 Cambiar trabajos marca la evidencia anterior como desactualizada sin reescribirla. Reabrir
 restaura resultados aceptados. Botones separados permiten rehacer como nueva conservando el
 original, o reemplazar la base con confirmación. Conservar otra optimización confirma
-el reemplazo del resultado; Deshacer restaura el anterior. Deshacer/Rehacer comparte el historial. Los informes esperan su especificación.
+el reemplazo del resultado; Deshacer restaura el anterior. Deshacer/Rehacer comparte el historial. En 08, Informe… muestra la optimización registrada dentro de ErgoTools. Guardar PDF… exporta las mismas páginas con horarios, comparaciones por herramienta y trabajador y advertencias de trabajos de riesgo alto. Se identifica la evidencia previa o desactualizada; exportar no conserva el resultado, cambia la base ni guarda el proyecto.
 
 Configuración → General → Compatibilidad permite mostrar el menú anterior en esta sesión.
 JROT anterior edita solo esquemas antiguos compatibles; no cambia ni elimina planes guiados.
@@ -627,7 +629,7 @@ Step 05 identifies missing tool/task inputs below the Job list. Step 06 labels i
 check above the review tabs. Step 08 shows before/after maximum-worker-index cards, summary
 statistics and a High-Job notice; expand schedule details for matrices and worker values.
 Separate icon buttons create a new rotation from the result or, after warning, replace
-the original baseline. Show/Hide schedule details expands directly below the statistics. Report export awaits team input.
+the original baseline. Show/Hide schedule details expands directly below the statistics. Report… previews the recorded comparison; Save PDF… exports its schedules, statistics, worker changes and High Job warnings without changing the baseline or saving the project.
 
 Conservar resultado guarda explícitamente una vista previa válida como un paso de
 Deshacer compartido, sin cambiar la referencia original.
@@ -690,3 +692,12 @@ Haga clic en un número de tarea; Mayús+clic selecciona un rango y Ctrl+clic fi
 ## Comparación del motor de una herramienta
 
 Todas las optimizaciones JROT usan HiGHS directamente, para una, dos o las tres herramientas. No existe una preferencia para elegir el motor. Los resultados conservados solo cambian al conservar explícitamente otro. Los minutos ponderan la exposición; no prohíben un trabajo Alto en un bloque largo. Cada trabajo seleccionado sigue cubierto en cada bloque.
+
+
+### Restricciones de JROT y formato numérico
+
+El formulario contiene Trabajador, Trabajo fijo, Trabajos excluidos y Sin alto
+consecutivo dentro del turno. Ya no se muestran controles de turnos adyacentes;
+la estructura y los vínculos guardados se conservan. Los valores pequeños de daño
+se muestran como decimales legibles sin convertirlos en cero; la notación científica
+para magnitudes extremas mantiene la misma alineación y tipografía numérica.

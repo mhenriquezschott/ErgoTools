@@ -18,3 +18,10 @@ Zoom scales the image and figures together. Cursor modes, clipping and centering
 by `PlotLayoutCanvas`; marker painting and identity projection remain in `PlotMarkerItem`
 and `PlotMarkerLayer`. Accepted movement and visual changes use shared project history and
 main Save. See [map controls](plot_map_controls.md) and [Job view](plot_job_overview.md).
+
+Worker and Job IDs are fitted again on every paint using the symbol's viewport size.
+Compact icons can shorten a long ID in the middle; zooming in restores the complete ID
+when it fits. Text grows to a readable capped size instead of magnifying a permanently
+shortened string. The exact ID remains unchanged in the data and tooltip. This shared
+renderer also handles Comparison and Shift View glyph labels; it changes no assignment
+coordinates, icon scale, risk values or project data.

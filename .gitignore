@@ -66,3 +66,15 @@ artifacts/
 
 /docs/jrot_owner_walkthrough_notes.md
 /docs/images/settings_single_tool_solver.png
+
+# Funding proposals and partner documents remain local and unpublished.
+/docs/proposals/
+
+# Local design discussions, work plans and personal scratch projects.
+/docs/jrot_cd_discussion.md
+/docs/mobile_demo_plan.md
+/docs/mobile_design_refinement.md
+/docs/plot_revamp_checklist.md
+/docs/plot_polish_20261112.md
+/docs/jrot_ui_cleanup_20261114.md
+/test_projects/native/test01.ergprj

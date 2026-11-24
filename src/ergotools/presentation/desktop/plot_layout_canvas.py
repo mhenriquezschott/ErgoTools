@@ -6,16 +6,19 @@ source state and repository lifetime remain with the named application/domain po
 host owners.
 """
 
+import math
 from collections.abc import Callable
 from math import isclose, isfinite
 from typing import Literal
 
-from PyQt5.QtCore import QPoint, QPointF, Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import QPoint, QPointF, QRectF, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import (
     QCloseEvent,
+    QColor,
     QKeyEvent,
     QMouseEvent,
     QPainter,
+    QPen,
     QPixmap,
     QResizeEvent,
     QShowEvent,
@@ -42,6 +45,8 @@ class PlotLayoutCanvas(QGraphicsView):
     layer.
     """
 
+    pointer_changed = pyqtSignal(float, float)
+    drag_changed = pyqtSignal(bool)
     layout_replaced = pyqtSignal()
     # Fitted baseline excludes user magnification, so markers zoom with the image.
     fitted = pyqtSignal(float)
@@ -96,6 +101,16 @@ class PlotLayoutCanvas(QGraphicsView):
         self._pan_before: PlotNavigationState | None = None
         self.marker_opacity = 1.0
         self._opacity_index = 0
+        self.snap_enabled = False
+        self.grid_visible = False
+        self.grid_step = 40.0
+        self.dragging_markers = False
+        self._drag_anchor: QGraphicsItem | None = None
+        self._drag_positions: dict[QGraphicsItem, QPointF] = {}
+        self.read_only = False
+        self.setMouseTracking(True)
+        self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
+        self.setRubberBandSelectionMode(Qt.ItemSelectionMode.IntersectsItemShape)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.NoAnchor)
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.NoAnchor)
@@ -131,6 +146,9 @@ class PlotLayoutCanvas(QGraphicsView):
         scene = self.scene()
         assert scene is not None
         self.layout_replaced.emit()
+        self.dragging_markers = False
+        self._drag_positions.clear()
+        self._drag_anchor = None
         scene.clear()
         self.background = None
         self.cancel_navigation()
@@ -454,6 +472,84 @@ class PlotLayoutCanvas(QGraphicsView):
                     item.setOpacity(opacity)
         self.publish_view_edit(before)
 
+    def snap_position(
+        self, point: QPointF, item: QGraphicsItem | None = None
+    ) -> QPointF:
+        """Snap a dragged marker's source-pixel anchor; never snap replay or playback.
+
+        Args:
+            point: Proposed top-left scene coordinate in original image pixels.
+            item: Moving marker; group members retain their original relative offsets.
+
+        Returns:
+            Snapped anchor or the same snapped group translation for each member,
+            otherwise unchanged. Group snapping never distorts internal spacing.
+        """
+        if self.snap_enabled and self.dragging_markers and not self.read_only:
+            origin = self._drag_positions.get(item) if item is not None else None
+            anchor = (
+                self._drag_positions.get(self._drag_anchor)
+                if self._drag_anchor is not None
+                else None
+            )
+            target = (
+                anchor + point - origin
+                if origin is not None and anchor is not None
+                else point
+            )
+            snapped = QPointF(
+                round(target.x() / self.grid_step) * self.grid_step,
+                round(target.y() / self.grid_step) * self.grid_step,
+            )
+            return (
+                origin + snapped - anchor
+                if origin is not None and anchor is not None
+                else snapped
+            )
+        return point
+
+    def drawForeground(self, painter: QPainter | None, rect: QRectF) -> None:  # noqa: N802
+        """Draw a bounded nonpersistent snap grid and multi-selection envelope.
+
+        Args:
+            painter: Active view painter in source-image coordinates.
+            rect: Visible source-image rectangle.
+
+        Returns:
+            None; overlays never enlarge the scene or enter saved coordinates.
+        """
+        super().drawForeground(painter, rect)
+        if painter is None or self.background is None:
+            return
+        if self.grid_visible or (self.snap_enabled and self.dragging_markers):
+            area = rect.intersected(self.background.sceneBoundingRect())
+            pen = QPen(QColor(20, 110, 155, 90), 0, Qt.PenStyle.DotLine)
+            pen.setCosmetic(True)
+            painter.setPen(pen)
+            step = self.grid_step
+            # At distant zoom levels avoid an unreadable or expensive subpixel mesh.
+            stride = max(1, math.ceil(7 / max(0.001, step * self.transform().m11())))
+            step *= stride
+            x = math.ceil(area.left() / step) * step
+            while x <= area.right():
+                painter.drawLine(QPointF(x, area.top()), QPointF(x, area.bottom()))
+                x += step
+            y = math.ceil(area.top() / step) * step
+            while y <= area.bottom():
+                painter.drawLine(QPointF(area.left(), y), QPointF(area.right(), y))
+                y += step
+        scene = self.scene()
+        selected = scene.selectedItems() if scene else []
+        if len(selected) > 1:
+            bounds = QRectF()
+            for item in selected:
+                bounds = bounds.united(item.sceneBoundingRect())
+            pen = QPen(QColor("#1267cc"), 1, Qt.PenStyle.DashLine)
+            pen.setCosmetic(True)
+            painter.setPen(pen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawRect(bounds.adjusted(-4, -4, 4, 4))
+
     def mousePressEvent(self, event: QMouseEvent | None) -> None:  # noqa: N802
         """Consume image navigation gestures before any graphics-item selection/drag.
 
@@ -495,16 +591,38 @@ class PlotLayoutCanvas(QGraphicsView):
                 self.cancel_navigation()
                 event.accept()
                 return
+        if event is not None and self.navigation_mode == "select":
+            item = self.itemAt(event.pos())
+            self.dragging_markers = bool(
+                item is not None
+                and item.flags() & QGraphicsItem.GraphicsItemFlag.ItemIsMovable
+                and event.button() == Qt.MouseButton.LeftButton
+                and not self.read_only
+            )
+            self.drag_changed.emit(self.dragging_markers)
         super().mousePressEvent(event)
+        if self.dragging_markers and event is not None:
+            self._drag_anchor = self.itemAt(event.pos())
+            scene = self.scene()
+            self._drag_positions = (
+                {
+                    item: QPointF(item.pos())
+                    for item in scene.selectedItems()
+                    if item.flags() & QGraphicsItem.GraphicsItemFlag.ItemIsMovable
+                }
+                if scene
+                else {}
+            )
 
     def mouseMoveEvent(self, event: QMouseEvent | None) -> None:  # noqa: N802
-        """Pan using hidden scroll offsets while leaving marker coordinates untouched.
+        """Route pan or normal marker gestures and publish post-snap coordinates.
 
         Args:
             event: Native viewport move; normal selection delegates to Qt.
 
         Returns:
-            None; no scrollbars become visible and no item receives this drag.
+            None; pan never reaches markers. Normal selection delegates to Qt before
+            publishing pointer/anchor feedback. No image scrollbars become visible.
         """
         if event is not None and self._pan_start is not None:
             delta = event.pos() - self._pan_start
@@ -513,6 +631,10 @@ class PlotLayoutCanvas(QGraphicsView):
             event.accept()
             return
         super().mouseMoveEvent(event)
+        if event is not None:
+            point = self.mapToScene(event.pos())
+            self.pointer_changed.emit(point.x(), point.y())
+            self._viewport.update()
 
     def mouseReleaseEvent(self, event: QMouseEvent | None) -> None:  # noqa: N802
         """Finish hand/middle dragging without generating a marker-release operation.
@@ -523,6 +645,10 @@ class PlotLayoutCanvas(QGraphicsView):
         Returns:
             None; the selected navigation cursor and local scene center are retained.
         """
+        if event is not None:
+            point = self.mapToScene(event.pos())
+            self.pointer_changed.emit(point.x(), point.y())
+            self._viewport.update()
         if event is not None and self._pan_start is not None:
             self._pan_start = None
             self._view_center = self.mapToScene(self._viewport.rect().center())
@@ -535,6 +661,14 @@ class PlotLayoutCanvas(QGraphicsView):
             event.accept()
             return
         super().mouseReleaseEvent(event)
+        if event is not None:
+            point = self.mapToScene(event.pos())
+            self.pointer_changed.emit(point.x(), point.y())
+        self.dragging_markers = False
+        self._drag_positions.clear()
+        self._drag_anchor = None
+        self.drag_changed.emit(False)
+        self._viewport.update()
 
     def keyPressEvent(self, event: QKeyEvent | None) -> None:  # noqa: N802
         """Let Escape cancel navigation before the containing dialog can close.

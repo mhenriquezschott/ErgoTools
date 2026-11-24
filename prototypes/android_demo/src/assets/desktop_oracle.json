@@ -1,0 +1,10 @@
+{
+  "worker": "W01",
+  "name": "Elena Mu\u00f1oz",
+  "arm_cm": 30,
+  "load_n": 49,
+  "repetitions": 100,
+  "task_name": "Manual packing",
+  "damage": 0.0003,
+  "probability_percent": 13.190999733969136
+}

@@ -140,6 +140,19 @@ class PlotWorkerControls(QGroupBox):
             field.setToolTip(self.text(english, spanish))
             field.textEdited.connect(self.field_edited)
         layout.addLayout(grid)
+        self.cursor_position = QLabel(
+            self.text("Mouse: X — · Y —", "Cursor: X — · Y —")
+        )
+        self.cursor_position.setToolTip(
+            self.text(
+                "Live mouse position in original image pixels; "
+                "editable X/Y fields show the assignment anchor.",
+                "Posición del cursor en píxeles originales; "
+                "los campos X/Y muestran el ancla de la asignación.",
+            )
+        )
+        layout.addWidget(self.cursor_position)
+        self.layer.canvas.pointer_changed.connect(self.show_cursor_position)
         save_row = QHBoxLayout()
         save_row.setSpacing(6)
         self.save_button = QPushButton(self.text("Save", "Guardar"), self)
@@ -178,6 +191,20 @@ class PlotWorkerControls(QGroupBox):
         layer.changed.connect(self.refresh)
         layer.selection_changed.connect(self.select)
         self.refresh()
+
+    def show_cursor_position(self, x: float, y: float) -> None:
+        """Display live map coordinates separately from editable assignment anchors.
+
+        Args:
+            x: Pointer horizontal coordinate in original image pixels.
+            y: Pointer vertical coordinate in original image pixels.
+
+        Returns:
+            None; moving the cursor never changes project data or history.
+        """
+        self.cursor_position.setText(
+            self.text("Mouse", "Cursor") + f": X {x:.1f} · Y {y:.1f}"
+        )
 
     def text(self, english: str, spanish: str) -> str:
         """Translate captions while settings retain canonical pixels and flags.

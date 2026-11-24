@@ -1766,6 +1766,142 @@
       ],
       "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
       "sha256": "ac54f2e9d404be8a7b18c964797cc01da75214ddb03bea7903d7b34735f92038"
+    },
+    {
+      "path": "icons/horizontal_alignment.png",
+      "source_sha256": "dc88c09fdc0d4fbfcd70f26bb89e3148a455f26e3d68e8dbe0ac6a98b1e64944",
+      "source_name": "horizontal_alignment.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        46,
+        375,
+        1209,
+        906
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "86a0796d1a750b909ed2ab860ba666dbb2b6528610f0941f3fc150a0c9a09795"
+    },
+    {
+      "path": "icons/horizontal_alignment_light.png",
+      "source_sha256": "dc88c09fdc0d4fbfcd70f26bb89e3148a455f26e3d68e8dbe0ac6a98b1e64944",
+      "source_name": "horizontal_alignment.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        46,
+        375,
+        1209,
+        906
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "2d59786a5cbba9bc1accdf0b18f6258bada7aab1cb8fbcd075c26301f3b37c07"
+    },
+    {
+      "path": "icons/show_grid.png",
+      "source_sha256": "4be66f446f4840655789d41881225312d251a23f1189cd69f03a5f86cced3e8e",
+      "source_name": "show_grid.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        194,
+        234,
+        1081,
+        1085
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "7a491e7ca8c893e0592a5c98301bc09ca14806b099478ad8f417b36470e7a8c0"
+    },
+    {
+      "path": "icons/show_grid_light.png",
+      "source_sha256": "4be66f446f4840655789d41881225312d251a23f1189cd69f03a5f86cced3e8e",
+      "source_name": "show_grid.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        194,
+        234,
+        1081,
+        1085
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "aabc3cfc9b00fce9571ad69a28c4cbd0231d2789e146770c61c72da51cd01c61"
+    },
+    {
+      "path": "icons/snap_to_grid.png",
+      "source_sha256": "75011e3ec423e647b52fb3803ffe47db9f511c05f7026e405f1a3aa34b5729ab",
+      "source_name": "snap_to_grid.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        169,
+        178,
+        1085,
+        1082
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "d7205716e85cf51bae7ef0fb5b35db29b06312b41e957ea3104662443472cbfa"
+    },
+    {
+      "path": "icons/snap_to_grid_light.png",
+      "source_sha256": "75011e3ec423e647b52fb3803ffe47db9f511c05f7026e405f1a3aa34b5729ab",
+      "source_name": "snap_to_grid.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        169,
+        178,
+        1085,
+        1082
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "7fd75c59c629dcbe7e73cbcbe70a91a422a73bfe43934019e734acf6bad3c7df"
+    },
+    {
+      "path": "icons/vertical_alignment.png",
+      "source_sha256": "7ed311a4123c94e7bc8a8a1b96cda18e006e0a6a8865e120b9acd1e7a3ec9c65",
+      "source_name": "vertical_alignment.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        232,
+        67,
+        1023,
+        1188
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas",
+      "sha256": "c2ffabefd4a38bb22d0a10981ead5d6dc6ad8da43b2be27a5f84647222d87fe8"
+    },
+    {
+      "path": "icons/vertical_alignment_light.png",
+      "source_sha256": "7ed311a4123c94e7bc8a8a1b96cda18e006e0a6a8865e120b9acd1e7a3ec9c65",
+      "source_name": "vertical_alignment.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        232,
+        67,
+        1023,
+        1188
+      ],
+      "operation": "white-matte removal, decontamination, trim, centered80px artwork on96px transparent canvas; white glyph",
+      "sha256": "95397fef60bff2ef805e77bf247482e7e46a1aa3e26e81713ab315f0a284ed75"
     }
   ]
 }

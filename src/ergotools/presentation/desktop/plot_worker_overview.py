@@ -363,7 +363,9 @@ class PlotWorkerOverview(QScrollArea):
             and self.layer.items["worker", self.selected_id].isVisible()
         )
         self.set_body_labels()
-        if old_identity != self.selected_id or not self.timer.isActive():
+        if (old_identity != self.selected_id or not self.timer.isActive()) and sum(
+            item.isSelected() for item in self.layer.items.values()
+        ) <= 1:
             for key, item in self.layer.items.items():
                 if key[0] == "worker":
                     item.setSelected(key[1] == self.selected_id)

@@ -135,3 +135,19 @@ New controls retain the established sizes: 24px mode icons, 28px import/JROT com
 and 32px timing Clear. No callback, tooltip, layout dimension or persistence changed.
 Source/crop/output provenance is in the packaged manifest. Native EN/ES evidence and
 verification are recorded under `artifacts/remaining_icons`.
+
+## PLOT placement artwork — 2026-11-17
+
+The owner-supplied `horizontal_alignment.png`, `vertical_alignment.png`,
+`snap_to_grid.png` and `show_grid.png` replace the temporary painted PLOT rail
+glyphs. Each uses the existing white-matte removal, trim, centered 80px artwork
+on a transparent 96px canvas, and exact-alpha white `_light` variant. This adds
+four pairs to the earlier 41 designer pairs; prior assets and designer originals
+remain unchanged. Provenance/crop/output hashes are in the packaged manifest.
+
+Bootstrap supplies the same packaged mapping to PlotMapTools through PlotWindow;
+no runtime access to tmp/icons and no generated fallback drawing remains. The
+rail still uses icon-only 40px buttons/28px icons or compact 34px buttons/24px
+icons, with existing EN/ES tooltips, checked/disabled rendering, Grid’s spacing
+context menu and opacity → alignment → Snap → Grid ordering. Behavior/history
+and persistence are unchanged.

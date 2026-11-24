@@ -6,6 +6,8 @@ remain with their existing hosts. No value is inferred from formatting.
 """
 
 import re
+from decimal import Decimal
+from math import isfinite
 
 from PyQt5.QtCore import QModelIndex, Qt, QTimer
 from PyQt5.QtGui import QBrush, QColor, QPalette, QResizeEvent
@@ -17,8 +19,32 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-# Whole numeric tokens: percentages, decimal commas and missing-value dashes.
-_NUMBER = re.compile(r"(?:[+\u2212-]?\d+(?:[.,]\d+)?%?|—)")
+# Whole display tokens, including scientific exponents, percentages and decimal commas.
+_NUMBER = re.compile(r"(?:[+\u2212-]?\d+(?:[.,]\d+)?(?:[eE][+\u2212-]?\d+)?%?|—)")
+
+
+def compact_decimal_display(value: float) -> str:
+    """Show six significant digits without turning small nonzero values into zero.
+
+    Args:
+        value: Finite display-only measurement; stored calculator precision
+            is untouched.
+
+    Returns:
+        Fixed decimal text with at least four fractional places. Extreme magnitudes
+        retain scientific notation when fixed text would exceed eighteen characters.
+        Negative zero is normalized for presentation only.
+
+    Raises:
+        ValueError: The supplied display value is not finite.
+    """
+    if not isfinite(value):
+        raise ValueError("Display value must be finite.")
+    significant = f"{value:.6g}" if value else "0"
+    fixed = format(Decimal(significant), "f")
+    whole, _, fraction = fixed.partition(".")
+    padded = whole + "." + fraction.ljust(4, "0")
+    return significant if len(padded) > 18 else padded
 
 
 def numeric_display(text: str) -> bool:

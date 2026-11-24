@@ -35,6 +35,7 @@ from ergotools.application.project_workspace import ProjectWorkspace
 from ergotools.application.rotation_access import RotationRepository
 from ergotools.application.session import DocumentKey
 from ergotools.application.settings import Language, SettingsStore
+from ergotools.application.shift_playback import ShiftPlaybackRepository
 from ergotools.domain.assessments.document import AssessmentDraft, AssessmentKind
 from ergotools.domain.assessments.lifft_draft import LifftDraft
 from ergotools.domain.decimal_convention import DecimalConvention
@@ -533,6 +534,10 @@ def open_plot(
         repository,
         lambda location: import_plant_image(Path(location)),
         load_icons(),
+        shift_repository=repository
+        if bool(parent.property("developerMode"))
+        and isinstance(repository, ShiftPlaybackRepository)
+        else None,
         current_year=date.today().year,
         language=language,
         system=system,
@@ -655,6 +660,14 @@ def load_icons() -> dict[str, QIcon]:
         "worker_restrictions_light",
         "worksheet",
         "worksheet_light",
+        "horizontal_alignment",
+        "horizontal_alignment_light",
+        "vertical_alignment",
+        "vertical_alignment_light",
+        "snap_to_grid",
+        "snap_to_grid_light",
+        "show_grid",
+        "show_grid_light",
         "ergotools_logo",
         "new",
         "open",

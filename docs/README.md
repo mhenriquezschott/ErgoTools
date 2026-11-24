@@ -5,7 +5,7 @@ its current native format and its supported extension boundaries.
 
 | Audience | Guide |
 |---|---|
-| Users | [English user guide](user_guide.md) · [Guía en español](user_guide_es.md) |
+| Users | [Illustrated user guide (PDF)](guides/ergotools_user_guide.pdf) · [JROT scenario tutorials](jrot_tutorials.md) · [English user guide](user_guide.md) · [Guía en español](user_guide_es.md) |
 | Installation | [Linux, Windows and macOS setup](installation.md) · [Recovery](recovery.md) · [Installation / GitHub PDF](guides/ergotools_installation_and_github_guide.pdf) · [Copyable commands](guides/installation_commands.md) · [Capture checklist](guides/desktop_capture_checklist.md) |
 | Developers | [Architecture](architecture.md) · [API contracts](api_contracts.md) · [Development](development.md) · [Coding standards](coding_standards.md) |
 | Data model | [Current native tables](database_tables.md) · [Shared project Save/history](single_project_save.md) · [Shift timing](rotation_timing.md) · [Rotation scenarios](rotation_scenarios.md) · [JROT guided entry](jrot_guided_entry.md) · [Weighted planning and restrictions](jrot_planning.md) · [Comparisons and rework](jrot_comparisons.md) |
@@ -42,3 +42,13 @@ and compatibility with previously recorded results.
 
 [Visual Settings and display diagnostics](settings_previews_and_diagnostics.md) explains
 live appearance examples and collecting reports for desktop deployment tests.
+
+[JROT PDF report](jrot_report.md) describes the in-app preview, export and recorded-evidence interpretation.
+
+[Android tablet feasibility demo](mobile_android_demo.md) covers its isolated
+Linux toolchain, automatic emulator/APK launcher and current compatibility evidence.
+
+- [PLOT Shift View developer preview](plot_shift_view.md): read-only paired rotation
+  playback, complete twenty-worker fixture and weighted-index interpretation.
+
+[JROT unsuccessful solves](jrot_failure_handling.md) explains infeasibility and time-limit messages; [the combined-restrictions example](jrot_infeasible_example.md) provides a reproducible check.
